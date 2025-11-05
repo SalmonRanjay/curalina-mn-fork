@@ -16,6 +16,7 @@ import Styles from "@/pages/styles";
 import Pricing from "@/pages/pricing";
 import About from "@/pages/about";
 import Blog from "@/pages/blog";
+import Dashboard from "@/pages/dashboard";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminProducts from "@/pages/admin/products";
 import AdminSuppliers from "@/pages/admin/suppliers";
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/about" component={About} />
       <Route path="/blog" component={Blog} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/loading" component={Loading} />
       <Route path="/results" component={Results} />
@@ -66,6 +68,7 @@ function Router() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/about" component={About} />
         <Route path="/blog" component={Blog} />
+        <Route path="/dashboard" component={Dashboard} />
         <Route path="/quiz" component={Quiz} />
         <Route path="/loading" component={Loading} />
         <Route path="/results" component={Results} />
@@ -193,6 +196,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/about" component={About} />
       <Route path="/blog" component={Blog} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/loading" component={Loading} />
       <Route path="/results" component={Results} />

@@ -339,7 +339,9 @@ export function registerCuralinaRoutes(app: Express) {
           
           // Extract featured product SKUs
           const allProducts = await curalinaStorage.getAllProducts();
-          const productSkus = extractProductSkus(quiz, allProducts);
+          // Filter products to only include those with styleTags
+          const productsWithTags = allProducts.filter(p => p.styleTags && p.styleTags.length > 0);
+          const productSkus = extractProductSkus(quiz, productsWithTags as Array<{sku: string, styleTags: string[]}>);
           
           // Update render with completed data
           await curalinaStorage.updateRender(render.id, {
@@ -398,6 +400,21 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching render:", error);
       res.status(500).json({ error: "Failed to fetch render" });
+    }
+  });
+
+  app.get('/api/renders', async (req, res) => {
+    try {
+      const { sessionId } = req.query;
+      if (!sessionId) {
+        return res.status(400).json({ error: "sessionId required" });
+      }
+
+      const renders = await curalinaStorage.getRendersBySession(sessionId as string);
+      res.json(renders);
+    } catch (error) {
+      console.error("Error fetching renders:", error);
+      res.status(500).json({ error: "Failed to fetch renders" });
     }
   });
 
@@ -515,6 +532,21 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching order:", error);
       res.status(500).json({ error: "Failed to fetch order" });
+    }
+  });
+
+  app.get('/api/orders', async (req, res) => {
+    try {
+      const { sessionId } = req.query;
+      if (!sessionId) {
+        return res.status(400).json({ error: "sessionId required" });
+      }
+
+      const orders = await curalinaStorage.getOrdersBySession(sessionId as string);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
 }

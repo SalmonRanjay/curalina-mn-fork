@@ -60,6 +60,7 @@ export interface ICuralinaStorage {
   updateRender(id: string, data: Partial<InsertRender>): Promise<Render>;
   getRender(id: string): Promise<Render | undefined>;
   getLatestRenderBySession(sessionId: string): Promise<Render | undefined>;
+  getRendersBySession(sessionId: string): Promise<Render[]>;
   
   // Cart operations
   getCartBySession(sessionId: string): Promise<Array<CartItem & { product: Product }>>;
@@ -69,8 +70,9 @@ export interface ICuralinaStorage {
   clearCart(sessionId: string): Promise<void>;
   
   // Order operations
-  createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  createOrder(order: InsertOrder, items: Omit<InsertOrderItem, 'orderId'>[]): Promise<Order>;
   getOrder(id: string): Promise<Order | undefined>;
+  getOrdersBySession(sessionId: string): Promise<Order[]>;
 }
 
 export class CuralinaStorage implements ICuralinaStorage {
@@ -222,6 +224,14 @@ export class CuralinaStorage implements ICuralinaStorage {
     return render;
   }
 
+  async getRendersBySession(sessionId: string): Promise<Render[]> {
+    return db
+      .select()
+      .from(renders)
+      .where(eq(renders.sessionId, sessionId))
+      .orderBy(desc(renders.createdAt));
+  }
+
   // Cart operations
   async getCartBySession(sessionId: string): Promise<Array<CartItem & { product: Product }>> {
     const items = await db
@@ -253,9 +263,10 @@ export class CuralinaStorage implements ICuralinaStorage {
     
     if (existing) {
       // Update quantity
+      const newQuantity = existing.quantity + (itemData.quantity || 1);
       const [updated] = await db
         .update(cartItems)
-        .set({ quantity: existing.quantity + itemData.quantity })
+        .set({ quantity: newQuantity })
         .where(eq(cartItems.id, existing.id))
         .returning();
       return updated;
@@ -284,7 +295,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   // Order operations
-  async createOrder(orderData: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
+  async createOrder(orderData: InsertOrder, items: Omit<InsertOrderItem, 'orderId'>[]): Promise<Order> {
     const [order] = await db.insert(orders).values(orderData).returning();
     
     // Create order items
@@ -302,6 +313,14 @@ export class CuralinaStorage implements ICuralinaStorage {
   async getOrder(id: string): Promise<Order | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     return order;
+  }
+
+  async getOrdersBySession(sessionId: string): Promise<Order[]> {
+    return db
+      .select()
+      .from(orders)
+      .where(eq(orders.sessionId, sessionId))
+      .orderBy(desc(orders.createdAt));
   }
 }
 
