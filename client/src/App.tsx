@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Quiz from "@/pages/Quiz";
 import Loading from "@/pages/Loading";
+import Results from "@/pages/Results";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminProducts from "@/pages/admin/products";
 import AdminSuppliers from "@/pages/admin/suppliers";
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/loading" component={Loading} />
+      <Route path="/results" component={Results} />
       <Route component={isLoading ? Landing : NotFound} />
     </Switch>
   );
@@ -52,6 +54,7 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/quiz" component={Quiz} />
         <Route path="/loading" component={Loading} />
+        <Route path="/results" component={Results} />
         
         {/* Admin routes with sidebar */}
         <Route path="/admin">
@@ -172,6 +175,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/quiz" component={Quiz} />
+      <Route path="/loading" component={Loading} />
+      <Route path="/results" component={Results} />
       <Route path="/portal" component={PortalDashboard} />
       <Route path="/portal/settings" component={PortalSettings} />
       

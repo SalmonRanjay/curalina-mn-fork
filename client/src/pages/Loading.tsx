@@ -23,12 +23,10 @@ export default function Loading() {
     return () => clearInterval(interval);
   }, []);
 
-  // Redirect to results after 8 seconds (commented out until results page exists)
+  // Redirect to results after 8 seconds
   useEffect(() => {
     const timeout = setTimeout(() => {
-      // TODO: Uncomment when results page is implemented
-      // setLocation("/results");
-      console.log("Quiz submitted! Results page coming soon...");
+      setLocation("/results");
     }, 8000);
 
     return () => clearTimeout(timeout);
