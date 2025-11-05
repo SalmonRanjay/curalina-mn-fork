@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Navigation() {
   const [location, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, isAdmin, user } = useAuth();
+  const { isAuthenticated, isAdmin, user, isLoading } = useAuth();
 
   const navItems = [
     { label: "HOME", path: "/" },
@@ -70,44 +70,48 @@ export default function Navigation() {
               TAKE THE QUIZ
             </Button>
 
-            {isAuthenticated ? (
+            {!isLoading && (
               <>
-                {isAdmin && (
+                {isAuthenticated ? (
+                  <>
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleNavClick("/admin")}
+                        data-testid="button-admin-dashboard"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Admin
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => handleNavClick("/portal")}
+                      data-testid="button-user-portal"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      {user?.firstName || "Account"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => window.location.href = "/api/logout"}
+                      data-testid="button-logout"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
                   <Button
                     variant="outline"
-                    onClick={() => handleNavClick("/admin")}
-                    data-testid="button-admin-dashboard"
+                    onClick={() => window.location.href = "/api/login"}
+                    data-testid="button-login"
                   >
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    Admin
+                    <User className="w-4 h-4 mr-2" />
+                    Login
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => handleNavClick("/portal")}
-                  data-testid="button-user-portal"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  {user?.firstName || "Account"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => window.location.href = "/api/logout"}
-                  data-testid="button-logout"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </Button>
               </>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = "/api/login"}
-                data-testid="button-login"
-              >
-                <User className="w-4 h-4 mr-2" />
-                Login
-              </Button>
             )}
           </div>
 
@@ -146,48 +150,52 @@ export default function Navigation() {
               TAKE THE QUIZ
             </Button>
 
-            {isAuthenticated ? (
+            {!isLoading && (
               <>
-                {isAdmin && (
+                {isAuthenticated ? (
+                  <>
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleNavClick("/admin")}
+                        className="w-full"
+                        data-testid="button-admin-dashboard-mobile"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Admin Dashboard
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => handleNavClick("/portal")}
+                      className="w-full"
+                      data-testid="button-user-portal-mobile"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      {user?.firstName || "My Account"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => window.location.href = "/api/logout"}
+                      className="w-full"
+                      data-testid="button-logout-mobile"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
                   <Button
                     variant="outline"
-                    onClick={() => handleNavClick("/admin")}
+                    onClick={() => window.location.href = "/api/login"}
                     className="w-full"
-                    data-testid="button-admin-dashboard-mobile"
+                    data-testid="button-login-mobile"
                   >
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    Admin Dashboard
+                    <User className="w-4 h-4 mr-2" />
+                    Login
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => handleNavClick("/portal")}
-                  className="w-full"
-                  data-testid="button-user-portal-mobile"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  {user?.firstName || "My Account"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => window.location.href = "/api/logout"}
-                  className="w-full"
-                  data-testid="button-logout-mobile"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </Button>
               </>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = "/api/login"}
-                className="w-full"
-                data-testid="button-login-mobile"
-              >
-                <User className="w-4 h-4 mr-2" />
-                Login
-              </Button>
             )}
           </div>
         </div>
