@@ -3,11 +3,29 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Navigation() {
   const [location, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAuthenticated, isAdmin, user, isLoading } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      
+      // Invalidate user query to clear authentication state
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
+      // Redirect to home
+      setLocation("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   const navItems = [
     { label: "HOME", path: "/" },
@@ -94,7 +112,7 @@ export default function Navigation() {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => window.location.href = "/api/logout"}
+                      onClick={handleLogout}
                       data-testid="button-logout"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
@@ -102,14 +120,23 @@ export default function Navigation() {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => window.location.href = "/api/login"}
-                    data-testid="button-login"
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Login
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleNavClick("/login")}
+                      data-testid="button-login"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Login
+                    </Button>
+                    <Button
+                      onClick={() => handleNavClick("/register")}
+                      className="bg-green-500 hover:bg-green-600"
+                      data-testid="button-register"
+                    >
+                      Register
+                    </Button>
+                  </>
                 )}
               </>
             )}
@@ -176,7 +203,7 @@ export default function Navigation() {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => window.location.href = "/api/logout"}
+                      onClick={handleLogout}
                       className="w-full"
                       data-testid="button-logout-mobile"
                     >
@@ -185,15 +212,24 @@ export default function Navigation() {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => window.location.href = "/api/login"}
-                    className="w-full"
-                    data-testid="button-login-mobile"
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Login
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleNavClick("/login")}
+                      className="w-full"
+                      data-testid="button-login-mobile"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Login
+                    </Button>
+                    <Button
+                      onClick={() => handleNavClick("/register")}
+                      className="w-full bg-green-500 hover:bg-green-600"
+                      data-testid="button-register-mobile"
+                    >
+                      Register
+                    </Button>
+                  </>
                 )}
               </>
             )}

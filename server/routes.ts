@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./localAuth";
 import { 
   ObjectStorageService,
   ObjectNotFoundError 
@@ -11,13 +11,12 @@ import { insertContentSchema, insertSettingsSchema } from "@shared/schema";
 
 // Admin-only middleware
 export const isAdmin = async (req: any, res: any, next: any) => {
-  const userId = req.user?.claims?.sub;
-  if (!userId) {
+  const user = req.user;
+  if (!user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const user = await storage.getUser(userId);
-  if (!user || user.role !== "admin") {
+  if (user.role !== "admin") {
     return res.status(403).json({ message: "Admin access required" });
   }
 
@@ -31,12 +30,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.json(user);
+      // Don't send password to client
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User profile routes
   app.put('/api/users/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { firstName, lastName, bio } = req.body;
       
       const user = await storage.getUser(userId);

@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
 import Quiz from "@/pages/Quiz";
 import Loading from "@/pages/Loading";
 import Results from "@/pages/Results";
@@ -28,6 +30,8 @@ function Router() {
   const publicRoutes = (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/styles" component={Styles} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/about" component={About} />
@@ -57,6 +61,8 @@ function Router() {
       <Switch>
         {/* Public routes (accessible to logged-in users) */}
         <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
         <Route path="/styles" component={Styles} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/about" component={About} />
@@ -84,6 +90,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/styles" component={Styles} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/about" component={About} />

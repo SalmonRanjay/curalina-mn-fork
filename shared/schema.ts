@@ -25,10 +25,11 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (required for Replit Auth)
+// User storage table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").notNull().unique(),
+  password: varchar("password").notNull(), // Hashed password
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -40,6 +41,17 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// User insert schema for registration
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 // Content management table (for admin to manage website content)
 export const content = pgTable("content", {
