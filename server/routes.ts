@@ -100,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/content', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertContentSchema.parse({
         ...req.body,
         authorId: userId,
@@ -124,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/content/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { id } = req.params;
       
       const existing = await storage.getContent(id);
@@ -150,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/content/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { id } = req.params;
 
       const existing = await storage.getContent(id);
@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/settings/:key', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertSettingsSchema.parse({
         key: req.params.key,
         ...req.body,
@@ -225,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Activity log routes
   app.get('/api/activity', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       // Admins can see all activity, users can only see their own
@@ -257,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
-    const userId = req.user?.claims?.sub;
+    const userId = req.user?.id;
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(
@@ -292,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "imageURL is required" });
     }
 
-    const userId = req.user?.claims?.sub;
+    const userId = req.user?.id;
 
     try {
       const objectStorageService = new ObjectStorageService();

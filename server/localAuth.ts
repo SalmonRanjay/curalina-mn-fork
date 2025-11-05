@@ -6,6 +6,20 @@ import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
+import { z } from "zod";
+
+// Validation schemas
+const registerSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -71,6 +85,10 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
+      if (!user) {
+        // User not found - session is stale, return false to clear it
+        return done(null, false);
+      }
       done(null, user);
     } catch (error) {
       done(error);
@@ -80,15 +98,16 @@ export async function setupAuth(app: Express) {
   // Registration endpoint
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { email, password, firstName, lastName } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
+      // Validate request body with Zod
+      const validationResult = registerSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validationResult.error.errors 
+        });
       }
 
-      if (password.length < 8) {
-        return res.status(400).json({ message: "Password must be at least 8 characters" });
-      }
+      const { email, password, firstName, lastName } = validationResult.data;
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
@@ -108,17 +127,25 @@ export async function setupAuth(app: Express) {
         role: "user",
       });
 
-      // Log the user in
-      req.login(user, (err) => {
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((err) => {
         if (err) {
-          return res.status(500).json({ message: "Registration successful but login failed" });
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Registration successful but session creation failed" });
         }
-        res.json({
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
+
+        // Log the user in
+        req.login(user, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Registration successful but login failed" });
+          }
+          res.json({
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+          });
         });
       });
     } catch (error) {
@@ -129,6 +156,15 @@ export async function setupAuth(app: Express) {
 
   // Login endpoint
   app.post("/api/auth/login", (req, res, next) => {
+    // Validate request body with Zod
+    const validationResult = loginSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        message: "Validation failed", 
+        errors: validationResult.error.errors 
+      });
+    }
+
     passport.authenticate("local", (err: any, user: User | false, info: any) => {
       if (err) {
         return res.status(500).json({ message: "Authentication error" });
@@ -138,17 +174,25 @@ export async function setupAuth(app: Express) {
         return res.status(401).json({ message: info?.message || "Invalid credentials" });
       }
 
-      req.login(user, (err) => {
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((err) => {
         if (err) {
-          return res.status(500).json({ message: "Login failed" });
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Session creation failed" });
         }
-        
-        res.json({
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
+
+        req.login(user, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Login failed" });
+          }
+          
+          res.json({
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+          });
         });
       });
     })(req, res, next);
@@ -158,9 +202,21 @@ export async function setupAuth(app: Express) {
   app.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
+        console.error("Logout error:", err);
         return res.status(500).json({ message: "Logout failed" });
       }
-      res.json({ message: "Logged out successfully" });
+      
+      // Destroy session to fully clear user data and prevent session fixation
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destruction error:", err);
+          return res.status(500).json({ message: "Session destruction failed" });
+        }
+        
+        // Clear session cookie
+        res.clearCookie("connect.sid");
+        res.json({ message: "Logged out successfully" });
+      });
     });
   });
 }
