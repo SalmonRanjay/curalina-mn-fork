@@ -7,6 +7,7 @@ import {
   cartItems,
   orders,
   orderItems,
+  users,
   type Category,
   type InsertCategory,
   type Vendor,
@@ -23,6 +24,7 @@ import {
   type InsertOrder,
   type OrderItem,
   type InsertOrderItem,
+  type User,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -74,6 +76,11 @@ export interface ICuralinaStorage {
   getOrder(id: string): Promise<Order | undefined>;
   getOrdersBySession(sessionId: string): Promise<Order[]>;
   getAllOrders(): Promise<Order[]>;
+  updateOrderStatus(id: string, status: string): Promise<Order>;
+  
+  // User operations
+  getAllUsers(): Promise<User[]>;
+  updateUserRole(id: string, role: string): Promise<User>;
   
   // Admin operations
   getAllRenders(): Promise<Render[]>;
@@ -330,6 +337,29 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async getAllOrders(): Promise<Order[]> {
     return db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<Order> {
+    const [order] = await db
+      .update(orders)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
+  }
+
+  // User operations
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUserRole(id: string, role: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 
   // Admin operations

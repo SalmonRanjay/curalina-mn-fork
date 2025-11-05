@@ -562,6 +562,36 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  app.patch('/api/admin/orders/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const order = await curalinaStorage.updateOrderStatus(req.params.id, req.body.status);
+      res.json(order);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      res.status(500).json({ error: "Failed to update order" });
+    }
+  });
+
+  app.get('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const users = await curalinaStorage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.patch('/api/admin/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const user = await curalinaStorage.updateUserRole(req.params.id, req.body.role);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
   app.get('/api/admin/renders', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const renders = await curalinaStorage.getAllRenders();
