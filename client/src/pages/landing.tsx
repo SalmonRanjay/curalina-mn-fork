@@ -81,10 +81,10 @@ export default function Landing() {
                   {[...styles, ...styles].map((style, idx) => (
                     <Card
                       key={idx}
-                      className="min-w-[250px] p-6 text-center bg-stone-50 dark:bg-stone-900 hover-elevate"
+                      className="min-w-[350px] p-8 text-center bg-stone-50 dark:bg-stone-900 hover-elevate"
                     >
-                      <div className="w-full h-40 bg-gradient-to-br from-stone-200 to-stone-300 dark:from-stone-700 dark:to-stone-800 rounded-lg mb-4"></div>
-                      <p className="font-semibold">{style}</p>
+                      <div className="w-full h-56 bg-gradient-to-br from-stone-200 to-stone-300 dark:from-stone-700 dark:to-stone-800 rounded-lg mb-4"></div>
+                      <p className="text-lg font-semibold">{style}</p>
                     </Card>
                   ))}
                 </motion.div>
