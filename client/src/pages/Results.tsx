@@ -75,13 +75,10 @@ export default function Results() {
   // Add to cart mutation
   const addToCartMutation = useMutation({
     mutationFn: async (productId: string) => {
-      return apiRequest(`/api/cart`, {
-        method: "POST",
-        body: JSON.stringify({
-          sessionId,
-          productId,
-          quantity: 1,
-        }),
+      return apiRequest("POST", `/api/cart`, {
+        sessionId,
+        productId,
+        quantity: 1,
       });
     },
     onSuccess: () => {
@@ -176,18 +173,33 @@ export default function Results() {
     <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950">
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-bold mb-4" data-testid="heading-results">
-            Your AI-Generated Design
-          </h1>
-          <p className="text-lg text-stone-600 dark:text-stone-400">
-            Personalized just for you
-          </p>
-        </motion.div>
+        <div className="flex justify-between items-start mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1"
+          >
+            <h1 className="text-4xl font-bold mb-4" data-testid="heading-results">
+              Your AI-Generated Design
+            </h1>
+            <p className="text-lg text-stone-600 dark:text-stone-400">
+              Personalized just for you
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/cart")}
+              data-testid="button-view-cart"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              View Cart
+            </Button>
+          </motion.div>
+        </div>
 
         {/* AI Render Image */}
         <motion.div
