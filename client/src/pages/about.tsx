@@ -21,14 +21,14 @@ export default function About() {
 
           <h2 className="text-3xl font-bold mt-12 mb-4">How We Work</h2>
           <p className="text-lg text-stone-600 dark:text-stone-400 leading-relaxed mb-6">
-            Our AI-powered platform analyzes your preferences, room dimensions, and style choices to generate photorealistic interior designs in minutes. Every furniture piece is handpicked by our team of professional interior designers from over 300 premium Canadian vendors.
+            Our AI-powered platform analyzes your preferences, room dimensions, and style choices to generate photorealistic interior designs in minutes. Every furniture piece is handpicked by our team of professional interior designers from over 300 premium Canadian suppliers.
           </p>
 
           <h2 className="text-3xl font-bold mt-12 mb-4">Why Choose Us</h2>
           <ul className="space-y-4 text-lg text-stone-600 dark:text-stone-400">
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold">•</span>
-              <span><strong>Canadian Designed:</strong> All our furniture selections are sourced from premium Canadian vendors</span>
+              <span><strong>Canadian Designed:</strong> All our furniture selections are sourced from premium Canadian suppliers</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold">•</span>

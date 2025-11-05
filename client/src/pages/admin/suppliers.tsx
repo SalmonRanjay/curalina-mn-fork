@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
 export default function AdminSuppliers() {
-  const { data: vendors, isLoading } = useQuery({
-    queryKey: ["/api/admin/vendors"],
+  const { data: suppliers, isLoading } = useQuery({
+    queryKey: ["/api/admin/suppliers"],
   });
 
   return (
@@ -10,7 +10,7 @@ export default function AdminSuppliers() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold" data-testid="heading-suppliers">Suppliers</h1>
         <p className="text-stone-600 dark:text-stone-400 mt-2">
-          Manage your furniture suppliers and vendors
+          Manage your furniture suppliers
         </p>
       </div>
 
@@ -21,7 +21,7 @@ export default function AdminSuppliers() {
       ) : (
         <div className="bg-white dark:bg-stone-900 rounded-lg border p-6">
           <p className="text-sm text-stone-500">
-            {vendors?.length || 0} suppliers
+            {suppliers?.length || 0} suppliers
           </p>
           {/* Supplier list will go here */}
         </div>

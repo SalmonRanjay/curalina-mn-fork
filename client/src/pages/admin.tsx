@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, Package, Store, Tag, ShoppingCart, Image as ImageIcon, FileText, BarChart3, Users, BookOpen, Search, DollarSign, TrendingUp, ShoppingBag } from "lucide-react";
-import type { Category, Vendor, Product, Order, Render, QuizResponse, User } from "@shared/schema";
+import type { Category, Supplier, Product, Order, Render, QuizResponse, User } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
@@ -105,8 +105,8 @@ function AnalyticsSection() {
     queryKey: ["/api/admin/users"],
   });
 
-  const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["/api/admin/vendors"],
+  const { data: suppliers = [] } = useQuery<Supplier[]>({
+    queryKey: ["/api/admin/suppliers"],
   });
 
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
@@ -178,7 +178,7 @@ function AnalyticsSection() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Suppliers</span>
-                <span className="font-medium">{vendors.length}</span>
+                <span className="font-medium">{suppliers.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total Orders</span>
@@ -233,8 +233,8 @@ function ProductsSection() {
     queryKey: ["/api/admin/categories"],
   });
 
-  const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["/api/admin/vendors"],
+  const { data: suppliers = [] } = useQuery<Supplier[]>({
+    queryKey: ["/api/admin/suppliers"],
   });
 
   const deleteMutation = useMutation({
@@ -374,7 +374,7 @@ function ProductsSection() {
                 <TableHead>SKU</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Vendor</TableHead>
+                <TableHead>Supplier</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -383,7 +383,7 @@ function ProductsSection() {
             <TableBody>
               {filteredProducts.slice(0, 50).map((product) => {
                 const category = categories.find(c => c.id === product.categoryId);
-                const vendor = vendors.find(v => v.id === product.vendorId);
+                const supplier = suppliers.find(s => s.id === product.supplierId);
                 const hasImages = product.images && product.images.length > 0;
                 return (
                   <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
@@ -404,7 +404,7 @@ function ProductsSection() {
                     <TableCell className="font-mono text-xs">{product.sku}</TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{category?.name || "N/A"}</TableCell>
-                    <TableCell>{vendor?.name || "N/A"}</TableCell>
+                    <TableCell>{supplier?.name || "N/A"}</TableCell>
                     <TableCell>${product.price}</TableCell>
                     <TableCell>
                       <Badge variant={product.availability === "in_stock" ? "default" : "secondary"}>
@@ -691,24 +691,24 @@ function SuppliersSection() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/admin/vendors"],
+  const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
+    queryKey: ["/api/admin/suppliers"],
   });
 
   const createMutation = useMutation({
     mutationFn: (data: { name: string; email: string }) =>
-      apiRequest("/api/admin/vendors", "POST", data),
+      apiRequest("/api/admin/suppliers", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       setIsDialogOpen(false);
       toast({ title: "Success", description: "Supplier created successfully" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/vendors/${id}`, "DELETE"),
+    mutationFn: (id: string) => apiRequest(`/api/admin/suppliers/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       toast({ title: "Success", description: "Supplier deleted successfully" });
     },
   });
@@ -730,7 +730,7 @@ function SuppliersSection() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-2" data-testid="text-section-title">Suppliers</h1>
-          <p className="text-muted-foreground">{vendors.length} furniture suppliers</p>
+          <p className="text-muted-foreground">{suppliers.length} furniture suppliers</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -777,10 +777,10 @@ function SuppliersSection() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vendors.map((vendor) => (
-                <TableRow key={vendor.id} data-testid={`row-supplier-${vendor.id}`}>
-                  <TableCell className="font-medium">{vendor.name}</TableCell>
-                  <TableCell>{vendor.email}</TableCell>
+              {suppliers.map((supplier) => (
+                <TableRow key={supplier.id} data-testid={`row-supplier-${supplier.id}`}>
+                  <TableCell className="font-medium">{supplier.name}</TableCell>
+                  <TableCell>{supplier.email}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">View Products</Badge>
                   </TableCell>
@@ -789,16 +789,16 @@ function SuppliersSection() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        data-testid={`button-edit-supplier-${vendor.id}`}
+                        data-testid={`button-edit-supplier-${supplier.id}`}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteMutation.mutate(vendor.id)}
+                        onClick={() => deleteMutation.mutate(supplier.id)}
                         disabled={deleteMutation.isPending}
-                        data-testid={`button-delete-supplier-${vendor.id}`}
+                        data-testid={`button-delete-supplier-${supplier.id}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
