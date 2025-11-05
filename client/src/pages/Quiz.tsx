@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { getOrCreateSessionId } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
 import Dropzone from "react-dropzone";
+import colorPalette from "@assets/image001_1762335467188.png";
 
 const TOTAL_STEPS = 7;
 
@@ -525,7 +526,12 @@ export default function Quiz() {
                           <p className="text-sm text-stone-600 dark:text-stone-400">{styleData.furniture}</p>
                         </div>
                         <div>
-                          <h4 className="font-semibold mb-1">Color Palette</h4>
+                          <h4 className="font-semibold mb-2">Color Palette</h4>
+                          <img 
+                            src={colorPalette} 
+                            alt="Color palette inspiration" 
+                            className="w-full max-w-md mb-2 rounded-md"
+                          />
                           <p className="text-sm text-stone-600 dark:text-stone-400">{styleData.colorPalette}</p>
                         </div>
                       </motion.div>
