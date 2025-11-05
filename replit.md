@@ -49,10 +49,22 @@ Preferred communication style: Simple, everyday language.
 - **Stripe Integration**: Payment processing (ready for API keys)
 
 ### Authentication & Access Control
-**Login Options**:
-- Replit Auth (Google, GitHub, X, Apple, email/password)
-- Login button in navigation bar
-- Session-based authentication with automatic token refresh
+**Authentication System**:
+- Traditional username/password authentication using Passport.js Local Strategy
+- Login page at `/login` with email/password form
+- Registration page at `/register` with email, password, first name, last name
+- Session-based authentication with PostgreSQL-backed session store
+- Password hashing with bcrypt (10 salt rounds)
+- Session regeneration on login to prevent session fixation attacks
+- Session destruction on logout with cookie clearing
+
+**Security Features**:
+- Zod validation for registration and login inputs
+- Minimum 8-character password requirement
+- Passwords never sent to client (excluded from API responses)
+- HttpOnly cookies in production
+- Secure flag enabled in production
+- Graceful handling of stale/missing user sessions
 
 **User Roles**:
 - **Admin**: Full access to admin dashboard (`/admin`) for managing categories, vendors, products, orders, renders, quiz responses
@@ -60,8 +72,8 @@ Preferred communication style: Simple, everyday language.
 - **Anonymous**: Can complete quiz, generate renders, add to cart without logging in
 
 **Navigation UI**:
-- **Unauthenticated**: "Login" button
-- **Authenticated Users**: User name + "Account" button + "Logout" button
+- **Unauthenticated**: "Login" and "Register" buttons
+- **Authenticated Users**: User first name + "Account" button + "Logout" button
 - **Admin Users**: Additional "Admin" button for dashboard access
 
 ## System Architecture
