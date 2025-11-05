@@ -2,15 +2,34 @@ import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command } fr
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const BUCKET_NAME = "curalina";
+const AWS_REGION = process.env.AWS_REGION || "us-east-1";
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 // Initialize S3 client with credentials from environment variables
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 });
+
+/**
+ * Validate file for upload
+ * @param buffer - The file buffer
+ * @param contentType - The MIME type
+ * @throws Error if validation fails
+ */
+export function validateUpload(buffer: Buffer, contentType: string): void {
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(`File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+  }
+
+  if (!ALLOWED_MIME_TYPES.includes(contentType)) {
+    throw new Error(`File type ${contentType} not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`);
+  }
+}
 
 /**
  * Upload a file to S3 bucket
@@ -24,6 +43,9 @@ export async function uploadToS3(
   body: Buffer,
   contentType: string
 ): Promise<string> {
+  // Validate before upload
+  validateUpload(body, contentType);
+
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,
     Key: key,
@@ -34,8 +56,8 @@ export async function uploadToS3(
 
   await s3Client.send(command);
   
-  // Return the public URL
-  return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  // Return the public URL using the configured region
+  return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
 }
 
 /**
