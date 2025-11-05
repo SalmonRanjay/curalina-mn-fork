@@ -1,15 +1,333 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { 
+  ObjectStorageService,
+  ObjectNotFoundError 
+} from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
+import { insertContentSchema, insertSettingsSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  // Auth middleware
+  await setupAuth(app);
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // User profile routes
+  app.put('/api/users/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { firstName, lastName, bio } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const updatedUser = await storage.upsertUser({
+        ...user,
+        firstName: firstName ?? user.firstName,
+        lastName: lastName ?? user.lastName,
+        bio: bio ?? user.bio,
+      });
+
+      await storage.createActivityLog({
+        userId,
+        action: "profile_updated",
+        description: "Updated profile information",
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Admin-only middleware
+  const isAdmin = async (req: any, res: any, next: any) => {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    next();
+  };
+
+  // Content routes (admin only for create/update/delete)
+  app.get('/api/content', async (req, res) => {
+    try {
+      const items = await storage.getAllContent();
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching content:", error);
+      res.status(500).json({ message: "Failed to fetch content" });
+    }
+  });
+
+  app.get('/api/content/:id', async (req, res) => {
+    try {
+      const item = await storage.getContent(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: "Content not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      console.error("Error fetching content:", error);
+      res.status(500).json({ message: "Failed to fetch content" });
+    }
+  });
+
+  app.post('/api/content', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertContentSchema.parse({
+        ...req.body,
+        authorId: userId,
+      });
+
+      const item = await storage.createContent(validatedData);
+
+      await storage.createActivityLog({
+        userId,
+        action: "content_created",
+        description: `Created content: ${item.title}`,
+        metadata: { contentId: item.id },
+      });
+
+      res.json(item);
+    } catch (error) {
+      console.error("Error creating content:", error);
+      res.status(500).json({ message: "Failed to create content" });
+    }
+  });
+
+  app.put('/api/content/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const existing = await storage.getContent(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Content not found" });
+      }
+
+      const item = await storage.updateContent(id, req.body);
+
+      await storage.createActivityLog({
+        userId,
+        action: "content_updated",
+        description: `Updated content: ${item.title}`,
+        metadata: { contentId: item.id },
+      });
+
+      res.json(item);
+    } catch (error) {
+      console.error("Error updating content:", error);
+      res.status(500).json({ message: "Failed to update content" });
+    }
+  });
+
+  app.delete('/api/content/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      const existing = await storage.getContent(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Content not found" });
+      }
+
+      await storage.deleteContent(id);
+
+      await storage.createActivityLog({
+        userId,
+        action: "content_deleted",
+        description: `Deleted content: ${existing.title}`,
+        metadata: { contentId: id },
+      });
+
+      res.json({ message: "Content deleted" });
+    } catch (error) {
+      console.error("Error deleting content:", error);
+      res.status(500).json({ message: "Failed to delete content" });
+    }
+  });
+
+  // Settings routes (admin only)
+  app.get('/api/settings', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allSettings = await storage.getAllSettings();
+      res.json(allSettings);
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.get('/api/settings/:key', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const setting = await storage.getSetting(req.params.key);
+      if (!setting) {
+        return res.status(404).json({ message: "Setting not found" });
+      }
+      res.json(setting);
+    } catch (error) {
+      console.error("Error fetching setting:", error);
+      res.status(500).json({ message: "Failed to fetch setting" });
+    }
+  });
+
+  app.put('/api/settings/:key', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertSettingsSchema.parse({
+        key: req.params.key,
+        ...req.body,
+      });
+
+      const setting = await storage.upsertSetting(validatedData);
+
+      await storage.createActivityLog({
+        userId,
+        action: "settings_updated",
+        description: `Updated setting: ${setting.key}`,
+        metadata: { settingKey: setting.key },
+      });
+
+      res.json(setting);
+    } catch (error) {
+      console.error("Error updating setting:", error);
+      res.status(500).json({ message: "Failed to update setting" });
+    }
+  });
+
+  // Activity log routes
+  app.get('/api/activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Admins can see all activity, users can only see their own
+      const logs = user?.role === "admin" 
+        ? await storage.getActivityLog()
+        : await storage.getActivityLog(userId);
+
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching activity log:", error);
+      res.status(500).json({ message: "Failed to fetch activity log" });
+    }
+  });
+
+  // Object storage routes
+  app.get("/public-objects/:filePath(*)", async (req, res) => {
+    const filePath = req.params.filePath;
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const file = await objectStorageService.searchPublicObject(filePath);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error searching for public object:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
+    const userId = req.user?.claims?.sub;
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path,
+      );
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
+  });
+
+  app.put("/api/profile-image", isAuthenticated, async (req: any, res) => {
+    if (!req.body.imageURL) {
+      return res.status(400).json({ error: "imageURL is required" });
+    }
+
+    const userId = req.user?.claims?.sub;
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageURL,
+        {
+          owner: userId,
+          visibility: "public",
+        },
+      );
+
+      // Update user profile with new image
+      const user = await storage.getUser(userId);
+      if (user) {
+        await storage.upsertUser({
+          ...user,
+          profileImageUrl: objectPath,
+        });
+      }
+
+      await storage.createActivityLog({
+        userId,
+        action: "profile_image_updated",
+        description: "Updated profile image",
+      });
+
+      res.status(200).json({
+        objectPath: objectPath,
+      });
+    } catch (error) {
+      console.error("Error setting profile image:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   const httpServer = createServer(app);
-
   return httpServer;
 }
