@@ -12,7 +12,7 @@ import {
   insertProductSchema,
 } from "@shared/schema";
 import { z } from "zod";
-import { isAuthenticated } from "./replitAuth";
+import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
 
