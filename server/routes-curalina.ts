@@ -549,4 +549,35 @@ export function registerCuralinaRoutes(app: Express) {
       res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
+
+  // Admin-only endpoints
+  app.get('/api/admin/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const orders = await curalinaStorage.getAllOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching all orders:", error);
+      res.status(500).json({ error: "Failed to fetch orders" });
+    }
+  });
+
+  app.get('/api/admin/renders', isAuthenticated, async (req: any, res) => {
+    try {
+      const renders = await curalinaStorage.getAllRenders();
+      res.json(renders);
+    } catch (error) {
+      console.error("Error fetching all renders:", error);
+      res.status(500).json({ error: "Failed to fetch renders" });
+    }
+  });
+
+  app.get('/api/admin/quiz-responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const quizResponses = await curalinaStorage.getAllQuizResponses();
+      res.json(quizResponses);
+    } catch (error) {
+      console.error("Error fetching all quiz responses:", error);
+      res.status(500).json({ error: "Failed to fetch quiz responses" });
+    }
+  });
 }

@@ -73,6 +73,11 @@ export interface ICuralinaStorage {
   createOrder(order: InsertOrder, items: Omit<InsertOrderItem, 'orderId'>[]): Promise<Order>;
   getOrder(id: string): Promise<Order | undefined>;
   getOrdersBySession(sessionId: string): Promise<Order[]>;
+  getAllOrders(): Promise<Order[]>;
+  
+  // Admin operations
+  getAllRenders(): Promise<Render[]>;
+  getAllQuizResponses(): Promise<QuizResponse[]>;
 }
 
 export class CuralinaStorage implements ICuralinaStorage {
@@ -321,6 +326,19 @@ export class CuralinaStorage implements ICuralinaStorage {
       .from(orders)
       .where(eq(orders.sessionId, sessionId))
       .orderBy(desc(orders.createdAt));
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+
+  // Admin operations
+  async getAllRenders(): Promise<Render[]> {
+    return db.select().from(renders).orderBy(desc(renders.createdAt));
+  }
+
+  async getAllQuizResponses(): Promise<QuizResponse[]> {
+    return db.select().from(quizResponses).orderBy(desc(quizResponses.createdAt));
   }
 }
 

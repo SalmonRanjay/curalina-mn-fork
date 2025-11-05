@@ -17,14 +17,7 @@ import Pricing from "@/pages/pricing";
 import About from "@/pages/about";
 import Blog from "@/pages/blog";
 import Dashboard from "@/pages/dashboard";
-import AdminDashboard from "@/pages/admin/dashboard";
-import AdminProducts from "@/pages/admin/products";
-import AdminSuppliers from "@/pages/admin/suppliers";
-import AdminOrders from "@/pages/admin/orders";
-import AdminAnalytics from "@/pages/admin/analytics";
-import AdminUsers from "@/pages/admin/users";
-import AdminBlog from "@/pages/admin/blog";
-import AdminSettings from "@/pages/admin/settings";
+import AdminDashboard from "@/pages/admin";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 
@@ -74,110 +67,9 @@ function Router() {
         <Route path="/results" component={Results} />
         <Route path="/cart" component={Cart} />
         
-        {/* Admin routes with sidebar */}
-        <Route path="/admin">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminDashboard />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/products">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminProducts />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/suppliers">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminSuppliers />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/orders">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminOrders />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/analytics">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminAnalytics />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/users">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminUsers />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/blog">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminBlog />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
-        
-        <Route path="/admin/settings">
-          {() => (
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <main className="flex-1 overflow-auto">
-                  <AdminSettings />
-                </main>
-              </div>
-            </SidebarProvider>
-          )}
-        </Route>
+        {/* Admin routes - Unified dashboard with tabs */}
+        <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/:rest*" component={AdminDashboard} />
 
         {/* User portal routes (admins can access these too) */}
         <Route path="/portal" component={PortalDashboard} />

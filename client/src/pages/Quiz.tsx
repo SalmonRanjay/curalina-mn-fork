@@ -771,7 +771,7 @@ export default function Quiz() {
                 >
                   <input {...getInputProps()} />
                   <p className="font-semibold mb-4">{uploadingVibe ? "Uploading..." : "Add Photo"}</p>
-                  <Button type="button" variant="link" size="sm" data-testid="button-see-photo-example">
+                  <Button type="button" variant="ghost" size="sm" data-testid="button-see-photo-example">
                     See Example
                   </Button>
                 </div>
@@ -799,7 +799,7 @@ export default function Quiz() {
                 >
                   <input {...getInputProps()} />
                   <p className="font-semibold mb-4">{uploadingFloorplan ? "Uploading..." : "Add Plan"}</p>
-                  <Button type="button" variant="link" size="sm" data-testid="button-see-plan-example">
+                  <Button type="button" variant="ghost" size="sm" data-testid="button-see-plan-example">
                     See Example
                   </Button>
                 </div>
