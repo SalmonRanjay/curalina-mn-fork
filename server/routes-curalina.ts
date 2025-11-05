@@ -147,6 +147,20 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  app.patch('/api/admin/products/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertProductSchema.partial().parse(req.body);
+      const product = await curalinaStorage.updateProduct(req.params.id, validatedData);
+      res.json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid product data", details: error.errors });
+      }
+      console.error("Error updating product:", error);
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+
   app.delete('/api/admin/products/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       await curalinaStorage.deleteProduct(req.params.id);
@@ -211,6 +225,73 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("File upload error:", error);
       res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  // File delete endpoint (admin only)
+  app.post('/api/delete-file', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { url } = req.body;
+
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "Invalid file URL" });
+      }
+
+      // Parse URL to get the file path
+      // URL format: /public-objects/folder/filename
+      const urlMatch = url.match(/^\/public-objects\/(.+)$/);
+      if (!urlMatch) {
+        return res.status(400).json({ error: "Invalid file URL format" });
+      }
+
+      const filePath = urlMatch[1];
+
+      // Security: Prevent path traversal attacks
+      // 1. Reject any path segments containing '..' or leading/trailing slashes
+      if (filePath.includes('..') || filePath.includes('\\') || filePath.startsWith('/') || filePath.endsWith('/')) {
+        return res.status(400).json({ error: "Invalid file path: path traversal detected" });
+      }
+
+      // 2. Whitelist allowed folders (only allow deletion from specific folders)
+      const allowedFolders = ['products', 'uploads'];
+      const pathSegments = filePath.split('/');
+      const folderName = pathSegments[0];
+
+      if (!allowedFolders.includes(folderName)) {
+        return res.status(400).json({ error: "Invalid folder: deletion only allowed from approved folders" });
+      }
+
+      // 3. Ensure path has at least folder/filename structure
+      if (pathSegments.length < 2) {
+        return res.status(400).json({ error: "Invalid file path: must include folder and filename" });
+      }
+
+      // Construct object storage path
+      const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+      const publicDir = publicPaths[0];
+      const objectPath = `${publicDir}/${filePath}`;
+
+      // Delete from object storage
+      const { bucketName, objectName } = parseObjectPath(objectPath);
+      const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+
+      // Check if file exists before deleting
+      const [exists] = await file.exists();
+      if (!exists) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      // Delete the file
+      await file.delete();
+
+      // Log deletion for audit trail
+      console.log(`[AUDIT] Admin ${req.user?.email || 'unknown'} deleted file: ${filePath}`);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("File delete error:", error);
+      res.status(500).json({ error: "Failed to delete file" });
     }
   });
 

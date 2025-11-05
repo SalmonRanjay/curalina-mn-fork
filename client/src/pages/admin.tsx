@@ -221,6 +221,9 @@ function ProductsSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -241,6 +244,93 @@ function ProductsSection() {
       toast({ title: "Success", description: "Product deleted successfully" });
     },
   });
+
+  const updateProductMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) =>
+      apiRequest(`/api/admin/products/${id}`, "PATCH", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      toast({ title: "Success", description: "Product images updated successfully" });
+    },
+  });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !selectedProduct) return;
+
+    setUploadingImages(true);
+    const files = Array.from(e.target.files);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'products');
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        const data = await response.json();
+        uploadedUrls.push(data.url);
+      }
+
+      // Update product with new images
+      const currentImages = selectedProduct.images || [];
+      const updatedImages = [...currentImages, ...uploadedUrls];
+
+      await updateProductMutation.mutateAsync({
+        id: selectedProduct.id,
+        data: { images: updatedImages }
+      });
+
+      setSelectedProduct({ ...selectedProduct, images: updatedImages });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload images",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeImage = async (imageUrl: string) => {
+    if (!selectedProduct) return;
+
+    try {
+      // Delete the actual file from object storage
+      const response = await fetch('/api/delete-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: imageUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete file from storage');
+      }
+
+      // Update product record to remove image URL
+      const updatedImages = (selectedProduct.images || []).filter(url => url !== imageUrl);
+
+      await updateProductMutation.mutateAsync({
+        id: selectedProduct.id,
+        data: { images: updatedImages }
+      });
+
+      setSelectedProduct({ ...selectedProduct, images: updatedImages });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete image",
+        variant: "destructive"
+      });
+    }
+  };
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -280,6 +370,7 @@ function ProductsSection() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Image</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
@@ -293,8 +384,23 @@ function ProductsSection() {
               {filteredProducts.slice(0, 50).map((product) => {
                 const category = categories.find(c => c.id === product.categoryId);
                 const vendor = vendors.find(v => v.id === product.vendorId);
+                const hasImages = product.images && product.images.length > 0;
                 return (
                   <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
+                    <TableCell>
+                      {hasImages ? (
+                        <img 
+                          src={product.images![0]} 
+                          alt={product.name}
+                          className="w-12 h-12 object-cover rounded"
+                          data-testid={`img-product-${product.id}`}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{product.sku}</TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{category?.name || "N/A"}</TableCell>
@@ -307,6 +413,17 @@ function ProductsSection() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setIsImageDialogOpen(true);
+                          }}
+                          data-testid={`button-manage-images-${product.id}`}
+                        >
+                          <ImageIcon className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -338,6 +455,81 @@ function ProductsSection() {
           Showing first 50 of {filteredProducts.length} products
         </p>
       )}
+
+      {/* Image Management Dialog */}
+      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Product Images</DialogTitle>
+            <DialogDescription>
+              Upload and manage images for {selectedProduct?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Upload Section */}
+            <div className="space-y-3">
+              <Label htmlFor="image-upload">Upload New Images</Label>
+              <Input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                disabled={uploadingImages}
+                data-testid="input-image-upload"
+              />
+              {uploadingImages && (
+                <p className="text-sm text-muted-foreground">Uploading images...</p>
+              )}
+            </div>
+
+            {/* Current Images Grid */}
+            <div className="space-y-3">
+              <Label>Current Images ({selectedProduct?.images?.length || 0})</Label>
+              {selectedProduct?.images && selectedProduct.images.length > 0 ? (
+                <div className="grid grid-cols-3 gap-4">
+                  {selectedProduct.images.map((imageUrl, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={imageUrl}
+                        alt={`${selectedProduct.name} - Image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded border"
+                        data-testid={`img-preview-${index}`}
+                      />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeImage(imageUrl)}
+                        disabled={updateProductMutation.isPending}
+                        data-testid={`button-remove-image-${index}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 border border-dashed rounded">
+                  <ImageIcon className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">No images uploaded yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsImageDialogOpen(false)}
+              data-testid="button-close-dialog"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
