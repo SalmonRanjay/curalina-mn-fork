@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { read, utils } from 'xlsx';
 import { db } from '../server/db';
-import { products, categories, vendors } from '../shared/schema';
+import { products, categories, suppliers } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 
 async function importProducts() {
@@ -35,16 +35,16 @@ async function importProducts() {
           category = [newCategory];
         }
 
-        // Get or create vendor
-        const vendorName = row.Supplier || 'Unknown Vendor';
-        let vendor = await db.select().from(vendors).where(eq(vendors.name, vendorName)).limit(1);
+        // Get or create supplier
+        const supplierName = row.Supplier || 'Unknown Supplier';
+        let supplier = await db.select().from(suppliers).where(eq(suppliers.name, supplierName)).limit(1);
         
-        if (vendor.length === 0) {
-          const [newVendor] = await db.insert(vendors).values({
-            name: vendorName,
-            email: `${vendorName.toLowerCase().replace(/\s+/g, '')}@vendor.com`,
+        if (supplier.length === 0) {
+          const [newSupplier] = await db.insert(suppliers).values({
+            name: supplierName,
+            email: `${supplierName.toLowerCase().replace(/\s+/g, '')}@supplier.com`,
           }).returning();
-          vendor = [newVendor];
+          supplier = [newSupplier];
         }
 
         // Check if product already exists by SKU
@@ -103,7 +103,7 @@ async function importProducts() {
           name: productName,
           description: row.Overview || '',
           categoryId: category[0].id,
-          vendorId: vendor[0].id,
+          supplierId: supplier[0].id,
           styleTags,
           colors: colorArray,
           materials: materialArray,

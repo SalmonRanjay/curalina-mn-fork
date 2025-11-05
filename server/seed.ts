@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { categories, vendors, products } from "@shared/schema";
+import { categories, suppliers, products } from "@shared/schema";
 
 async function seed() {
   console.log("Starting database seed...");
@@ -30,19 +30,19 @@ async function seed() {
     await db.insert(categories).values(cat).onConflictDoNothing();
   }
 
-  // Seed Vendors
-  console.log("Seeding vendors...");
-  const vendorList = [
+  // Seed Suppliers
+  console.log("Seeding suppliers...");
+  const supplierList = [
     { name: "Modern Furniture Co", email: "contact@modernfurniture.com" },
     { name: "Scandinavian Designs", email: "info@scandidesigns.com" },
     { name: "Organic Home", email: "hello@organichome.com" },
     { name: "Industrial Loft", email: "sales@industrialloft.com" },
   ];
 
-  const insertedVendors = [];
-  for (const vendor of vendorList) {
-    const [inserted] = await db.insert(vendors).values(vendor).returning().onConflictDoNothing();
-    if (inserted) insertedVendors.push(inserted);
+  const insertedSuppliers = [];
+  for (const supplier of supplierList) {
+    const [inserted] = await db.insert(suppliers).values(supplier).returning().onConflictDoNothing();
+    if (inserted) insertedSuppliers.push(inserted);
   }
 
   // Get inserted categories for product references
@@ -51,8 +51,8 @@ async function seed() {
   const tableCategory = await db.query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "table") });
   const lightingCategory = await db.query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "lighting") });
 
-  if (!sofaCategory || !chairCategory || !tableCategory || !lightingCategory || insertedVendors.length === 0) {
-    console.error("Failed to fetch required categories or vendors");
+  if (!sofaCategory || !chairCategory || !tableCategory || !lightingCategory || insertedSuppliers.length === 0) {
+    console.error("Failed to fetch required categories or suppliers");
     return;
   }
 
@@ -65,7 +65,7 @@ async function seed() {
       name: "Midcentury Modern Sofa",
       description: "A beautifully crafted midcentury modern sofa with clean lines and organic shapes. Features teak wood legs and comfortable cushioning.",
       categoryId: sofaCategory.id,
-      vendorId: insertedVendors[0].id,
+      supplierId: insertedSuppliers[0].id,
       styleTags: ["midcentury", "modern", "organic"],
       colors: ["beige", "gray", "navy"],
       materials: ["teak", "fabric", "foam"],
@@ -83,7 +83,7 @@ async function seed() {
       name: "Organic Curved Sofa",
       description: "A luxurious curved sofa featuring organic shapes and natural materials. Perfect for modern living spaces.",
       categoryId: sofaCategory.id,
-      vendorId: insertedVendors[2].id,
+      supplierId: insertedSuppliers[2].id,
       styleTags: ["organic", "modern", "minimalist"],
       colors: ["cream", "terracotta", "olive"],
       materials: ["linen", "oak", "foam"],
@@ -102,7 +102,7 @@ async function seed() {
       name: "Scandinavian Dining Chair",
       description: "Classic Scandinavian design with clean lines and comfortable ergonomics. Perfect for dining spaces.",
       categoryId: chairCategory.id,
-      vendorId: insertedVendors[1].id,
+      supplierId: insertedSuppliers[1].id,
       styleTags: ["scandinavian", "midcentury", "minimalist"],
       colors: ["oak", "walnut", "white"],
       materials: ["oak", "fabric"],
@@ -120,7 +120,7 @@ async function seed() {
       name: "Midcentury Lounge Chair",
       description: "Iconic midcentury lounge chair with teak frame and plush cushioning. A timeless piece.",
       categoryId: chairCategory.id,
-      vendorId: insertedVendors[0].id,
+      supplierId: insertedSuppliers[0].id,
       styleTags: ["midcentury", "modern", "organic"],
       colors: ["cognac", "black", "olive"],
       materials: ["teak", "leather", "foam"],
@@ -139,7 +139,7 @@ async function seed() {
       name: "Industrial Coffee Table",
       description: "Sturdy industrial coffee table with metal frame and reclaimed wood top. Perfect for modern lofts.",
       categoryId: tableCategory.id,
-      vendorId: insertedVendors[3].id,
+      supplierId: insertedSuppliers[3].id,
       styleTags: ["industrial", "modern", "minimalist"],
       colors: ["wood", "black", "gray"],
       materials: ["steel", "reclaimed wood"],
@@ -157,7 +157,7 @@ async function seed() {
       name: "Organic Round Dining Table",
       description: "Beautiful round dining table crafted from sustainable oak. Features a natural edge for organic appeal.",
       categoryId: tableCategory.id,
-      vendorId: insertedVendors[2].id,
+      supplierId: insertedSuppliers[2].id,
       styleTags: ["organic", "modern", "scandinavian"],
       colors: ["oak", "walnut"],
       materials: ["oak", "steel"],
@@ -176,7 +176,7 @@ async function seed() {
       name: "Midcentury Pendant Light",
       description: "Elegant pendant light with brass finish and opal glass shade. Brings warm illumination to any space.",
       categoryId: lightingCategory.id,
-      vendorId: insertedVendors[0].id,
+      supplierId: insertedSuppliers[0].id,
       styleTags: ["midcentury", "modern", "minimalist"],
       colors: ["brass", "gold", "black"],
       materials: ["brass", "glass"],
@@ -194,7 +194,7 @@ async function seed() {
       name: "Organic Woven Table Lamp",
       description: "Handwoven rattan lamp with natural finish. Creates warm, ambient lighting with organic texture.",
       categoryId: lightingCategory.id,
-      vendorId: insertedVendors[2].id,
+      supplierId: insertedSuppliers[2].id,
       styleTags: ["organic", "bohemian", "coastal"],
       colors: ["natural", "white"],
       materials: ["rattan", "fabric"],

@@ -8,7 +8,7 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertCategorySchema,
-  insertVendorSchema,
+  insertSupplierSchema,
   insertProductSchema,
 } from "@shared/schema";
 import { z } from "zod";
@@ -36,7 +36,7 @@ function parseObjectPath(path: string): { bucketName: string; objectName: string
 }
 
 export function registerCuralinaRoutes(app: Express) {
-  // Admin endpoints for categories, vendors, products (protected)
+  // Admin endpoints for categories, suppliers, products (protected)
   
   // Categories
   app.get('/api/admin/categories', isAuthenticated, isAdmin, async (req: any, res) => {
@@ -73,38 +73,38 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Vendors
-  app.get('/api/admin/vendors', isAuthenticated, isAdmin, async (req: any, res) => {
+  // Suppliers
+  app.get('/api/admin/suppliers', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const vendors = await curalinaStorage.getAllVendors();
-      res.json(vendors);
+      const suppliers = await curalinaStorage.getAllSuppliers();
+      res.json(suppliers);
     } catch (error) {
-      console.error("Error fetching vendors:", error);
-      res.status(500).json({ error: "Failed to fetch vendors" });
+      console.error("Error fetching suppliers:", error);
+      res.status(500).json({ error: "Failed to fetch suppliers" });
     }
   });
 
-  app.post('/api/admin/vendors', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.post('/api/admin/suppliers', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const validatedData = insertVendorSchema.parse(req.body);
-      const vendor = await curalinaStorage.createVendor(validatedData);
-      res.json(vendor);
+      const validatedData = insertSupplierSchema.parse(req.body);
+      const supplier = await curalinaStorage.createSupplier(validatedData);
+      res.json(supplier);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid vendor data", details: error.errors });
+        return res.status(400).json({ error: "Invalid supplier data", details: error.errors });
       }
-      console.error("Error creating vendor:", error);
-      res.status(500).json({ error: "Failed to create vendor" });
+      console.error("Error creating supplier:", error);
+      res.status(500).json({ error: "Failed to create supplier" });
     }
   });
 
-  app.delete('/api/admin/vendors/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.delete('/api/admin/suppliers/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      await curalinaStorage.deleteVendor(req.params.id);
+      await curalinaStorage.deleteSupplier(req.params.id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting vendor:", error);
-      res.status(500).json({ error: "Failed to delete vendor" });
+      console.error("Error deleting supplier:", error);
+      res.status(500).json({ error: "Failed to delete supplier" });
     }
   });
 

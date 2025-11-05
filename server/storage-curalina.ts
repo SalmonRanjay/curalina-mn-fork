@@ -1,6 +1,6 @@
 import {
   categories,
-  vendors,
+  suppliers,
   products,
   quizResponses,
   renders,
@@ -10,8 +10,8 @@ import {
   users,
   type Category,
   type InsertCategory,
-  type Vendor,
-  type InsertVendor,
+  type Supplier,
+  type InsertSupplier,
   type Product,
   type InsertProduct,
   type QuizResponse,
@@ -36,10 +36,10 @@ export interface ICuralinaStorage {
   createCategory(category: InsertCategory): Promise<Category>;
   deleteCategory(id: string): Promise<void>;
   
-  // Vendor operations
-  getAllVendors(): Promise<Vendor[]>;
-  createVendor(vendor: InsertVendor): Promise<Vendor>;
-  deleteVendor(id: string): Promise<void>;
+  // Supplier operations
+  getAllSuppliers(): Promise<Supplier[]>;
+  createSupplier(supplier: InsertSupplier): Promise<Supplier>;
+  deleteSupplier(id: string): Promise<void>;
   
   // Product operations
   getAllProducts(filters?: {
@@ -106,18 +106,18 @@ export class CuralinaStorage implements ICuralinaStorage {
     await db.delete(categories).where(eq(categories.id, id));
   }
 
-  // Vendor operations
-  async getAllVendors(): Promise<Vendor[]> {
-    return db.select().from(vendors);
+  // Supplier operations
+  async getAllSuppliers(): Promise<Supplier[]> {
+    return db.select().from(suppliers);
   }
 
-  async createVendor(vendorData: InsertVendor): Promise<Vendor> {
-    const [vendor] = await db.insert(vendors).values(vendorData).returning();
-    return vendor;
+  async createSupplier(supplierData: InsertSupplier): Promise<Supplier> {
+    const [supplier] = await db.insert(suppliers).values(supplierData).returning();
+    return supplier;
   }
 
-  async deleteVendor(id: string): Promise<void> {
-    await db.delete(vendors).where(eq(vendors.id, id));
+  async deleteSupplier(id: string): Promise<void> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
   }
 
   // Product operations
