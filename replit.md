@@ -123,6 +123,11 @@ Preferred communication style: Simple, everyday language.
 
 **API Structure - Curalina AI Routes** (`server/routes-curalina.ts`)
 - **File Upload**: `POST /api/upload` - Upload floorplans/vibe images to object storage
+- **S3 Product Images**: 
+  - `POST /api/admin/products/:id/upload-image` - Upload product images to AWS S3 (admin-only)
+  - Max file size: 10MB
+  - Allowed types: JPEG, PNG, WebP, GIF
+  - Returns 400 for validation errors with descriptive messages
 - **Products**: 
   - `GET /api/products` - List all products with optional filters (category, styleTags)
   - `GET /api/products/:id` - Get single product details
@@ -237,10 +242,17 @@ Preferred communication style: Simple, everyday language.
 - Automatic connection pooling and prepared statements
 
 **Object Storage**
-- Google Cloud Storage for file/asset hosting
-- External account credentials via Replit sidecar endpoint
-- Project-less configuration (empty projectId)
-- Credential endpoint: `http://127.0.0.1:1106`
+- **Google Cloud Storage**: For user uploads (floorplans, vibe images, AI renders)
+  - External account credentials via Replit sidecar endpoint
+  - Project-less configuration (empty projectId)
+  - Credential endpoint: `http://127.0.0.1:1106`
+- **AWS S3**: For product images
+  - Bucket: "curalina"
+  - Region: AWS_REGION env var (defaults to us-east-1)
+  - Public-read ACL for direct browser access
+  - Validation: 10MB max file size, image MIME types only
+  - URL format: `https://curalina.s3.{region}.amazonaws.com/{key}`
+  - Key format: `products/{sku}-{timestamp}.{ext}`
 
 **Third-Party UI Libraries**
 - Radix UI primitives (30+ component packages)
