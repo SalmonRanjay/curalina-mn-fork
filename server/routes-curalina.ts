@@ -139,6 +139,25 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Public asset serving endpoint
+  app.get('/public-objects/:filePath(*)', async (req, res) => {
+    try {
+      const filePath = req.params.filePath;
+      const file = await objectStorageService.searchPublicObject(filePath);
+      
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      await objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error serving public object:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to serve file" });
+      }
+    }
+  });
+
   // File upload endpoint
   app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
@@ -148,8 +167,11 @@ export function registerCuralinaRoutes(app: Express) {
 
       const folder = req.body.folder || 'uploads';
       const fileName = `${Date.now()}-${req.file.originalname}`;
-      const privateDir = objectStorageService.getPrivateObjectDir();
-      const objectPath = `${privateDir}/${folder}/${fileName}`;
+      
+      // Use public directory so files are accessible via /public-objects route
+      const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+      const publicDir = publicPaths[0]; // Use first public path
+      const objectPath = `${publicDir}/${folder}/${fileName}`;
 
       // Upload to object storage
       const { bucketName, objectName } = parseObjectPath(objectPath);
