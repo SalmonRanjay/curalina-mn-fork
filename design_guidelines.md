@@ -1,126 +1,137 @@
-# Curalina Consolidated Application Design Guidelines
+# Curalina AI - Interior Design Platform Design Guidelines
 
 ## Design Approach
 
-**Hybrid System-Reference Approach**: Combine Linear's clean productivity aesthetics for admin/user portals with Notion's accessible interface patterns, while allowing the client-facing site creative freedom inspired by modern SaaS landing pages (Stripe, Vercel).
+**Reference-Based Hybrid**: Combine Airbnb's welcoming warmth + Linear's clean efficiency + Notion's approachable UX. The quiz experience should feel like a curated design consultation—sophisticated yet friendly, spacious yet purposeful.
 
-**Core Principle**: Unified design language with contextual variations—admin feels professional and efficient, client site feels engaging and trustworthy, user portal feels personal and empowering.
+**Core Principle**: Create an inspiring journey through the design process where each quiz step feels intentional, beautiful, and empowering. The platform should make interior design feel accessible to everyone.
 
 ---
 
 ## Typography
 
-**Font Families** (Google Fonts CDN):
-- **Primary**: Inter (headings, UI elements, body text)
-- **Accent**: JetBrains Mono (code snippets, technical data in admin)
+**Font Families** (Google Fonts):
+- **Primary**: Inter (all UI, body text, quiz questions)
+- **Accent**: Playfair Display (hero headlines, design inspirational quotes)
 
 **Hierarchy**:
-- Hero Headlines: text-5xl to text-7xl, font-bold
-- Section Headers: text-3xl to text-4xl, font-semibold
-- Subsections: text-xl to text-2xl, font-medium
-- Body: text-base, font-normal, leading-relaxed
-- UI Labels: text-sm, font-medium, tracking-wide uppercase for section labels
-- Small Print: text-xs for metadata, timestamps
+- Hero Headlines: text-6xl md:text-7xl, font-bold (Playfair Display)
+- Quiz Questions: text-3xl md:text-4xl, font-semibold
+- Section Headers: text-2xl md:text-3xl, font-medium
+- Body: text-base md:text-lg, leading-relaxed
+- UI Labels: text-sm, font-medium
+- Helper Text: text-sm, opacity-70
 
 ---
 
 ## Layout System
 
-**Spacing Primitives**: Use Tailwind units of **2, 4, 8, 12, 16, 20** for consistency
-- Component padding: p-4, p-6, p-8
-- Section margins: my-12, my-16, my-20
-- Grid gaps: gap-4, gap-6, gap-8
-- Container max-widths: max-w-7xl for main content, max-w-prose for text-heavy sections
+**Spacing Primitives**: Tailwind units of **4, 6, 8, 12, 16, 24** for generous breathing room
 
-**Grid Strategy**:
-- Admin: Sidebar + main content (grid-cols-[240px_1fr])
-- Client site: Full-width sections with contained inner content
-- User portal: Two-column layouts where appropriate (grid-cols-1 md:grid-cols-2)
+**Container Strategy**:
+- Marketing pages: max-w-7xl with px-6 md:px-12
+- Quiz container: max-w-4xl centered with abundant py-16 md:py-24
+- Content sections: max-w-6xl
 
 ---
 
-## Component Library by Section
+## Component Library
 
-### A. Client-Facing Website (Public)
+### A. Public Homepage
 
-**Navigation**: Sticky header with logo left, navigation center, CTA right
-**Hero Section**: Full-width with large hero image, centered headline, subheadline, dual CTA buttons (primary + secondary with blurred bg overlay on image)
-**Features Grid**: 3-column layout (lg:grid-cols-3) with icons, titles, descriptions
-**Social Proof**: Testimonials in 2-column layout with customer photos
-**Footer**: Multi-column (4 sections: Product, Company, Resources, Legal) with newsletter signup
+**Hero Section**: Full-width background image (interior design showcase, 1920x1000px) with overlay gradient, centered headline "Transform Your Space with AI-Powered Design", subheadline, single prominent CTA "Start Your Design Journey" with blurred background.
 
-**Images**: 
-- Hero: Large, impactful product/service visualization (1920x800px minimum)
-- Feature visuals: Screenshots or illustrations for each feature
-- Customer photos: Testimonial avatars (80x80px, rounded-full)
+**How It Works**: 3-column grid showcasing quiz → AI generation → final design with icons and descriptions
 
-### B. Admin Dashboard
+**Design Gallery**: Masonry grid (3-4 columns) of completed interior designs with hover reveal of style tags
 
-**Layout**: Fixed sidebar navigation (w-60) with main content area
-**Sidebar**: Logo top, navigation menu with icons (Heroicons), user profile bottom
-**Main Content**: 
-- Dashboard cards in grid (grid-cols-1 md:grid-cols-2 lg:grid-cols-3)
-- Data tables with sorting, filtering, pagination
-- Form layouts: Single column with clear field grouping
-- Action buttons: Top-right of sections, primary actions prominent
+**Social Proof**: 2-column testimonials with before/after room photos
 
-**Components**:
-- Stats cards: Number, label, trend indicator
-- Data tables: Striped rows, hover states, compact density
-- Forms: Labeled inputs, inline validation, grouped sections
-- Modal dialogs: Centered, max-w-2xl, backdrop blur
+**Footer**: 4-column layout (Product, Resources, Company, Contact) with newsletter signup
 
-### C. User Portal
+### B. 7-Step Design Quiz
 
-**Layout**: Top navigation with user profile dropdown
-**Dashboard**: Personal stats in card grid (grid-cols-1 md:grid-cols-3)
-**Content Areas**: 
-- Account settings: Tabbed interface with form sections
-- File uploads: Drag-drop zones with preview cards
-- Activity feed: Timeline-style with avatars
+**Quiz Container**: Centered card-style interface (max-w-4xl) with generous padding (p-8 md:p-12), soft shadow, white background against subtle textured backdrop
 
-**Components**:
-- Profile card: Avatar, name, email, quick actions
-- Upload interface: Dashed border, cloud icon, file list with thumbnails
-- Settings panels: Grouped form fields with save/cancel actions
+**Progress Indicator**: Horizontal step tracker at top showing 7 dots, filled with light green (#86efac or similar) for completed steps, outlined for current/upcoming
+
+**Quiz Steps Structure**:
+
+1. **Room Type Selection**: Large cards in 2-3 column grid with room icons, titles. Light green border (border-2 border-green-300) on selection with smooth transition
+2. **Style Preferences**: Image-based cards (4-column grid on desktop) showing different interior styles (modern, minimalist, bohemian, etc.) with overlay labels
+3. **Key Features**: Checkbox grid of features (natural light, storage, workspace) with green checkmarks
+4. **Budget Range**: Slider component with range markers, light green fill for selected range
+5. **Vibe Board Upload**: Drag-drop zone (dashed border, upload icon) with image preview grid below
+6. **Design Preferences Text**: Large textarea with typewriter animation revealing placeholder text character-by-character ("Describe your dream space...")
+7. **Floorplan Upload**: File upload interface with preview, dimensions display, edit capabilities
+
+**Navigation**: "Back" and "Continue" buttons at bottom, "Continue" uses light green background with white text, "Back" is ghost button
+
+### C. Results Dashboard
+
+**Layout**: Top navigation with user profile, main content area showing AI-generated designs in grid
+
+**Design Cards**: Generated interior renders with save/share/customize actions, style metadata
 
 ---
 
-## Navigation & Routing
+## Images
 
-**Role-Based Entry Points**:
-- `/` - Public client site (hero, features, CTA to sign up)
-- `/admin` - Admin dashboard (requires admin role)
-- `/portal` - User dashboard (requires user authentication)
+**Homepage Hero**: Large inspiring interior design photo (modern living room with natural light, plants, 1920x1000px minimum)
 
-**Visual Distinction**:
-- Admin: Darker sidebar, data-dense layouts, technical aesthetic
-- Client: Spacious, marketing-focused, conversion-optimized
-- Portal: Personal, friendly, feature-focused
+**Quiz Backgrounds**: Subtle texture or soft gradient, never competing with content
+
+**Style Reference Images**: High-quality interior photos for each style option (600x400px minimum)
+
+**Gallery Images**: User-submitted vibe boards and completed designs displayed in masonry layout
+
+**Before/After**: Testimonial section includes transformation photos
+
+---
+
+## Navigation & User Flow
+
+- `/` - Marketing homepage with hero, features, gallery, CTA to quiz
+- `/quiz` - 7-step questionnaire experience
+- `/results` - AI-generated design options
+- `/dashboard` - Saved designs and projects
+- `/admin` - Content management (use existing admin guidelines)
 
 ---
 
 ## Animations
 
-**Minimal & Purposeful**:
-- Page transitions: Simple fade (transition-opacity duration-200)
-- Hover states: Scale buttons slightly (hover:scale-105 transition-transform)
-- Loading states: Pulse animation on skeleton screens
-- No scroll-triggered animations unless specifically enhancing comprehension
+**Quiz-Specific**:
+- Step transitions: Slide-fade between questions (300ms ease-in-out)
+- Selection states: Scale transform on hover (scale-105), light green border fade-in on selection
+- Typewriter effect: Character-by-character reveal in step 6 textarea placeholder (80ms per character)
+- Progress dots: Fill animation when step completes (200ms)
+- Upload zones: Pulse animation on drag-over state
+
+**General**:
+- Button hovers: Subtle lift with shadow increase
+- Card hovers: Slight elevation change
+- Page loads: Fade-in content (200ms)
 
 ---
 
 ## Accessibility
 
-- Maintain WCAG AA contrast ratios throughout
-- All form inputs have visible labels
-- Interactive elements have clear focus states (ring-2 ring-offset-2)
-- Icon-only buttons include aria-labels
-- Responsive touch targets (min 44x44px)
+- High contrast green selection states (#86efac on white meets WCAG AA)
+- All interactive quiz cards minimum 120px height for easy tapping
+- Focus states with visible green ring (ring-2 ring-green-400)
+- Form labels always visible, never placeholder-only
+- Skip navigation for multi-step quiz
+- Progress indicator announces step changes for screen readers
 
 ---
 
 ## Icons
 
-**Primary Library**: Heroicons (outline for general UI, solid for active states)
-Use via CDN, maintain consistent sizing (h-5 w-5 for inline, h-6 w-6 for standalone)
+**Primary Library**: Heroicons (outline style for consistency)
+- Room type icons: home, building-office, etc.
+- Feature icons: light-bulb, archive, desktop
+- Upload icons: cloud-arrow-up, photo
+- Navigation: chevron-left, chevron-right
+
+Maintain h-6 w-6 for quiz cards, h-8 w-8 for upload zones.
