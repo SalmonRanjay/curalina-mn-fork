@@ -1,0 +1,637 @@
+Curalina AI - Full Application Documentation
+📋 Table of Contents
+Architecture Overview
+Technology Stack
+Database Schema
+Backend API
+Frontend Components
+AI Integration
+User Flow
+File Structure
+Key Features
+🏗️ Architecture Overview
+Curalina AI is a full-stack interior design platform that combines:
+
+AI-powered room rendering using Stability AI SDXL
+E-commerce marketplace for furniture products
+Design quiz to capture user preferences
+Payment processing via Stripe
+Object storage for images and assets
+Architecture Pattern
+┌─────────────┐      ┌──────────────┐      ┌─────────────────┐
+│   Frontend  │─────▶│   Backend    │─────▶│   PostgreSQL   │
+│   (React)   │      │  (Express)   │      │    Database    │
+└─────────────┘      └──────────────┘      └─────────────────┘
+                            │
+                    ┌───────┴────────┐
+                    │                │
+            ┌───────▼──────┐  ┌─────▼──────────┐
+            │ Stability AI │  │ Object Storage │
+            │   (SDXL)     │  │  (Replit GCS)  │
+            └──────────────┘  └────────────────┘
+
+💻 Technology Stack
+Frontend
+React 18 with TypeScript
+Wouter for client-side routing
+TanStack Query for data fetching & caching
+Framer Motion for animations
+Shadcn UI + Tailwind CSS for components & styling
+React Hook Form + Zod for form validation
+React Dropzone for file uploads
+Backend
+Node.js with Express
+PostgreSQL database
+Drizzle ORM for type-safe database operations
+Multer for file upload handling
+Stability AI API for image generation
+Stripe SDK for payments (pending integration)
+Infrastructure
+Replit Object Storage (Google Cloud Storage backend)
+Session-based tracking for anonymous users
+Environment variables for secrets management
+🗄️ Database Schema
+Tables Overview
+1. Categories - Product categorization
+{
+  id: uuid (PK)
+  name: string
+  type: 'room' | 'furniture'
+  slug: string (unique)
+}
+
+2. Vendors - Furniture suppliers
+{
+  id: uuid (PK)
+  name: string
+  email: string
+  createdAt: timestamp
+}
+
+3. Products - Product catalog
+{
+  id: uuid (PK)
+  sku: string (unique)
+  name: string
+  description: text
+  categoryId: uuid (FK → categories)
+  styleTags: string[] // ['modern', 'organic']
+  colors: string[]
+  materials: string[]
+  dimensions: { w, d, h, unit }
+  price: decimal
+  discount: decimal
+  availability: 'in_stock' | 'preorder'
+  images: string[] // URLs to images
+  asset3dUrl: string // .glb or .usdz for AR
+  vendorId: uuid (FK → vendors)
+  shipping: { cost, eta }
+  seoMeta: { title, description }
+  slug: string (unique)
+  createdAt: timestamp
+}
+
+4. Quiz Responses - User design preferences
+{
+  id: uuid (PK)
+  sessionId: string // Anonymous user tracking
+  roomType: string // 'Living Room', 'Bedroom', etc.
+  style: string // 'Midcentury Scandi', etc.
+  keyFeatures: string[] // ['Comfortable Seat', 'Storage']
+  budgetRange: string // '$2K-$5K', etc.
+  vibeImages: string[] // User-uploaded reference images
+  preferences: string[] // Design preference bullets
+  floorplanUrl: string // Uploaded floorplan image
+  createdAt: timestamp
+}
+
+5. Renders - AI-generated room designs
+{
+  id: uuid (PK)
+  quizResponseId: uuid (FK → quizResponses)
+  sessionId: string
+  imageUrl: string // Public URL to generated render
+  prompt: string // Full AI prompt used
+  productSkus: string[] // Products featured in render
+  status: 'generating' | 'completed' | 'failed'
+  createdAt: timestamp
+}
+
+6. Cart Items - Shopping cart
+{
+  id: uuid (PK)
+  sessionId: string
+  productId: uuid (FK → products)
+  quantity: integer
+  createdAt: timestamp
+}
+
+7. Orders - Purchase orders
+{
+  id: uuid (PK)
+  sessionId: string
+  status: 'pending' | 'paid' | 'fulfilled' | 'shipped' | 'delivered'
+  totalAmount: decimal
+  customerEmail: string
+  customerName: string
+  shippingAddress: {
+    street, city, state, zip, country
+  }
+  stripePaymentIntentId: string
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+
+8. Order Items - Individual items in orders
+{
+  id: uuid (PK)
+  orderId: uuid (FK → orders)
+  productId: uuid (FK → products)
+  quantity: integer
+  priceAtPurchase: decimal // Price snapshot at purchase time
+}
+
+🔌 Backend API
+File Upload Endpoints
+POST /api/upload
+Upload files to object storage
+
+// Request (multipart/form-data)
+{
+  file: File,
+  folder?: string // Default: 'uploads'
+}
+// Response
+{
+  url: string // Public URL to uploaded file
+}
+
+GET /public-objects/:filePath(*)
+Serve public assets from object storage
+
+// Example
+GET /public-objects/floorplans/123456789-plan.png
+
+Product Endpoints
+GET /api/products
+List all products with optional filters
+
+// Query params
+?categoryId=uuid
+&styleTags=modern,organic
+// Response
+Product[]
+
+GET /api/products/:id
+Get single product details
+
+// Response
+Product
+
+GET /api/products/alternatives/:id
+Get similar products for swapping
+
+// Response
+Product[] // Max 6 products with same category & style tags
+
+Quiz & Render Endpoints
+POST /api/quiz
+Submit quiz responses
+
+// Request
+{
+  sessionId: string,
+  roomType: string,
+  style: string,
+  keyFeatures: string[],
+  budgetRange: string,
+  vibeImages: string[],
+  preferences: string[],
+  floorplanUrl?: string
+}
+// Response
+QuizResponse
+
+POST /api/render
+Generate AI render (async)
+
+// Request
+{
+  quizResponseId: string,
+  productSkus?: string[]
+}
+// Response (immediate)
+{
+  id: string,
+  status: 'generating',
+  prompt: string,
+  ...
+}
+// Background process:
+// 1. Build prompt from quiz data
+// 2. Call Stability AI API
+// 3. Upload render to object storage
+// 4. Update status to 'completed' or 'failed'
+
+GET /api/render/latest?sessionId=xyz
+Get most recent render for session
+
+// Response
+Render
+
+GET /api/render/:id
+Get render by ID
+
+// Response
+Render
+
+Cart Endpoints
+GET /api/cart/:sessionId
+Get cart items for session
+
+// Response
+(CartItem & { product: Product })[]
+
+POST /api/cart
+Add item to cart
+
+// Request
+{
+  sessionId: string,
+  productId: string,
+  quantity: number
+}
+// Response
+CartItem
+
+PATCH /api/cart/:id
+Update cart item quantity
+
+// Request
+{
+  quantity: number
+}
+// Response
+CartItem
+
+DELETE /api/cart/:id
+Remove item from cart
+
+// Response
+{ success: true }
+
+Order Endpoints
+POST /api/orders
+Create order from cart
+
+// Request
+{
+  sessionId: string,
+  customerEmail: string,
+  customerName: string,
+  shippingAddress: {
+    street, city, state, zip, country
+  }
+}
+// Response
+Order
+// Automatic actions:
+// 1. Calculate total from cart items
+// 2. Create order record
+// 3. Create order items
+// 4. Clear cart
+// 5. (Future) Create Stripe payment intent
+
+GET /api/orders/:id
+Get order details
+
+// Response
+Order
+
+🎨 Frontend Components
+Routing Structure
+/ → QuizPage          // 7-step design quiz
+/loading → LoadingPage // 8-second loading animation
+/results → ResultsPage // AI render + product browsing
+/cart → CartPage      // Shopping cart
+/checkout → CheckoutPage // Payment & shipping
+
+Quiz Steps
+Step 1: Room Selection
+Component: RoomSelection.tsx
+Selects room type (Living Room, Bedroom, Dining, etc.)
+Light green background on selection
+Cascade animation on load
+Step 2: Style Selection
+Component: StyleSelection.tsx
+Choose design style (Midcentury Scandi, Organic Modern, etc.)
+Expandable characteristics section
+Max 2 selections
+Step 3: Key Features
+Component: KeyFeatures.tsx
+Room-specific features (varies by room type)
+Living Room: Storage, Workspace, Lighting, etc.
+Bedroom: Bed sizes (Twin/Double/Queen/King)
+Checkboxes with icons
+Step 4: Budget Range
+Component: BudgetRange.tsx
+6 budget ranges ($2K-$5K to Over $20K)
+"DREAM BIG, SPEND SMART" headline
+Step 5: Vibe Check
+Component: VibeCheck.tsx
+Upload reference images
+"YOU BRING THE VIBE AND WE'LL BRING THE DESIGN"
+Step 6: Design Preferences
+Component: DesignPreferences.tsx
+Typewriter animation for text
+"YOUR NEW SPACE IS NEARLY READY"
+Step 7: Floorplan Upload
+Component: FloorplanUpload.tsx
+Upload floorplan image (photo or plan)
+Uploads to /public-objects/floorplans/
+"YOU MADE IT TO THE FINAL STEP"
+Loading Page
+8-second loading screen
+Bouncing dots animation (4 dots with 150ms stagger)
+Rotating "DID YOU KNOW?" facts
+Auto-redirect to /results
+Results Page
+Display AI-generated render
+Expandable full-view modal
+Featured products grid (6 products)
+Click product to see swap alternatives
+"Shop the Look" section
+Product Components
+ProductCard.tsx
+Props:
+- product: Product
+- onSwap: () => void
+Features:
+- Product image
+- Name, price, style tags
+- "Swap" button
+- "Add to Cart" button
+
+SwapProductModal.tsx
+Props:
+- productId: string
+- onClose: () => void
+Features:
+- Shows alternative products
+- Fetches from /api/products/alternatives/:id
+- Click to swap selection
+
+Cart Page
+List all cart items
+Quantity controls (+/-)
+Remove item button
+Running total
+"Proceed to Checkout" button
+Checkout Page
+Contact information form
+Shipping address form
+Order summary
+Stripe payment (pending keys)
+Order confirmation
+🤖 AI Integration
+Stability AI Service
+File: server/stabilityAI.ts
+
+Initialization
+constructor() {
+  this.apiKey = process.env.STABILITY_API_KEY;
+  this.apiHost = "https://api.stability.ai";
+}
+
+Prompt Building
+buildPromptFromQuiz(quizData) {
+  // Maps quiz data to detailed AI prompt
+  
+  Style descriptions:
+  - "Midcentury Scandi" → "mid-century Scandinavian design with clean lines, organic shapes, teak wood..."
+  - "Organic Modern" → "organic modern style with natural materials, curved forms..."
+  
+  Format:
+  "Photorealistic interior design photograph of a {roomType} in {styleDesc}. 
+   Features include: {keyFeatures}. 
+   Design preferences: {preferences}. 
+   Professional interior photography, natural lighting, wide angle view, 8K resolution..."
+}
+
+Image Generation
+async generateRoomRender(prompt, renderId, floorplanUrl?) {
+  // Text-to-Image (no floorplan)
+  Endpoint: /v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image
+  Settings:
+  - Size: 1024x1024
+  - Steps: 30
+  - CFG Scale: 7
+  - Style Preset: photographic
+  
+  // Image-to-Image (with floorplan)
+  Endpoint: /v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image
+  Settings:
+  - init_image: base64 encoded floorplan
+  - image_strength: 0.35 (preserves 65% of layout)
+  - Steps: 40
+  - CFG Scale: 7
+  
+  // Upload result to object storage
+  Path: /public-objects/renders/{renderId}.png
+  
+  Return: Public URL to render
+}
+
+Negative Prompt
+"blurry, bad quality, distorted, unrealistic, cartoon, anime, sketch, low resolution"
+
+🔄 User Flow
+Complete Journey
+1. Landing (/quiz)
+   ↓ Complete 7-step quiz
+   
+2. Submit Quiz
+   ↓ POST /api/quiz → Save to database
+   ↓ Generate sessionId & quizResponseId
+   
+3. Loading Screen (/loading)
+   ↓ POST /api/render → Start AI generation
+   ↓ Background: Stability AI generates image
+   ↓ Background: Upload to object storage
+   ↓ Background: Update render status
+   
+4. Results Page (/results)
+   ↓ GET /api/render/latest → Fetch completed render
+   ↓ GET /api/products → Show featured products
+   ↓ Click product → Open swap modal
+   ↓ GET /api/products/alternatives/:id
+   ↓ POST /api/cart → Add to cart
+   
+5. Cart Page (/cart)
+   ↓ GET /api/cart/:sessionId
+   ↓ PATCH /api/cart/:id → Update quantities
+   ↓ DELETE /api/cart/:id → Remove items
+   
+6. Checkout Page (/checkout)
+   ↓ Fill contact & shipping info
+   ↓ POST /api/orders → Create order
+   ↓ POST /api/stripe/create-payment-intent (future)
+   ↓ Process payment
+   
+7. Confirmation
+   ✅ Order complete
+
+Session Management
+// Anonymous user tracking
+sessionId: crypto.randomUUID()
+localStorage.setItem('sessionId', sessionId)
+// Used for:
+- Quiz responses
+- Renders
+- Cart items
+- Orders
+
+📁 File Structure
+curalina-ai/
+├── client/                   # Frontend (React)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ui/          # Shadcn components
+│   │   │   ├── quiz/        # Quiz step components
+│   │   │   ├── ProductCard.tsx
+│   │   │   └── SwapProductModal.tsx
+│   │   ├── pages/
+│   │   │   ├── QuizPage.tsx
+│   │   │   ├── LoadingPage.tsx
+│   │   │   ├── ResultsPage.tsx
+│   │   │   ├── CartPage.tsx
+│   │   │   └── CheckoutPage.tsx
+│   │   ├── lib/
+│   │   │   ├── queryClient.ts  # TanStack Query config
+│   │   │   └── objectStorage.ts # Upload utilities
+│   │   └── App.tsx
+│   └── index.css            # Tailwind + design tokens
+│
+├── server/                  # Backend (Express)
+│   ├── index.ts            # Server entry point
+│   ├── routes.ts           # All API routes
+│   ├── storage.ts          # Database operations
+│   ├── db.ts               # Drizzle DB connection
+│   ├── stabilityAI.ts      # AI integration
+│   ├── objectStorage.ts    # GCS wrapper
+│   └── import-products.ts  # Excel import script
+│
+├── shared/
+│   └── schema.ts           # Shared types & Drizzle schema
+│
+├── drizzle/
+│   └── migrations/         # Database migrations
+│
+└── attached_assets/
+    ├── Design+Quiz-compressed.pdf
+    ├── Curalina+CSV+Template.xlsm
+    └── curalina-diffusers-server/ # Custom AI server (future)
+
+✨ Key Features
+1. AI-Powered Rendering
+Uses Stability AI SDXL 1.0
+Image-to-image generation respects floorplan layout
+Smart prompt building from quiz responses
+20-60 second generation time
+Automatic upload to object storage
+2. Dynamic Product Import
+Excel/CSV import script
+Auto-creates vendors & categories
+Maps style tags to design styles
+Parses dimensions, colors, materials
+3. Smart Product Swapping
+Find alternatives by category + style
+Instant preview in modal
+Preserves cart state
+4. Session-Based Shopping
+Anonymous user support
+Persistent cart across pages
+Session-tied orders
+5. Responsive Design
+Mobile-first Tailwind CSS
+Framer Motion animations
+Shadcn UI components
+Dark mode ready (configured)
+6. File Upload System
+Multer for multipart forms
+Direct upload to object storage
+Public URL generation
+Supports images (JPG, PNG, PDF)
+7. Type Safety
+Shared TypeScript types
+Zod validation schemas
+Drizzle ORM type inference
+End-to-end type checking
+🔐 Environment Variables
+Required for AI Generation
+STABILITY_API_KEY=sk-xxx
+
+Required for Payments
+STRIPE_SECRET_KEY=sk_test_xxx
+VITE_STRIPE_PUBLIC_KEY=pk_test_xxx
+
+Auto-configured by Replit
+DATABASE_URL=postgresql://...
+DEFAULT_OBJECT_STORAGE_BUCKET_ID=xxx
+PUBLIC_OBJECT_SEARCH_PATHS=public
+PRIVATE_OBJECT_DIR=.private
+SESSION_SECRET=xxx
+
+🚀 Running the Application
+Development
+npm run dev
+# Starts Express + Vite on http://localhost:5000
+
+Database Push
+npm run db:push
+# Syncs Drizzle schema to PostgreSQL
+
+Import Products
+tsx server/import-products.ts path/to/products.xlsx
+
+📊 Current Status
+✅ Completed
+Full database schema
+All backend API routes
+7-step quiz flow (frontend)
+Loading screen with animations
+Results page with render display
+Product browsing & swap functionality
+Cart management
+Checkout form
+AI render generation with floorplan support
+File upload to object storage
+Product import from Excel
+⏳ Pending
+Stripe payment integration (keys needed)
+Product catalog population
+Quiz UI refinement (match PDF exactly)
+End-to-end testing
+Production deployment
+🎯 Next Steps
+Obtain Stripe Keys → Enable payment processing
+Import Full Product Catalog → Populate database
+Test Full User Journey → Quiz → Render → Purchase
+Refine Quiz UI → Match PDF reference exactly
+Deploy to Production → Publish on Replit
+📞 Custom AI Server Integration (Future)
+You've provided a custom Curalina Diffusers Server with:
+
+SDXL + ControlNet + Inpainting
+LoRA hot-loading
+IP-Adapter support
+Better layout fidelity
+To integrate:
+
+Deploy Docker container on GPU infrastructure
+Update stabilityAI.ts to call your server instead of Stability API
+Use ControlNet for strict floorplan adherence
+Load product-specific LoRAs for brand consistency
+End of Documentation
+
+For questions or updates, refer to replit.md for project-specific notes.
