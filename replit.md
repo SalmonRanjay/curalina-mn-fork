@@ -21,6 +21,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Capabilities
 - **Anonymous Sessions**: Session-based tracking without forced authentication
+- **User Dashboard**: View design history, order tracking, and quick actions
 - **AI Image Generation**: Text-to-image and image-to-image (with floorplan) rendering
 - **Product Catalog**: Full e-commerce with SKUs, categories, vendors, pricing, 3D assets
 - **Product Swapping**: Replace items in AI renders with alternative products
@@ -56,11 +57,13 @@ Preferred communication style: Simple, everyday language.
 - Session utility functions: `getOrCreateSessionId()`, `getSessionId()`, `clearSession()`
 
 **Routing Structure**
-- `/` - Quiz landing (7-step questionnaire)
+- `/` - Landing page with hero, features, how-it-works, and style carousel
+- `/quiz` - 7-step design questionnaire with animations
 - `/loading` - 8-second loading animation with facts
 - `/results` - AI render display with product shopping
 - `/cart` - Shopping cart with quantity controls
 - `/checkout` - Payment and shipping forms
+- `/dashboard` - User dashboard with designs, orders, and quick actions
 
 ### Backend Architecture
 
@@ -89,6 +92,9 @@ Preferred communication style: Simple, everyday language.
 - **Orders**:
   - `POST /api/orders` - Create order from cart (auto-clears cart)
   - `GET /api/orders/:id` - Get order details
+  - `GET /api/orders?sessionId=xyz` - Get all orders for a session
+- **Dashboard**:
+  - `GET /api/renders?sessionId=xyz` - Get all renders for a session
 
 **Validation & Error Handling**
 - Zod schema parsing for all mutations (quiz, render, cart, orders)
