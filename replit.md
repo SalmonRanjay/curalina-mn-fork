@@ -10,6 +10,24 @@ The application follows a monorepo structure with client-side React code, server
 
 Preferred communication style: Simple, everyday language.
 
+## Product Data
+
+**Current Inventory**: 351 products from premium furniture vendors
+- **Four Hands**: 271 products (luxury modern furniture)
+- **Moes Home**: 66 products (contemporary home furnishings)
+- **Other vendors**: 14 products
+
+**Categories** (23 total):
+- Dining Chairs (94), Dresser (47), Console Table (41), Dining Table (37)
+- End Table (36), Bed (32), Sofa (23), Shelving Unit (7), and more
+
+**Product Import Script**: `scripts/import-products.ts`
+- Reads Excel files with product catalog data
+- Auto-creates categories and vendors
+- Parses dimensions, colors, materials, style tags
+- Handles duplicate SKUs and inventory status
+- Run with: `npx tsx scripts/import-products.ts`
+
 ## Curalina AI Features
 
 ### Core User Journey
