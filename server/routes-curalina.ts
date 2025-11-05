@@ -206,6 +206,16 @@ export function registerCuralinaRoutes(app: Express) {
       });
     } catch (error) {
       console.error("Error uploading product image:", error);
+      
+      // Return validation errors with 400 status
+      if (error instanceof Error) {
+        // Check if it's a validation error (from validateUpload)
+        if (error.message.includes('File size exceeds') || error.message.includes('File type')) {
+          return res.status(400).json({ error: error.message });
+        }
+      }
+      
+      // All other errors are server errors
       res.status(500).json({ error: "Failed to upload image" });
     }
   });
