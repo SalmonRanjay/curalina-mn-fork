@@ -328,6 +328,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import and register Curalina AI routes
+  const { registerCuralinaRoutes } = await import("./routes-curalina");
+  registerCuralinaRoutes(app);
+
   const httpServer = createServer(app);
   return httpServer;
 }
