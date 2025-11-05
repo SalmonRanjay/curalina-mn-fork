@@ -13,9 +13,26 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated } from "./replitAuth";
+import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
+
+// Helper to parse object storage paths
+function parseObjectPath(path: string): { bucketName: string; objectName: string } {
+  if (!path.startsWith("/")) {
+    path = `/${path}`;
+  }
+  const pathParts = path.split("/");
+  if (pathParts.length < 3) {
+    throw new Error("Invalid path: must contain at least a bucket name");
+  }
+
+  const bucketName = pathParts[1];
+  const objectName = pathParts.slice(2).join("/");
+
+  return { bucketName, objectName };
+}
 
 export function registerCuralinaRoutes(app: Express) {
   // Admin endpoints for categories, vendors, products (protected)
@@ -279,11 +296,69 @@ export function registerCuralinaRoutes(app: Express) {
         prompt,
       });
 
-      // Return immediately
+      // Return immediately with status 'generating'
       res.json(render);
 
-      // TODO: Start async AI generation process
-      // This will be implemented in Task 5 (Stability AI Integration)
+      // Start async AI generation process
+      (async () => {
+        try {
+          // Generate image with Gemini AI
+          const floorplanUrl = quiz.floorplanUrl 
+            ? `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}${quiz.floorplanUrl}`
+            : undefined;
+          
+          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl);
+          
+          // Extract base64 data from data URL (format: data:image/png;base64,...)
+          const base64Match = imageDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
+          if (!base64Match) {
+            throw new Error("Invalid image data format");
+          }
+          const base64Data = base64Match[1];
+          
+          // Save generated image to object storage
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+          const imageName = `render-${render.id}-${Date.now()}.png`;
+          
+          const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+          const publicDir = publicPaths[0];
+          const objectPath = `${publicDir}/renders/${imageName}`;
+          
+          const { bucketName, objectName } = parseObjectPath(objectPath);
+          const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          
+          await file.save(imageBuffer, {
+            metadata: {
+              contentType: 'image/png',
+            },
+          });
+          
+          await file.makePublic();
+          const imageUrl = `/public-objects/renders/${imageName}`;
+          
+          // Extract featured product SKUs
+          const allProducts = await curalinaStorage.getAllProducts();
+          const productSkus = extractProductSkus(quiz, allProducts);
+          
+          // Update render with completed data
+          await curalinaStorage.updateRender(render.id, {
+            imageUrl,
+            productSkus,
+            status: 'completed',
+          });
+          
+          console.log(`✅ Render ${render.id} completed successfully`);
+        } catch (error) {
+          console.error("AI generation error:", error);
+          
+          // Update render with failed status
+          await curalinaStorage.updateRender(render.id, {
+            status: 'failed',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      })();
       
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -442,38 +517,4 @@ export function registerCuralinaRoutes(app: Express) {
       res.status(500).json({ error: "Failed to fetch order" });
     }
   });
-}
-
-// Helper function to build AI prompt from quiz data
-function buildPromptFromQuiz(quiz: any): string {
-  const styleDescriptions: Record<string, string> = {
-    "Midcentury Scandi": "mid-century Scandinavian design with clean lines, organic shapes, teak wood furniture, warm minimalist aesthetic",
-    "Organic Modern": "organic modern style with natural materials, curved forms, earthy tones, and biophilic design elements",
-    "Minimalist": "minimalist design with clean lines, neutral colors, and essential furniture only",
-    "Industrial": "industrial style with exposed brick, metal fixtures, concrete elements, and raw materials",
-    "Bohemian": "bohemian eclectic style with layered textiles, vibrant colors, plants, and global-inspired decor",
-    "Coastal": "coastal design with light colors, natural textures, beach-inspired elements, and airy atmosphere",
-  };
-
-  const styleDesc = styleDescriptions[quiz.style] || quiz.style;
-  const features = quiz.keyFeatures?.join(", ") || "";
-  const prefs = quiz.preferences?.join(". ") || "";
-
-  return `Photorealistic interior design photograph of a ${quiz.roomType} in ${styleDesc}. Features include: ${features}. Design preferences: ${prefs}. Professional interior photography, natural lighting, wide angle view, high-end furniture and decor, 8K resolution, magazine quality`;
-}
-
-// Helper to parse object storage paths
-function parseObjectPath(path: string): { bucketName: string; objectName: string } {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) {
-    throw new Error("Invalid path: must contain at least a bucket name");
-  }
-
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
-
-  return { bucketName, objectName };
 }
