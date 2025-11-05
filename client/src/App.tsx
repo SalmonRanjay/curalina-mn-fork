@@ -12,6 +12,10 @@ import Quiz from "@/pages/Quiz";
 import Loading from "@/pages/Loading";
 import Results from "@/pages/Results";
 import Cart from "@/pages/Cart";
+import Styles from "@/pages/styles";
+import Pricing from "@/pages/pricing";
+import About from "@/pages/about";
+import Blog from "@/pages/blog";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminProducts from "@/pages/admin/products";
 import AdminSuppliers from "@/pages/admin/suppliers";
@@ -30,6 +34,10 @@ function Router() {
   const publicRoutes = (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/styles" component={Styles} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/about" component={About} />
+      <Route path="/blog" component={Blog} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/loading" component={Loading} />
       <Route path="/results" component={Results} />
@@ -54,6 +62,10 @@ function Router() {
       <Switch>
         {/* Public routes (accessible to logged-in users) */}
         <Route path="/" component={Landing} />
+        <Route path="/styles" component={Styles} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/about" component={About} />
+        <Route path="/blog" component={Blog} />
         <Route path="/quiz" component={Quiz} />
         <Route path="/loading" component={Loading} />
         <Route path="/results" component={Results} />
@@ -177,6 +189,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/styles" component={Styles} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/about" component={About} />
+      <Route path="/blog" component={Blog} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/loading" component={Loading} />
       <Route path="/results" component={Results} />
