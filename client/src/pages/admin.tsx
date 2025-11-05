@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,16 +21,21 @@ export default function AdminDashboard() {
   const { isAdmin, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Redirect if not admin
-  if (!isLoading && !isAdmin) {
-    setLocation("/");
-    return null;
-  }
+  // Redirect if not admin (using useEffect to avoid render-time side effects)
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      setLocation("/");
+    }
+  }, [isLoading, isAdmin, setLocation]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">
       <p className="text-muted-foreground">Loading...</p>
     </div>;
+  }
+
+  if (!isAdmin) {
+    return null;
   }
 
   const menuItems = [
