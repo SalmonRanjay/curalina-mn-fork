@@ -7,13 +7,138 @@ import {
   insertRenderSchema,
   insertCartItemSchema,
   insertOrderSchema,
+  insertCategorySchema,
+  insertVendorSchema,
+  insertProductSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { isAuthenticated } from "./replitAuth";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
 
 export function registerCuralinaRoutes(app: Express) {
+  // Admin endpoints for categories, vendors, products (protected)
+  
+  // Categories
+  app.get('/api/admin/categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const categories = await curalinaStorage.getAllCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  app.post('/api/admin/categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertCategorySchema.parse(req.body);
+      const category = await curalinaStorage.createCategory(validatedData);
+      res.json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid category data", details: error.errors });
+      }
+      console.error("Error creating category:", error);
+      res.status(500).json({ error: "Failed to create category" });
+    }
+  });
+
+  app.delete('/api/admin/categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteCategory(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ error: "Failed to delete category" });
+    }
+  });
+
+  // Vendors
+  app.get('/api/admin/vendors', isAuthenticated, async (req: any, res) => {
+    try {
+      const vendors = await curalinaStorage.getAllVendors();
+      res.json(vendors);
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+      res.status(500).json({ error: "Failed to fetch vendors" });
+    }
+  });
+
+  app.post('/api/admin/vendors', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertVendorSchema.parse(req.body);
+      const vendor = await curalinaStorage.createVendor(validatedData);
+      res.json(vendor);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid vendor data", details: error.errors });
+      }
+      console.error("Error creating vendor:", error);
+      res.status(500).json({ error: "Failed to create vendor" });
+    }
+  });
+
+  app.delete('/api/admin/vendors/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteVendor(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting vendor:", error);
+      res.status(500).json({ error: "Failed to delete vendor" });
+    }
+  });
+
+  // Products
+  app.get('/api/admin/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const products = await curalinaStorage.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  app.post('/api/admin/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertProductSchema.parse(req.body);
+      const product = await curalinaStorage.createProduct(validatedData);
+      res.json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid product data", details: error.errors });
+      }
+      console.error("Error creating product:", error);
+      res.status(500).json({ error: "Failed to create product" });
+    }
+  });
+
+  app.put('/api/admin/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertProductSchema.partial().parse(req.body);
+      const product = await curalinaStorage.updateProduct(req.params.id, validatedData);
+      res.json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid product data", details: error.errors });
+      }
+      console.error("Error updating product:", error);
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+
+  app.delete('/api/admin/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteProduct(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      res.status(500).json({ error: "Failed to delete product" });
+    }
+  });
+
   // File upload endpoint
   app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {

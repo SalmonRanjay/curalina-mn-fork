@@ -1,14 +1,31 @@
-# Curalina - Unified Platform
+# Curalina AI - Interior Design Platform
 
 ## Overview
 
-Curalina is a full-stack web application built with React, Express, and PostgreSQL. The platform provides a comprehensive content management system with distinct experiences for public visitors, authenticated users, and administrators. It features a modern UI built with shadcn/ui components, server-side authentication via Replit Auth, and integrated object storage capabilities through Google Cloud Storage.
+Curalina AI is a full-stack AI-powered interior design platform built with React, Express, and PostgreSQL. The platform combines AI-generated room rendering (using Stability AI SDXL) with an e-commerce marketplace for furniture products, design quiz workflow, and complete shopping/checkout experience.
 
-The application follows a monorepo structure with client-side React code, server-side Express API, and shared TypeScript schemas. It emphasizes a clean, productivity-focused design inspired by Linear for admin interfaces while maintaining an engaging, accessible experience for public-facing pages.
+The application follows a monorepo structure with client-side React code, server-side Express API, and shared TypeScript schemas. It features session-based anonymous user tracking, allowing users to complete the design quiz, generate AI renders, and purchase products without mandatory authentication. The platform includes object storage for user uploads (floorplans, vibe images) and AI-generated renders.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Curalina AI Features
+
+### Core User Journey
+1. **7-Step Design Quiz**: Capture user preferences (room type, style, features, budget, vibe images, floorplan)
+2. **AI Room Rendering**: Generate photorealistic interior designs using Stability AI SDXL
+3. **Product Shopping**: Browse featured furniture products from the AI render
+4. **Cart & Checkout**: Add products to cart, complete purchase with Stripe payment
+5. **Order Management**: Track orders from pending to delivered
+
+### Key Capabilities
+- **Anonymous Sessions**: Session-based tracking without forced authentication
+- **AI Image Generation**: Text-to-image and image-to-image (with floorplan) rendering
+- **Product Catalog**: Full e-commerce with SKUs, categories, vendors, pricing, 3D assets
+- **Product Swapping**: Replace items in AI renders with alternative products
+- **File Uploads**: Support for floorplans and reference "vibe" images
+- **Stripe Integration**: Payment processing (ready for API keys)
 
 ## System Architecture
 
@@ -17,61 +34,73 @@ Preferred communication style: Simple, everyday language.
 **Framework & Build System**
 - React 18 with TypeScript for type-safe component development
 - Vite as the build tool and development server with HMR support
-- Client-side routing using Wouter for lightweight navigation
+- Client-side routing using Wouter for quiz, loading, results, cart, checkout pages
 - React Query (TanStack Query) for server state management and caching
+- Framer Motion for animations (cascade effects, bouncing dots, transitions)
 
 **UI Component Strategy**
-- shadcn/ui component library (New York style variant) providing pre-built, accessible Radix UI primitives
-- Tailwind CSS for utility-first styling with custom design tokens
-- Custom CSS variables for theming (light/dark mode support)
-- Component composition pattern using Radix UI slot pattern for flexibility
+- shadcn/ui component library for pre-built, accessible Radix UI primitives
+- Tailwind CSS for utility-first styling
+- React Dropzone for file upload handling (floorplans, vibe images)
+- Uppy for advanced file upload UI with progress tracking
 
 **Design System**
-- Typography: Inter font for UI/body text, JetBrains Mono for technical content
-- Hybrid design approach: Linear-inspired clean aesthetics for admin, Notion-inspired accessibility for public site
-- Consistent spacing primitives (2, 4, 8, 12, 16, 20 Tailwind units)
-- Custom color scheme with HSL values supporting alpha channel transparency
+- Typography: Inter font family
+- Color scheme: Light green selection highlights, neutral backgrounds
+- Animations: Typewriter text effects, bouncing dots, cascade reveals
+- Responsive mobile-first design
 
 **State Management**
-- React Query for async server state with aggressive caching (staleTime: Infinity)
-- Local React state for UI-specific concerns
-- Auth state managed through custom `useAuth` hook querying `/api/auth/user`
+- React Query for async server state
+- Local Storage for anonymous session ID persistence (`curalina_session_id`)
+- Session utility functions: `getOrCreateSessionId()`, `getSessionId()`, `clearSession()`
 
-**Routing & Access Control**
-- Public routes: Landing page accessible to all
-- Protected admin routes: Dashboard, Content, Users, Settings (requires admin role)
-- Protected user routes: Portal Dashboard, Portal Settings (requires authentication)
-- Automatic redirect to login for unauthenticated users, redirect to portal for non-admin users accessing admin routes
+**Routing Structure**
+- `/` - Quiz landing (7-step questionnaire)
+- `/loading` - 8-second loading animation with facts
+- `/results` - AI render display with product shopping
+- `/cart` - Shopping cart with quantity controls
+- `/checkout` - Payment and shipping forms
 
 ### Backend Architecture
 
 **Server Framework**
 - Express.js with TypeScript for type-safe API development
-- Custom middleware for request logging with duration tracking
-- JSON body parsing with raw body preservation for webhook verification
-- Session-based authentication using express-session
+- Multer middleware for file upload handling (memory storage)
+- JSON body parsing with Zod schema validation
+- Session-based anonymous user tracking
 
-**Authentication & Authorization**
-- Replit OpenID Connect (OIDC) integration via Passport.js strategy
-- Session storage in PostgreSQL using connect-pg-simple
-- Token refresh mechanism for maintaining long-lived sessions
-- Role-based access control (RBAC) with 'admin' and 'user' roles
-- Protected middleware: `isAuthenticated` for all authenticated routes
+**API Structure - Curalina AI Routes** (`server/routes-curalina.ts`)
+- **File Upload**: `POST /api/upload` - Upload floorplans/vibe images to object storage
+- **Products**: 
+  - `GET /api/products` - List all products with optional filters (category, styleTags)
+  - `GET /api/products/:id` - Get single product details
+  - `GET /api/products/alternatives/:id` - Get alternative products for swapping (6 max, same category/style)
+- **Quiz**: `POST /api/quiz` - Submit 7-step quiz responses
+- **Rendering**:
+  - `POST /api/render` - Create AI render (async generation with Stability AI)
+  - `GET /api/render/latest?sessionId=xyz` - Get most recent render for session
+  - `GET /api/render/:id` - Get render by ID
+- **Cart**:
+  - `GET /api/cart/:sessionId` - Get cart items with product details
+  - `POST /api/cart` - Add item to cart (auto-merges quantities if exists)
+  - `PATCH /api/cart/:id` - Update cart item quantity
+  - `DELETE /api/cart/:id` - Remove item from cart
+- **Orders**:
+  - `POST /api/orders` - Create order from cart (auto-clears cart)
+  - `GET /api/orders/:id` - Get order details
 
-**API Structure**
-- RESTful endpoints under `/api` prefix:
-  - `/api/auth/user` - Get current authenticated user
-  - `/api/users/profile` - Update user profile
-  - `/api/content` - CRUD operations for content management
-  - `/api/settings` - Application settings management
-  - `/api/activity` - Activity logging
-  - `/api/login`, `/api/callback`, `/api/logout` - Authentication flows
+**Validation & Error Handling**
+- Zod schema parsing for all mutations (quiz, render, cart, orders)
+- Returns 400 status with validation details for invalid input
+- Returns 500 status only for unexpected server errors
+- All foreign keys enforced as non-null to prevent orphaned records
 
 **Data Access Layer**
-- Storage abstraction pattern with `IStorage` interface
-- `DatabaseStorage` implementation using Drizzle ORM
-- All database operations return typed entities from shared schema
-- Transaction support through Drizzle ORM capabilities
+- Storage abstraction: `ICuralinaStorage` interface in `server/storage-curalina.ts`
+- `CuralinaStorage` implementation using Drizzle ORM
+- Inner joins for cart/product hydration (no null assertions)
+- Type-safe operations with shared schema types
 
 ### Data Storage Solutions
 
@@ -80,12 +109,50 @@ Preferred communication style: Simple, everyday language.
 - Connection pooling for efficient resource management
 - Database schema managed through Drizzle ORM
 
-**Schema Design**
-- `users` table: User profiles with role-based access (id, email, name, role, bio, timestamps)
-- `sessions` table: Express session storage (sid, sess JSON, expire timestamp)
-- `content` table: CMS content entries (id, title, description, body, imageUrl, category, published status, authorId, timestamps)
-- `settings` table: Key-value configuration store (key, value JSON, description, timestamps)
-- `activityLog` table: Audit trail (id, userId, action, details JSON, timestamp)
+**Curalina AI Schema Design** (in `shared/schema.ts`)
+
+1. **`categories`** - Product categorization
+   - `id` (varchar UUID), `name`, `type` ('room' | 'furniture'), `slug`, `createdAt`
+
+2. **`vendors`** - Furniture suppliers
+   - `id` (varchar UUID), `name`, `email`, `createdAt`
+
+3. **`products`** - Full product catalog
+   - `id` (varchar UUID), `sku` (unique), `name`, `description`
+   - `categoryId` (FK → categories, required), `vendorId` (FK → vendors, required)
+   - `styleTags` (string[]), `colors` (string[]), `materials` (string[])
+   - `dimensions` (JSONB: {w, d, h, unit}), `price`, `discount`
+   - `availability` ('in_stock' | 'preorder'), `images` (string[])
+   - `asset3dUrl` (.glb/.usdz for AR), `shipping` (JSONB: {cost, eta})
+   - `seoMeta` (JSONB: {title, description}), `slug` (unique), `createdAt`
+
+4. **`quizResponses`** - User design preferences
+   - `id` (varchar UUID), `sessionId`, `roomType`, `style`
+   - `keyFeatures` (string[]), `budgetRange`, `vibeImages` (string[])
+   - `preferences` (string[]), `floorplanUrl`, `createdAt`
+
+5. **`renders`** - AI-generated room designs
+   - `id` (varchar UUID), `quizResponseId` (FK → quizResponses, required)
+   - `sessionId`, `imageUrl`, `prompt`, `productSkus` (string[])
+   - `status` ('generating' | 'completed' | 'failed'), `errorMessage`, `createdAt`
+
+6. **`cartItems`** - Shopping cart
+   - `id` (varchar UUID), `sessionId`
+   - `productId` (FK → products, required), `quantity`, `createdAt`
+
+7. **`orders`** - Purchase orders
+   - `id` (varchar UUID), `sessionId`
+   - `status` ('pending' | 'paid' | 'fulfilled' | 'shipped' | 'delivered')
+   - `totalAmount`, `customerEmail`, `customerName`
+   - `shippingAddress` (JSONB: {street, city, state, zip, country})
+   - `stripePaymentIntentId`, `createdAt`, `updatedAt`
+
+8. **`orderItems`** - Individual items in orders
+   - `id` (varchar UUID), `orderId` (FK → orders, required)
+   - `productId` (FK → products, required), `quantity`, `priceAtPurchase`
+
+**Legacy Schema** (from previous admin platform - may be deprecated)
+- `users`, `sessions`, `content`, `settings`, `activityLog`
 
 **ORM & Migrations**
 - Drizzle ORM with drizzle-kit for schema management

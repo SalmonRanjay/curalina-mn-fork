@@ -32,9 +32,12 @@ export interface ICuralinaStorage {
   getAllCategories(): Promise<Category[]>;
   getCategoriesByType(type: "room" | "furniture"): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
+  deleteCategory(id: string): Promise<void>;
   
   // Vendor operations
+  getAllVendors(): Promise<Vendor[]>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
+  deleteVendor(id: string): Promise<void>;
   
   // Product operations
   getAllProducts(filters?: {
@@ -46,6 +49,7 @@ export interface ICuralinaStorage {
   getProductAlternatives(productId: string): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
+  deleteProduct(id: string): Promise<void>;
   
   // Quiz operations
   createQuizResponse(quiz: InsertQuizResponse): Promise<QuizResponse>;
@@ -84,10 +88,22 @@ export class CuralinaStorage implements ICuralinaStorage {
     return category;
   }
 
+  async deleteCategory(id: string): Promise<void> {
+    await db.delete(categories).where(eq(categories.id, id));
+  }
+
   // Vendor operations
+  async getAllVendors(): Promise<Vendor[]> {
+    return db.select().from(vendors);
+  }
+
   async createVendor(vendorData: InsertVendor): Promise<Vendor> {
     const [vendor] = await db.insert(vendors).values(vendorData).returning();
     return vendor;
+  }
+
+  async deleteVendor(id: string): Promise<void> {
+    await db.delete(vendors).where(eq(vendors.id, id));
   }
 
   // Product operations
@@ -159,6 +175,10 @@ export class CuralinaStorage implements ICuralinaStorage {
       .where(eq(products.id, id))
       .returning();
     return product;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await db.delete(products).where(eq(products.id, id));
   }
 
   // Quiz operations
