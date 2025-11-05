@@ -12,10 +12,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Product Data
 
-**Current Inventory**: 351 products from premium furniture vendors
+**Current Inventory**: 351 products from premium furniture suppliers
 - **Four Hands**: 271 products (luxury modern furniture)
 - **Moes Home**: 66 products (contemporary home furnishings)
-- **Other vendors**: 14 products
+- **Other suppliers**: 14 products
 
 **Categories** (23 total):
 - Dining Chairs (94), Dresser (47), Console Table (41), Dining Table (37)
@@ -23,7 +23,7 @@ Preferred communication style: Simple, everyday language.
 
 **Product Import Script**: `scripts/import-products.ts`
 - Reads Excel files with product catalog data
-- Auto-creates categories and vendors
+- Auto-creates categories and suppliers
 - Parses dimensions, colors, materials, style tags
 - Handles duplicate SKUs and inventory status
 - Run with: `npx tsx scripts/import-products.ts`
@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Anonymous Sessions**: Session-based tracking without forced authentication (quiz, cart, orders)
 - **User Dashboard**: View design history, order tracking, and quick actions
 - **AI Image Generation**: Text-to-image and image-to-image (with floorplan) rendering
-- **Product Catalog**: Full e-commerce with SKUs, categories, vendors, pricing, 3D assets
+- **Product Catalog**: Full e-commerce with SKUs, categories, suppliers, pricing, 3D assets
 - **Product Swapping**: Replace items in AI renders with alternative products
 - **File Uploads**: Support for floorplans and reference "vibe" images
 - **Stripe Integration**: Payment processing (ready for API keys)
@@ -67,7 +67,7 @@ Preferred communication style: Simple, everyday language.
 - Graceful handling of stale/missing user sessions
 
 **User Roles**:
-- **Admin**: Full access to admin dashboard (`/admin`) for managing categories, vendors, products, orders, renders, quiz responses
+- **Admin**: Full access to admin dashboard (`/admin`) for managing categories, suppliers, products, orders, renders, quiz responses
 - **Regular User**: Access to user portal (`/portal`) for viewing designs and orders
 - **Anonymous**: Can complete quiz, generate renders, add to cart without logging in
 
@@ -168,12 +168,12 @@ Preferred communication style: Simple, everyday language.
 1. **`categories`** - Product categorization
    - `id` (varchar UUID), `name`, `type` ('room' | 'furniture'), `slug`, `createdAt`
 
-2. **`vendors`** - Furniture suppliers
+2. **`suppliers`** - Furniture suppliers
    - `id` (varchar UUID), `name`, `email`, `createdAt`
 
 3. **`products`** - Full product catalog
    - `id` (varchar UUID), `sku` (unique), `name`, `description`
-   - `categoryId` (FK → categories, required), `vendorId` (FK → vendors, required)
+   - `categoryId` (FK → categories, required), `supplierId` (FK → suppliers, required)
    - `styleTags` (string[]), `colors` (string[]), `materials` (string[])
    - `dimensions` (JSONB: {w, d, h, unit}), `price`, `discount`
    - `availability` ('in_stock' | 'preorder'), `images` (string[])

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import type { Supplier } from "@shared/schema";
 
 export default function AdminSuppliers() {
-  const { data: suppliers, isLoading } = useQuery({
+  const { data: suppliers, isLoading } = useQuery<Supplier[]>({
     queryKey: ["/api/admin/suppliers"],
   });
 

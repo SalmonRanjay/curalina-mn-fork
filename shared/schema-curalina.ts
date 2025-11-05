@@ -29,20 +29,20 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
 });
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
-// Vendors - Furniture suppliers
-export const vendors = pgTable("vendors", {
+// Suppliers - Furniture suppliers
+export const suppliers = pgTable("suppliers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: varchar("email").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export type Vendor = typeof vendors.$inferSelect;
-export const insertVendorSchema = createInsertSchema(vendors).omit({
+export type Supplier = typeof suppliers.$inferSelect;
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
   id: true,
   createdAt: true,
 });
-export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 
 // Products - Full product catalog
 export const products = pgTable("products", {
@@ -60,7 +60,7 @@ export const products = pgTable("products", {
   availability: varchar("availability", { length: 20 }).notNull().default("in_stock"), // 'in_stock' or 'preorder'
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
-  vendorId: varchar("vendor_id").references(() => vendors.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
   shipping: jsonb("shipping"), // { cost, eta }
   seoMeta: jsonb("seo_meta"), // { title, description }
   slug: varchar("slug").notNull().unique(),
@@ -72,9 +72,9 @@ export const productRelations = relations(products, ({ one }) => ({
     fields: [products.categoryId],
     references: [categories.id],
   }),
-  vendor: one(vendors, {
-    fields: [products.vendorId],
-    references: [vendors.id],
+  supplier: one(suppliers, {
+    fields: [products.supplierId],
+    references: [suppliers.id],
   }),
 }));
 
