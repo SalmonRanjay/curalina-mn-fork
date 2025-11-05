@@ -15,6 +15,7 @@ import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
+import { uploadToS3, generateProductImageKey } from "./s3";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
@@ -168,6 +169,44 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error deleting product:", error);
       res.status(500).json({ error: "Failed to delete product" });
+    }
+  });
+
+  // Upload product image to S3
+  app.post('/api/admin/products/:id/upload-image', isAuthenticated, isAdmin, upload.single('image'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file uploaded" });
+      }
+
+      const productId = req.params.id;
+      
+      // Get product to retrieve SKU
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Generate S3 key and upload
+      const s3Key = generateProductImageKey(product.sku, req.file.originalname);
+      const imageUrl = await uploadToS3(s3Key, req.file.buffer, req.file.mimetype);
+
+      // Update product with new image URL
+      const currentImages = product.images || [];
+      const updatedImages = [...currentImages, imageUrl];
+      
+      const updatedProduct = await curalinaStorage.updateProduct(productId, {
+        images: updatedImages
+      });
+
+      res.json({ 
+        success: true, 
+        imageUrl,
+        product: updatedProduct
+      });
+    } catch (error) {
+      console.error("Error uploading product image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
     }
   });
 
