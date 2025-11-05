@@ -38,13 +38,31 @@ Preferred communication style: Simple, everyday language.
 5. **Order Management**: Track orders from pending to delivered
 
 ### Key Capabilities
-- **Anonymous Sessions**: Session-based tracking without forced authentication
+- **User Authentication**: Replit OIDC login with Google, GitHub, email/password support
+- **Role-Based Access**: Admin dashboard for platform management, user portal for customers
+- **Anonymous Sessions**: Session-based tracking without forced authentication (quiz, cart, orders)
 - **User Dashboard**: View design history, order tracking, and quick actions
 - **AI Image Generation**: Text-to-image and image-to-image (with floorplan) rendering
 - **Product Catalog**: Full e-commerce with SKUs, categories, vendors, pricing, 3D assets
 - **Product Swapping**: Replace items in AI renders with alternative products
 - **File Uploads**: Support for floorplans and reference "vibe" images
 - **Stripe Integration**: Payment processing (ready for API keys)
+
+### Authentication & Access Control
+**Login Options**:
+- Replit Auth (Google, GitHub, X, Apple, email/password)
+- Login button in navigation bar
+- Session-based authentication with automatic token refresh
+
+**User Roles**:
+- **Admin**: Full access to admin dashboard (`/admin`) for managing categories, vendors, products, orders, renders, quiz responses
+- **Regular User**: Access to user portal (`/portal`) for viewing designs and orders
+- **Anonymous**: Can complete quiz, generate renders, add to cart without logging in
+
+**Navigation UI**:
+- **Unauthenticated**: "Login" button
+- **Authenticated Users**: User name + "Account" button + "Logout" button
+- **Admin Users**: Additional "Admin" button for dashboard access
 
 ## System Architecture
 
