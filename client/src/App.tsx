@@ -8,9 +8,15 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Quiz from "@/pages/Quiz";
+import Loading from "@/pages/Loading";
 import AdminDashboard from "@/pages/admin/dashboard";
-import AdminContent from "@/pages/admin/content";
+import AdminProducts from "@/pages/admin/products";
+import AdminSuppliers from "@/pages/admin/suppliers";
+import AdminOrders from "@/pages/admin/orders";
+import AdminAnalytics from "@/pages/admin/analytics";
 import AdminUsers from "@/pages/admin/users";
+import AdminBlog from "@/pages/admin/blog";
 import AdminSettings from "@/pages/admin/settings";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
@@ -18,14 +24,19 @@ import PortalSettings from "@/pages/portal/settings";
 function Router() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
-  // Show landing page for unauthenticated users
+  // Public routes (accessible without authentication)
+  const publicRoutes = (
+    <Switch>
+      <Route path="/" component={Landing} />
+      <Route path="/quiz" component={Quiz} />
+      <Route path="/loading" component={Loading} />
+      <Route component={isLoading ? Landing : NotFound} />
+    </Switch>
+  );
+
+  // Show public routes for unauthenticated users
   if (isLoading || !isAuthenticated) {
-    return (
-      <Switch>
-        <Route path="/" component={Landing} />
-        <Route component={Landing} />
-      </Switch>
-    );
+    return publicRoutes;
   }
 
   // Admin routes with sidebar
@@ -37,8 +48,10 @@ function Router() {
 
     return (
       <Switch>
-        {/* Public landing (accessible to logged-in users) */}
+        {/* Public routes (accessible to logged-in users) */}
         <Route path="/" component={Landing} />
+        <Route path="/quiz" component={Quiz} />
+        <Route path="/loading" component={Loading} />
         
         {/* Admin routes with sidebar */}
         <Route path="/admin">
@@ -54,13 +67,52 @@ function Router() {
           )}
         </Route>
         
-        <Route path="/admin/content">
+        <Route path="/admin/products">
           {() => (
             <SidebarProvider style={sidebarStyle as React.CSSProperties}>
               <div className="flex h-screen w-full">
                 <AppSidebar />
                 <main className="flex-1 overflow-auto">
-                  <AdminContent />
+                  <AdminProducts />
+                </main>
+              </div>
+            </SidebarProvider>
+          )}
+        </Route>
+        
+        <Route path="/admin/suppliers">
+          {() => (
+            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <main className="flex-1 overflow-auto">
+                  <AdminSuppliers />
+                </main>
+              </div>
+            </SidebarProvider>
+          )}
+        </Route>
+        
+        <Route path="/admin/orders">
+          {() => (
+            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <main className="flex-1 overflow-auto">
+                  <AdminOrders />
+                </main>
+              </div>
+            </SidebarProvider>
+          )}
+        </Route>
+        
+        <Route path="/admin/analytics">
+          {() => (
+            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <main className="flex-1 overflow-auto">
+                  <AdminAnalytics />
                 </main>
               </div>
             </SidebarProvider>
@@ -74,6 +126,19 @@ function Router() {
                 <AppSidebar />
                 <main className="flex-1 overflow-auto">
                   <AdminUsers />
+                </main>
+              </div>
+            </SidebarProvider>
+          )}
+        </Route>
+        
+        <Route path="/admin/blog">
+          {() => (
+            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <main className="flex-1 overflow-auto">
+                  <AdminBlog />
                 </main>
               </div>
             </SidebarProvider>
@@ -106,6 +171,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/quiz" component={Quiz} />
       <Route path="/portal" component={PortalDashboard} />
       <Route path="/portal/settings" component={PortalSettings} />
       

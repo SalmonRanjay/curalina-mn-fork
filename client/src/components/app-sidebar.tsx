@@ -1,7 +1,11 @@
 import {
   LayoutDashboard,
-  FileText,
+  Package,
+  Truck,
+  ShoppingCart,
+  BarChart3,
   Users,
+  FileText,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -29,14 +33,34 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Content",
-    url: "/admin/content",
-    icon: FileText,
+    title: "Products",
+    url: "/admin/products",
+    icon: Package,
+  },
+  {
+    title: "Suppliers",
+    url: "/admin/suppliers",
+    icon: Truck,
+  },
+  {
+    title: "Orders",
+    url: "/admin/orders",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Analytics",
+    url: "/admin/analytics",
+    icon: BarChart3,
   },
   {
     title: "Users",
     url: "/admin/users",
     icon: Users,
+  },
+  {
+    title: "Blog",
+    url: "/admin/blog",
+    icon: FileText,
   },
   {
     title: "Settings",
