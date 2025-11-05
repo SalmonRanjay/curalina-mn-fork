@@ -13,6 +13,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated } from "./replitAuth";
+import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -38,7 +39,7 @@ export function registerCuralinaRoutes(app: Express) {
   // Admin endpoints for categories, vendors, products (protected)
   
   // Categories
-  app.get('/api/admin/categories', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/categories', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const categories = await curalinaStorage.getAllCategories();
       res.json(categories);
@@ -48,7 +49,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.post('/api/admin/categories', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/categories', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const validatedData = insertCategorySchema.parse(req.body);
       const category = await curalinaStorage.createCategory(validatedData);
@@ -62,7 +63,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.delete('/api/admin/categories/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/categories/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       await curalinaStorage.deleteCategory(req.params.id);
       res.json({ success: true });
@@ -73,7 +74,7 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Vendors
-  app.get('/api/admin/vendors', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/vendors', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const vendors = await curalinaStorage.getAllVendors();
       res.json(vendors);
@@ -83,7 +84,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.post('/api/admin/vendors', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/vendors', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const validatedData = insertVendorSchema.parse(req.body);
       const vendor = await curalinaStorage.createVendor(validatedData);
@@ -97,7 +98,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.delete('/api/admin/vendors/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/vendors/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       await curalinaStorage.deleteVendor(req.params.id);
       res.json({ success: true });
@@ -108,7 +109,7 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Products
-  app.get('/api/admin/products', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/products', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const products = await curalinaStorage.getAllProducts();
       res.json(products);
@@ -118,7 +119,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.post('/api/admin/products', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/products', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const validatedData = insertProductSchema.parse(req.body);
       const product = await curalinaStorage.createProduct(validatedData);
@@ -146,7 +147,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.delete('/api/admin/products/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/products/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       await curalinaStorage.deleteProduct(req.params.id);
       res.json({ success: true });
@@ -551,7 +552,7 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Admin-only endpoints
-  app.get('/api/admin/orders', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/orders', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const orders = await curalinaStorage.getAllOrders();
       res.json(orders);
@@ -561,7 +562,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.get('/api/admin/renders', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/renders', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const renders = await curalinaStorage.getAllRenders();
       res.json(renders);
@@ -571,7 +572,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.get('/api/admin/quiz-responses', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/quiz-responses', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const quizResponses = await curalinaStorage.getAllQuizResponses();
       res.json(quizResponses);

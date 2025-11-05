@@ -9,6 +9,21 @@ import {
 import { ObjectPermission } from "./objectAcl";
 import { insertContentSchema, insertSettingsSchema } from "@shared/schema";
 
+// Admin-only middleware
+export const isAdmin = async (req: any, res: any, next: any) => {
+  const userId = req.user?.claims?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const user = await storage.getUser(userId);
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -58,21 +73,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update profile" });
     }
   });
-
-  // Admin-only middleware
-  const isAdmin = async (req: any, res: any, next: any) => {
-    const userId = req.user?.claims?.sub;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
-    }
-
-    next();
-  };
 
   // Content routes (admin only for create/update/delete)
   app.get('/api/content', async (req, res) => {
