@@ -133,7 +133,7 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  app.put('/api/admin/products/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/admin/products/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const validatedData = insertProductSchema.partial().parse(req.body);
       const product = await curalinaStorage.updateProduct(req.params.id, validatedData);
