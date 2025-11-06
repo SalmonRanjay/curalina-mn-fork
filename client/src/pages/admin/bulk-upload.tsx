@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, CheckCircle, XCircle, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, CheckCircle, XCircle, AlertCircle, Image as ImageIcon, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import type { Product } from "@shared/schema";
@@ -25,6 +26,7 @@ export default function BulkUpload() {
   const [files, setFiles] = useState<FileWithMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [totalProgress, setTotalProgress] = useState(0);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -36,6 +38,13 @@ export default function BulkUpload() {
     // Match pattern: SKU-anything or just SKU
     const match = nameWithoutExt.match(/^([A-Z0-9\-]+?)(?:-|_|\.|$)/i);
     return match ? match[1] : nameWithoutExt;
+  };
+
+  // Extract product name from folder path (e.g., "Modern Sofa/front.jpg" -> "Modern Sofa")
+  const extractProductNameFromPath = (filepath: string): string => {
+    const parts = filepath.split('/');
+    // Return the folder name (second-to-last part if there's a folder structure)
+    return parts.length > 1 ? parts[parts.length - 2] : '';
   };
 
   const onDrop = (acceptedFiles: File[]) => {
@@ -70,6 +79,46 @@ export default function BulkUpload() {
 
     toast({
       title: "Files added",
+      description: `${matchedCount} matched, ${unmatchedCount} unmatched products`,
+    });
+  };
+
+  const handleFolderUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLoadingProducts) {
+      toast({
+        title: "Please wait",
+        description: "Loading product catalog...",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: FileWithMeta[] = Array.from(files).map(file => {
+      const productName = extractProductNameFromPath(file.webkitRelativePath || file.name);
+      const product = products.find(p => 
+        p.name.toLowerCase() === productName.toLowerCase()
+      );
+      
+      return {
+        file,
+        sku: product?.sku || productName,
+        status: product ? "pending" : "error",
+        error: product ? undefined : `No product found with name: ${productName}`,
+        productId: product?.id,
+        preview: URL.createObjectURL(file),
+      };
+    });
+
+    setFiles(prev => [...prev, ...newFiles]);
+
+    const matchedCount = newFiles.filter(f => f.status === "pending").length;
+    const unmatchedCount = newFiles.filter(f => f.status === "error").length;
+
+    toast({
+      title: "Folders processed",
       description: `${matchedCount} matched, ${unmatchedCount} unmatched products`,
     });
   };
@@ -217,7 +266,7 @@ export default function BulkUpload() {
       <div>
         <h1 className="text-3xl font-bold mb-2" data-testid="text-page-title">Bulk Image Upload</h1>
         <p className="text-muted-foreground">
-          Upload multiple product images at once. Name files with SKU prefix (e.g., SKU001-front.jpg, SKU001-side.jpg)
+          Upload multiple product images at once using folders or SKU-based filenames
         </p>
       </div>
 
@@ -256,48 +305,132 @@ export default function BulkUpload() {
         </Card>
       </div>
 
-      {/* Dropzone */}
-      <Card>
-        <CardContent className="pt-6">
-          {isLoadingProducts ? (
-            <div className="border-2 border-dashed rounded-lg p-12 text-center cursor-wait opacity-50">
-              <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">Loading product catalog...</p>
-              <p className="text-sm text-muted-foreground">
-                Loading {products.length > 0 ? products.length : '...'} products
-              </p>
-            </div>
-          ) : (
-            <div
-              {...getRootProps()}
-              className={`
-                border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
-                ${isDragActive 
-                  ? 'border-primary bg-primary/10 border-solid' 
-                  : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/20'
-                }
-              `}
-              data-testid="dropzone"
-            >
-              <input {...getInputProps()} />
-              <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
-              {isDragActive ? (
-                <p className="text-lg font-medium text-primary">Drop files here...</p>
-              ) : (
-                <div>
-                  <p className="text-lg font-medium mb-2">Drag & drop product images here</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    or click to browse files
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Naming convention:</strong> SKU-description.jpg (e.g., SOFA001-front.jpg, SOFA001-angle.jpg)
+      {/* Upload Methods */}
+      <Tabs defaultValue="folders" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="folders" data-testid="tab-folders">
+            <FolderOpen className="w-4 h-4 mr-2" />
+            Upload by Folders
+          </TabsTrigger>
+          <TabsTrigger value="sku" data-testid="tab-sku">
+            <Upload className="w-4 h-4 mr-2" />
+            Upload by SKU
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Folder-based Upload */}
+        <TabsContent value="folders">
+          <Card>
+            <CardHeader>
+              <CardTitle>Folder Upload</CardTitle>
+              <CardDescription>
+                Each folder name should match your product name exactly (e.g., "Modern Leather Sofa")
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingProducts ? (
+                <div className="border-2 border-dashed rounded-lg p-12 text-center cursor-wait opacity-50">
+                  <FolderOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-lg font-medium mb-2">Loading product catalog...</p>
+                  <p className="text-sm text-muted-foreground">
+                    Loading {products.length > 0 ? products.length : '...'} products
                   </p>
                 </div>
+              ) : (
+                <div>
+                  <input
+                    ref={folderInputRef}
+                    type="file"
+                    {...({ webkitdirectory: "", directory: "" } as any)}
+                    multiple
+                    onChange={handleFolderUpload}
+                    className="hidden"
+                    accept="image/*"
+                    data-testid="input-folder-upload"
+                  />
+                  <Button
+                    onClick={() => folderInputRef.current?.click()}
+                    className="w-full h-32"
+                    variant="outline"
+                    data-testid="button-select-folders"
+                  >
+                    <div className="text-center">
+                      <FolderOpen className="w-12 h-12 mx-auto mb-3" />
+                      <p className="text-lg font-medium">Select Product Folders</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Choose folders named after your products
+                      </p>
+                    </div>
+                  </Button>
+                  <div className="mt-4 p-4 bg-muted/30 rounded-lg">
+                    <p className="text-sm font-medium mb-2">Example folder structure:</p>
+                    <pre className="text-xs text-muted-foreground">
+{`/Modern Leather Sofa/
+  ├── front.jpg
+  ├── side.jpg
+  └── angle.jpg
+/Dining Chair Set/
+  ├── view1.jpg
+  └── view2.jpg`}
+                    </pre>
+                  </div>
+                </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* SKU-based Upload */}
+        <TabsContent value="sku">
+          <Card>
+            <CardHeader>
+              <CardTitle>SKU-based Upload</CardTitle>
+              <CardDescription>
+                Name files with SKU prefix: SKU-description.jpg (e.g., SOFA001-front.jpg)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingProducts ? (
+                <div className="border-2 border-dashed rounded-lg p-12 text-center cursor-wait opacity-50">
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-lg font-medium mb-2">Loading product catalog...</p>
+                  <p className="text-sm text-muted-foreground">
+                    Loading {products.length > 0 ? products.length : '...'} products
+                  </p>
+                </div>
+              ) : (
+                <div
+                  {...getRootProps()}
+                  className={`
+                    border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
+                    ${isDragActive 
+                      ? 'border-primary bg-primary/10 border-solid' 
+                      : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/20'
+                    }
+                  `}
+                  data-testid="dropzone"
+                >
+                  <input {...getInputProps()} />
+                  <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                  {isDragActive ? (
+                    <p className="text-lg font-medium text-primary">Drop files here...</p>
+                  ) : (
+                    <div>
+                      <p className="text-lg font-medium mb-2">Drag & drop product images here</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        or click to browse files
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Naming convention:</strong> SKU-description.jpg (e.g., SOFA001-front.jpg, SOFA001-angle.jpg)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Action Buttons */}
       {files.length > 0 && (
