@@ -486,11 +486,48 @@ export async function generateInteriorImage(
     }
     
     // Image-to-image generation with floorplan
+    console.log(`Fetching floorplan from: ${floorplanUrl}`);
     const floorplanResponse = await fetch(floorplanUrl);
+    
+    if (!floorplanResponse.ok) {
+      console.warn(`Failed to fetch floorplan (${floorplanResponse.status}), falling back to text-to-image`);
+      // Fallback to text-to-image generation
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseModalities: [Modality.TEXT, Modality.IMAGE],
+        },
+      });
+
+      const candidate = response.candidates?.[0];
+      const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+      
+      if (!imagePart?.inlineData?.data) {
+        throw new Error("No image data in response");
+      }
+
+      const mimeType = imagePart.inlineData.mimeType || "image/png";
+      return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    }
+    
     const floorplanBuffer = await floorplanResponse.arrayBuffer();
     const floorplanBase64 = Buffer.from(floorplanBuffer).toString('base64');
     
-    const enhancedPrompt = `${prompt} Use the provided floorplan as a spatial reference for furniture placement and room layout.`;
+    // Detect MIME type from response headers or URL extension
+    let floorplanMimeType = floorplanResponse.headers.get('content-type') || 'image/jpeg';
+    if (!floorplanMimeType.startsWith('image/')) {
+      // Try to detect from URL extension
+      const urlLower = floorplanUrl.toLowerCase();
+      if (urlLower.endsWith('.png')) floorplanMimeType = 'image/png';
+      else if (urlLower.endsWith('.webp')) floorplanMimeType = 'image/webp';
+      else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) floorplanMimeType = 'image/jpeg';
+      else floorplanMimeType = 'image/jpeg'; // default fallback
+    }
+    
+    console.log(`Using floorplan with MIME type: ${floorplanMimeType}`);
+    
+    const enhancedPrompt = `${prompt}\n\nIMPORTANT: Use the provided room photo as a spatial reference. Match the room's layout, dimensions, and architectural features (windows, doors, walls). Place furniture naturally within this existing space while maintaining the design style specified above.`;
     
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
@@ -500,7 +537,7 @@ export async function generateInteriorImage(
           { text: enhancedPrompt },
           {
             inlineData: {
-              mimeType: "image/jpeg",
+              mimeType: floorplanMimeType,
               data: floorplanBase64
             }
           }
@@ -518,8 +555,8 @@ export async function generateInteriorImage(
       throw new Error("No image data in response");
     }
 
-    const mimeType = imagePart.inlineData.mimeType || "image/png";
-    return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    const resultMimeType = imagePart.inlineData.mimeType || "image/png";
+    return `data:${resultMimeType};base64,${imagePart.inlineData.data}`;
   } catch (error) {
     console.error("Gemini AI generation error:", error);
     throw new Error(`Failed to generate interior design: ${error instanceof Error ? error.message : "Unknown error"}`);
