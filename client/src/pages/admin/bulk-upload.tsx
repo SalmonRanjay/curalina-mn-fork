@@ -129,14 +129,15 @@ export default function BulkUpload() {
       const normalizedFolderName = folderName.replace(/\s*-\s*/g, '-').trim();
       
       // Try to match by folder name as PRODUCT NAME first (most common case)
+      // Trim whitespace/newlines from product names for comparison
       let product = products.find(p => 
-        p.name.toLowerCase() === folderName.toLowerCase()
+        p.name.trim().toLowerCase() === folderName.toLowerCase()
       );
       
       // If not found, try normalized folder name as product name
       if (!product) {
         product = products.find(p => 
-          p.name.toLowerCase() === normalizedFolderName.toLowerCase()
+          p.name.trim().toLowerCase() === normalizedFolderName.toLowerCase()
         );
       }
       
@@ -145,7 +146,7 @@ export default function BulkUpload() {
       if (!product) {
         const nameWithSpaces = normalizedFolderName.replace(/-/g, ' ');
         product = products.find(p => 
-          p.name.toLowerCase() === nameWithSpaces.toLowerCase()
+          p.name.trim().toLowerCase() === nameWithSpaces.toLowerCase()
         );
       }
       
