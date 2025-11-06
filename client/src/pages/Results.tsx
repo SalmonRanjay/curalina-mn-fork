@@ -5,7 +5,7 @@ import { getSessionId } from "@/lib/session";
 import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, X, Eye, RefreshCw } from "lucide-react";
+import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Render, Product } from "@shared/schema";
@@ -17,6 +17,8 @@ export default function Results() {
   const [swapProductId, setSwapProductId] = useState<string | null>(null);
   // Map original SKU → replacement product ID
   const [swappedProducts, setSwappedProducts] = useState<Record<string, string>>({});
+  // Track current image index for each product
+  const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   // Fetch latest render for this session
@@ -247,14 +249,60 @@ export default function Results() {
                   transition={{ delay: 0.5 + index * 0.1 }}
                 >
                   <Card className="overflow-hidden hover-elevate" data-testid={`card-product-${product.id}`}>
-                    <div className="aspect-square relative bg-stone-100 dark:bg-stone-800">
+                    <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
                       {product.images && product.images.length > 0 ? (
-                        <img
-                          src={product.images[0]}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          data-testid={`img-product-${product.id}`}
-                        />
+                        <>
+                          <img
+                            src={product.images[currentImageIndex[product.id] || 0]}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            data-testid={`img-product-${product.id}`}
+                          />
+                          {product.images.length > 1 && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentIdx = currentImageIndex[product.id] || 0;
+                                  const newIdx = currentIdx === 0 ? product.images!.length - 1 : currentIdx - 1;
+                                  setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
+                                }}
+                                data-testid={`button-prev-image-${product.id}`}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentIdx = currentImageIndex[product.id] || 0;
+                                  const newIdx = (currentIdx + 1) % product.images!.length;
+                                  setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
+                                }}
+                                data-testid={`button-next-image-${product.id}`}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                {product.images.map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                      idx === (currentImageIndex[product.id] || 0)
+                                        ? 'bg-white w-4'
+                                        : 'bg-white/50'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-stone-400">
                           No image
@@ -454,13 +502,57 @@ export default function Results() {
                     }}
                     data-testid={`card-alternative-${alt.id}`}
                   >
-                    <div className="aspect-square relative bg-stone-100 dark:bg-stone-800">
+                    <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
                       {alt.images && alt.images.length > 0 ? (
-                        <img
-                          src={alt.images[0]}
-                          alt={alt.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <>
+                          <img
+                            src={alt.images[currentImageIndex[alt.id] || 0]}
+                            alt={alt.name}
+                            className="w-full h-full object-cover"
+                          />
+                          {alt.images.length > 1 && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentIdx = currentImageIndex[alt.id] || 0;
+                                  const newIdx = currentIdx === 0 ? alt.images!.length - 1 : currentIdx - 1;
+                                  setCurrentImageIndex(prev => ({ ...prev, [alt.id]: newIdx }));
+                                }}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentIdx = currentImageIndex[alt.id] || 0;
+                                  const newIdx = (currentIdx + 1) % alt.images!.length;
+                                  setCurrentImageIndex(prev => ({ ...prev, [alt.id]: newIdx }));
+                                }}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                {alt.images.map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                      idx === (currentImageIndex[alt.id] || 0)
+                                        ? 'bg-white w-4'
+                                        : 'bg-white/50'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-stone-400">
                           No image
