@@ -197,19 +197,38 @@ export default function Quiz() {
         floorplanUrl: data.floorplanUrl || null,
       };
 
-      const response = await fetch("/api/quiz", {
+      // Step 1: Submit quiz
+      const quizResponse = await fetch("/api/quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(submitData),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!quizResponse.ok) {
+        const errorData = await quizResponse.json();
         console.error("Quiz submission error:", errorData);
         throw new Error(errorData.error || "Failed to submit quiz");
       }
       
-      return response.json();
+      const quiz = await quizResponse.json();
+      
+      // Step 2: Create render and start AI generation
+      const renderResponse = await fetch("/api/render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quizResponseId: quiz.id,
+          sessionId,
+        }),
+      });
+      
+      if (!renderResponse.ok) {
+        const errorData = await renderResponse.json();
+        console.error("Render creation error:", errorData);
+        throw new Error(errorData.error || "Failed to start AI generation");
+      }
+      
+      return quiz;
     },
     onSuccess: () => {
       setLocation("/loading");
