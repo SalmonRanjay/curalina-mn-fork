@@ -101,38 +101,47 @@ export default function BulkUpload() {
       const filenameSku = extractSKU(file.name);
       
       // Normalize folder name by removing spaces around dashes
-      // "BC - 1147 - 03" becomes "BC-1147-03"
+      // "Carrie - Side - Table" becomes "Carrie-Side-Table"
       const normalizedFolderName = folderName.replace(/\s*-\s*/g, '-').trim();
       
-      // Try to match by normalized folder name as SKU first (most common case for bulk uploads)
+      // Try to match by folder name as PRODUCT NAME first (most common case)
       let product = products.find(p => 
-        p.sku.toLowerCase() === normalizedFolderName.toLowerCase()
+        p.name.toLowerCase() === folderName.toLowerCase()
       );
       
-      // If not found, try original folder name as SKU (in case it's already correct)
+      // If not found, try normalized folder name as product name
       if (!product) {
         product = products.find(p => 
-          p.sku.toLowerCase() === folderName.toLowerCase()
+          p.name.toLowerCase() === normalizedFolderName.toLowerCase()
         );
       }
       
-      // If not found, try folder name as product name
+      // Try replacing dashes with spaces for product name matching
+      // "Carrie-Side-Table" becomes "Carrie Side Table"
       if (!product) {
+        const nameWithSpaces = normalizedFolderName.replace(/-/g, ' ');
         product = products.find(p => 
-          p.name.toLowerCase() === folderName.toLowerCase()
+          p.name.toLowerCase() === nameWithSpaces.toLowerCase()
         );
       }
       
-      // Fallback: try filename as SKU
+      // Fallback: try folder name as SKU
+      if (!product) {
+        product = products.find(p => 
+          p.sku.toLowerCase() === normalizedFolderName.toLowerCase()
+        );
+      }
+      
+      // Last resort: try filename as SKU
       if (!product && filenameSku) {
         product = products.find(p => p.sku.toLowerCase() === filenameSku.toLowerCase());
       }
       
       return {
         file,
-        sku: product?.sku || normalizedFolderName || folderName || filenameSku,
+        sku: product?.sku || filenameSku || normalizedFolderName,
         status: product ? "pending" : "error",
-        error: product ? undefined : `No product found with folder "${folderName}" (tried as SKU: "${normalizedFolderName}")`,
+        error: product ? undefined : `No product found with folder name "${folderName}"`,
         productId: product?.id,
         preview: URL.createObjectURL(file),
       };
