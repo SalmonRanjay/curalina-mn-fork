@@ -345,7 +345,7 @@ export default function Quiz() {
       case 3: return quizData.keyFeatures.length > 0;
       case 4: return !!quizData.budgetRange;
       case 5: return true; // Optional - vibe images
-      case 6: return quizData.preferences.trim().length > 0;
+      case 6: return true; // Optional - design preferences
       case 7: return true; // Optional - floorplan
       default: return false;
     }
