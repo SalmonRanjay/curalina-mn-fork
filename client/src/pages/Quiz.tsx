@@ -344,9 +344,9 @@ export default function Quiz() {
       case 2: return quizData.styles.length > 0;
       case 3: return quizData.keyFeatures.length > 0;
       case 4: return !!quizData.budgetRange;
-      case 5: return quizData.vibeImages.length > 0;
+      case 5: return true; // Optional - vibe images
       case 6: return quizData.preferences.trim().length > 0;
-      case 7: return true; // Optional
+      case 7: return true; // Optional - floorplan
       default: return false;
     }
   };
