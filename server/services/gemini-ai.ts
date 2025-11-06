@@ -11,27 +11,31 @@ const ai = new GoogleGenAI({
   },
 });
 
-// Style descriptions for rich prompt building
+// Enhanced style descriptions for professional renders
 const styleDescriptions: Record<string, string> = {
-  modern: "sleek minimalist design with clean lines, neutral colors, and contemporary furniture",
-  midcentury: "mid-century modern aesthetic with organic shapes, warm wood tones, and iconic designer pieces",
-  scandinavian: "Scandinavian style with light woods, white walls, cozy textiles, and functional simplicity",
-  industrial: "industrial loft design with exposed brick, metal accents, concrete floors, and raw materials",
-  bohemian: "bohemian eclectic mix with vibrant colors, patterns, plants, and global-inspired textiles",
-  traditional: "classic traditional interior with rich woods, elegant fabrics, and timeless furniture",
-  coastal: "coastal beach house vibe with light blues, whites, natural textures, and breezy atmosphere",
-  farmhouse: "modern farmhouse style with rustic charm, shiplap walls, vintage accents, and cozy comfort",
-  transitional: "transitional blend of traditional and contemporary with balanced proportions and neutral palette",
-  maximalist: "bold maximalist design with rich colors, layered patterns, statement pieces, and eclectic collections",
+  "organic modern": "Organic Modern aesthetic featuring curved sculptural furniture with soft edges, natural materials like white oak and travertine, plush boucle and linen textiles, earthy neutral color palette with warm undertones, minimalist yet inviting atmosphere with tactile textures, low-profile furniture silhouettes, and abundant natural light",
+  "modern farmhouse": "Modern Farmhouse design with clean architectural lines balanced by rustic warmth, shiplap or board-and-batten walls in crisp white or soft greige, distressed wood furniture with vintage character, black metal accents and fixtures, cozy layered textiles including knit throws and cotton linens, apron-front details, and lived-in comfortable elegance",
+  "midcentury scandi": "Mid-Century Scandinavian fusion featuring iconic tapered-leg furniture in warm walnut or teak wood, clean-lined upholstery in muted earth tones, functional minimalist aesthetic, organic curved forms, quality craftsmanship details, natural light-filled spaces with large windows, mix of matte and natural wood finishes, and timeless sophisticated simplicity",
+  "contemporary luxe": "Contemporary Luxe interior showcasing sleek architectural forms, high-end materials including polished marble and smoked glass, plush velvet upholstery in jewel tones or sophisticated neutrals, metallic accents in brushed brass or aged bronze, statement lighting fixtures, art-gallery aesthetic with curated pieces, layered luxurious textures, and refined elegant atmosphere",
+  "warm transitional": "Warm Transitional style blending traditional comfort with modern sophistication, tailored furniture with subtle classic details, rich wood tones in walnut or espresso finishes, soft neutral color palette with warm undertones, elegant fabrics including velvet and chenille, balanced proportions, timeless appeal, layered lighting, and gracious livable luxury",
+  "artful eclectic": "Artful Eclectic design with curated mix of eras and styles, bold pattern mixing, rich jewel-tone color palette balanced by sophisticated neutrals, global-inspired textiles and artifacts, vintage and contemporary pieces in harmony, gallery wall arrangements, statement furniture, layered textures, and collected-over-time personality"
 };
 
 const roomTypeDescriptions: Record<string, string> = {
-  "living-room": "spacious living room",
-  "bedroom": "serene bedroom",
-  "dining-room": "elegant dining room",
-  "office": "productive home office",
-  "kitchen": "modern kitchen",
-  "bathroom": "luxurious bathroom",
+  "living room": "spacious living room with thoughtful furniture arrangement",
+  "bedroom": "serene bedroom retreat with layered comfort",
+  "dining room": "elegant dining room designed for gathering",
+  "home office": "productive home office with ergonomic design",
+  "nursery": "nurturing nursery with safe and cozy elements",
+  "entryway": "welcoming entryway that sets the home's tone"
+};
+
+// Color palette descriptions for rich visual prompts
+const colorPaletteDescriptions: Record<string, string> = {
+  "light neutrals": "soft color palette dominated by warm whites, ivory, light beige, pale greige, and cream tones creating an airy and serene atmosphere with subtle depth through layered neutrals",
+  "warm & cozy": "warm inviting color scheme featuring rich caramels, warm taupes, soft terracotta, honey tones, and creamy whites with wood undertones creating comfort and intimacy",
+  "dark & moody": "sophisticated dark palette with deep charcoal, espresso brown, midnight navy, forest green, or black accents balanced by warm metallic touches and strategic lighting for dramatic elegance",
+  "colourful accent": "neutral foundation with strategic pops of color through jewel tones, saturated hues, or bold accent colors in pillows, art, and accessories creating visual interest while maintaining balance"
 };
 
 /**
@@ -311,35 +315,78 @@ Return a JSON array with this structure:
 }
 
 /**
- * Build a detailed prompt from quiz responses and selected products
+ * Build a highly detailed professional prompt from quiz responses and selected products
+ * Optimized for clean, beautiful, realistic interior design renders
  */
 export function buildPromptFromQuiz(quiz: QuizResponse, selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string }>): string {
-  const roomDesc = roomTypeDescriptions[quiz.roomType] || quiz.roomType;
+  const roomDesc = roomTypeDescriptions[quiz.roomType.toLowerCase()] || quiz.roomType;
   const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
   
-  let prompt = `Create a photorealistic interior design rendering of a ${roomDesc} in ${styleDesc} style. `;
+  // Start with professional photography framing
+  let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}. `;
   
-  // Add key features
+  // Add comprehensive style description
+  prompt += `\n\nDESIGN STYLE:\n${styleDesc}\n`;
+  
+  // Add color palette if selected
+  if (quiz.colorPalettes && quiz.colorPalettes.length > 0) {
+    const paletteDescs = quiz.colorPalettes
+      .map(p => colorPaletteDescriptions[p.toLowerCase()] || p)
+      .join(" Combined with ");
+    prompt += `\nCOLOR PALETTE:\n${paletteDescs}\n`;
+  }
+  
+  // Add functional features with specific implementation
   if (quiz.keyFeatures && quiz.keyFeatures.length > 0) {
-    prompt += `The space should feature: ${quiz.keyFeatures.join(", ")}. `;
-  }
-  
-  // Add preferences if provided
-  if (quiz.preferences && Array.isArray(quiz.preferences) && quiz.preferences.length > 0) {
-    prompt += `Additional requirements: ${quiz.preferences.join(", ")}. `;
-  }
-  
-  // Add specific products if provided
-  if (selectedProducts && selectedProducts.length > 0) {
-    prompt += `\n\nThe room should include the following specific furniture and items:\n`;
-    selectedProducts.forEach((product, index) => {
-      prompt += `${index + 1}. ${product.name} - placed ${product.placement}. `;
+    prompt += `\nFUNCTIONAL FEATURES:\n`;
+    quiz.keyFeatures.forEach(feature => {
+      prompt += `- ${feature}: Thoughtfully integrated into the design\n`;
     });
-    prompt += `\n\nEnsure all these products are visible and well-integrated into the design. `;
   }
   
-  // Add quality and lighting instructions
-  prompt += `The image should be high-quality, well-lit with natural lighting, professional interior photography style, 8K resolution, architectural digest quality.`;
+  // Add user preferences with emphasis
+  if (quiz.preferences && Array.isArray(quiz.preferences) && quiz.preferences.length > 0) {
+    const prefs = quiz.preferences.filter(p => p && p.trim());
+    if (prefs.length > 0) {
+      prompt += `\nDESIGN PRIORITIES:\n${prefs.join("\n")}\n`;
+    }
+  }
+  
+  // Add specific curated products with detailed placement
+  if (selectedProducts && selectedProducts.length > 0) {
+    prompt += `\nCURATED FURNITURE & DÉCOR:\nThe following specific pieces must be featured prominently and naturalistically:\n`;
+    selectedProducts.forEach((product, index) => {
+      prompt += `${index + 1}. ${product.name}\n   Placement: ${product.placement}\n   Integration: ${product.reasoning}\n`;
+    });
+  }
+  
+  // Professional photography and rendering specifications
+  prompt += `\n\nPHOTOGRAPHY SPECIFICATIONS:
+- Camera Angle: Eye-level perspective at approximately 5.5 feet height, showing 60-70% of the room with balanced composition
+- Framing: Wide-angle architectural shot (24-35mm equivalent) capturing the room's atmosphere and spatial relationships
+- Lighting: Soft natural daylight streaming through windows with warm color temperature (4500-5500K), creating gentle shadows and depth
+- Time of Day: Mid-morning or late afternoon golden hour lighting for warmth and dimension
+- Exposure: Perfectly balanced exposure with no blown highlights, rich shadows with retained detail, professional HDR technique
+- Focus: Tack-sharp throughout with appropriate depth of field (f/5.6-f/8 equivalent)
+- White Balance: Accurate and natural, slightly warm to enhance coziness
+- Atmosphere: Inviting, lived-in yet immaculately styled, aspirational but achievable
+
+RENDERING QUALITY:
+- Resolution: 8K ultra-high-definition quality
+- Realism: Photorealistic materials, accurate physics-based rendering, authentic texture detail
+- Style Reference: Architectural Digest, Elle Décor, House Beautiful editorial photography
+- Finishing: Professional color grading, subtle vignetting, magazine-ready polish
+- Details: Crisp edges, realistic fabric draping, authentic wood grain, proper reflections and refractions
+- Atmosphere: Inviting warmth, lived-in comfort, editorial sophistication
+
+CRITICAL REQUIREMENTS:
+- Every element must look real and tangible, not CGI or artificial
+- Materials must have authentic texture, wear, and character
+- Lighting must be natural and believable, avoiding harsh shadows
+- Composition must be balanced and professionally styled
+- All furniture pieces must be properly proportioned and positioned
+- The space must feel cohesive, harmonious, and thoughtfully designed
+- Avoid overly perfect symmetry - include subtle organic asymmetry for realism`;
   
   return prompt;
 }
