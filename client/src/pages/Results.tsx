@@ -313,21 +313,78 @@ export default function Results() {
         )}
 
         {/* Actions */}
-        <div className="flex justify-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/quiz")}
-            data-testid="button-new-design"
-          >
-            Create New Design
-          </Button>
-          <Button
-            onClick={() => setLocation("/cart")}
-            data-testid="button-view-cart"
-          >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            View Cart
-          </Button>
+        <div className="flex flex-col items-center gap-4">
+          {Object.keys(swappedProducts).length > 0 && (
+            <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <p className="text-sm text-stone-700 dark:text-stone-300">
+                You've swapped {Object.keys(swappedProducts).length} product(s). 
+              </p>
+              <Button
+                onClick={async () => {
+                  if (!render) return;
+                  
+                  // Build new product SKUs with swaps applied
+                  const newProductSkus = (render.productSkus || []).map(sku => {
+                    if (swappedProducts[sku]) {
+                      const swappedProduct = allProducts?.find(p => p.id === swappedProducts[sku]);
+                      return swappedProduct?.sku || sku;
+                    }
+                    return sku;
+                  });
+                  
+                  try {
+                    toast({
+                      title: "Regenerating design",
+                      description: "Creating a new render with your swapped products...",
+                    });
+                    
+                    const response = await fetch("/api/render", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        quizResponseId: render.quizResponseId,
+                        sessionId,
+                        productSkus: newProductSkus,
+                      }),
+                    });
+                    
+                    if (!response.ok) throw new Error("Failed to regenerate");
+                    
+                    // Clear swaps and refetch
+                    setSwappedProducts({});
+                    queryClient.invalidateQueries({ queryKey: ["/api/render/latest", sessionId] });
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to regenerate design",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                data-testid="button-regenerate-design"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Regenerate AI Design
+              </Button>
+            </div>
+          )}
+          
+          <div className="flex justify-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/quiz")}
+              data-testid="button-new-design"
+            >
+              Create New Design
+            </Button>
+            <Button
+              onClick={() => setLocation("/cart")}
+              data-testid="button-view-cart"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              View Cart
+            </Button>
+          </div>
         </div>
       </div>
 

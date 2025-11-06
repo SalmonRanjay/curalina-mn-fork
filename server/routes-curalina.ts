@@ -654,18 +654,33 @@ export function registerCuralinaRoutes(app: Express) {
           const allProducts = await curalinaStorage.getAllProducts();
           console.log(`Found ${allProducts.length} total products`);
           
-          // Step 2: Filter products based on quiz preferences
+          // Step 2: Check if specific products were requested (for regeneration with swaps)
           const { filterProductsByQuiz, selectProductsWithAI, buildPromptFromQuiz } = await import('./services/gemini-ai');
-          const filteredProducts = filterProductsByQuiz(allProducts, quiz);
-          console.log(`Filtered to ${filteredProducts.length} matching products`);
-          
-          // Step 3: Use AI to select best products
           let selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }> = [];
-          if (filteredProducts.length > 0) {
-            selectedProducts = await selectProductsWithAI(filteredProducts, quiz);
-            console.log(`AI selected ${selectedProducts.length} products for the room`);
+          
+          if (req.body.productSkus && req.body.productSkus.length > 0) {
+            // Use specific product SKUs (from swap/regeneration)
+            console.log(`Using ${req.body.productSkus.length} specified product SKUs`);
+            selectedProducts = req.body.productSkus.map((sku: string) => {
+              const product = allProducts.find(p => p.sku === sku);
+              return {
+                sku,
+                name: product?.name || sku,
+                placement: "in the room",
+                reasoning: "User-specified product"
+              };
+            });
           } else {
-            console.warn("No matching products found, generating room without specific products");
+            // AI-driven product selection
+            const filteredProducts = filterProductsByQuiz(allProducts, quiz);
+            console.log(`Filtered to ${filteredProducts.length} matching products`);
+            
+            if (filteredProducts.length > 0) {
+              selectedProducts = await selectProductsWithAI(filteredProducts, quiz);
+              console.log(`AI selected ${selectedProducts.length} products for the room`);
+            } else {
+              console.warn("No matching products found, generating room without specific products");
+            }
           }
           
           // Step 4: Build enhanced prompt with selected products
