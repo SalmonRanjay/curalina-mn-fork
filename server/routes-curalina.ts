@@ -632,14 +632,11 @@ export function registerCuralinaRoutes(app: Express) {
         return res.status(404).json({ error: "Quiz response not found" });
       }
 
-      // Build prompt from quiz data
-      const prompt = buildPromptFromQuiz(quiz);
-      
-      // Create render record with status 'generating'
+      // Create render record with status 'generating' (placeholder prompt)
       const render = await curalinaStorage.createRender({
         ...renderData,
         sessionId: quiz.sessionId,
-        prompt,
+        prompt: "Generating...",
       });
 
       // Return immediately with status 'generating'
@@ -648,6 +645,29 @@ export function registerCuralinaRoutes(app: Express) {
       // Start async AI generation process
       (async () => {
         try {
+          console.log(`🎨 Starting AI render for ${quiz.roomType} in ${quiz.style} style`);
+          
+          // Step 1: Get all products
+          const allProducts = await curalinaStorage.getAllProducts();
+          console.log(`Found ${allProducts.length} total products`);
+          
+          // Step 2: Filter products based on quiz preferences
+          const { filterProductsByQuiz, selectProductsWithAI, buildPromptFromQuiz } = await import('./services/gemini-ai');
+          const filteredProducts = filterProductsByQuiz(allProducts, quiz);
+          console.log(`Filtered to ${filteredProducts.length} matching products`);
+          
+          // Step 3: Use AI to select best products
+          let selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }> = [];
+          if (filteredProducts.length > 0) {
+            selectedProducts = await selectProductsWithAI(filteredProducts, quiz);
+            console.log(`AI selected ${selectedProducts.length} products for the room`);
+          } else {
+            console.warn("No matching products found, generating room without specific products");
+          }
+          
+          // Step 4: Build enhanced prompt with selected products
+          const prompt = buildPromptFromQuiz(quiz, selectedProducts);
+          
           // Generate image with Gemini AI
           const floorplanUrl = quiz.floorplanUrl 
             ? `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}${quiz.floorplanUrl}`
@@ -683,20 +703,18 @@ export function registerCuralinaRoutes(app: Express) {
           await file.makePublic();
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // Extract featured product SKUs
-          const allProducts = await curalinaStorage.getAllProducts();
-          // Filter products to only include those with styleTags
-          const productsWithTags = allProducts.filter(p => p.styleTags && p.styleTags.length > 0);
-          const productSkus = extractProductSkus(quiz, productsWithTags as Array<{sku: string, styleTags: string[]}>);
+          // Store selected product SKUs
+          const productSkus = selectedProducts.map(p => p.sku);
           
           // Update render with completed data
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
             productSkus,
+            prompt,
             status: 'completed',
           });
           
-          console.log(`✅ Render ${render.id} completed successfully`);
+          console.log(`✅ Render ${render.id} completed with ${productSkus.length} products`);
         } catch (error) {
           console.error("AI generation error:", error);
           
