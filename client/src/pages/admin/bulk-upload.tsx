@@ -40,7 +40,8 @@ export default function BulkUpload() {
     return match ? match[1] : nameWithoutExt;
   };
 
-  // Extract product name from folder path (e.g., "Curalina Product Images/Product Name/.PNG/front.jpg" -> "Product Name")
+  // Extract product name from folder path 
+  // e.g., "Curalina Product Images/Sofas/Product Name/.PNG/front.jpg" -> "Product Name"
   const extractProductNameFromPath = (filepath: string): string => {
     const parts = filepath.split('/').filter(p => p); // Remove empty parts
     if (parts.length < 2) return '';
@@ -48,20 +49,26 @@ export default function BulkUpload() {
     // Remove the filename (last part)
     const folders = parts.slice(0, -1);
     
-    // Ignore common container/image folder names
+    // Ignore common container/image/category folder names
     const ignoreFolders = [
-      '.png', '.jpg', '.jpeg', 
-      'images', 'photos', 'assets',
+      // Image format folders
+      '.png', '.jpg', '.jpeg', '.webp', '.gif',
+      // Generic container folders
+      'images', 'photos', 'assets', 'files',
       'curalina product images', 'product images', 'products',
-      'cleaned', 'original', 'raw'
+      'cleaned', 'original', 'raw', 'edited',
+      // Category folders (common furniture categories)
+      'sofas', 'chairs', 'tables', 'beds', 'lighting', 'decor',
+      'dining', 'living room', 'bedroom', 'office',
+      'storage', 'outdoor', 'rugs', 'accessories'
     ];
     
     const productFolders = folders.filter(f => 
       !ignoreFolders.includes(f.toLowerCase())
     );
     
-    // Return the first valid folder (should be the product folder after filtering)
-    return productFolders.length > 0 ? productFolders[0] : folders[0];
+    // Return the LAST valid folder (closest to the file, most likely the product)
+    return productFolders.length > 0 ? productFolders[productFolders.length - 1] : folders[0];
   };
 
   const onDrop = (acceptedFiles: File[]) => {
