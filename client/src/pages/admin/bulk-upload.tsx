@@ -80,6 +80,9 @@ export default function BulkUpload() {
       'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     },
     multiple: true,
+    disabled: isLoadingProducts,
+    noClick: isLoadingProducts,
+    noKeyboard: isLoadingProducts,
   });
 
   const uploadFile = async (fileWithMeta: FileWithMeta): Promise<void> => {
@@ -256,36 +259,43 @@ export default function BulkUpload() {
       {/* Dropzone */}
       <Card>
         <CardContent className="pt-6">
-          <div
-            {...getRootProps()}
-            className={`
-              border-2 border-dashed rounded-lg p-12 text-center transition-colors
-              ${isLoadingProducts ? 'cursor-wait opacity-50' : 'cursor-pointer'}
-              ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
-            `}
-            data-testid="dropzone"
-          >
-            <input {...getInputProps()} disabled={isLoadingProducts} />
-            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            {isLoadingProducts ? (
-              <div>
-                <p className="text-lg font-medium mb-2">Loading product catalog...</p>
-                <p className="text-sm text-muted-foreground">Please wait while we load {products.length} products</p>
-              </div>
-            ) : isDragActive ? (
-              <p className="text-lg font-medium">Drop files here...</p>
-            ) : (
-              <div>
-                <p className="text-lg font-medium mb-2">Drag & drop product images here</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  or click to browse files
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <strong>Naming convention:</strong> SKU-description.jpg (e.g., SOFA001-front.jpg, SOFA001-angle.jpg)
-                </p>
-              </div>
-            )}
-          </div>
+          {isLoadingProducts ? (
+            <div className="border-2 border-dashed rounded-lg p-12 text-center cursor-wait opacity-50">
+              <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium mb-2">Loading product catalog...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading {products.length > 0 ? products.length : '...'} products
+              </p>
+            </div>
+          ) : (
+            <div
+              {...getRootProps()}
+              className={`
+                border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
+                ${isDragActive 
+                  ? 'border-primary bg-primary/10 border-solid' 
+                  : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/20'
+                }
+              `}
+              data-testid="dropzone"
+            >
+              <input {...getInputProps()} />
+              <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+              {isDragActive ? (
+                <p className="text-lg font-medium text-primary">Drop files here...</p>
+              ) : (
+                <div>
+                  <p className="text-lg font-medium mb-2">Drag & drop product images here</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    or click to browse files
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Naming convention:</strong> SKU-description.jpg (e.g., SOFA001-front.jpg, SOFA001-angle.jpg)
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
