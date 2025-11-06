@@ -226,6 +226,7 @@ export const quizResponses = pgTable("quiz_responses", {
   sessionId: varchar("session_id").notNull(),
   roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
   style: text("style").notNull(), // 'Midcentury Scandi', etc.
+  colorPalettes: text("color_palettes").array(), // ['Light Neutrals', 'Warm & Cozy']
   keyFeatures: text("key_features").array(), // ['Comfortable Seat', 'Storage']
   budgetRange: text("budget_range").notNull(), // '$2K-$5K', etc.
   vibeImages: text("vibe_images").array(), // User-uploaded reference images

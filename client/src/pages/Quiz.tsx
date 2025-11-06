@@ -13,60 +13,6 @@ import colorPalette from "@assets/image001_1762335467188.png";
 
 const TOTAL_STEPS = 7;
 
-// Typewriter effect component for Step 6
-function TypewriterBullets({ bullets }: { bullets: string[] }) {
-  const [displayedBullets, setDisplayedBullets] = useState<string[]>([]);
-  const [currentBulletIndex, setCurrentBulletIndex] = useState(0);
-  const [currentText, setCurrentText] = useState("");
-
-  useEffect(() => {
-    if (currentBulletIndex >= bullets.length) return;
-
-    const bullet = bullets[currentBulletIndex];
-    const targetLength = currentText.length + 1;
-
-    if (targetLength <= bullet.length) {
-      const timer = setTimeout(() => {
-        setCurrentText(bullet.substring(0, targetLength));
-      }, 30);
-      return () => clearTimeout(timer);
-    } else {
-      // Current bullet complete, move to next
-      const timer = setTimeout(() => {
-        setDisplayedBullets(prev => [...prev, bullet]);
-        setCurrentText("");
-        setCurrentBulletIndex(prev => prev + 1);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [currentBulletIndex, currentText, bullets]);
-
-  return (
-    <div className="space-y-2 text-sm text-stone-600 dark:text-stone-400">
-      <p className="font-semibold">For example:</p>
-      {displayedBullets.map((bullet, idx) => (
-        <motion.p
-          key={idx}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {bullet}
-        </motion.p>
-      ))}
-      {currentText && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          {currentText}
-          <span className="animate-pulse">|</span>
-        </motion.p>
-      )}
-    </div>
-  );
-}
-
 // Style data with Key Characteristics
 const STYLES_DATA = {
   "Midcentury Scandi": {
@@ -124,7 +70,7 @@ const STYLES_DATA = {
       "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=400&h=300&fit=crop"
     ]
   },
-  "Modern Luxe": {
+  "Contemporary Luxe": {
     moodWords: "Sophisticated, minimal yet rich, polished, glamorous, refined, sleek, chic, upscale, curated",
     textures: "Plush velvet, vegan furs, high performance linen, leather, lacquered surfaces, smooth woods & finishes, polished or honed marbles, quarzite and travertines",
     furniture: "Clean sculptural lines, sleek silhouettes, gentle curves, architectural forms, statement pieces, art-inspired design, polished finishes, high-end materials, luxury accent chairs, curated furniture",
@@ -221,6 +167,7 @@ export default function Quiz() {
   const [quizData, setQuizData] = useState({
     roomType: "",
     styles: [] as string[],
+    colorPalettes: [] as string[],
     keyFeatures: [] as string[],
     budgetRange: "",
     vibeImages: [] as string[],
@@ -287,6 +234,21 @@ export default function Quiz() {
     }
   };
 
+  const toggleColorPalette = (palette: string) => {
+    const currentPalettes = quizData.colorPalettes;
+    if (currentPalettes.includes(palette)) {
+      updateQuizData("colorPalettes", currentPalettes.filter(p => p !== palette));
+    } else if (currentPalettes.length < 2) {
+      updateQuizData("colorPalettes", [...currentPalettes, palette]);
+    } else {
+      toast({
+        title: "Maximum Selections",
+        description: "You can select up to 2 colour palettes only.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleKeyFeature = (feature: string) => {
     const current = quizData.keyFeatures;
     if (current.includes(feature)) {
@@ -342,10 +304,10 @@ export default function Quiz() {
     switch (currentStep) {
       case 1: return !!quizData.roomType;
       case 2: return quizData.styles.length > 0;
-      case 3: return quizData.keyFeatures.length > 0;
-      case 4: return !!quizData.budgetRange;
-      case 5: return true; // Optional - vibe images
-      case 6: return true; // Optional - design preferences
+      case 3: return quizData.colorPalettes.length > 0;
+      case 4: return quizData.keyFeatures.length > 0;
+      case 5: return !!quizData.budgetRange;
+      case 6: return true; // Optional - vibe images
       case 7: return true; // Optional - floorplan
       default: return false;
     }
@@ -382,15 +344,18 @@ export default function Quiz() {
   };
 
   const renderStep1 = () => {
-    const rooms = ["Living Room", "Bedroom", "Dining Room", "Home Office", "Nursery", "Entry"];
+    const rooms = ["Living Room", "Dining Room", "Home Office", "Bedroom"];
     
     return (
       <div className="space-y-8">
         <div className="text-center space-y-4">
           <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
-            Let's Transform Your Unique Style Into Space You Truly Love
+            Your style story begins here...
           </h2>
-          <p className="text-xl font-semibold">Choose Your Room to Begin Your Design Journey</p>
+          <p className="text-xl font-semibold">Which room do you dream of transforming first?</p>
+          <p className="text-stone-600 dark:text-stone-400">
+            You can always explore other rooms later—let's just start with the one that matters most
+          </p>
         </div>
 
         <motion.div
@@ -408,7 +373,7 @@ export default function Quiz() {
                 onClick={() => updateQuizData("roomType", room)}
                 data-testid={`room-${room.toLowerCase().replace(" ", "-")}`}
               >
-                <p className="font-semibold text-lg">{room}</p>
+                <p className="font-semibold text-lg uppercase">{room}</p>
               </Card>
             </motion.div>
           ))}
@@ -422,17 +387,19 @@ export default function Quiz() {
   };
 
   const renderStep2 = () => {
-    const styles = Object.keys(STYLES_DATA);
+    const styles = ["Organic Modern", "Modern Farmhouse", "Midcentury Scandi", "Contemporary Luxe", "Warm Transitional"];
 
     return (
       <div className="space-y-8">
         <div className="text-center space-y-4">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Everyone has their own sense of style | Learn More About Our Design Styles
+          </p>
           <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
-            Everyone Has Their Own Sense of Style - There's No One-Size-Fits All
+            Which style feels most like home?
           </h2>
-          <p className="text-lg">
-            Select the design style that feels most like you<br />
-            <span className="text-stone-600 dark:text-stone-400">Decisions are hard. Check up to 2 boxes.</span>
+          <p className="text-lg text-stone-600 dark:text-stone-400">
+            Choose up to 2 styles. Trust your instincts — There are no wrong answers.
           </p>
         </div>
 
@@ -547,6 +514,51 @@ export default function Quiz() {
   };
 
   const renderStep3 = () => {
+    const palettes = ["Light Neutrals", "Warm & Cozy", "Dark & Moody", "Colourful Accent"];
+    
+    return (
+      <div className="space-y-8">
+        <div className="text-center space-y-4">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Everyone has their own sense of style | Learn More About Our Design Styles
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
+            Which colour palette feels most like you?
+          </h2>
+          <p className="text-lg text-stone-600 dark:text-stone-400">
+            Choose up to 2 styles. Trust your instincts — There are no wrong answers.
+          </p>
+        </div>
+
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 gap-4 md:gap-6 max-w-3xl mx-auto mt-12"
+        >
+          {palettes.map((palette) => {
+            const isSelected = quizData.colorPalettes.includes(palette);
+            
+            return (
+              <motion.div key={palette} variants={itemVariants}>
+                <Card
+                  className={`p-8 text-center cursor-pointer transition-all hover-elevate ${
+                    isSelected ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
+                  }`}
+                  onClick={() => toggleColorPalette(palette)}
+                  data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                >
+                  <p className="font-semibold text-lg uppercase">{palette}</p>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+    );
+  };
+
+  const renderStep4 = () => {
     const features = KEY_FEATURES_BY_ROOM[quizData.roomType] || [];
 
     return (
@@ -593,7 +605,7 @@ export default function Quiz() {
     );
   };
 
-  const renderStep4 = () => {
+  const renderStep5 = () => {
     const budgetRanges = [
       "$2,000-$5,000",
       "$5,000-$8,000",
@@ -639,7 +651,7 @@ export default function Quiz() {
     );
   };
 
-  const renderStep5 = () => {
+  const renderStep6 = () => {
     return (
       <div className="space-y-8">
         <div className="text-center space-y-4">
@@ -700,42 +712,6 @@ export default function Quiz() {
               ))}
             </div>
           )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderStep6 = () => {
-    const exampleBullets = [
-      "• I am looking for an area to put my dog bed",
-      "• I would like a tranquil bed design with calming colours",
-      "• I want to create an area to read my books"
-    ];
-
-    return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold uppercase">Your New Space is Nearly Ready</h2>
-          <div className="space-y-2">
-            <p className="text-xl font-semibold">Design Preferences?</p>
-            <p className="text-lg">We got you</p>
-            <p className="text-stone-600 dark:text-stone-400">
-              Share what matters most in your space.<br />
-              We'll make sure it shows up in your design.
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-2xl mx-auto space-y-4">
-          <TypewriterBullets bullets={exampleBullets} />
-
-          <Textarea
-            value={quizData.preferences}
-            onChange={(e) => updateQuizData("preferences", e.target.value)}
-            placeholder="Type your design preferences here..."
-            className="min-h-[200px] text-base"
-            data-testid="input-preferences"
-          />
         </div>
       </div>
     );
