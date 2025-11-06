@@ -702,56 +702,135 @@ export default function AdminProducts() {
 
       {/* View Dialog */}
       <Dialog open={!!viewingProduct} onOpenChange={(open) => !open && setViewingProduct(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{viewingProduct?.name}</DialogTitle>
-            <DialogDescription>Product Details</DialogDescription>
+            <DialogDescription>Complete Product Details</DialogDescription>
           </DialogHeader>
           {viewingProduct && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-stone-500">SKU</Label>
-                  <p className="font-mono">{viewingProduct.sku}</p>
-                </div>
-                <div>
-                  <Label className="text-stone-500">Price</Label>
-                  <p className="font-semibold text-green-600">${viewingProduct.price}</p>
-                </div>
-              </div>
+            <div className="space-y-6">
+              {/* Basic Info */}
               <div>
-                <Label className="text-stone-500">Description</Label>
-                <p>{viewingProduct.description || "N/A"}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-stone-500">Category</Label>
-                  <p>{getCategoryName(viewingProduct.categoryId)}</p>
+                <h3 className="font-semibold text-lg mb-3">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">SKU</Label>
+                    <p className="font-mono text-sm">{viewingProduct.sku}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Category</Label>
+                    <p>{getCategoryName(viewingProduct.categoryId)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Supplier</Label>
+                    <p>{getSupplierName(viewingProduct.supplierId)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Source File</Label>
+                    <p className="text-sm">{(viewingProduct as any).sourceFile || "N/A"}</p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-stone-500">Supplier</Label>
-                  <p>{getSupplierName(viewingProduct.supplierId)}</p>
+                <div className="mt-3">
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="text-sm">{viewingProduct.description || "N/A"}</p>
                 </div>
               </div>
+
+              {/* Pricing & Inventory */}
               <div>
-                <Label className="text-stone-500">Style Tags</Label>
-                <p>{viewingProduct.styleTags?.join(", ") || "N/A"}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-stone-500">Colors</Label>
-                  <p>{viewingProduct.colors?.join(", ") || "N/A"}</p>
+                <h3 className="font-semibold text-lg mb-3">Pricing & Inventory</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Trade Price</Label>
+                    <p className="font-semibold">{(viewingProduct as any).tradePrice ? `$${(viewingProduct as any).tradePrice}` : "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Retail Price</Label>
+                    <p className="font-semibold text-green-600">${viewingProduct.price}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Inventory</Label>
+                    <p>{(viewingProduct as any).inventory ?? "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Availability</Label>
+                    <p className="capitalize">{viewingProduct.availability}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Lead Time</Label>
+                    <p>{(viewingProduct as any).leadTime ? `${(viewingProduct as any).leadTime} days` : "N/A"}</p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-stone-500">Materials</Label>
-                  <p>{viewingProduct.materials?.join(", ") || "N/A"}</p>
-                </div>
               </div>
+
+              {/* Product Attributes */}
               <div>
-                <Label className="text-stone-500">Images</Label>
-                <p>{viewingProduct.images?.length || 0} image(s)</p>
-                {viewingProduct.images && viewingProduct.images.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                <h3 className="font-semibold text-lg mb-3">Product Attributes</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Room Type</Label>
+                    <p className="text-sm">{(viewingProduct as any).roomType?.join(", ") || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Design Style</Label>
+                    <p className="text-sm">{(viewingProduct as any).designStyle?.join(", ") || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Key Features</Label>
+                    <p className="text-sm">{(viewingProduct as any).keyFeatures?.join(", ") || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Storage Solutions</Label>
+                    <p className="text-sm">{(viewingProduct as any).storageSolutions || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Colors</Label>
+                    <p className="text-sm">{viewingProduct.colors?.join(", ") || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Materials</Label>
+                    <p className="text-sm">{viewingProduct.materials?.join(", ") || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Tags</Label>
+                    <p className="text-sm">{(viewingProduct as any).tags?.join(", ") || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Style Tags</Label>
+                    <p className="text-sm">{viewingProduct.styleTags?.join(", ") || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Physical Specifications */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Physical Specifications</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Dimensions</Label>
+                    <p className="text-sm">
+                      {viewingProduct.dimensions 
+                        ? `${(viewingProduct.dimensions as any).w}" W × ${(viewingProduct.dimensions as any).d}" D × ${(viewingProduct.dimensions as any).h}" H`
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Weight</Label>
+                    <p className="text-sm">{(viewingProduct as any).weight || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Assembly Required</Label>
+                    <p className="text-sm">{(viewingProduct as any).assembly || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Images */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Images</h3>
+                <p className="text-sm text-muted-foreground mb-2">{viewingProduct.images?.length || 0} image(s)</p>
+                {viewingProduct.images && viewingProduct.images.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-2">
                     {viewingProduct.images.map((img, idx) => (
                       <img
                         key={idx}
@@ -761,6 +840,8 @@ export default function AdminProducts() {
                       />
                     ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No images uploaded</p>
                 )}
               </div>
             </div>

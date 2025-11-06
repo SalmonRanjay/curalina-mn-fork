@@ -98,15 +98,22 @@ export default function BulkUpload() {
 
     const newFiles: FileWithMeta[] = Array.from(files).map(file => {
       const productName = extractProductNameFromPath(file.webkitRelativePath || file.name);
-      const product = products.find(p => 
+      const sku = extractSKU(file.name);
+      
+      // Try to match by name first, then by SKU
+      let product = products.find(p => 
         p.name.toLowerCase() === productName.toLowerCase()
       );
       
+      if (!product) {
+        product = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+      }
+      
       return {
         file,
-        sku: product?.sku || productName,
+        sku: product?.sku || sku || productName,
         status: product ? "pending" : "error",
-        error: product ? undefined : `No product found with name: ${productName}`,
+        error: product ? undefined : `No product found with name "${productName}" or SKU "${sku}"`,
         productId: product?.id,
         preview: URL.createObjectURL(file),
       };
