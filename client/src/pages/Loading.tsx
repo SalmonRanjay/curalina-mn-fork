@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { getSessionId } from "@/lib/session";
+import type { Render } from "@shared/schema";
 
 const facts = [
   "Natural light can increase productivity by up to 20%",
@@ -13,6 +16,19 @@ const facts = [
 export default function Loading() {
   const [, setLocation] = useLocation();
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
+  const sessionId = getSessionId();
+
+  // Poll for render completion
+  const { data: render } = useQuery<Render>({
+    queryKey: ["/api/render/latest", sessionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/render/latest?sessionId=${sessionId}`);
+      if (!res.ok) throw new Error("Failed to fetch render");
+      return res.json();
+    },
+    enabled: !!sessionId,
+    refetchInterval: 2000, // Poll every 2 seconds
+  });
 
   // Rotate facts every 2 seconds
   useEffect(() => {
@@ -23,14 +39,12 @@ export default function Loading() {
     return () => clearInterval(interval);
   }, []);
 
-  // Redirect to results after 8 seconds
+  // Redirect to results immediately when render is complete or failed
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    if (render && (render.status === 'completed' || render.status === 'failed')) {
       setLocation("/results");
-    }, 8000);
-
-    return () => clearTimeout(timeout);
-  }, [setLocation]);
+    }
+  }, [render, setLocation]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950 flex items-center justify-center px-6">
