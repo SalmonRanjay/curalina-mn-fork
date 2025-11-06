@@ -263,20 +263,34 @@ export default function Quiz() {
     
     const formData = new FormData();
     files.forEach(file => formData.append("files", file));
+    formData.append("folder", type === "vibe" ? "vibe-images" : "floorplans");
 
     if (type === "vibe") setUploadingVibe(true);
     else setUploadingFloorplan(true);
 
     try {
+      console.log(`Uploading ${files.length} file(s) to /api/upload`);
+      
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Upload failed");
+      console.log("Upload response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Upload failed:", errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
       
       const data = await response.json();
+      console.log("Upload response data:", data);
       const urls = data.urls || [];
+
+      if (urls.length === 0) {
+        throw new Error("No URLs returned from upload");
+      }
 
       if (type === "vibe") {
         updateQuizData("vibeImages", [...quizData.vibeImages, ...urls]);
@@ -289,9 +303,10 @@ export default function Quiz() {
         description: `${files.length} file(s) uploaded successfully`,
       });
     } catch (error) {
+      console.error("Upload error:", error);
       toast({
         title: "Upload Error",
-        description: "Failed to upload files. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload files. Please try again.",
         variant: "destructive",
       });
     } finally {
