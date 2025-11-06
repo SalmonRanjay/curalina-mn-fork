@@ -40,11 +40,22 @@ export default function BulkUpload() {
     return match ? match[1] : nameWithoutExt;
   };
 
-  // Extract product name from folder path (e.g., "Modern Sofa/front.jpg" -> "Modern Sofa")
+  // Extract product name from folder path (e.g., "Modern Sofa/.PNG/front.jpg" -> "Modern Sofa")
   const extractProductNameFromPath = (filepath: string): string => {
-    const parts = filepath.split('/');
-    // Return the folder name (second-to-last part if there's a folder structure)
-    return parts.length > 1 ? parts[parts.length - 2] : '';
+    const parts = filepath.split('/').filter(p => p); // Remove empty parts
+    if (parts.length < 2) return '';
+    
+    // Remove the filename (last part)
+    const folders = parts.slice(0, -1);
+    
+    // If we have multiple folders, ignore common image folder names like ".PNG", "images", etc.
+    const ignoreFolders = ['.png', '.jpg', '.jpeg', 'images', 'photos', 'assets'];
+    const productFolders = folders.filter(f => 
+      !ignoreFolders.includes(f.toLowerCase())
+    );
+    
+    // Return the first valid folder (the product folder)
+    return productFolders.length > 0 ? productFolders[0] : folders[0];
   };
 
   const onDrop = (acceptedFiles: File[]) => {
