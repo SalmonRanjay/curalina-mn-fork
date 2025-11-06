@@ -687,9 +687,13 @@ export function registerCuralinaRoutes(app: Express) {
           const prompt = buildPromptFromQuiz(quiz, selectedProducts);
           
           // Generate image with Gemini AI
-          const floorplanUrl = quiz.floorplanUrl 
-            ? `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}${quiz.floorplanUrl}`
-            : undefined;
+          let floorplanUrl: string | undefined = undefined;
+          if (quiz.floorplanUrl) {
+            const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
+            // Ensure domain has protocol
+            const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
+            floorplanUrl = `${fullDomain}${quiz.floorplanUrl}`;
+          }
           
           const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl);
           

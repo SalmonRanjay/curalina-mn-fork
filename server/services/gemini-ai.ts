@@ -143,12 +143,48 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     return true;
   });
   
-  // Fallback: if strict filtering yields too few products (< 5), relax style requirement
+  // Fallback 1: if strict filtering yields too few products, relax key features requirement
   if (strictlyFiltered.length < 5) {
-    console.warn(`Strict filter yielded only ${strictlyFiltered.length} products, relaxing style requirement`);
+    console.warn(`Strict filter yielded only ${strictlyFiltered.length} products, relaxing key features requirement`);
     
-    return products.filter(product => {
-      // Keep all hard requirements
+    const relaxedFeatures = products.filter(product => {
+      if (product.availability !== 'in_stock') return false;
+      if (!product.images || product.images.length === 0) return false;
+      
+      // Room type still required
+      if (product.roomType && product.roomType.length > 0) {
+        const roomMatch = product.roomType.some(rt => 
+          rt.toLowerCase().includes(quiz.roomType.toLowerCase()) ||
+          quiz.roomType.toLowerCase().includes(rt.toLowerCase())
+        );
+        if (!roomMatch) return false;
+      }
+      
+      // Style still required
+      if (product.designStyle && product.designStyle.length > 0) {
+        const styleMatch = product.designStyle.some(ds =>
+          stylesMatch(quiz.style, ds)
+        );
+        if (!styleMatch) return false;
+      }
+      
+      // Budget still required
+      if (budgetMax && product.price) {
+        const productPrice = parseFloat(product.price.toString());
+        if (productPrice > budgetMax) return false;
+      }
+      
+      return true;
+    });
+    
+    if (relaxedFeatures.length >= 5) return relaxedFeatures;
+  }
+  
+  // Fallback 2: if still < 5, relax style requirement (keep room type)
+  if (strictlyFiltered.length < 5) {
+    console.warn(`Still only ${strictlyFiltered.length} products, relaxing style requirement`);
+    
+    const relaxedStyle = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
       if (!product.images || product.images.length === 0) return false;
       
@@ -167,27 +203,53 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
         if (productPrice > budgetMax) return false;
       }
       
-      // Key features still required
-      if (quiz.keyFeatures && quiz.keyFeatures.length > 0) {
-        if (!product.keyFeatures || product.keyFeatures.length === 0) {
-          return false;
-        }
-        
-        const featureMatch = quiz.keyFeatures.some(qf =>
-          product.keyFeatures!.some(pf =>
-            pf.toLowerCase().includes(qf.toLowerCase()) ||
-            qf.toLowerCase().includes(pf.toLowerCase())
-          )
+      return true;
+    });
+    
+    if (relaxedStyle.length >= 5) return relaxedStyle;
+  }
+  
+  // Fallback 3: if still < 5, only require style match (relax room type)
+  if (strictlyFiltered.length < 5) {
+    console.warn(`Still only ${strictlyFiltered.length} products, trying style-only match`);
+    
+    const styleOnly = products.filter(product => {
+      if (product.availability !== 'in_stock') return false;
+      if (!product.images || product.images.length === 0) return false;
+      
+      // Style required
+      if (product.designStyle && product.designStyle.length > 0) {
+        const styleMatch = product.designStyle.some(ds =>
+          stylesMatch(quiz.style, ds)
         );
-        
-        if (!featureMatch) return false;
+        if (!styleMatch) return false;
+      }
+      
+      // Budget still required
+      if (budgetMax && product.price) {
+        const productPrice = parseFloat(product.price.toString());
+        if (productPrice > budgetMax) return false;
       }
       
       return true;
     });
+    
+    if (styleOnly.length >= 5) return styleOnly;
   }
   
-  return strictlyFiltered;
+  // Fallback 4: if still < 5, just return any in-stock products with images within budget
+  console.warn(`Final fallback: returning any in-stock products within budget`);
+  return products.filter(product => {
+    if (product.availability !== 'in_stock') return false;
+    if (!product.images || product.images.length === 0) return false;
+    
+    if (budgetMax && product.price) {
+      const productPrice = parseFloat(product.price.toString());
+      if (productPrice > budgetMax) return false;
+    }
+    
+    return true;
+  }).slice(0, 20); // Limit to 20 for AI selection
 }
 
 /**

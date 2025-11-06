@@ -1,0 +1,101 @@
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+Strict filter yielded only 0 products, relaxing style requirement
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+No matching products found, generating room without specific products
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+Filtered to 0 matching products
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+Gemini AI generation error: TypeError: Failed to parse URL from 5b8f8e8c-0ad8-403a-ac70-c0507dab1024-00-14br0ynxagczl.kirk.replit.dev/public-objects/floorplans/1762405218804-6jmzk-AdobeStock_236028151_Preview.jpeg
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at node:internal/deps/undici/undici:13510:13
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at async generateInteriorImage (file:///home/runner/workspace/dist/index.js:1433:31)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at async file:///home/runner/workspace/dist/index.js:2160:32 {
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+[cause]: TypeError: Invalid URL
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at new URL (node:internal/url:806:29)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at new Request (node:internal/deps/undici/undici:9586:25)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at fetch (node:internal/deps/undici/undici:10315:25)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at fetch (node:internal/deps/undici/undici:13508:10)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at fetch (node:internal/bootstrap/web/exposed-window-or-worker:72:12)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at generateInteriorImage (file:///home/runner/workspace/dist/index.js:1433:37)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at file:///home/runner/workspace/dist/index.js:2160:38
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+code: 'ERR_INVALID_URL',
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+input: '5b8f8e8c-0ad8-403a-ac70-c0507dab1024-00-14br0ynxagczl.kirk.replit.dev/public-objects/floorplans/1762405218804-6jmzk-AdobeStock_236028151_Preview.jpeg'
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+}
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+}
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+AI generation error: Error: Failed to generate interior design: Failed to parse URL from 5b8f8e8c-0ad8-403a-ac70-c0507dab1024-00-14br0ynxagczl.kirk.replit.dev/public-objects/floorplans/1762405218804-6jmzk-AdobeStock_236028151_Preview.jpeg
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at generateInteriorImage (file:///home/runner/workspace/dist/index.js:1464:11)
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+2025-11-06 10:00:34.37
+5b8f8e8c
+User
+at async file:///home/runner/workspace/dist/index.js:2160:32
