@@ -779,7 +779,7 @@ export default function Quiz() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-center">Upload a photo of your space</h3>
             <Dropzone
-              onDrop={(files) => handleFileUpload(files, "vibe")}
+              onDrop={(files) => handleFileUpload(files, "floorplan")}
               accept={{ "image/*": [".png", ".jpg", ".jpeg"] }}
               maxFiles={1}
             >
@@ -787,14 +787,14 @@ export default function Quiz() {
                 <div
                   {...getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
-                    isDragActive || quizData.vibeImages.length > 0
+                    isDragActive || quizData.floorplanUrl
                       ? "border-green-400 bg-green-50 dark:bg-green-900/20"
                       : "border-stone-300 hover:border-green-400"
                   }`}
                   data-testid="photo-upload-area"
                 >
                   <input {...getInputProps()} />
-                  <p className="font-semibold mb-4">{uploadingVibe ? "Uploading..." : "Add Photo"}</p>
+                  <p className="font-semibold mb-4">{uploadingFloorplan ? "Uploading..." : "Add Photo"}</p>
                   <Button type="button" variant="ghost" size="sm" data-testid="button-see-photo-example">
                     See Example
                   </Button>
