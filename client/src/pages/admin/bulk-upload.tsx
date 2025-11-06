@@ -97,23 +97,31 @@ export default function BulkUpload() {
     if (!files || files.length === 0) return;
 
     const newFiles: FileWithMeta[] = Array.from(files).map(file => {
-      const productName = extractProductNameFromPath(file.webkitRelativePath || file.name);
-      const sku = extractSKU(file.name);
+      const folderName = extractProductNameFromPath(file.webkitRelativePath || file.name);
+      const filenameSku = extractSKU(file.name);
       
-      // Try to match by name first, then by SKU
+      // Try to match by folder name as SKU first (most common case for bulk uploads)
       let product = products.find(p => 
-        p.name.toLowerCase() === productName.toLowerCase()
+        p.sku.toLowerCase() === folderName.toLowerCase()
       );
       
+      // If not found, try folder name as product name
       if (!product) {
-        product = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+        product = products.find(p => 
+          p.name.toLowerCase() === folderName.toLowerCase()
+        );
+      }
+      
+      // Fallback: try filename as SKU
+      if (!product && filenameSku) {
+        product = products.find(p => p.sku.toLowerCase() === filenameSku.toLowerCase());
       }
       
       return {
         file,
-        sku: product?.sku || sku || productName,
+        sku: product?.sku || folderName || filenameSku,
         status: product ? "pending" : "error",
-        error: product ? undefined : `No product found with name "${productName}" or SKU "${sku}"`,
+        error: product ? undefined : `No product found with folder "${folderName}" (tried as SKU and product name)`,
         productId: product?.id,
         preview: URL.createObjectURL(file),
       };
