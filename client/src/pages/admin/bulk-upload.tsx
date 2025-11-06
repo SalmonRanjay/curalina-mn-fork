@@ -26,7 +26,7 @@ export default function BulkUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [totalProgress, setTotalProgress] = useState(0);
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
   });
 
@@ -39,6 +39,16 @@ export default function BulkUpload() {
   };
 
   const onDrop = (acceptedFiles: File[]) => {
+    // Block if products are still loading
+    if (isLoadingProducts) {
+      toast({
+        title: "Please wait",
+        description: "Loading product catalog...",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newFiles: FileWithMeta[] = acceptedFiles.map(file => {
       const sku = extractSKU(file.name);
       const product = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
@@ -162,20 +172,35 @@ export default function BulkUpload() {
 
     setIsUploading(false);
 
-    const successCount = files.filter(f => f.status === "success").length;
-    const errorCount = files.filter(f => f.status === "error").length;
+    // Get fresh counts from state after all updates
+    setFiles(currentFiles => {
+      const successCount = currentFiles.filter(f => f.status === "success").length;
+      const errorCount = currentFiles.filter(f => f.status === "error").length;
 
-    toast({
-      title: "Upload complete",
-      description: `${successCount} successful, ${errorCount} failed`,
+      toast({
+        title: "Upload complete",
+        description: `${successCount} successful, ${errorCount} failed`,
+      });
+
+      return currentFiles;
     });
   };
 
   const clearCompleted = () => {
-    setFiles(prev => prev.filter(f => f.status !== "success"));
+    setFiles(prev => {
+      // Revoke object URLs for completed files to prevent memory leaks
+      prev.filter(f => f.status === "success").forEach(f => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
+      return prev.filter(f => f.status !== "success");
+    });
   };
 
   const clearAll = () => {
+    // Revoke all object URLs to prevent memory leaks
+    files.forEach(f => {
+      if (f.preview) URL.revokeObjectURL(f.preview);
+    });
     setFiles([]);
     setTotalProgress(0);
   };
@@ -234,14 +259,20 @@ export default function BulkUpload() {
           <div
             {...getRootProps()}
             className={`
-              border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
+              border-2 border-dashed rounded-lg p-12 text-center transition-colors
+              ${isLoadingProducts ? 'cursor-wait opacity-50' : 'cursor-pointer'}
               ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
             `}
             data-testid="dropzone"
           >
-            <input {...getInputProps()} />
+            <input {...getInputProps()} disabled={isLoadingProducts} />
             <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            {isDragActive ? (
+            {isLoadingProducts ? (
+              <div>
+                <p className="text-lg font-medium mb-2">Loading product catalog...</p>
+                <p className="text-sm text-muted-foreground">Please wait while we load {products.length} products</p>
+              </div>
+            ) : isDragActive ? (
               <p className="text-lg font-medium">Drop files here...</p>
             ) : (
               <div>
