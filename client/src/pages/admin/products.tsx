@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Edit, Trash2, Plus, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertProductSchema, type Product, type Category, type Supplier, type InsertProduct } from "@shared/schema";
@@ -37,6 +38,13 @@ export default function AdminProducts() {
   const [deleteProduct, setDeleteProduct] = useState<{ id: string; name: string } | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: { current: number; total: number } }>({});
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [imageFilter, setImageFilter] = useState<string>("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -281,6 +289,55 @@ export default function AdminProducts() {
     // If it's a local path, return as is (will be served by the server)
     return firstImage;
   };
+
+  // Filtered products based on all filters
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    
+    return products.filter(product => {
+      // Search filter (name or SKU)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = product.name.toLowerCase().includes(query);
+        const matchesSKU = product.sku.toLowerCase().includes(query);
+        if (!matchesName && !matchesSKU) return false;
+      }
+      
+      // Category filter
+      if (categoryFilter !== "all" && product.categoryId !== categoryFilter) {
+        return false;
+      }
+      
+      // Supplier filter
+      if (supplierFilter !== "all" && product.supplierId !== supplierFilter) {
+        return false;
+      }
+      
+      // Image filter
+      if (imageFilter === "with_images") {
+        if (!product.images || product.images.length === 0) return false;
+      } else if (imageFilter === "without_images") {
+        if (product.images && product.images.length > 0) return false;
+      }
+      
+      // Availability filter
+      if (availabilityFilter !== "all" && product.availability !== availabilityFilter) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCategoryFilter("all");
+    setSupplierFilter("all");
+    setImageFilter("all");
+    setAvailabilityFilter("all");
+  };
+
+  const hasActiveFilters = searchQuery || categoryFilter !== "all" || supplierFilter !== "all" || imageFilter !== "all" || availabilityFilter !== "all";
 
   const ProductFormFields = ({ form }: { form: any }) => (
     <>
@@ -530,6 +587,127 @@ export default function AdminProducts() {
         </Dialog>
       </div>
 
+      {/* Advanced Filters */}
+      <Card className="p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-stone-600" />
+          <h2 className="text-lg font-semibold">Advanced Filters</h2>
+          {hasActiveFilters && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters}
+              data-testid="button-clear-filters"
+              className="ml-auto"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Clear All
+            </Button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="lg:col-span-2">
+            <Label htmlFor="search" className="text-sm mb-2 block">Search by Name or SKU</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <Input
+                id="search"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-products"
+              />
+            </div>
+          </div>
+
+          {/* Category Filter */}
+          <div>
+            <Label htmlFor="category-filter" className="text-sm mb-2 block">Category</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger id="category-filter" data-testid="select-category-filter">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories?.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Supplier Filter */}
+          <div>
+            <Label htmlFor="supplier-filter" className="text-sm mb-2 block">Supplier</Label>
+            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+              <SelectTrigger id="supplier-filter" data-testid="select-supplier-filter">
+                <SelectValue placeholder="All Suppliers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Suppliers</SelectItem>
+                {suppliers?.map((supplier) => (
+                  <SelectItem key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Image Status Filter */}
+          <div>
+            <Label htmlFor="image-filter" className="text-sm mb-2 block">Image Status</Label>
+            <Select value={imageFilter} onValueChange={setImageFilter}>
+              <SelectTrigger id="image-filter" data-testid="select-image-filter">
+                <SelectValue placeholder="All Products" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                <SelectItem value="with_images">With Images</SelectItem>
+                <SelectItem value="without_images">Without Images</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Availability Filter */}
+          <div>
+            <Label htmlFor="availability-filter" className="text-sm mb-2 block">Availability</Label>
+            <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+              <SelectTrigger id="availability-filter" data-testid="select-availability-filter">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="in_stock">In Stock</SelectItem>
+                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                <SelectItem value="preorder">Preorder</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Filter Results Summary */}
+        <div className="mt-4 flex items-center gap-2 text-sm text-stone-600">
+          <span>Showing {filteredProducts.length} of {products?.length || 0} products</span>
+          {hasActiveFilters && (
+            <Badge variant="secondary" data-testid="badge-active-filters">
+              {[
+                searchQuery && "Search",
+                categoryFilter !== "all" && "Category",
+                supplierFilter !== "all" && "Supplier",
+                imageFilter !== "all" && "Images",
+                availabilityFilter !== "all" && "Status"
+              ].filter(Boolean).length} filter(s) active
+            </Badge>
+          )}
+        </div>
+      </Card>
+
       {isLoading ? (
         <div className="text-center py-12">
           <p className="text-stone-500">Loading products...</p>
@@ -551,8 +729,15 @@ export default function AdminProducts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products?.map((product) => (
-                  <TableRow key={product.id} data-testid={`product-row-${product.id}`}>
+                {filteredProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12 text-stone-500">
+                      {hasActiveFilters ? "No products match your filters" : "No products found"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <TableRow key={product.id} data-testid={`product-row-${product.id}`}>
                     <TableCell>
                       <div className="w-16 h-16 bg-stone-100 dark:bg-stone-800 rounded overflow-hidden">
                         {getImageUrl(product.images) ? (
@@ -648,7 +833,8 @@ export default function AdminProducts() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ))
+                )}
               </TableBody>
             </Table>
           </div>

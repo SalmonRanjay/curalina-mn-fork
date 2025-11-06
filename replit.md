@@ -77,6 +77,7 @@ Preferred communication style: Simple, everyday language.
 
 **User Roles**:
 - **Admin**: Full access to admin dashboard (`/admin`) for managing categories, suppliers, products, orders, renders, quiz responses
+  - **Product Management**: Advanced filtering system with search by name/SKU, category filter, supplier filter, image status (with/without images), and availability filter
 - **Regular User**: Access to user portal (`/portal`) for viewing designs and orders
 - **Anonymous**: Can complete quiz, generate renders, add to cart without logging in
 
