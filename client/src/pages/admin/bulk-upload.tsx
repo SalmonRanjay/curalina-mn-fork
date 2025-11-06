@@ -100,10 +100,21 @@ export default function BulkUpload() {
       const folderName = extractProductNameFromPath(file.webkitRelativePath || file.name);
       const filenameSku = extractSKU(file.name);
       
-      // Try to match by folder name as SKU first (most common case for bulk uploads)
+      // Normalize folder name by removing spaces around dashes
+      // "BC - 1147 - 03" becomes "BC-1147-03"
+      const normalizedFolderName = folderName.replace(/\s*-\s*/g, '-').trim();
+      
+      // Try to match by normalized folder name as SKU first (most common case for bulk uploads)
       let product = products.find(p => 
-        p.sku.toLowerCase() === folderName.toLowerCase()
+        p.sku.toLowerCase() === normalizedFolderName.toLowerCase()
       );
+      
+      // If not found, try original folder name as SKU (in case it's already correct)
+      if (!product) {
+        product = products.find(p => 
+          p.sku.toLowerCase() === folderName.toLowerCase()
+        );
+      }
       
       // If not found, try folder name as product name
       if (!product) {
@@ -119,9 +130,9 @@ export default function BulkUpload() {
       
       return {
         file,
-        sku: product?.sku || folderName || filenameSku,
+        sku: product?.sku || normalizedFolderName || folderName || filenameSku,
         status: product ? "pending" : "error",
-        error: product ? undefined : `No product found with folder "${folderName}" (tried as SKU and product name)`,
+        error: product ? undefined : `No product found with folder "${folderName}" (tried as SKU: "${normalizedFolderName}")`,
         productId: product?.id,
         preview: URL.createObjectURL(file),
       };
