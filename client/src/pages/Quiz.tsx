@@ -184,11 +184,17 @@ export default function Quiz() {
     mutationFn: async (data: typeof quizData) => {
       const sessionId = getOrCreateSessionId();
       
-      // Transform styles array to single string (first selection)
+      // Transform data to match backend schema
       const submitData = {
-        ...data,
-        style: data.styles[0] || "",
-        sessionId
+        sessionId,
+        roomType: data.roomType,
+        style: data.styles[0] || "", // Convert array to single string
+        colorPalettes: data.colorPalettes,
+        keyFeatures: data.keyFeatures,
+        budgetRange: data.budgetRange,
+        vibeImages: data.vibeImages,
+        preferences: data.preferences ? [data.preferences] : [], // Convert string to array
+        floorplanUrl: data.floorplanUrl || null,
       };
 
       const response = await fetch("/api/quiz", {
@@ -198,7 +204,9 @@ export default function Quiz() {
       });
       
       if (!response.ok) {
-        throw new Error("Failed to submit quiz");
+        const errorData = await response.json();
+        console.error("Quiz submission error:", errorData);
+        throw new Error(errorData.error || "Failed to submit quiz");
       }
       
       return response.json();
