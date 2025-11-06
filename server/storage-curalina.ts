@@ -33,11 +33,13 @@ export interface ICuralinaStorage {
   // Category operations
   getAllCategories(): Promise<Category[]>;
   getCategoriesByType(type: "room" | "furniture"): Promise<Category[]>;
+  getCategoryByName(name: string): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
   deleteCategory(id: string): Promise<void>;
   
   // Supplier operations
   getAllSuppliers(): Promise<Supplier[]>;
+  getSupplierByName(name: string): Promise<Supplier | undefined>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   deleteSupplier(id: string): Promise<void>;
   
@@ -97,6 +99,11 @@ export class CuralinaStorage implements ICuralinaStorage {
     return db.select().from(categories).where(eq(categories.type, type));
   }
 
+  async getCategoryByName(name: string): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.name, name));
+    return category;
+  }
+
   async createCategory(categoryData: InsertCategory): Promise<Category> {
     const [category] = await db.insert(categories).values(categoryData).returning();
     return category;
@@ -109,6 +116,11 @@ export class CuralinaStorage implements ICuralinaStorage {
   // Supplier operations
   async getAllSuppliers(): Promise<Supplier[]> {
     return db.select().from(suppliers);
+  }
+
+  async getSupplierByName(name: string): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.name, name));
+    return supplier;
   }
 
   async createSupplier(supplierData: InsertSupplier): Promise<Supplier> {

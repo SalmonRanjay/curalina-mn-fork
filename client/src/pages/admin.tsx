@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import AdminProductsPage from "@/pages/admin/products";
 import BulkUploadPage from "@/pages/admin/bulk-upload";
+import CSVImportPage from "@/pages/admin/csv-import";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("analytics");
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
   const menuItems = [
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "products", label: "Products", icon: Package },
+    { id: "csv-import", label: "CSV Import", icon: FileText },
     { id: "bulk-upload", label: "Bulk Upload", icon: Upload },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
@@ -85,6 +87,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto py-8 px-6">
           {activeSection === "analytics" && <AnalyticsSection />}
           {activeSection === "products" && <ProductsSection />}
+          {activeSection === "csv-import" && <CSVImportPage />}
           {activeSection === "bulk-upload" && <BulkUploadPage />}
           {activeSection === "orders" && <OrdersSection />}
           {activeSection === "users" && <UsersSection />}
