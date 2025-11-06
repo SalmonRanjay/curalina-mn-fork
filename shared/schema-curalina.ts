@@ -51,17 +51,38 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   description: text("description"),
   categoryId: varchar("category_id").references(() => categories.id),
-  styleTags: text("style_tags").array(), // ['modern', 'organic']
-  colors: text("colors").array(),
-  materials: text("materials").array(),
-  dimensions: jsonb("dimensions"), // { w, d, h, unit }
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  
+  // Pricing
+  tradePrice: decimal("trade_price", { precision: 10, scale: 2 }),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
+  
+  // Product attributes
+  roomType: text("room_type").array(), // ['Living room', 'Bedroom']
+  designStyle: text("design_style").array(), // ['Modern', 'Contemporary']
+  styleTags: text("style_tags").array(), // ['modern', 'organic']
+  keyFeatures: text("key_features").array(), // ['pet-friendly', 'casual setting']
+  storageSolutions: text("storage_solutions"), // 'No Storage', '3 Drawers', etc.
+  colors: text("colors").array(),
+  materials: text("materials").array(),
+  
+  // Physical specifications
+  dimensions: jsonb("dimensions"), // { w, d, h, unit }
+  weight: text("weight"), // '150 lbs'
+  assembly: text("assembly"), // 'Yes', 'No', 'Partial'
+  
+  // Inventory & shipping
+  inventory: integer("inventory"),
+  leadTime: integer("lead_time"), // days
   availability: varchar("availability", { length: 20 }).notNull().default("in_stock"), // 'in_stock' or 'preorder'
+  shipping: jsonb("shipping"), // { cost, eta }
+  
+  // Media & metadata
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
-  supplierId: varchar("supplier_id").references(() => suppliers.id),
-  shipping: jsonb("shipping"), // { cost, eta }
+  tags: text("tags").array(), // General tags for search/categorization
+  sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
   slug: varchar("slug").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow(),
