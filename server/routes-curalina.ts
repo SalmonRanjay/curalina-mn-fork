@@ -367,11 +367,11 @@ export function registerCuralinaRoutes(app: Express) {
           const styleSet = new Set([...designStyleArray, ...tagsArray]);
           const styleTags = Array.from(styleSet).slice(0, 10);
 
-          // Parse inventory
-          const inventoryValue = row.Inventory ? Number(row.Inventory) : null;
+          // Parse inventory (ensure valid integer or null)
+          const inventoryValue = row.Inventory ? (parseInt(row.Inventory) || null) : null;
           
-          // Parse lead time
-          const leadTimeValue = row['LEAD Time'] ? Number(row['LEAD Time']) : null;
+          // Parse lead time (ensure valid integer or null)
+          const leadTimeValue = row['LEAD Time'] ? (parseInt(row['LEAD Time']) || null) : null;
 
           // Insert product
           const productName = row['Product Name'] || 'Unknown Product';
