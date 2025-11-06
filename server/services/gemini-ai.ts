@@ -592,10 +592,10 @@ async function generateWithStabilityAI(
     
     formData.append('image', imageBlob, `room.${fileExtension}`);
     formData.append('prompt', prompt);
-    formData.append('control_strength', '0.85'); // High value = preserve structure more
-    formData.append('mode', 'image-to-image');
+    formData.append('control_strength', '0.85'); // High value (0.7 is default) = preserve structure more
     formData.append('output_format', 'png');
     formData.append('seed', Math.floor(Math.random() * 4294967295).toString());
+    formData.append('negative_prompt', 'blurry, low quality, distorted architecture, wrong perspective, missing windows, removed doors');
     
     const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
       method: 'POST',
