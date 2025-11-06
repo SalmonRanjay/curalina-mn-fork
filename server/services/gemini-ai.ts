@@ -454,9 +454,11 @@ CRITICAL REQUIREMENTS:
 }
 
 /**
- * Generate an interior design image using Gemini AI
+ * Generate an interior design image using hybrid approach:
+ * - Gemini for text-to-image (no room photo provided)
+ * - Stability AI for structure-preserving image-to-image (room photo provided)
  * @param prompt - Detailed description of the desired room
- * @param floorplanUrl - Optional floorplan image URL for image-to-image generation
+ * @param floorplanUrl - Optional floorplan/room image URL for structure-preserving generation
  * @returns Base64 data URL (data:image/png;base64,...)
  */
 export async function generateInteriorImage(
@@ -464,8 +466,9 @@ export async function generateInteriorImage(
   floorplanUrl?: string
 ): Promise<string> {
   try {
-    // Text-to-image generation
+    // Text-to-image generation with Gemini (creative generation)
     if (!floorplanUrl) {
+      console.log("Using Gemini for text-to-image creative generation");
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -511,79 +514,110 @@ export async function generateInteriorImage(
       return `data:${mimeType};base64,${imagePart.inlineData.data}`;
     }
     
-    const floorplanBuffer = await floorplanResponse.arrayBuffer();
-    const floorplanBase64 = Buffer.from(floorplanBuffer).toString('base64');
+    // Structure-preserving image-to-image with Stability AI
+    const roomPhotoBuffer = await floorplanResponse.arrayBuffer();
     
     // Detect MIME type from response headers or URL extension
-    let floorplanMimeType = floorplanResponse.headers.get('content-type') || 'image/jpeg';
-    if (!floorplanMimeType.startsWith('image/')) {
+    let photoMimeType = floorplanResponse.headers.get('content-type') || 'image/jpeg';
+    if (!photoMimeType.startsWith('image/')) {
       // Try to detect from URL extension
       const urlLower = floorplanUrl.toLowerCase();
-      if (urlLower.endsWith('.png')) floorplanMimeType = 'image/png';
-      else if (urlLower.endsWith('.webp')) floorplanMimeType = 'image/webp';
-      else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) floorplanMimeType = 'image/jpeg';
-      else floorplanMimeType = 'image/jpeg'; // default fallback
+      if (urlLower.endsWith('.png')) photoMimeType = 'image/png';
+      else if (urlLower.endsWith('.webp')) photoMimeType = 'image/webp';
+      else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) photoMimeType = 'image/jpeg';
+      else photoMimeType = 'image/jpeg'; // default fallback
     }
     
-    console.log(`Using floorplan with MIME type: ${floorplanMimeType}`);
+    console.log(`Using Stability AI for structure-preserving editing with MIME type: ${photoMimeType}`);
     
-    const enhancedPrompt = `${prompt}
-
-CRITICAL SPATIAL CONSTRAINTS - MUST FOLLOW:
-The provided image shows the user's ACTUAL room. You MUST preserve the existing architectural structure:
-
-PRESERVE COMPLETELY (DO NOT CHANGE):
-- All windows: Keep exact position, size, and shape
-- All doors: Maintain location and type
-- Wall positions and room dimensions
-- Ceiling features (beams, lighting, molding)
-- Built-in elements (fireplace, shelving, alcoves)
-- Floor plan and room layout
-- Architectural details and trim
-- Natural light sources and their direction
-
-REDESIGN ONLY:
-- Furniture pieces and their arrangement
-- Decorative elements and accessories
-- Wall colors and finishes
-- Rugs, curtains, and soft furnishings
-- Lighting fixtures (but not structural lighting)
-- Art and décor items
-
-IMPORTANT: This is the user's real space. They want to see their SAME room with new furniture and décor in the specified style - NOT a completely different room. The windows, walls, and architectural features must remain exactly as shown in their photo.`;
-
+    // Create simplified prompt for Stability AI (focus on style/furniture only)
+    const stabilityPrompt = `Redesign this room's interior with new furniture and décor in the following style: ${prompt}. 
     
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: [{
-        role: "user",
-        parts: [
-          { text: enhancedPrompt },
-          {
-            inlineData: {
-              mimeType: floorplanMimeType,
-              data: floorplanBase64
-            }
-          }
-        ]
-      }],
-      config: {
-        responseModalities: [Modality.TEXT, Modality.IMAGE],
+CRITICAL: Preserve ALL architectural features exactly as shown - windows, doors, walls, ceiling, built-ins must remain unchanged. Only redesign furniture, wall colors, rugs, curtains, and decorative elements.`;
+    
+    // Call Stability AI with fallback to Gemini if it fails
+    try {
+      return await generateWithStabilityAI(roomPhotoBuffer, stabilityPrompt, photoMimeType);
+    } catch (stabilityError) {
+      console.error("Stability AI failed, falling back to Gemini:", stabilityError);
+      // Fallback to Gemini text-to-image
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseModalities: [Modality.TEXT, Modality.IMAGE],
+        },
+      });
+
+      const candidate = response.candidates?.[0];
+      const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+      
+      if (!imagePart?.inlineData?.data) {
+        throw new Error("No image data in fallback response");
+      }
+
+      const mimeType = imagePart.inlineData.mimeType || "image/png";
+      return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    }
+  } catch (error) {
+    console.error("AI generation error:", error);
+    throw new Error(`Failed to generate interior design: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+}
+
+/**
+ * Generate structure-preserving redesign using Stability AI
+ * Uses control_strength to preserve room architecture while redesigning furniture
+ */
+async function generateWithStabilityAI(
+  imageBuffer: ArrayBuffer,
+  prompt: string,
+  mimeType: string
+): Promise<string> {
+  const stabilityApiKey = process.env.STABILITY_API_KEY;
+  if (!stabilityApiKey) {
+    throw new Error("STABILITY_API_KEY environment variable not set");
+  }
+
+  try {
+    const formData = new FormData();
+    
+    // Convert ArrayBuffer to Blob with correct MIME type
+    const imageBlob = new Blob([imageBuffer], { type: mimeType });
+    
+    // Determine file extension for proper handling
+    let fileExtension = 'jpg';
+    if (mimeType.includes('png')) fileExtension = 'png';
+    else if (mimeType.includes('webp')) fileExtension = 'webp';
+    
+    formData.append('image', imageBlob, `room.${fileExtension}`);
+    formData.append('prompt', prompt);
+    formData.append('control_strength', '0.85'); // High value = preserve structure more
+    formData.append('mode', 'image-to-image');
+    formData.append('output_format', 'png');
+    formData.append('seed', Math.floor(Math.random() * 4294967295).toString());
+    
+    const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${stabilityApiKey}`,
+        'Accept': 'image/*'
       },
+      body: formData
     });
 
-    const candidate = response.candidates?.[0];
-    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
-    
-    if (!imagePart?.inlineData?.data) {
-      throw new Error("No image data in response");
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Stability AI API error (${response.status}): ${errorText}`);
     }
 
-    const resultMimeType = imagePart.inlineData.mimeType || "image/png";
-    return `data:${resultMimeType};base64,${imagePart.inlineData.data}`;
+    const imageArrayBuffer = await response.arrayBuffer();
+    const base64Image = Buffer.from(imageArrayBuffer).toString('base64');
+    
+    return `data:image/png;base64,${base64Image}`;
   } catch (error) {
-    console.error("Gemini AI generation error:", error);
-    throw new Error(`Failed to generate interior design: ${error instanceof Error ? error.message : "Unknown error"}`);
+    console.error("Stability AI error:", error);
+    throw error;
   }
 }
 
