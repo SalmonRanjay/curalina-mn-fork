@@ -483,9 +483,6 @@ export function registerCuralinaRoutes(app: Express) {
             contentType: file.mimetype,
           },
         });
-
-        // Make file public
-        await storageFile.makePublic();
         
         const publicUrl = `/public-objects/${folder}/${fileName}`;
         uploadedUrls.push(publicUrl);
