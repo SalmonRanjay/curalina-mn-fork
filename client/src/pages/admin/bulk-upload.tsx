@@ -40,7 +40,7 @@ export default function BulkUpload() {
     return match ? match[1] : nameWithoutExt;
   };
 
-  // Extract product name from folder path (e.g., "Modern Sofa/.PNG/front.jpg" -> "Modern Sofa")
+  // Extract product name from folder path (e.g., "Curalina Product Images/Product Name/.PNG/front.jpg" -> "Product Name")
   const extractProductNameFromPath = (filepath: string): string => {
     const parts = filepath.split('/').filter(p => p); // Remove empty parts
     if (parts.length < 2) return '';
@@ -48,13 +48,19 @@ export default function BulkUpload() {
     // Remove the filename (last part)
     const folders = parts.slice(0, -1);
     
-    // If we have multiple folders, ignore common image folder names like ".PNG", "images", etc.
-    const ignoreFolders = ['.png', '.jpg', '.jpeg', 'images', 'photos', 'assets'];
+    // Ignore common container/image folder names
+    const ignoreFolders = [
+      '.png', '.jpg', '.jpeg', 
+      'images', 'photos', 'assets',
+      'curalina product images', 'product images', 'products',
+      'cleaned', 'original', 'raw'
+    ];
+    
     const productFolders = folders.filter(f => 
       !ignoreFolders.includes(f.toLowerCase())
     );
     
-    // Return the first valid folder (the product folder)
+    // Return the first valid folder (should be the product folder after filtering)
     return productFolders.length > 0 ? productFolders[0] : folders[0];
   };
 
