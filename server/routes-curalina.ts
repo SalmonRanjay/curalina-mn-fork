@@ -454,41 +454,47 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // File upload endpoint
-  app.post('/api/upload', upload.single('file'), async (req, res) => {
+  // File upload endpoint - supports multiple files
+  app.post('/api/upload', upload.array('files', 10), async (req: any, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
       }
 
       const folder = req.body.folder || 'uploads';
-      const fileName = `${Date.now()}-${req.file.originalname}`;
-      
-      // Use public directory so files are accessible via /public-objects route
-      const publicPaths = objectStorageService.getPublicObjectSearchPaths();
-      const publicDir = publicPaths[0]; // Use first public path
-      const objectPath = `${publicDir}/${folder}/${fileName}`;
+      const uploadedUrls: string[] = [];
 
-      // Upload to object storage
-      const { bucketName, objectName } = parseObjectPath(objectPath);
-      const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
+      // Upload each file to object storage
+      for (const file of req.files) {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.originalname}`;
+        
+        // Use public directory so files are accessible via /public-objects route
+        const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+        const publicDir = publicPaths[0]; // Use first public path
+        const objectPath = `${publicDir}/${folder}/${fileName}`;
 
-      await file.save(req.file.buffer, {
-        metadata: {
-          contentType: req.file.mimetype,
-        },
-      });
+        // Upload to object storage
+        const { bucketName, objectName } = parseObjectPath(objectPath);
+        const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+        const storageFile = bucket.file(objectName);
 
-      // Make file public
-      await file.makePublic();
+        await storageFile.save(file.buffer, {
+          metadata: {
+            contentType: file.mimetype,
+          },
+        });
+
+        // Make file public
+        await storageFile.makePublic();
+        
+        const publicUrl = `/public-objects/${folder}/${fileName}`;
+        uploadedUrls.push(publicUrl);
+      }
       
-      const publicUrl = `/public-objects/${folder}/${fileName}`;
-      
-      res.json({ url: publicUrl });
+      res.json({ urls: uploadedUrls });
     } catch (error) {
       console.error("File upload error:", error);
-      res.status(500).json({ error: "Failed to upload file" });
+      res.status(500).json({ error: "Failed to upload files" });
     }
   });
 
