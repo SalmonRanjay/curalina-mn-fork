@@ -36,6 +36,7 @@ export default function AdminProducts() {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [deleteProduct, setDeleteProduct] = useState<{ id: string; name: string } | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: { current: number; total: number } }>({});
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -191,21 +192,45 @@ export default function AdminProducts() {
     },
   });
 
-  const handleFileSelect = (productId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleFileSelect = async (productId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
+    // Validate all files are images
+    const invalidFiles = Array.from(files).filter(f => !f.type.startsWith("image/"));
+    if (invalidFiles.length > 0) {
       toast({
-        title: "Invalid file",
-        description: "Please select an image file",
+        title: "Invalid files",
+        description: `${invalidFiles.length} file(s) are not images`,
         variant: "destructive",
       });
       return;
     }
 
     setUploadingFor(productId);
-    uploadMutation.mutate({ productId, file });
+    setUploadProgress({ [productId]: { current: 0, total: files.length } });
+
+    // Upload files concurrently
+    const uploadPromises = Array.from(files).map(async (file, index) => {
+      try {
+        await uploadMutation.mutateAsync({ productId, file });
+        setUploadProgress(prev => ({
+          ...prev,
+          [productId]: { current: index + 1, total: files.length }
+        }));
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+      }
+    });
+
+    await Promise.all(uploadPromises);
+    
+    setUploadingFor(null);
+    setUploadProgress({});
+    toast({
+      title: "Upload complete",
+      description: `${files.length} image(s) uploaded successfully`,
+    });
   };
 
   const onAddSubmit = (data: ProductFormData) => {
@@ -589,6 +614,7 @@ export default function AdminProducts() {
                         <Input
                           type="file"
                           accept="image/*"
+                          multiple
                           onChange={(e) => handleFileSelect(product.id, e)}
                           className="hidden"
                           id={`upload-${product.id}`}
@@ -603,7 +629,11 @@ export default function AdminProducts() {
                             asChild
                           >
                             <span className="cursor-pointer">
-                              <Upload className="w-4 h-4" />
+                              {uploadingFor === product.id && uploadProgress[product.id] ? (
+                                <span className="text-xs">{uploadProgress[product.id].current}/{uploadProgress[product.id].total}</span>
+                              ) : (
+                                <Upload className="w-4 h-4" />
+                              )}
                             </span>
                           </Button>
                         </label>

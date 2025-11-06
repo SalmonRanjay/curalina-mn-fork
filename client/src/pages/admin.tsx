@@ -11,11 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Package, Store, Tag, ShoppingCart, Image as ImageIcon, FileText, BarChart3, Users, BookOpen, Search, DollarSign, TrendingUp, ShoppingBag } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Store, Tag, ShoppingCart, Image as ImageIcon, FileText, BarChart3, Users, BookOpen, Search, DollarSign, TrendingUp, ShoppingBag, Upload } from "lucide-react";
 import type { Category, Supplier, Product, Order, Render, QuizResponse, User } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import AdminProductsPage from "@/pages/admin/products";
+import BulkUploadPage from "@/pages/admin/bulk-upload";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("analytics");
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
   const menuItems = [
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "products", label: "Products", icon: Package },
+    { id: "bulk-upload", label: "Bulk Upload", icon: Upload },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
     { id: "suppliers", label: "Suppliers", icon: Store },
@@ -83,6 +85,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto py-8 px-6">
           {activeSection === "analytics" && <AnalyticsSection />}
           {activeSection === "products" && <ProductsSection />}
+          {activeSection === "bulk-upload" && <BulkUploadPage />}
           {activeSection === "orders" && <OrdersSection />}
           {activeSection === "users" && <UsersSection />}
           {activeSection === "suppliers" && <SuppliersSection />}
