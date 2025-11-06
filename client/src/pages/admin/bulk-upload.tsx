@@ -56,7 +56,7 @@ export default function BulkUpload() {
       // Generic container folders
       'images', 'photos', 'assets', 'files',
       'curalina product images', 'product images', 'products',
-      'cleaned', 'original', 'originals', 'raw', 'edited',
+      'cleaned', 'original', 'originals', 'originlas', 'raw', 'edited',
       // Category folders (common furniture categories)
       'sofas', 'chairs', 'tables', 'beds', 'lighting', 'decor',
       'dining', 'living room', 'bedroom', 'office',
