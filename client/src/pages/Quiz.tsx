@@ -37,17 +37,6 @@ const STYLES_DATA = {
       "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop"
     ]
   },
-  "Artful Eclectic": {
-    moodWords: "Unexpected, playful, expressive, soulful, layered, creative, vibrant, bold, eclectic",
-    textures: "Mixed fabrics of velvet, linen, silk/satin accented with patterned textiles, rugs, natural distressed materials, lacquered surfaces, and glamorous metals/mirrors",
-    furniture: "Harmonious yet mismatched pieces with a mix of eras (vintage & modern), styles and global inspired designs",
-    colorPalette: "Jewel tones add drama and depth, grounded by neutrals like charcoal, ivory, warm browns, white, & black",
-    renders: [
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600566752229-250ed79470d1?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600607687644-aac4c3eac7f4?w=400&h=300&fit=crop"
-    ]
-  },
   "Modern Farmhouse": {
     moodWords: "Rustic, casual, heritage-inspired, cozy, wholesome, vintage charm, worn-in",
     textures: "Distressed and whitewashed woods, matte stones, exposed brick, butcher blocks, knits, boucle, woven wool, cotton and linen",
@@ -87,24 +76,19 @@ const STYLES_DATA = {
 const KEY_FEATURES_BY_ROOM: Record<string, Array<{label: string, subtitle?: string}>> = {
   "Living Room": [
     { label: "Storage Solutions", subtitle: "Shelves & cabinetry" },
-    { label: "Workspace Area", subtitle: "Integrated desks" },
+    { label: "Workspace Area", subtitle: "Integrated office" },
     { label: "Comfortable Seat", subtitle: "Sectional or deep sofa" },
     { label: "Accent Lighting", subtitle: "Ambient & Task" },
-    { label: "Bright & Airy", subtitle: "Light colour palette" },
-    { label: "Deep & Moody", subtitle: "Dark hues & contrast" },
     { label: "Pet-Friendly", subtitle: "Durable fabrics" },
     { label: "Child-Friendly", subtitle: "Toy storage, rounded edges" },
-    { label: "Media Area", subtitle: "Entertainment unit" },
-    { label: "Multi-Function", subtitle: "Sofa Bed or ottoman" }
+    { label: "Media Area", subtitle: "Entertainment Cabinet" },
+    { label: "Multi-Function", subtitle: "Sofa Bed" }
   ],
   "Bedroom": [
     { label: "Storage Solutions", subtitle: "Clothing & Linens" },
-    { label: "Workspace Area", subtitle: "Built-in desk" },
+    { label: "Workspace Area", subtitle: "Integrated office" },
+    { label: "Vanity Table", subtitle: "" },
     { label: "Comfortable Seat", subtitle: "Reading Chair" },
-    { label: "Pet-Friendly", subtitle: "Durable fabrics" },
-    { label: "Bright & Airy", subtitle: "Light colour palette" },
-    { label: "Deep & Moody", subtitle: "Dark colour palette" },
-    { label: "Kid's Bedroom", subtitle: "Toy storage, rounded edges" },
     { label: "Media Area", subtitle: "TV Cabinet" },
     { label: "Twin/Single Bed", subtitle: "38\" wide x 75\" long" },
     { label: "Double Bed", subtitle: "54\" wide x 75\" long" },
@@ -114,25 +98,14 @@ const KEY_FEATURES_BY_ROOM: Record<string, Array<{label: string, subtitle?: stri
   "Dining Room": [
     { label: "Casual Setting", subtitle: "Relaxed & Everyday" },
     { label: "Formal Setting", subtitle: "Elevated & Polished" },
-    { label: "Upholstered", subtitle: "Comfortable Chairs" },
-    { label: "Storage Solutions", subtitle: "Buffet & Sideboard" },
-    { label: "Bright & Airy", subtitle: "Light colour palette" },
-    { label: "Deep & Moody", subtitle: "Dark colour palette" },
-    { label: "Seating for 4" },
-    { label: "Seating for 6" },
-    { label: "Seating for 8" },
-    { label: "Seating for 10" },
-    { label: "Seating for 12" }
+    { label: "Bar Storage", subtitle: "Wine and Liquor" },
+    { label: "Open or Closed Storage", subtitle: "Organize clutter" }
   ],
   "Home Office": [
     { label: "Concealed Storage", subtitle: "Keep clutter out" },
     { label: "Bookcase Storage", subtitle: "Open Shelves" },
-    { label: "Reading Chair", subtitle: "Comfortable Seat" },
-    { label: "Decorative Chair", subtitle: "Stylish & Statement" },
-    { label: "Bright & Airy", subtitle: "Light colour palette" },
-    { label: "Deep & Moody", subtitle: "Dark colour palette" },
     { label: "Filing Storage", subtitle: "Documents & Files" },
-    { label: "Multi-Function", subtitle: "Sofa Bed" },
+    { label: "Reading Chair", subtitle: "Comfortable Seat" },
     { label: "Large Desk", subtitle: "52\" to 62\"" },
     { label: "Small Desk", subtitle: "32\" to 48\"" }
   ],
@@ -556,7 +529,16 @@ export default function Quiz() {
   };
 
   const renderStep3 = () => {
-    const palettes = ["Light Neutrals", "Warm & Cozy", "Dark & Moody", "Colourful Accent"];
+    const palettes = [
+      "Warm Neutrals",
+      "Earth & Stone",
+      "Coastal Calm",
+      "Soft Contrast",
+      "Monochrome Luxe",
+      "Artful Contrast",
+      "Heritage Warmth",
+      "Dark & Moody"
+    ];
     
     return (
       <div className="space-y-8">
@@ -576,7 +558,7 @@ export default function Quiz() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-2 gap-4 md:gap-6 max-w-3xl mx-auto mt-12"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto mt-12"
         >
           {palettes.map((palette) => {
             const isSelected = quizData.colorPalettes.includes(palette);
@@ -584,13 +566,13 @@ export default function Quiz() {
             return (
               <motion.div key={palette} variants={itemVariants}>
                 <Card
-                  className={`p-8 text-center cursor-pointer transition-all hover-elevate ${
+                  className={`p-6 text-center cursor-pointer transition-all hover-elevate ${
                     isSelected ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
                   }`}
                   onClick={() => toggleColorPalette(palette)}
                   data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
-                  <p className="font-semibold text-lg uppercase">{palette}</p>
+                  <p className="font-semibold text-sm uppercase">{palette}</p>
                 </Card>
               </motion.div>
             );
@@ -602,18 +584,22 @@ export default function Quiz() {
 
   const renderStep4 = () => {
     const features = KEY_FEATURES_BY_ROOM[quizData.roomType] || [];
+    const isDiningRoom = quizData.roomType === "Dining Room";
+    const seatingCounts = [4, 6, 8, 10, 12];
 
     return (
       <div className="space-y-8">
         <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold uppercase">Almost There - Your Dream Space is Loading</h2>
-          <div className="space-y-2">
-            <p className="text-xl font-semibold">Key Features</p>
-            <p className="text-lg">
-              Let's create a {quizData.roomType.toLowerCase()} that works for your lifestyle — not just your layout
-            </p>
-            <p className="text-stone-600 dark:text-stone-400">Select all that apply</p>
-          </div>
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Everyone has their own sense of style | Learn More About Our Design Styles
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
+            Functional Features
+          </h2>
+          <p className="text-lg text-stone-600 dark:text-stone-400">
+            A room should look stunning and live smart. Let's design for how you live, not just how it looks.
+          </p>
+          <p className="text-sm text-stone-600 dark:text-stone-400 mt-4">Select all that apply</p>
         </div>
 
         <motion.div
@@ -643,6 +629,33 @@ export default function Quiz() {
             );
           })}
         </motion.div>
+
+        {/* Special Dining Room Seating Selector */}
+        {isDiningRoom && (
+          <div className="max-w-3xl mx-auto mt-12 space-y-4">
+            <p className="text-center font-semibold">Seating (Please select number of people to be seated)</p>
+            <div className="flex justify-center gap-4 flex-wrap">
+              {seatingCounts.map((count) => {
+                const seatingLabel = `Seating for ${count}`;
+                const isSelected = quizData.keyFeatures.includes(seatingLabel);
+
+                return (
+                  <Button
+                    key={count}
+                    variant={isSelected ? "default" : "outline"}
+                    className={`w-16 h-16 text-lg font-semibold ${
+                      isSelected ? "bg-green-400 hover:bg-green-500 text-white" : ""
+                    }`}
+                    onClick={() => toggleKeyFeature(seatingLabel)}
+                    data-testid={`seating-${count}`}
+                  >
+                    {count}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };

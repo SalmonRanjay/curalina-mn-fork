@@ -37,8 +37,11 @@ export default function Landing() {
               className="text-left"
             >
               <h1 className="text-5xl md:text-6xl font-medium mb-6 leading-tight tracking-tight" data-testid="heading-hero">
-                Discover your signature space in just 7 questions
+                Design the space where you'll feel most at home
               </h1>
+              <p className="text-2xl text-stone-700 dark:text-stone-300 mb-4">
+                Discover your signature space in just 7 questions
+              </p>
               <p className="text-lg text-stone-600 dark:text-stone-400 mb-8">
                 Crafted for real life, elevated for everyday.
               </p>
