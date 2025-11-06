@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import type { QuizResponse } from "@shared/schema";
 
 // Initialize Gemini client with AI Integrations credentials
@@ -149,4 +149,123 @@ export function extractProductSkus(quiz: QuizResponse, availableProducts: Array<
   return styleMatch
     .slice(0, 6)
     .map(p => p.sku);
+}
+
+/**
+ * AI-powered intelligent matching of folder names to product names
+ * Uses Gemini to find the best matches even when names don't exactly match
+ */
+export interface FolderMatch {
+  folderName: string;
+  productName: string | null;
+  productSku: string | null;
+  productId: string | null;
+  confidence: number; // 0-100
+  reasoning: string;
+}
+
+export async function matchFoldersToProducts(
+  folderNames: string[],
+  products: Array<{ id: string; name: string; sku: string }>
+): Promise<FolderMatch[]> {
+  if (folderNames.length === 0 || products.length === 0) {
+    return [];
+  }
+
+  try {
+    const prompt = `You are an intelligent product name matcher for a furniture e-commerce platform.
+
+Given these folder names from an image library:
+${folderNames.map((f, i) => `${i + 1}. "${f}"`).join('\n')}
+
+And these products in the database:
+${products.map((p, i) => `${i + 1}. Name: "${p.name}", SKU: "${p.sku}"`).join('\n')}
+
+Match each folder name to the most likely product. Use fuzzy matching, handle variations like:
+- Missing/extra words (e.g., "Abaso Large Accent Bench" vs "Abaso Accent Bench")
+- Different word order
+- Abbreviations
+- Typos or similar spellings
+- Hyphens vs spaces (e.g., "Side-Table" vs "Side Table")
+
+For each folder, return:
+- folderName: the original folder name
+- productName: the matched product name (or null if no good match)
+- productSku: the matched product SKU (or null if no good match)
+- confidence: confidence score 0-100 (100 = perfect match, 80+ = very likely, 60-79 = possible, <60 = uncertain)
+- reasoning: brief explanation of why this match was chosen or why no match was found
+
+Return ONLY the JSON array, no additional text.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              folderName: { type: Type.STRING },
+              productName: { type: Type.STRING, nullable: true },
+              productSku: { type: Type.STRING, nullable: true },
+              confidence: { type: Type.NUMBER },
+              reasoning: { type: Type.STRING }
+            },
+            required: ["folderName", "productName", "productSku", "confidence", "reasoning"]
+          }
+        }
+      }
+    });
+
+    // Parse and validate response
+    let matches: Array<{
+      folderName: string;
+      productName: string | null;
+      productSku: string | null;
+      confidence: number;
+      reasoning: string;
+    }> = [];
+
+    try {
+      // Get response text (it's a getter property, not a function)
+      const responseText = response.text;
+      
+      if (!responseText) {
+        console.error("Empty response from Gemini");
+        return [];
+      }
+
+      matches = JSON.parse(responseText);
+      
+      // Validate it's an array
+      if (!Array.isArray(matches)) {
+        console.error("Response is not an array:", responseText);
+        return [];
+      }
+
+      console.log(`AI matched ${matches.length} folders`);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", parseError);
+      console.error("Raw response:", response.text);
+      // Return empty array instead of crashing
+      return [];
+    }
+
+    // Add productId to each match
+    return matches.map(match => {
+      const product = match.productSku 
+        ? products.find(p => p.sku === match.productSku)
+        : null;
+      
+      return {
+        ...match,
+        productId: product?.id || null
+      };
+    });
+  } catch (error) {
+    console.error("AI matching error:", error);
+    throw new Error(`Failed to match folders: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
 }

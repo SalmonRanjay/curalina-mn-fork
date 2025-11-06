@@ -220,6 +220,32 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // AI-powered folder name matching
+  app.post('/api/admin/products/ai-match-folders', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { folderNames } = req.body;
+      
+      if (!Array.isArray(folderNames) || folderNames.length === 0) {
+        return res.status(400).json({ error: "folderNames must be a non-empty array" });
+      }
+
+      // Get all products for matching
+      const products = await curalinaStorage.getAllProducts();
+      
+      // Use AI to match folders to products
+      const { matchFoldersToProducts } = await import('./services/gemini-ai');
+      const matches = await matchFoldersToProducts(
+        folderNames,
+        products.map(p => ({ id: p.id, name: p.name, sku: p.sku }))
+      );
+
+      res.json({ matches });
+    } catch (error) {
+      console.error("Error matching folders:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to match folders" });
+    }
+  });
+
   // Bulk CSV/Excel import
   app.post('/api/admin/products/import-csv', isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
     try {

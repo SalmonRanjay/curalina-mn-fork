@@ -7,9 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, CheckCircle, XCircle, AlertCircle, Image as ImageIcon, FolderOpen } from "lucide-react";
+import { Upload, CheckCircle, XCircle, AlertCircle, Image as ImageIcon, FolderOpen, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Product } from "@shared/schema";
 
 interface FileWithMeta {
@@ -19,6 +19,8 @@ interface FileWithMeta {
   error?: string;
   productId?: string;
   preview?: string;
+  confidence?: number;
+  reasoning?: string;
 }
 
 export default function BulkUpload() {
@@ -26,6 +28,7 @@ export default function BulkUpload() {
   const [files, setFiles] = useState<FileWithMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [totalProgress, setTotalProgress] = useState(0);
+  const [isAiMatching, setIsAiMatching] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -317,6 +320,92 @@ export default function BulkUpload() {
     setTotalProgress(0);
   };
 
+  const handleAIMatch = async () => {
+    const errorFiles = files.filter(f => f.status === "error");
+    if (errorFiles.length === 0) {
+      toast({
+        title: "No files to match",
+        description: "All files are already matched or uploaded",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAiMatching(true);
+
+    try {
+      // Extract unique folder names from unmatched files
+      const folderNamesSet = new Set(
+        errorFiles.map(f => {
+          const path = f.file.webkitRelativePath || f.file.name;
+          return extractProductNameFromPath(path) || f.sku;
+        }).filter(Boolean)
+      );
+      const folderNames = Array.from(folderNamesSet);
+
+      // Call AI matching API
+      const response = await fetch("/api/admin/products/ai-match-folders", {
+        method: "POST",
+        body: JSON.stringify({ folderNames }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to match folders");
+      }
+
+      const data = await response.json() as {
+        matches: Array<{
+          folderName: string;
+          productName: string | null;
+          productSku: string | null;
+          productId: string | null;
+          confidence: number;
+          reasoning: string;
+        }>;
+      };
+
+      // Update files with AI matches
+      setFiles(prev => {
+        return prev.map(file => {
+          if (file.status !== "error") return file;
+
+          const folderName = extractProductNameFromPath(file.file.webkitRelativePath || file.file.name) || file.sku;
+          const match = data.matches.find((m: any) => m.folderName === folderName);
+
+          if (match && match.productId && match.confidence >= 60) {
+            return {
+              ...file,
+              productId: match.productId,
+              sku: match.productSku || file.sku,
+              status: "pending" as const,
+              error: undefined,
+              confidence: match.confidence,
+              reasoning: match.reasoning,
+            };
+          }
+
+          return file;
+        });
+      });
+
+      const matchedCount = data.matches.filter((m: any) => m.productId && m.confidence >= 60).length;
+
+      toast({
+        title: "AI matching complete",
+        description: `${matchedCount} products matched with confidence ≥ 60%`,
+      });
+    } catch (error) {
+      toast({
+        title: "AI matching failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAiMatching(false);
+    }
+  };
+
   const pendingCount = files.filter(f => f.status === "pending").length;
   const successCount = files.filter(f => f.status === "success").length;
   const errorCount = files.filter(f => f.status === "error").length;
@@ -503,6 +592,17 @@ export default function BulkUpload() {
             <Upload className="w-4 h-4 mr-2" />
             Upload {pendingCount} File{pendingCount !== 1 ? 's' : ''}
           </Button>
+          {errorCount > 0 && (
+            <Button
+              variant="default"
+              onClick={handleAIMatch}
+              disabled={isAiMatching || isUploading}
+              data-testid="button-ai-match"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {isAiMatching ? "AI Matching..." : `AI Match ${errorCount} Unmatched`}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={clearCompleted}
@@ -592,7 +692,21 @@ export default function BulkUpload() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {fileWithMeta.error || (fileWithMeta.status === "success" ? "Uploaded successfully" : "-")}
+                        {fileWithMeta.error ? (
+                          fileWithMeta.error
+                        ) : fileWithMeta.status === "success" ? (
+                          "Uploaded successfully"
+                        ) : fileWithMeta.confidence ? (
+                          <div className="flex items-center gap-2">
+                            <Badge variant={fileWithMeta.confidence >= 80 ? "default" : "secondary"}>
+                              <Sparkles className="w-3 h-3 mr-1" />
+                              AI Match: {fileWithMeta.confidence}%
+                            </Badge>
+                            <span className="text-xs">{fileWithMeta.reasoning}</span>
+                          </div>
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
