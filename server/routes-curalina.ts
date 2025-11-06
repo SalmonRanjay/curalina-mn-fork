@@ -287,6 +287,17 @@ export function registerCuralinaRoutes(app: Express) {
             price = Number(priceField) || 0;
           }
 
+          // Parse trade price
+          let tradePrice = null;
+          const tradePriceField = row['Trade Price '] || row['Trade Price'];
+          if (tradePriceField) {
+            if (typeof tradePriceField === 'string') {
+              tradePrice = parseFloat(tradePriceField.replace(/[$,]/g, '')) || null;
+            } else {
+              tradePrice = Number(tradePriceField) || null;
+            }
+          }
+
           // Parse dimensions from format "20.5" W X 18.5" D X 22.7" H"
           let dimensions = null;
           const dimString = row['General Dimensions (Inch)\r\nWidth x Depth x Height'] || row['General Dimensions (Inch)'];
@@ -310,14 +321,31 @@ export function registerCuralinaRoutes(app: Express) {
           const materialField = row['Product Material'];
           const materialArray = materialField ? materialField.split(',').map((m: string) => m.trim()).filter(Boolean) : [];
           
-          // Parse style tags
-          const designStyles = row['Design Style'] || '';
-          const tags = row.Tags || '';
-          const styleSet = new Set([
-            ...designStyles.split(',').map((s: string) => s.trim()).filter(Boolean),
-            ...tags.split(',').map((t: string) => t.trim()).filter(Boolean)
-          ]);
+          // Parse room types
+          const roomTypeField = row['Room Type'];
+          const roomTypeArray = roomTypeField ? roomTypeField.split(',').map((r: string) => r.trim()).filter(Boolean) : [];
+          
+          // Parse design styles (keep separate from styleTags)
+          const designStyleField = row['Design Style'];
+          const designStyleArray = designStyleField ? designStyleField.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+          
+          // Parse key features
+          const keyFeaturesField = row['Key Features'];
+          const keyFeaturesArray = keyFeaturesField ? keyFeaturesField.split(',').map((f: string) => f.trim()).filter(Boolean) : [];
+          
+          // Parse tags (separate from designStyle)
+          const tagsField = row.Tags;
+          const tagsArray = tagsField ? tagsField.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+          
+          // Combine design styles and tags for styleTags (for backward compatibility)
+          const styleSet = new Set([...designStyleArray, ...tagsArray]);
           const styleTags = Array.from(styleSet).slice(0, 10);
+
+          // Parse inventory
+          const inventoryValue = row.Inventory ? Number(row.Inventory) : null;
+          
+          // Parse lead time
+          const leadTimeValue = row['LEAD Time'] ? Number(row['LEAD Time']) : null;
 
           // Insert product
           const productName = row['Product Name'] || 'Unknown Product';
@@ -327,16 +355,27 @@ export function registerCuralinaRoutes(app: Express) {
             description: row.Overview || '',
             categoryId: category.id,
             supplierId: supplier.id,
+            tradePrice: tradePrice ? tradePrice.toFixed(2) : null,
+            price: price.toFixed(2),
+            discount: "0",
+            roomType: roomTypeArray,
+            designStyle: designStyleArray,
             styleTags,
+            keyFeatures: keyFeaturesArray,
+            storageSolutions: row['Storage Solutions'] || null,
             colors: colorArray,
             materials: materialArray,
             dimensions,
-            price: price.toFixed(2),
-            discount: "0",
-            availability: (row.Inventory && Number(row.Inventory) > 0) ? 'in_stock' : 'preorder',
+            weight: row['Weight (lbs) '] || row['Weight (lbs)'] || null,
+            assembly: row.Assembly || null,
+            inventory: inventoryValue,
+            leadTime: leadTimeValue,
+            availability: (inventoryValue && inventoryValue > 0) ? 'in_stock' : 'preorder',
             images: [],
             asset3dUrl: null,
-            shipping: { cost: 0, eta: row['LEAD Time'] ? `${row['LEAD Time']} days` : '5-7 business days' },
+            tags: tagsArray,
+            sourceFile: row['Source File'] || null,
+            shipping: { cost: 0, eta: leadTimeValue ? `${leadTimeValue} days` : '5-7 business days' },
             seoMeta: { 
               title: productName, 
               description: row.Overview ? row.Overview.substring(0, 160) : '' 
