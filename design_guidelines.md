@@ -1,137 +1,214 @@
-# Curalina AI - Interior Design Platform Design Guidelines
+# Curalina AI - Design Guidelines (Per Client PDF Oct 1)
 
-## Design Approach
-
-**Reference-Based Hybrid**: Combine Airbnb's welcoming warmth + Linear's clean efficiency + Notion's approachable UX. The quiz experience should feel like a curated design consultation—sophisticated yet friendly, spacious yet purposeful.
-
-**Core Principle**: Create an inspiring journey through the design process where each quiz step feels intentional, beautiful, and empowering. The platform should make interior design feel accessible to everyone.
-
----
+## Brand Voice & Copy
+- **Tagline**: "Crafted for real life, elevated for everyday."
+- **Hero Headline**: "Design the space where you'll feel most at home"
+- **Hero Subheadline**: "Discover your signature space in just 7 questions"
+- **CTA**: "START THE QUIZ" with subtitle "Takes 2 minutes, No wrong answers"
+- **Subheader**: "Your style journey is just beginning — more styles, rooms, and edits are on the way"
 
 ## Typography
+- **Primary Font**: Inter (all UI, body text)
+- **Headlines**: Clean, editorial style - medium weight, generous spacing
+- **Hierarchy**:
+  - Hero Headlines: text-4xl md:text-5xl lg:text-6xl, font-medium
+  - Section Headers: text-2xl md:text-3xl, font-medium
+  - Quiz Questions: text-2xl md:text-3xl, font-semibold
+  - Body: text-base md:text-lg
+  - UI Labels: text-sm, font-medium
+  - Helper Text: text-sm, opacity-70
 
-**Font Families** (Google Fonts):
-- **Primary**: Inter (all UI, body text, quiz questions)
-- **Accent**: Playfair Display (hero headlines, design inspirational quotes)
+## Color Palette
+### Primary Colors
+- **Background**: Clean white (#FFFFFF)
+- **Text Primary**: Deep charcoal (#1A1A1A)
+- **Text Secondary**: Medium gray (#6B7280)
+- **Accent**: Soft green for selections and CTAs
 
-**Hierarchy**:
-- Hero Headlines: text-6xl md:text-7xl, font-bold (Playfair Display)
-- Quiz Questions: text-3xl md:text-4xl, font-semibold
-- Section Headers: text-2xl md:text-3xl, font-medium
-- Body: text-base md:text-lg, leading-relaxed
-- UI Labels: text-sm, font-medium
-- Helper Text: text-sm, opacity-70
-
----
+### Color Schemes (Updated per PDF Note)
+1. **Warm Neutrals**
+2. **Earth & Stone**
+3. **Coastal Calm**
+4. **Soft Contrast**
+5. **Monochrome Luxe**
+6. **Artful Contrast**
+7. **Heritage Warmth**
+8. **Dark & Moody**
 
 ## Layout System
+- **Spacing**: Generous white space throughout
+- **Containers**: max-w-7xl with px-6 md:px-12 lg:px-16
+- **Quiz Container**: max-w-5xl centered
+- **Section Padding**: py-16 md:py-24
 
-**Spacing Primitives**: Tailwind units of **4, 6, 8, 12, 16, 24** for generous breathing room
+## Navigation
+**Header Links** (horizontal layout):
+- GET STARTED
+- HOW WE WORK  
+- EXPLORE STYLES
+- PRICING
+- THE CURALINA EDIT
 
-**Container Strategy**:
-- Marketing pages: max-w-7xl with px-6 md:px-12
-- Quiz container: max-w-4xl centered with abundant py-16 md:py-24
-- Content sections: max-w-6xl
+## Homepage Sections
 
----
+### 1. Hero Section
+- Full-width clean background
+- Centered content
+- Headline: "Design the space where you'll feel most at home"
+- Subheadline: "Discover your signature space in just 7 questions"
+- Tagline: "Crafted for real life, elevated for everyday."
+- CTA Button: "START THE QUIZ"
+- Helper text: "Takes 2 minutes, No wrong answers"
 
-## Component Library
+### 2. Style Showcase
+- Feature "Organic Modern" style with sample image
+- Clean, minimal presentation
 
-### A. Public Homepage
+### 3. How We Work
+- Section title: "HOW WE WORK"
+- Three steps:
+  1. **(1) TELL US ABOUT YOUR DREAM SPACE** - Choose your room type, mood, style and budget.
+  2. **(2) LET US DESIGN IT IN MINUTES** - Our personalized system will provide a design with curated furniture and decor selections to reflect you
+  3. **(3) RECEIVE YOUR FULL DESIGNER LOOK** - From concept to cart — every item is ready for you to own, styled for every corner of your space.
 
-**Hero Section**: Full-width background image (interior design showcase, 1920x1000px) with overlay gradient, centered headline "Transform Your Space with AI-Powered Design", subheadline, single prominent CTA "Start Your Design Journey" with blurred background.
+### 4. Features Grid
+- **Curalina Rewards** - LEARN MORE
+- **Handpicked by Interior Designers**
+- **Subscription Program** - LEARN MORE
 
-**How It Works**: 3-column grid showcasing quiz → AI generation → final design with icons and descriptions
+### 5. Partner Section
+- "Partner with Curalina"
+- "Join our curated network of brands shaping Canada's design future."
+- "Showcase your products where design meets demand."
+- "Partner with us to place your collection in beautifully styled spaces nationwide."
 
-**Design Gallery**: Masonry grid (3-4 columns) of completed interior designs with hover reveal of style tags
+### 6. Footer
+Four columns:
+- **OUR COMPANY**: About us, Social Responsibility, Press Inquiries, Partner with Us, Contact Us
+- **CUSTOMER CARE**: Order Status, Furniture Protection Plans, Returns & Exchanges, Delivery & Shipping
+- **RESOURCES**: Take the Quiz, Before & Afters, Pricing & Subscriptions, FAQ
+- **PROUDLY CANADIAN**: "Curated for Canadians. Designed for real life."
+- **STAY CONNECTED**: Email signup with "Sign up for promotions, decorating tips and more from our team."
 
-**Social Proof**: 2-column testimonials with before/after room photos
+## Quiz Design (7 Steps)
 
-**Footer**: 4-column layout (Product, Resources, Company, Contact) with newsletter signup
+### Global Quiz Elements
+- **Progress Indicator**: "Step X of 7" centered at top
+- **Helper Text**: "Everyone has their own sense of style | Learn More About Our Design Styles"
+- **Navigation**: 
+  - "< Previous: [Context]" (left)
+  - "Next: [Context] >" (right)
+  - "Curious about each look? Explore all styles" (center, when applicable)
 
-### B. 7-Step Design Quiz
+### Step 1: Room Type Selection
+- **Question**: "Which room do you dream of transforming first?"
+- **Subtitle**: "You can always explore other rooms later—let's just start with the one that matters most"
+- **Options** (large cards with icons):
+  - LIVING ROOM
+  - DINING ROOM
+  - HOME OFFICE
+  - BEDROOM
 
-**Quiz Container**: Centered card-style interface (max-w-4xl) with generous padding (p-8 md:p-12), soft shadow, white background against subtle textured backdrop
+### Step 2: Style Selection
+- **Question**: "Which style feels most like home?"
+- **Subtitle**: "Choose up to 2 styles. Trust your instincts — There are no wrong answers."
+- **Styles** (image cards):
+  - ORGANIC MODERN
+  - MODERN FARMHOUSE
+  - MIDCENTURY SCANDI
+  - CONTEMPORARY LUX
+  - WARM TRANSITIONAL
 
-**Progress Indicator**: Horizontal step tracker at top showing 7 dots, filled with light green (#86efac or similar) for completed steps, outlined for current/upcoming
+### Step 3: Color Palette
+- **Question**: "Which colour palette feels most like you?"
+- **Subtitle**: "Choose up to 2 styles. Trust your instincts — There are no wrong answers."
+- **Updated Color Schemes**:
+  - Warm Neutrals
+  - Earth & Stone
+  - Coastal Calm
+  - Soft Contrast
+  - Monochrome Luxe
+  - Artful Contrast
+  - Heritage Warmth
+  - Dark & Moody
 
-**Quiz Steps Structure**:
+### Step 4: Functional Features
+- **Question**: "Functional Features"
+- **Subtitle**: "A room should look stunning and live smart. Let's design for how you live, not just how it looks."
+- **Label**: "Select all that apply"
 
-1. **Room Type Selection**: Large cards in 2-3 column grid with room icons, titles. Light green border (border-2 border-green-300) on selection with smooth transition
-2. **Style Preferences**: Image-based cards (4-column grid on desktop) showing different interior styles (modern, minimalist, bohemian, etc.) with overlay labels
-3. **Key Features**: Checkbox grid of features (natural light, storage, workspace) with green checkmarks
-4. **Budget Range**: Slider component with range markers, light green fill for selected range
-5. **Vibe Board Upload**: Drag-drop zone (dashed border, upload icon) with image preview grid below
-6. **Design Preferences Text**: Large textarea with typewriter animation revealing placeholder text character-by-character ("Describe your dream space...")
-7. **Floorplan Upload**: File upload interface with preview, dimensions display, edit capabilities
+**Living Room Features**:
+- Storage Solutions (Shelves & cabinetry)
+- Workspace Area (Integrated office)
+- Comfortable Seat (Sectional or deep sofa)
+- Accent Lighting (Ambient & Task)
+- Pet-Friendly (Durable fabrics)
+- Child-Friendly (Toy storage, rounded edges)
+- Media Area (Entertainment Cabinet)
+- Multi-Function (Sofa Bed)
 
-**Navigation**: "Back" and "Continue" buttons at bottom, "Continue" uses light green background with white text, "Back" is ghost button
+**Dining Room Features**:
+- Casual Setting (Relaxed & Everyday)
+- Formal Setting (Elevated & Polished)
+- Bar Storage (Wine and Liquor)
+- Storage Solutions (Organize clutter) *Note: Update to "Open or Closed Storage"*
+- Seating: [4] [6] [8] [10] [12] people
 
-### C. Results Dashboard
+**Bedroom Features**:
+- Storage Solutions (Clothing & Linens)
+- Workspace Area (Integrated office)
+- Vanity Table *Note: ADD this option*
+- Comfortable Seat (Reading Chair)
+- Media Area (TV Cabinet)
+- Twin/Single Bed (38" wide x 75" long)
+- Double Bed (54" wide x 75" long)
+- Queen Bed (60" wide x 75" long)
+- King Bed (76" wide x 80" long)
 
-**Layout**: Top navigation with user profile, main content area showing AI-generated designs in grid
+**Home Office Features**:
+- Concealed Storage (Keep clutter out)
+- Bookcase Storage (Open Shelves)
+- Filing Storage (Documents & Files)
+- Reading Chair (Comfortable Seat)
+- Large Desk (52" to 62")
+- Small Desk (32" to 48")
 
-**Design Cards**: Generated interior renders with save/share/customize actions, style metadata
+### Step 5: Budget Range
+(To be implemented)
 
----
+### Step 6: Vibe Images
+(Upload inspiration images)
 
-## Images
+### Step 7: Floorplan Upload
+(Upload room photo or floorplan)
 
-**Homepage Hero**: Large inspiring interior design photo (modern living room with natural light, plants, 1920x1000px minimum)
+## Component Styling
 
-**Quiz Backgrounds**: Subtle texture or soft gradient, never competing with content
+### Buttons
+- **Primary CTA**: Clean, minimal style with subtle hover states
+- **Quiz Selection Cards**: Large, tappable cards with clear visual feedback on selection
+- **Navigation**: Text-based with chevron icons
 
-**Style Reference Images**: High-quality interior photos for each style option (600x400px minimum)
+### Cards
+- Clean white backgrounds
+- Subtle shadows or borders
+- Generous padding
+- Clear hover states
 
-**Gallery Images**: User-submitted vibe boards and completed designs displayed in masonry layout
-
-**Before/After**: Testimonial section includes transformation photos
-
----
-
-## Navigation & User Flow
-
-- `/` - Marketing homepage with hero, features, gallery, CTA to quiz
-- `/quiz` - 7-step questionnaire experience
-- `/results` - AI-generated design options
-- `/dashboard` - Saved designs and projects
-- `/admin` - Content management (use existing admin guidelines)
-
----
-
-## Animations
-
-**Quiz-Specific**:
-- Step transitions: Slide-fade between questions (300ms ease-in-out)
-- Selection states: Scale transform on hover (scale-105), light green border fade-in on selection
-- Typewriter effect: Character-by-character reveal in step 6 textarea placeholder (80ms per character)
-- Progress dots: Fill animation when step completes (200ms)
-- Upload zones: Pulse animation on drag-over state
-
-**General**:
-- Button hovers: Subtle lift with shadow increase
-- Card hovers: Slight elevation change
-- Page loads: Fade-in content (200ms)
-
----
+### Form Elements
+- Clean, minimal inputs
+- Checkbox grids for multi-select
+- Large, accessible touch targets
 
 ## Accessibility
+- High contrast text
+- Large touch targets (minimum 44px)
+- Clear focus states
+- Screen reader friendly navigation
+- Progress announcements
 
-- High contrast green selection states (#86efac on white meets WCAG AA)
-- All interactive quiz cards minimum 120px height for easy tapping
-- Focus states with visible green ring (ring-2 ring-green-400)
-- Form labels always visible, never placeholder-only
-- Skip navigation for multi-step quiz
-- Progress indicator announces step changes for screen readers
-
----
-
-## Icons
-
-**Primary Library**: Heroicons (outline style for consistency)
-- Room type icons: home, building-office, etc.
-- Feature icons: light-bulb, archive, desktop
-- Upload icons: cloud-arrow-up, photo
-- Navigation: chevron-left, chevron-right
-
-Maintain h-6 w-6 for quiz cards, h-8 w-8 for upload zones.
+## Brand Positioning
+- **Canadian Focus**: "Proudly Canadian", "Curated for Canadians"
+- **Accessible Design**: Magazine-quality results for everyone
+- **Real Life Focus**: "Designed for real life", practical yet elevated
+- **Designer Curated**: "Handpicked by Interior Designers"

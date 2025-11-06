@@ -28,11 +28,11 @@ export default function Navigation() {
   };
 
   const navItems = [
-    { label: "HOME", path: "/" },
+    { label: "GET STARTED", path: "/quiz" },
+    { label: "HOW WE WORK", path: "/" },
     { label: "EXPLORE STYLES", path: "/styles" },
     { label: "PRICING", path: "/pricing" },
-    { label: "ABOUT US", path: "/about" },
-    { label: "BLOG", path: "/blog" }
+    { label: "THE CURALINA EDIT", path: "/blog" }
   ];
 
   const handleNavClick = (path: string) => {
