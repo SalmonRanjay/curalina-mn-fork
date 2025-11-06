@@ -84,42 +84,66 @@ export default function CSVImportPage() {
   });
 
   const downloadTemplate = () => {
-    // Create CSV template
+    // Helper function to escape CSV fields properly
+    const escapeCsvField = (field: string): string => {
+      // If field contains comma, newline, or quote, wrap in quotes and escape internal quotes
+      if (field.includes(',') || field.includes('\n') || field.includes('"') || field.includes('\r')) {
+        return `"${field.replace(/"/g, '""')}"`;
+      }
+      return field;
+    };
+
+    // Create CSV template matching user's Excel file
     const headers = [
       'Product Name',
-      'SKU',
-      'Supplier',
-      'Furniture Category',
-      'Retail Price',
       'Overview',
+      'Supplier',
+      'SKU',
+      'Trade Price ',
+      'Retail Price',
+      'Furniture Category',
+      'Room Type',
+      'Design Style',
+      'Key Features',
+      'Storage Solutions',
+      'General Dimensions (Inch)\r\nWidth x Depth x Height',
+      'Weight (lbs) ',
       'Colour',
       'Product Material',
-      'Design Style',
-      'Tags',
-      'General Dimensions (Inch)',
+      'Assembly',
+      'LEAD Time',
       'Inventory',
-      'LEAD Time'
+      'Tags',
+      'Source File'
     ];
     
     const sampleRow = [
       'Modern Leather Sofa',
-      'SOFA-001',
+      'Premium Italian leather sofa with modern design and clean lines',
       'Four Hands',
+      'SOFA-001',
+      '999.00',
+      '1299.99',
       'Sofa',
-      '$1299.99',
-      'Premium Italian leather sofa with modern design',
+      'Living room',
+      'Modern, Contemporary',
+      'pet-friendly, casual setting',
+      'No Storage',
+      '84" W X 36" D X 32" H',
+      '150 lbs',
       'Black, Brown',
       'Leather, Wood',
-      'Modern, Contemporary',
-      'Living Room, Luxury',
-      '84" W X 36" D X 32" H',
+      'No',
+      '7',
       '10',
-      '7'
+      'living room, modern, luxury',
+      'Products.xlsx'
     ];
 
+    // Properly escape all fields for CSV format
     const csvContent = [
-      headers.join(','),
-      sampleRow.join(',')
+      headers.map(escapeCsvField).join(','),
+      sampleRow.map(escapeCsvField).join(',')
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -284,16 +308,21 @@ export default function CSVImportPage() {
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="shrink-0">Optional</Badge>
-              <span className="text-muted-foreground">Overview, Colour, Product Material, Design Style, Tags, General Dimensions, Inventory, LEAD Time</span>
+              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, General Dimensions, Weight, Colour, Product Material, Assembly, LEAD Time, Inventory, Tags, Source File</span>
             </div>
           </div>
           
           <div className="pt-4 border-t space-y-2">
             <p className="text-sm font-medium">Format Examples:</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li><strong>Price:</strong> $1299.99 or 1299.99</li>
+              <li><strong>Prices:</strong> 1299.99 (without $)</li>
               <li><strong>Colors/Materials:</strong> Black, Brown, White (comma-separated)</li>
               <li><strong>Dimensions:</strong> 84" W X 36" D X 32" H</li>
+              <li><strong>Weight:</strong> 150 lbs</li>
+              <li><strong>Room Type:</strong> Living room, Bedroom (comma-separated)</li>
+              <li><strong>Design Style:</strong> Modern, Contemporary (comma-separated)</li>
+              <li><strong>Key Features:</strong> pet-friendly, casual setting (comma-separated)</li>
+              <li><strong>Assembly:</strong> Yes or No</li>
               <li><strong>Inventory:</strong> Number (e.g., 10)</li>
               <li><strong>Lead Time:</strong> Number of days (e.g., 7)</li>
             </ul>
