@@ -527,7 +527,31 @@ export async function generateInteriorImage(
     
     console.log(`Using floorplan with MIME type: ${floorplanMimeType}`);
     
-    const enhancedPrompt = `${prompt}\n\nIMPORTANT: Use the provided room photo as a spatial reference. Match the room's layout, dimensions, and architectural features (windows, doors, walls). Place furniture naturally within this existing space while maintaining the design style specified above.`;
+    const enhancedPrompt = `${prompt}
+
+CRITICAL SPATIAL CONSTRAINTS - MUST FOLLOW:
+The provided image shows the user's ACTUAL room. You MUST preserve the existing architectural structure:
+
+PRESERVE COMPLETELY (DO NOT CHANGE):
+- All windows: Keep exact position, size, and shape
+- All doors: Maintain location and type
+- Wall positions and room dimensions
+- Ceiling features (beams, lighting, molding)
+- Built-in elements (fireplace, shelving, alcoves)
+- Floor plan and room layout
+- Architectural details and trim
+- Natural light sources and their direction
+
+REDESIGN ONLY:
+- Furniture pieces and their arrangement
+- Decorative elements and accessories
+- Wall colors and finishes
+- Rugs, curtains, and soft furnishings
+- Lighting fixtures (but not structural lighting)
+- Art and décor items
+
+IMPORTANT: This is the user's real space. They want to see their SAME room with new furniture and décor in the specified style - NOT a completely different room. The windows, walls, and architectural features must remain exactly as shown in their photo.`;
+
     
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
