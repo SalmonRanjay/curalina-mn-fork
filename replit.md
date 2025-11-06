@@ -21,12 +21,21 @@ Preferred communication style: Simple, everyday language.
 - Dining Chairs (94), Dresser (47), Console Table (41), Dining Table (37)
 - End Table (36), Bed (32), Sofa (23), Shelving Unit (7), and more
 
-**Product Import Script**: `scripts/import-products.ts`
-- Reads Excel files with product catalog data
-- Auto-creates categories and suppliers
-- Parses dimensions, colors, materials, style tags
-- Handles duplicate SKUs and inventory status
-- Run with: `npx tsx scripts/import-products.ts`
+**Product Import Methods**:
+
+1. **CSV/Excel Import UI** (Admin Dashboard → CSV Import):
+   - Browser-based bulk upload for Excel (.xlsx, .xls) and CSV files
+   - Download template with correct column format
+   - Drag-and-drop file upload with progress tracking
+   - Auto-creates categories and suppliers if they don't exist
+   - Skips duplicate SKUs and reports errors per row
+   - Real-time statistics: imported count, skipped duplicates, error messages
+   - Required columns: Product Name, SKU, Supplier, Furniture Category, Retail Price
+   - Optional columns: Overview, Colour, Product Material, Design Style, Tags, General Dimensions, Inventory, LEAD Time
+
+2. **Command-line Import Script**: `scripts/import-products.ts`
+   - Legacy method for server-side imports
+   - Run with: `npx tsx scripts/import-products.ts`
 
 ## Curalina AI Features
 
@@ -128,6 +137,13 @@ Preferred communication style: Simple, everyday language.
   - Max file size: 10MB
   - Allowed types: JPEG, PNG, WebP, GIF
   - Returns 400 for validation errors with descriptive messages
+- **CSV Product Import** (Admin):
+  - `POST /api/admin/products/import-csv` - Bulk import products from Excel/CSV file
+  - Accepts .xlsx, .xls, .csv formats
+  - Auto-creates categories and suppliers if not found
+  - Skips duplicate SKUs
+  - Returns import statistics (imported count, skipped count, errors array)
+  - Parses product data: name, SKU, supplier, category, price, dimensions, colors, materials, style tags
 - **Products**: 
   - `GET /api/products` - List all products with optional filters (category, styleTags)
   - `GET /api/products/:id` - Get single product details
