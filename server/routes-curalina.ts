@@ -703,7 +703,6 @@ export function registerCuralinaRoutes(app: Express) {
             },
           });
           
-          await file.makePublic();
           const imageUrl = `/public-objects/renders/${imageName}`;
           
           // Store selected product SKUs

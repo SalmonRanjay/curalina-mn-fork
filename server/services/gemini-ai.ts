@@ -275,7 +275,7 @@ Return a JSON array with this structure:
 ]`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       contents: [{
         role: "user",
         parts: [{ text: prompt }]
