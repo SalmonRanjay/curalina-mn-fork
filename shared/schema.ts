@@ -250,6 +250,9 @@ export const renders = pgTable("renders", {
   imageUrl: text("image_url"), // Public URL to generated render
   prompt: text("prompt").notNull(), // Full AI prompt used
   productSkus: text("product_skus").array(), // Products featured in render
+  productPlacements: jsonb("product_placements"), // Spatial metadata: [{ sku, region, boundingBox }]
+  parentRenderId: varchar("parent_render_id"), // References parent render if this is a swap
+  swappedSku: text("swapped_sku"), // SKU that was replaced (if this is a swap)
   status: varchar("status", { length: 20 }).notNull().default("generating"), // 'generating', 'completed', 'failed'
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow(),
