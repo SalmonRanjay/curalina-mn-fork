@@ -203,162 +203,168 @@ export default function Results() {
           </motion.div>
         </div>
 
-        {/* AI Render Image */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mb-12"
-        >
-          <Card className="p-4 relative">
-            <img
-              src={render.imageUrl}
-              alt="AI Generated Interior Design"
-              className="w-full h-auto rounded-lg cursor-pointer"
-              onClick={() => setShowFullImage(true)}
-              data-testid="img-render"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              className="absolute top-6 right-6 bg-white/90 dark:bg-black/90 backdrop-blur"
-              onClick={() => setShowFullImage(true)}
-              data-testid="button-expand-image"
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-          </Card>
-        </motion.div>
-
-        {/* Shop the Look Section */}
-        {products && products.length > 0 && (
+        {/* Main Content: Image + Products Sidebar */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-12">
+          {/* AI Render Image */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex-1 lg:flex-[2]"
           >
-            <h2 className="text-3xl font-bold mb-6" data-testid="heading-shop-look">
-              Shop the Look
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {products.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                >
-                  <Card className="overflow-hidden hover-elevate" data-testid={`card-product-${product.id}`}>
-                    <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
-                      {product.images && product.images.length > 0 ? (
-                        <>
-                          <img
-                            src={product.images[currentImageIndex[product.id] || 0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                            data-testid={`img-product-${product.id}`}
-                          />
-                          {product.images.length > 1 && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="secondary"
-                                className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const currentIdx = currentImageIndex[product.id] || 0;
-                                  const newIdx = currentIdx === 0 ? product.images!.length - 1 : currentIdx - 1;
-                                  setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
-                                }}
-                                data-testid={`button-prev-image-${product.id}`}
-                              >
-                                <ChevronLeft className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="secondary"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const currentIdx = currentImageIndex[product.id] || 0;
-                                  const newIdx = (currentIdx + 1) % product.images!.length;
-                                  setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
-                                }}
-                                data-testid={`button-next-image-${product.id}`}
-                              >
-                                <ChevronRight className="w-4 h-4" />
-                              </Button>
-                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                {product.images.map((_, idx) => (
-                                  <div
-                                    key={idx}
-                                    className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                      idx === (currentImageIndex[product.id] || 0)
-                                        ? 'bg-white w-4'
-                                        : 'bg-white/50'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-stone-400">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-1" data-testid={`text-product-name-${product.id}`}>
-                        {product.name}
-                      </h3>
-                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-3 line-clamp-2">
-                        {product.description}
-                      </p>
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          {product.discount ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                                ${(product.price * (1 - product.discount / 100)).toFixed(2)}
-                              </span>
-                              <span className="text-sm text-stone-500 line-through">
-                                ${product.price}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xl font-bold" data-testid={`text-price-${product.id}`}>
-                              ${product.price}
-                            </span>
-                          )}
-                        </div>
-                        <Button 
-                          size="icon" 
-                          onClick={() => addToCartMutation.mutate(product.id)}
-                          disabled={addToCartMutation.isPending}
-                          data-testid={`button-add-to-cart-${product.id}`}
-                        >
-                          <ShoppingCart className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setSwapProductId(product.id)}
-                        data-testid={`button-swap-${product.id}`}
-                      >
-                        <RefreshCw className="w-3 h-3 mr-2" />
-                        Swap Product
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+            <Card className="p-4 relative">
+              <img
+                src={render.imageUrl}
+                alt="AI Generated Interior Design"
+                className="w-full h-auto rounded-lg cursor-pointer"
+                onClick={() => setShowFullImage(true)}
+                data-testid="img-render"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute top-6 right-6 bg-white/90 dark:bg-black/90 backdrop-blur"
+                onClick={() => setShowFullImage(true)}
+                data-testid="button-expand-image"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+            </Card>
           </motion.div>
-        )}
+
+          {/* Shop the Look Sidebar */}
+          {products && products.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex-1 lg:max-w-md"
+            >
+              <Card className="p-6 h-full lg:max-h-[800px] flex flex-col">
+                <h2 className="text-2xl font-bold mb-4" data-testid="heading-shop-look">
+                  Shop the Look
+                </h2>
+                <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4">
+                  {products.map((product, index) => (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 + index * 0.1 }}
+                    >
+                      <Card className="overflow-hidden hover-elevate" data-testid={`card-product-${product.id}`}>
+                        <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
+                          {product.images && product.images.length > 0 ? (
+                            <>
+                              <img
+                                src={product.images[currentImageIndex[product.id] || 0]}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                                data-testid={`img-product-${product.id}`}
+                              />
+                              {product.images.length > 1 && (
+                                <>
+                                  <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const currentIdx = currentImageIndex[product.id] || 0;
+                                      const newIdx = currentIdx === 0 ? product.images!.length - 1 : currentIdx - 1;
+                                      setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
+                                    }}
+                                    data-testid={`button-prev-image-${product.id}`}
+                                  >
+                                    <ChevronLeft className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const currentIdx = currentImageIndex[product.id] || 0;
+                                      const newIdx = (currentIdx + 1) % product.images!.length;
+                                      setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
+                                    }}
+                                    data-testid={`button-next-image-${product.id}`}
+                                  >
+                                    <ChevronRight className="w-4 h-4" />
+                                  </Button>
+                                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                    {product.images.map((_, idx) => (
+                                      <div
+                                        key={idx}
+                                        className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                          idx === (currentImageIndex[product.id] || 0)
+                                            ? 'bg-white w-4'
+                                            : 'bg-white/50'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-stone-400">
+                              No image
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-semibold text-lg mb-1" data-testid={`text-product-name-${product.id}`}>
+                            {product.name}
+                          </h3>
+                          <p className="text-sm text-stone-600 dark:text-stone-400 mb-3 line-clamp-2">
+                            {product.description}
+                          </p>
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              {product.discount ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                                    ${(product.price * (1 - product.discount / 100)).toFixed(2)}
+                                  </span>
+                                  <span className="text-sm text-stone-500 line-through">
+                                    ${product.price}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xl font-bold" data-testid={`text-price-${product.id}`}>
+                                  ${product.price}
+                                </span>
+                              )}
+                            </div>
+                            <Button 
+                              size="icon" 
+                              onClick={() => addToCartMutation.mutate(product.id)}
+                              disabled={addToCartMutation.isPending}
+                              data-testid={`button-add-to-cart-${product.id}`}
+                            >
+                              <ShoppingCart className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setSwapProductId(product.id)}
+                            data-testid={`button-swap-${product.id}`}
+                          >
+                            <RefreshCw className="w-3 h-3 mr-2" />
+                            Swap Product
+                          </Button>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </div>
 
         {/* Actions */}
         <div className="flex flex-col items-center gap-4">
