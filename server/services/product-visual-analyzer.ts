@@ -93,9 +93,9 @@ export async function analyzeProductVisuals(
       analyses.push(description);
     }
     
-    // Delay to avoid rate limiting (2 seconds between images)
+    // Delay to avoid rate limiting (5 seconds between images to prevent URL fetch queue overflow)
     if (i < imageUrls.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
   
