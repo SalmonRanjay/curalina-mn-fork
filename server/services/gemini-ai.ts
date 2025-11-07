@@ -372,7 +372,15 @@ Return a JSON array with this structure:
     const selectedProducts = JSON.parse(response.text || "[]");
     console.log(`AI selected ${selectedProducts.length} products for ${quiz.roomType}`);
     
-    return selectedProducts;
+    // Validate and adjust for budget constraint
+    const budgetValidatedProducts = validateAndAdjustForBudget(
+      selectedProducts,
+      products,
+      budgetMax,
+      quiz
+    );
+    
+    return budgetValidatedProducts;
   } catch (error) {
     console.error("AI product selection error:", error);
     // Fallback: select first 5 products
@@ -383,6 +391,86 @@ Return a JSON array with this structure:
       reasoning: "Selected based on filters"
     }));
   }
+}
+
+/**
+ * Validate that selected products don't exceed budget and adjust if necessary
+ * @param selectedProducts - Products selected by AI
+ * @param allProducts - Full product catalog for swapping
+ * @param budgetMax - Maximum budget in dollars (null = no limit)
+ * @param quiz - Quiz data for context
+ * @returns Adjusted product selection that stays within budget
+ */
+function validateAndAdjustForBudget(
+  selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }>,
+  allProducts: Product[],
+  budgetMax: number | null,
+  quiz: QuizResponse
+): Array<{ sku: string; name: string; placement: string; reasoning: string }> {
+  // If no budget limit, return as-is
+  if (!budgetMax) {
+    console.log("💰 No budget limit set, proceeding with all selected products");
+    return selectedProducts;
+  }
+  
+  // Calculate total cost
+  const productsWithPrices = selectedProducts.map(sp => {
+    const product = allProducts.find(p => p.sku === sp.sku);
+    const price = product?.price ? parseFloat(product.price.toString()) : 0;
+    return { ...sp, price };
+  });
+  
+  const totalCost = productsWithPrices.reduce((sum, p) => sum + p.price, 0);
+  const budgetMaxFormatted = `$${budgetMax.toLocaleString()}`;
+  const totalCostFormatted = `$${totalCost.toLocaleString()}`;
+  
+  console.log(`💰 Budget Analysis: Total cost = ${totalCostFormatted} | Budget limit = ${budgetMaxFormatted}`);
+  
+  // If within budget, return as-is
+  if (totalCost <= budgetMax) {
+    const percentUsed = ((totalCost / budgetMax) * 100).toFixed(1);
+    console.log(`✅ Within budget! Using ${percentUsed}% of available budget (${totalCostFormatted} / ${budgetMaxFormatted})`);
+    return selectedProducts;
+  }
+  
+  // Budget exceeded - need to adjust
+  console.warn(`⚠️ Budget exceeded! ${totalCostFormatted} > ${budgetMaxFormatted} (${((totalCost / budgetMax) * 100).toFixed(1)}% over)`);
+  console.log("🔧 Adjusting product selection to fit budget...");
+  
+  // Strategy: Remove products from most expensive to least expensive until under budget
+  // Sort by price (descending) while keeping track of original products
+  const sorted = [...productsWithPrices].sort((a, b) => b.price - a.price);
+  const adjusted: typeof selectedProducts = [];
+  let runningTotal = 0;
+  
+  // Add products one by one until we hit budget limit
+  for (const product of sorted) {
+    if (runningTotal + product.price <= budgetMax) {
+      adjusted.push({
+        sku: product.sku,
+        name: product.name,
+        placement: product.placement,
+        reasoning: product.reasoning
+      });
+      runningTotal += product.price;
+    } else {
+      console.log(`   ❌ Skipping ${product.name} ($${product.price.toLocaleString()}) - would exceed budget`);
+    }
+  }
+  
+  const adjustedTotal = `$${runningTotal.toLocaleString()}`;
+  const percentUsed = ((runningTotal / budgetMax) * 100).toFixed(1);
+  
+  console.log(`✅ Adjusted to ${adjusted.length} products (from ${selectedProducts.length})`);
+  console.log(`💰 New total: ${adjustedTotal} (${percentUsed}% of budget)`);
+  
+  // Log removed products for transparency
+  const removedCount = selectedProducts.length - adjusted.length;
+  if (removedCount > 0) {
+    console.log(`📋 Removed ${removedCount} products to stay within budget`);
+  }
+  
+  return adjusted;
 }
 
 /**
