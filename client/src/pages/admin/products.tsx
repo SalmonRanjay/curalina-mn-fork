@@ -202,7 +202,8 @@ export default function AdminProducts() {
 
   const analyzeVisualsMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("/api/admin/products/analyze-visuals", "POST", {});
+      const response = await apiRequest("POST", "/api/admin/products/analyze-visuals", {});
+      return response.json();
     },
     onSuccess: (data: any) => {
       toast({
