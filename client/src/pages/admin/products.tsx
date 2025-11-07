@@ -45,6 +45,7 @@ export default function AdminProducts() {
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [imageFilter, setImageFilter] = useState<string>("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
+  const [analysisFilter, setAnalysisFilter] = useState<string>("all");
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -345,9 +346,16 @@ export default function AdminProducts() {
         return false;
       }
       
+      // Analysis filter
+      if (analysisFilter === "analyzed") {
+        if (!(product as any).visualDescription) return false;
+      } else if (analysisFilter === "not_analyzed") {
+        if ((product as any).visualDescription) return false;
+      }
+      
       return true;
     });
-  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter]);
+  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter, analysisFilter]);
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -355,9 +363,10 @@ export default function AdminProducts() {
     setSupplierFilter("all");
     setImageFilter("all");
     setAvailabilityFilter("all");
+    setAnalysisFilter("all");
   };
 
-  const hasActiveFilters = searchQuery || categoryFilter !== "all" || supplierFilter !== "all" || imageFilter !== "all" || availabilityFilter !== "all";
+  const hasActiveFilters = searchQuery || categoryFilter !== "all" || supplierFilter !== "all" || imageFilter !== "all" || availabilityFilter !== "all" || analysisFilter !== "all";
 
   const ProductFormFields = ({ form }: { form: any }) => (
     <>
@@ -721,6 +730,21 @@ export default function AdminProducts() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* AI Analysis Filter */}
+          <div>
+            <Label htmlFor="analysis-filter" className="text-sm mb-2 block">AI Analysis</Label>
+            <Select value={analysisFilter} onValueChange={setAnalysisFilter}>
+              <SelectTrigger id="analysis-filter" data-testid="select-analysis-filter">
+                <SelectValue placeholder="All Products" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                <SelectItem value="analyzed">✨ Analyzed</SelectItem>
+                <SelectItem value="not_analyzed">Not Analyzed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Filter Results Summary */}
@@ -733,7 +757,8 @@ export default function AdminProducts() {
                 categoryFilter !== "all" && "Category",
                 supplierFilter !== "all" && "Supplier",
                 imageFilter !== "all" && "Images",
-                availabilityFilter !== "all" && "Status"
+                availabilityFilter !== "all" && "Status",
+                analysisFilter !== "all" && "Analysis"
               ].filter(Boolean).length} filter(s) active
             </Badge>
           )}
