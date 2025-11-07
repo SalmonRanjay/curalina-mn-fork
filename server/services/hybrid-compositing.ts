@@ -74,32 +74,34 @@ export function generatePlacementGuidelines(
     let scale = 0.25; // Default scale
     let zIndex = index; // Back to front ordering
     
-    // Simple grid layout for MVP
+    // TEMPORARY: Simplified placement while background removal is being implemented
+    // Products are arranged in lower portion of image to simulate floor placement
+    // Note: This is a stopgap - proper scene analysis is needed for realistic placement
     if (totalProducts <= 3) {
-      // Horizontal arrangement for 1-3 products
+      // Horizontal arrangement for 1-3 products - larger scale, lower placement
       position = {
-        x: 0.2 + (index * 0.3),
-        y: 0.6
+        x: 0.25 + (index * 0.25),
+        y: 0.7 // Lower in frame to suggest floor placement
       };
-      scale = 0.3;
+      scale = 0.15; // Smaller to reduce background visibility
     } else if (totalProducts <= 6) {
-      // 2x3 grid for 4-6 products
+      // 2 rows for 4-6 products
       const row = Math.floor(index / 3);
       const col = index % 3;
       position = {
-        x: 0.15 + (col * 0.35),
-        y: 0.4 + (row * 0.3)
+        x: 0.2 + (col * 0.3),
+        y: 0.65 + (row * 0.2)
       };
-      scale = 0.25;
+      scale = 0.12;
     } else {
-      // 3x3 grid for 7+ products
+      // 3 rows for 7+ products - very small to minimize background artifacts
       const row = Math.floor(index / 3);
       const col = index % 3;
       position = {
-        x: 0.15 + (col * 0.35),
-        y: 0.3 + (row * 0.25)
+        x: 0.2 + (col * 0.3),
+        y: 0.6 + (row * 0.15)
       };
-      scale = 0.2;
+      scale = 0.1; // Very small to minimize white box artifacts
     }
     
     placements.push({
@@ -109,7 +111,7 @@ export function generatePlacementGuidelines(
       position,
       scale,
       zIndex,
-      addShadow: true
+      addShadow: false // Disabled until background removal is implemented
     });
   });
   
@@ -165,7 +167,19 @@ async function createShadow(productBuffer: Buffer): Promise<Buffer> {
 }
 
 /**
- * Composite transparent product images onto AI-generated base image
+ * Composite product images onto AI-generated base image
+ * 
+ * CURRENT LIMITATIONS (v1 MVP):
+ * - Product images are JPEGs with backgrounds (not transparent PNGs)
+ * - Results show products with visible backgrounds overlaid on room
+ * - Simple grid placement without scene analysis
+ * 
+ * PLANNED IMPROVEMENTS:
+ * - Background removal API integration (remove.bg/ClipDrop)
+ * - Scene-aware placement using Gemini Vision analysis
+ * - Perspective-matched scaling and positioning
+ * - Realistic shadow generation on floor plane
+ * 
  * Returns the final composited image as a buffer
  */
 export async function compositeProducts(

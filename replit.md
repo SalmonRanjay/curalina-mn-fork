@@ -7,7 +7,11 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
   - **Room & Floor Plan Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
   - **Product Visual Analysis**: Multi-angle Gemini Vision analysis of all product images to generate comprehensive visual descriptions (color, material, style, form, design details), stored in database for AI prompt enhancement
 - **Hybrid AI Rendering**: Gemini 2.5 Flash for creative text-to-image generation, Stability AI SDXL with ControlNet for structure-preserving image-to-image edits
-- **Hybrid Image Compositing**: Revolutionary two-stage rendering that composites real transparent product images onto AI-generated rooms, eliminating the limitation where AI-generated furniture doesn't match actual products. Sharp library-based pipeline with smart angle selection, grid-based placement, and subtle shadow generation ensures users see exact products they can purchase.
+- **Hybrid Image Compositing** (⚠️ CURRENT LIMITATION - v1 MVP): 
+  - **Intent**: Two-stage rendering to composite real product images onto AI-generated rooms for exact product matching
+  - **Current State**: Basic implementation shows products overlaid on rooms, but with visible backgrounds (product images are JPEGs, not transparent PNGs)
+  - **Known Issues**: Simple grid placement without scene analysis, no background removal, products appear as overlaid thumbnails
+  - **Next Steps**: Implement background removal API (remove.bg/ClipDrop), scene-aware placement using Gemini Vision depth analysis, perspective-matched scaling
 - **Context-Aware Design Generation**: 
   - AI prompts enhanced with analyzed room context (architectural features, dimensions, spatial constraints)
   - Product visual descriptions from Gemini Vision prioritized over text-based product data for more accurate AI generation
@@ -40,7 +44,10 @@ Preferred communication style: Simple, everyday language.
 - **Data Access Layer**: `ICuralinaStorage` interface implemented using Drizzle ORM, ensuring type-safe operations with shared schema types.
 - **Authentication System**: Passport.js Local Strategy for email/password, session-based authentication with PostgreSQL-backed store, bcrypt for password hashing, HttpOnly and Secure cookies. Replit OIDC for external authentication (Google, GitHub).
 - **Access Control**: Role-based access for Admin, Regular User, and Anonymous states, with distinct navigation and dashboard access.
-- **Image Processing Pipeline**: Sharp library for high-performance image compositing, supporting transparent PNG overlays with intelligent product placement, multi-angle image selection, and realistic shadow generation.
+- **Image Processing Pipeline**: 
+  - **Current**: Sharp library for basic image compositing with multi-angle image selection
+  - **Limitations**: Products have opaque backgrounds (JPEG format), shadows disabled, simple grid placement
+  - **Roadmap**: Background removal integration, scene-aware positioning, perspective-matched scaling, realistic floor-plane shadows
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM for schema management.
