@@ -87,6 +87,88 @@ function stylesMatch(quizStyle: string, productStyle: string): boolean {
 }
 
 /**
+ * Calculate visual similarity score between product and vibe preferences
+ * Returns a score from 0-1 based on how well product matches vibe colors, materials, and textures
+ */
+function calculateVisualSimilarityScore(product: Product, quiz: QuizResponse): number {
+  // If no vibe preferences, return neutral score
+  if (!quiz.vibeColorPalette || quiz.vibeColorPalette.length === 0) {
+    return 0.5; // Neutral - no preference data
+  }
+  
+  let score = 0;
+  let totalWeight = 0;
+  
+  // 1. Color Match (40% weight)
+  const colorWeight = 0.4;
+  if (quiz.vibeColorPalette && quiz.vibeColorPalette.length > 0) {
+    const productColors = [
+      ...(product.color ? [product.color] : []),
+      ...(product.visualDescription?.toLowerCase() || '').split(/[,\s]+/)
+    ].map(c => c.toLowerCase().trim()).filter(Boolean);
+    
+    const vibeColors = quiz.vibeColorPalette.map(c => c.toLowerCase().trim());
+    
+    let colorMatches = 0;
+    vibeColors.forEach(vibeColor => {
+      productColors.forEach(productColor => {
+        // Check for color name matches or partial matches
+        if (productColor.includes(vibeColor) || vibeColor.includes(productColor)) {
+          colorMatches++;
+        }
+      });
+    });
+    
+    const colorScore = Math.min(colorMatches / Math.max(vibeColors.length, 1), 1);
+    score += colorScore * colorWeight;
+    totalWeight += colorWeight;
+  }
+  
+  // 2. Material Match (35% weight)
+  const materialWeight = 0.35;
+  if (quiz.vibeMaterials && quiz.vibeMaterials.length > 0) {
+    const productMaterials = (product.visualDescription?.toLowerCase() || '').split(/[,\s]+/);
+    const vibeMaterials = quiz.vibeMaterials.map(m => m.toLowerCase().trim());
+    
+    let materialMatches = 0;
+    vibeMaterials.forEach(vibeMat => {
+      productMaterials.forEach(productMat => {
+        if (productMat.includes(vibeMat) || vibeMat.includes(productMat)) {
+          materialMatches++;
+        }
+      });
+    });
+    
+    const materialScore = Math.min(materialMatches / Math.max(vibeMaterials.length, 1), 1);
+    score += materialScore * materialWeight;
+    totalWeight += materialWeight;
+  }
+  
+  // 3. Texture Match (25% weight)
+  const textureWeight = 0.25;
+  if (quiz.vibeTextures && quiz.vibeTextures.length > 0) {
+    const productTextures = (product.visualDescription?.toLowerCase() || '').split(/[,\s]+/);
+    const vibeTextures = quiz.vibeTextures.map(t => t.toLowerCase().trim());
+    
+    let textureMatches = 0;
+    vibeTextures.forEach(vibeTex => {
+      productTextures.forEach(productTex => {
+        if (productTex.includes(vibeTex) || vibeTex.includes(productTex)) {
+          textureMatches++;
+        }
+      });
+    });
+    
+    const textureScore = Math.min(textureMatches / Math.max(vibeTextures.length, 1), 1);
+    score += textureScore * textureWeight;
+    totalWeight += textureWeight;
+  }
+  
+  // Normalize score to 0-1 range
+  return totalWeight > 0 ? score / totalWeight : 0.5;
+}
+
+/**
  * Validate that a product has at least one valid, accessible image
  * Filters out broken/invalid image URLs
  * @param product - Product to validate
@@ -228,6 +310,31 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     return true;
   });
   
+  // If we have enough products and vibe preferences, sort by visual similarity
+  if (strictlyFiltered.length >= 5 && quiz.vibeColorPalette && quiz.vibeColorPalette.length > 0) {
+    console.log(`✅ Strict filter found ${strictlyFiltered.length} products. Sorting by visual similarity to vibe images...`);
+    const withScores = strictlyFiltered.map(product => ({
+      product,
+      score: calculateVisualSimilarityScore(product, quiz)
+    }));
+    
+    withScores.sort((a, b) => b.score - a.score);
+    
+    // Log top matches
+    const topMatches = withScores.slice(0, 5);
+    console.log(`Top visual matches:`);
+    topMatches.forEach((item, idx) => {
+      console.log(`  ${idx + 1}. ${item.product.name} (score: ${item.score.toFixed(2)})`);
+    });
+    
+    return withScores.map(item => item.product);
+  }
+  
+  // If strict filtering successful but no vibe preferences, return as-is
+  if (strictlyFiltered.length >= 5) {
+    return strictlyFiltered;
+  }
+  
   // Fallback 1: if strict filtering yields too few products, relax key features requirement
   if (strictlyFiltered.length < 5) {
     console.warn(`Strict filter yielded only ${strictlyFiltered.length} products, relaxing key features requirement`);
@@ -312,14 +419,38 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
   
   // Fallback 4: if still < 5, just return any in-stock products with valid images
   console.warn(`Final fallback: returning any in-stock products with valid images`);
-  return products.filter(product => {
+  const finalFiltered = products.filter(product => {
     if (product.availability !== 'in_stock') return false;
     if (!canUseForAIRendering(product)) return false;
     
     // Budget NOT enforced
     
     return true;
-  }).slice(0, 20); // Limit to 20 for AI selection
+  });
+  
+  // If we have vibe preferences, sort by visual similarity
+  if (quiz.vibeColorPalette && quiz.vibeColorPalette.length > 0) {
+    console.log(`🎨 Sorting products by visual similarity to vibe images...`);
+    const withScores = finalFiltered.map(product => ({
+      product,
+      score: calculateVisualSimilarityScore(product, quiz)
+    }));
+    
+    withScores.sort((a, b) => b.score - a.score);
+    
+    // Log top matches
+    const topMatches = withScores.slice(0, 5);
+    if (topMatches.length > 0) {
+      console.log(`Top visual matches:`);
+      topMatches.forEach((item, idx) => {
+        console.log(`  ${idx + 1}. ${item.product.name} (score: ${item.score.toFixed(2)})`);
+      });
+    }
+    
+    return withScores.map(item => item.product).slice(0, 20);
+  }
+  
+  return finalFiltered.slice(0, 20);
 }
 
 /**
