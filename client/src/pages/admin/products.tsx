@@ -221,6 +221,27 @@ export default function AdminProducts() {
     },
   });
 
+  const generateDescriptionsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/products/generate-descriptions", {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Description generation started",
+        description: data.message || `Generating descriptions for ${data.totalProducts} products. Check server logs for progress.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to generate descriptions",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFileSelect = async (productId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -596,6 +617,16 @@ export default function AdminProducts() {
           >
             <Sparkles className="w-4 h-4 mr-2" />
             {analyzeVisualsMutation.isPending ? "Starting..." : "Analyze Product Images"}
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => generateDescriptionsMutation.mutate()}
+            disabled={generateDescriptionsMutation.isPending}
+            data-testid="button-generate-descriptions"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {generateDescriptionsMutation.isPending ? "Generating..." : "Generate Text Descriptions"}
           </Button>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
