@@ -93,9 +93,9 @@ export async function analyzeProductVisuals(
       analyses.push(description);
     }
     
-    // Small delay to avoid rate limiting
+    // Delay to avoid rate limiting (2 seconds between images)
     if (i < imageUrls.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
   
@@ -129,7 +129,7 @@ Output format: One cohesive paragraph (200-300 words) describing the complete pr
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [{ text: synthesisPrompt }]
