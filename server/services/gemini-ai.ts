@@ -301,6 +301,9 @@ export async function selectProductsWithAI(
       };
     });
 
+    const budgetMax = parseBudgetRange(quiz.budgetRange);
+    const budgetMaxFormatted = budgetMax ? `$${budgetMax.toLocaleString()}` : quiz.budgetRange;
+
     const prompt = `You are an expert interior designer selecting furniture for a ${quiz.roomType}.
 
 Room Requirements:
@@ -312,11 +315,17 @@ Room Requirements:
 Available Products (each includes featureMatchScore showing % match with required features):
 ${JSON.stringify(productList, null, 2)}
 
+CRITICAL BUDGET CONSTRAINT:
+⚠️ The TOTAL COMBINED COST of all selected products MUST NOT EXCEED ${budgetMaxFormatted}
+- Calculate the sum of all product prices as you select
+- If approaching the budget limit, choose fewer or less expensive items
+- Better to stay well under budget than to exceed it
+
 IMPORTANT SELECTION CRITERIA:
 1. PRIORITIZE products with high featureMatchScore (those matching the required key features)
 2. Select 5-8 products that work best together for this room
 3. Ensure the selection creates a cohesive, functional design
-4. Stay within the budget range
+4. **ENSURE TOTAL COST ≤ ${budgetMaxFormatted}** (check the sum of all prices!)
 
 For each selected product, specify:
 1. SKU and name
