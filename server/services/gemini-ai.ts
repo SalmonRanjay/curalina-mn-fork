@@ -980,6 +980,130 @@ Return your analysis as a JSON object with these exact keys:
 }
 
 /**
+ * Analyze vibe images to extract detailed visual preferences
+ * Returns color palette, materials, textures, lighting tone, and design density
+ */
+export async function analyzeVibeImages(imageUrls: string[]): Promise<{
+  colorPalette: string[];
+  materials: string[];
+  textures: string[];
+  lightingTone: string;
+  density: string;
+  overallVibe: string;
+}> {
+  try {
+    if (!imageUrls || imageUrls.length === 0) {
+      console.log("No vibe images to analyze");
+      return {
+        colorPalette: [],
+        materials: [],
+        textures: [],
+        lightingTone: "neutral",
+        density: "moderate",
+        overallVibe: "No vibe images provided"
+      };
+    }
+
+    console.log(`🎨 Analyzing ${imageUrls.length} vibe image(s) to extract visual preferences...`);
+
+    // Process all images in parallel
+    const imageData = await Promise.all(
+      imageUrls.map(async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch vibe image: ${response.status}`);
+        }
+        const buffer = await response.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString('base64');
+        let mimeType = response.headers.get('content-type') || 'image/jpeg';
+        if (!mimeType.startsWith('image/')) {
+          const urlLower = url.toLowerCase();
+          if (urlLower.endsWith('.png')) mimeType = 'image/png';
+          else if (urlLower.endsWith('.webp')) mimeType = 'image/webp';
+          else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+          else mimeType = 'image/jpeg';
+        }
+        return { data: base64, mimeType };
+      })
+    );
+
+    const analysisPrompt = `You are an expert interior designer analyzing inspiration images to understand a user's visual preferences. Extract the following information from ${imageUrls.length > 1 ? 'these images' : 'this image'}:
+
+1. COLOR PALETTE: List 5-8 dominant colors with specific names or hex codes (e.g., "warm terracotta #E07A5F", "soft sage green #84A98C", "creamy white #F4F1DE")
+
+2. MATERIALS: Identify visible materials in furniture and décor (e.g., "natural oak wood", "brushed brass metal", "linen fabric", "marble stone", "rattan", "velvet", "concrete")
+
+3. TEXTURES: Describe surface textures and finishes (e.g., "smooth matte", "rough textured", "glossy polished", "woven", "distressed", "soft plush")
+
+4. LIGHTING TONE: Classify the lighting atmosphere (choose ONE: "warm", "cool", "natural", "dramatic")
+
+5. DENSITY: Assess the visual fullness of the space (choose ONE: "minimal" for sparse/clean, "moderate" for balanced, "layered" for full/eclectic)
+
+6. OVERALL VIBE: Write 2-3 sentences capturing the emotional feeling and design aesthetic of ${imageUrls.length > 1 ? 'these spaces' : 'this space'}
+
+Return your analysis as a JSON object with these exact keys:
+{
+  "colorPalette": ["color 1", "color 2", ...],
+  "materials": ["material 1", "material 2", ...],
+  "textures": ["texture 1", "texture 2", ...],
+  "lightingTone": "warm/cool/natural/dramatic",
+  "density": "minimal/moderate/layered",
+  "overallVibe": "comprehensive description"
+}`;
+
+    // Build parts array with prompt and all images
+    const parts: any[] = [{ text: analysisPrompt }];
+    imageData.forEach(img => {
+      parts.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts
+      }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            colorPalette: { type: Type.ARRAY, items: { type: Type.STRING } },
+            materials: { type: Type.ARRAY, items: { type: Type.STRING } },
+            textures: { type: Type.ARRAY, items: { type: Type.STRING } },
+            lightingTone: { type: Type.STRING },
+            density: { type: Type.STRING },
+            overallVibe: { type: Type.STRING },
+          },
+          required: ["colorPalette", "materials", "textures", "lightingTone", "density", "overallVibe"]
+        }
+      }
+    });
+
+    const analysis = JSON.parse(response.text || "{}");
+    console.log("✅ Vibe image analysis completed:", {
+      colors: analysis.colorPalette?.length || 0,
+      materials: analysis.materials?.length || 0,
+      textures: analysis.textures?.length || 0,
+      tone: analysis.lightingTone,
+      density: analysis.density
+    });
+
+    return analysis;
+  } catch (error) {
+    console.error("Vibe image analysis error:", error);
+    return {
+      colorPalette: [],
+      materials: [],
+      textures: [],
+      lightingTone: "neutral",
+      density: "moderate",
+      overallVibe: "Unable to analyze vibe images"
+    };
+  }
+}
+
+/**
  * Identify which products from a list are actually visible in a generated room image
  * @param imageDataUrl - Base64 data URL of the generated image
  * @param selectedProducts - List of products that were intended for the room
