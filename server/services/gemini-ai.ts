@@ -159,17 +159,15 @@ function hasValidImages(product: Product): boolean {
 
 /**
  * Check if a product can be used for AI rendering
- * A product is usable if it has either valid images OR a visual description
+ * A product is usable ONLY if it has valid, working images
+ * Visual descriptions alone are not sufficient - images are required
  * @param product - Product to validate
  * @returns true if product can be used for AI rendering
  */
 function canUseForAIRendering(product: Product): boolean {
-  // Product is usable if it has visual description (from Gemini Vision or text generator)
-  if (product.visualDescription && product.visualDescription.trim().length > 0) {
-    return true;
-  }
-  
-  // Otherwise, check if it has valid images
+  // STRICT REQUIREMENT: Product MUST have valid images
+  // Visual descriptions alone are not sufficient for AI rendering
+  // This ensures only products with working images are used in AI-generated rooms
   return hasValidImages(product);
 }
 
@@ -180,12 +178,17 @@ function canUseForAIRendering(product: Product): boolean {
 export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): Product[] {
   const budgetMax = parseBudgetRange(quiz.budgetRange);
   
+  // Log initial filtering stats
+  const inStockCount = products.filter(p => p.availability === 'in_stock').length;
+  const withValidImages = products.filter(p => p.availability === 'in_stock' && hasValidImages(p)).length;
+  console.log(`📊 Product Pool: ${products.length} total → ${inStockCount} in stock → ${withValidImages} with valid images`);
+  
   // First pass: strict filtering
   const strictlyFiltered = products.filter(product => {
     // Filter by availability
     if (product.availability !== 'in_stock') return false;
     
-    // Filter by visual data (must have valid images OR visual description for AI rendering)
+    // Filter by valid images (REQUIRED - products without working images are excluded)
     if (!canUseForAIRendering(product)) return false;
     
     // Filter by room type

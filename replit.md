@@ -19,8 +19,9 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
   - Product visual descriptions from Gemini Vision prioritized over text-based product data for more accurate AI generation
   - Ensures base AI-generated rooms better match actual product appearance before compositing
 - **Smart Product Selection**:
+  - **Strict Image Validation**: Products MUST have valid, working images to be used in AI generation - visual descriptions alone are not sufficient
   - Budget-Aware Selection: Total combined cost of products never exceeds user's budget, with validation and adjustment
-  - Image Quality Filter: Products with broken/invalid images are automatically excluded
+  - Image Quality Filter: Comprehensive validation checks for broken/invalid images (placeholders, missing URLs, invalid formats)
   - Visibility Filtering: Gemini Vision analyzes generated images to show only products actually visible in the final render
 - **Complete E-commerce Journey**: 7-step design quiz, AI-powered product selection, shopping cart, Stripe checkout integration
 - **Training Data System**: Admin-managed design examples, product packages, placement guidelines, and design rules to continuously improve AI performance
