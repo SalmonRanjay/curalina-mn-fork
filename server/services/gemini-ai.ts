@@ -455,11 +455,21 @@ export function buildPromptFromQuiz(
     }
     
     if (floorPlanAnalysis.doorLocations.length > 0) {
-      prompt += `\nDOORS/OPENINGS - PRESERVE EXACT LOCATIONS:\n`;
+      prompt += `\nDOORS/OPENINGS - CRITICAL ARCHITECTURAL CONSTRAINT:\n`;
+      prompt += `The room has EXACTLY ${floorPlanAnalysis.doorLocations.length} door(s)/opening(s) located at:\n`;
       floorPlanAnalysis.doorLocations.forEach((location, idx) => {
         prompt += `${idx + 1}. ${location}\n`;
       });
-      prompt += `IMPORTANT: Doors and openings are fixed architectural elements. Maintain their exact positions.\n\n`;
+      prompt += `\nCRITICAL REQUIREMENTS FOR DOORS:\n`;
+      prompt += `- Preserve the EXACT location and style of these ${floorPlanAnalysis.doorLocations.length} door(s)/opening(s)\n`;
+      prompt += `- DO NOT add any additional doors or openings beyond the ${floorPlanAnalysis.doorLocations.length} listed above\n`;
+      prompt += `- DO NOT remove any existing doors or openings\n`;
+      prompt += `- DO NOT convert doors into wall decorations or non-functional elements\n`;
+      prompt += `- Doors and openings are permanent architectural features that cannot be moved or changed\n\n`;
+    } else {
+      prompt += `\nDOORS/OPENINGS - CRITICAL ARCHITECTURAL CONSTRAINT:\n`;
+      prompt += `The room has ZERO visible doors or openings in the captured view.\n`;
+      prompt += `CRITICAL REQUIREMENT: DO NOT add any doors. The space should appear as a self-contained room with no door openings visible in this view.\n\n`;
     }
     
     if (floorPlanAnalysis.builtInFeatures.length > 0) {
