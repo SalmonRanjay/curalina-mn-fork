@@ -5,6 +5,7 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
 
 - **Intelligent Image Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
 - **Hybrid AI Rendering**: Gemini 2.5 Flash for creative text-to-image generation, Stability AI SDXL with ControlNet for structure-preserving image-to-image edits
+- **Hybrid Image Compositing**: Revolutionary two-stage rendering that composites real transparent product images onto AI-generated rooms, eliminating the limitation where AI-generated furniture doesn't match actual products. Sharp library-based pipeline with smart angle selection, grid-based placement, and subtle shadow generation ensures users see exact products they can purchase.
 - **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context, ensuring generated designs respect architectural features, room dimensions, and spatial constraints
 - **Smart Product Selection**:
   - Budget-Aware Selection: Total combined cost of products never exceeds user's budget, with validation and adjustment
@@ -34,6 +35,7 @@ Preferred communication style: Simple, everyday language.
 - **Data Access Layer**: `ICuralinaStorage` interface implemented using Drizzle ORM, ensuring type-safe operations with shared schema types.
 - **Authentication System**: Passport.js Local Strategy for email/password, session-based authentication with PostgreSQL-backed store, bcrypt for password hashing, HttpOnly and Secure cookies. Replit OIDC for external authentication (Google, GitHub).
 - **Access Control**: Role-based access for Admin, Regular User, and Anonymous states, with distinct navigation and dashboard access.
+- **Image Processing Pipeline**: Sharp library for high-performance image compositing, supporting transparent PNG overlays with intelligent product placement, multi-angle image selection, and realistic shadow generation.
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM for schema management.
@@ -66,6 +68,8 @@ Preferred communication style: Simple, everyday language.
     - Stability AI SDXL (for structure-preserving image-to-image room rendering)
     - Google Gemini 2.5 Flash (for text-to-image creative generation, AI image matching in product import)
     - Google Gemini Vision (for automated room photo and floor plan analysis, extracting spatial and design information)
+- **Image Processing**:
+    - Sharp (high-performance image compositing, resizing, transparency handling, shadow generation)
 - **Payment Processing**:
     - Stripe (ready for API key integration)
 - **UI Libraries**:
