@@ -3,10 +3,15 @@
 ## Overview
 Curalina AI is a full-stack AI-powered interior design platform that integrates hybrid AI-generated room rendering with an e-commerce marketplace for furniture. Built with React, Express, and PostgreSQL, the platform features:
 
-- **Intelligent Image Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
+- **Intelligent Image Analysis**: 
+  - **Room & Floor Plan Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
+  - **Product Visual Analysis**: Multi-angle Gemini Vision analysis of all product images to generate comprehensive visual descriptions (color, material, style, form, design details), stored in database for AI prompt enhancement
 - **Hybrid AI Rendering**: Gemini 2.5 Flash for creative text-to-image generation, Stability AI SDXL with ControlNet for structure-preserving image-to-image edits
 - **Hybrid Image Compositing**: Revolutionary two-stage rendering that composites real transparent product images onto AI-generated rooms, eliminating the limitation where AI-generated furniture doesn't match actual products. Sharp library-based pipeline with smart angle selection, grid-based placement, and subtle shadow generation ensures users see exact products they can purchase.
-- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context, ensuring generated designs respect architectural features, room dimensions, and spatial constraints
+- **Context-Aware Design Generation**: 
+  - AI prompts enhanced with analyzed room context (architectural features, dimensions, spatial constraints)
+  - Product visual descriptions from Gemini Vision prioritized over text-based product data for more accurate AI generation
+  - Ensures base AI-generated rooms better match actual product appearance before compositing
 - **Smart Product Selection**:
   - Budget-Aware Selection: Total combined cost of products never exceeds user's budget, with validation and adjustment
   - Image Quality Filter: Products with broken/invalid images are automatically excluded
@@ -42,7 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **Curalina AI Schema Design**:
     - `categories`: Product categorization.
     - `suppliers`: Furniture suppliers.
-    - `products`: Full product catalog including SKU, pricing, images, 3D assets.
+    - `products`: Full product catalog including SKU, pricing, images, 3D assets, and `visualDescription` field (comprehensive Gemini Vision analysis of all product angles for AI prompt enhancement).
     - `quizResponses`: User design preferences, including floorplans and vibe images.
     - `renders`: AI-generated room designs with associated products.
     - `cartItems`: Shopping cart items per session.
@@ -67,7 +72,9 @@ Preferred communication style: Simple, everyday language.
 - **AI/ML**:
     - Stability AI SDXL (for structure-preserving image-to-image room rendering)
     - Google Gemini 2.5 Flash (for text-to-image creative generation, AI image matching in product import)
-    - Google Gemini Vision (for automated room photo and floor plan analysis, extracting spatial and design information)
+    - Google Gemini Vision (for multi-modal image analysis):
+      - Room photo and floor plan analysis (spatial information, architectural features, design elements)
+      - Batch product image analysis (comprehensive visual descriptions from all angles for AI prompt enhancement)
 - **Image Processing**:
     - Sharp (high-performance image compositing, resizing, transparency handling, shadow generation)
 - **Payment Processing**:
