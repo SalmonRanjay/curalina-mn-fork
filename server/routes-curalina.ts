@@ -678,6 +678,74 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Generate text-based descriptions for products without visual analysis (Admin only)
+  app.post('/api/admin/products/generate-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('\n📝 Starting text-based description generation...');
+      
+      // Get all products without visualDescription
+      const allProducts = await curalinaStorage.getAllProducts();
+      const productsNeedingDescription = allProducts.filter(p => !p.visualDescription);
+      
+      console.log(`Found ${productsNeedingDescription.length} products without visual descriptions`);
+      console.log(`Total products in database: ${allProducts.length}`);
+      
+      if (productsNeedingDescription.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: 'All products already have descriptions',
+          generated: 0,
+          total: allProducts.length
+        });
+      }
+      
+      // Start async generation
+      res.json({ 
+        success: true, 
+        message: `Description generation started for ${productsNeedingDescription.length} products. Check server logs for progress.`,
+        totalProducts: productsNeedingDescription.length
+      });
+      
+      // Run generation in background
+      (async () => {
+        try {
+          const { generateRichProductDescription } = await import('./services/product-text-description-generator');
+          
+          let updated = 0;
+          let failed = 0;
+          
+          for (const product of productsNeedingDescription) {
+            try {
+              const richDescription = generateRichProductDescription(product);
+              
+              await curalinaStorage.updateProduct(product.id, {
+                visualDescription: richDescription
+              });
+              
+              updated++;
+              console.log(`✅ Generated description for ${product.sku} (${updated}/${productsNeedingDescription.length})`);
+              
+            } catch (error) {
+              console.error(`Failed to generate description for ${product.sku}:`, error);
+              failed++;
+            }
+          }
+          
+          console.log(`\n📊 Text-Based Description Generation Complete:`);
+          console.log(`  ✅ Generated: ${updated}`);
+          console.log(`  ❌ Failed: ${failed}`);
+          console.log(`  📈 Coverage: ${((updated / allProducts.length) * 100).toFixed(1)}% of all products now have descriptions`);
+        } catch (error) {
+          console.error('Description generation error:', error);
+        }
+      })();
+      
+    } catch (error) {
+      console.error("Error starting text-based description generation:", error);
+      res.status(500).json({ error: "Failed to start description generation" });
+    }
+  });
+
   app.get('/api/products/alternatives/:id', async (req, res) => {
     try {
       const alternatives = await curalinaStorage.getProductAlternatives(req.params.id);
