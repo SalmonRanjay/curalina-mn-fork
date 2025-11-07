@@ -6,7 +6,9 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
 - **Intelligent Image Analysis**: 
   - **Room & Floor Plan Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
   - **Product Visual Analysis**: Multi-angle Gemini Vision analysis of all product images to generate comprehensive visual descriptions (color, material, style, form, design details), stored in database for AI prompt enhancement
-- **Hybrid AI Rendering**: Gemini 2.5 Flash for creative text-to-image generation, Stability AI SDXL with ControlNet for structure-preserving image-to-image edits
+- **AI-Powered Rendering**: 
+  - **Text-to-Image Mode** (no room photo): Gemini 2.5 Flash generates creative room designs from scratch based on quiz preferences
+  - **Image-to-Image Mode** (room photo uploaded): Gemini 2.5 Flash sees and preserves the actual uploaded space while redesigning furniture and decor - ensures architectural features, dimensions, and layout match the real room
 - **Hybrid Image Compositing** (⚠️ CURRENT LIMITATION - v1 MVP): 
   - **Intent**: Two-stage rendering to composite real product images onto AI-generated rooms for exact product matching
   - **Current State**: Basic implementation shows products overlaid on rooms, but with visible backgrounds (product images are JPEGs, not transparent PNGs)

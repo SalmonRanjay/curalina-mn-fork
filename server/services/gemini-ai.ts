@@ -1071,11 +1071,17 @@ Return your analysis as a JSON object with this format:
 }
 
 /**
- * Generate an interior design image using hybrid approach:
- * - Gemini for text-to-image (no room photo provided)
- * - Stability AI for structure-preserving image-to-image (room photo provided)
- * @param prompt - Detailed description of the desired room
- * @param floorplanUrl - Optional floorplan/room image URL for structure-preserving generation
+ * Generate an interior design image using Gemini 2.5 Flash:
+ * - Text-to-image: Creative generation when no room photo provided
+ * - Image-to-image: Structure-preserving redesign when room photo provided (AI sees actual space)
+ * 
+ * Image-to-image mode ensures the AI can see and preserve the actual uploaded room's:
+ * - Architectural features (windows, doors, walls, ceiling)
+ * - Room dimensions and layout
+ * - Spatial characteristics and proportions
+ * 
+ * @param prompt - Detailed description of the desired design style and furniture
+ * @param floorplanUrl - Optional room photo/floor plan URL for structure-preserving generation
  * @param roomAnalysis - Optional analysis of the current room from analyzeRoomImage
  * @param floorPlanAnalysis - Optional analysis of the floor plan from analyzeFloorPlan
  * @returns Base64 data URL (data:image/png;base64,...)
@@ -1087,7 +1093,7 @@ export async function generateInteriorImage(
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
 ): Promise<string> {
   try {
-    // Text-to-image generation with Gemini (creative generation)
+    // Text-to-image generation with Gemini (creative generation - no room photo)
     if (!floorplanUrl) {
       console.log("Using Gemini for text-to-image creative generation");
       const response = await ai.models.generateContent({
@@ -1109,12 +1115,12 @@ export async function generateInteriorImage(
       return `data:${mimeType};base64,${imagePart.inlineData.data}`;
     }
     
-    // Image-to-image generation with floorplan
-    console.log(`Fetching floorplan from: ${floorplanUrl}`);
-    const floorplanResponse = await fetch(floorplanUrl);
+    // Image-to-image generation with Gemini (structure-preserving)
+    console.log(`Fetching room image from: ${floorplanUrl}`);
+    const roomImageResponse = await fetch(floorplanUrl);
     
-    if (!floorplanResponse.ok) {
-      console.warn(`Failed to fetch floorplan (${floorplanResponse.status}), falling back to text-to-image`);
+    if (!roomImageResponse.ok) {
+      console.warn(`Failed to fetch room image (${roomImageResponse.status}), falling back to text-to-image`);
       // Fallback to text-to-image generation
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
@@ -1135,11 +1141,12 @@ export async function generateInteriorImage(
       return `data:${mimeType};base64,${imagePart.inlineData.data}`;
     }
     
-    // Structure-preserving image-to-image with Stability AI
-    const roomPhotoBuffer = await floorplanResponse.arrayBuffer();
+    // Fetch and encode the room image for Gemini
+    const roomPhotoBuffer = await roomImageResponse.arrayBuffer();
+    const roomPhotoBase64 = Buffer.from(roomPhotoBuffer).toString('base64');
     
     // Detect MIME type from response headers or URL extension
-    let photoMimeType = floorplanResponse.headers.get('content-type') || 'image/jpeg';
+    let photoMimeType = roomImageResponse.headers.get('content-type') || 'image/jpeg';
     if (!photoMimeType.startsWith('image/')) {
       // Try to detect from URL extension
       const urlLower = floorplanUrl.toLowerCase();
@@ -1149,37 +1156,56 @@ export async function generateInteriorImage(
       else photoMimeType = 'image/jpeg'; // default fallback
     }
     
-    console.log(`Using Stability AI for structure-preserving editing with MIME type: ${photoMimeType}`);
+    console.log(`Using Gemini for structure-preserving image-to-image editing with MIME type: ${photoMimeType}`);
     
-    // Create simplified prompt for Stability AI (focus on style/furniture only)
-    const stabilityPrompt = `Redesign this room's interior with new furniture and décor in the following style: ${prompt}. 
-    
-CRITICAL: Preserve ALL architectural features exactly as shown - windows, doors, walls, ceiling, built-ins must remain unchanged. Only redesign furniture, wall colors, rugs, curtains, and decorative elements.`;
-    
-    // Call Stability AI with fallback to Gemini if it fails
-    try {
-      return await generateWithStabilityAI(roomPhotoBuffer, stabilityPrompt, photoMimeType);
-    } catch (stabilityError) {
-      console.error("Stability AI failed, falling back to Gemini:", stabilityError);
-      // Fallback to Gemini text-to-image
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-          responseModalities: [Modality.TEXT, Modality.IMAGE],
-        },
-      });
+    // Enhanced prompt for structure preservation
+    const imageToImagePrompt = `You are redesigning this room. CRITICAL INSTRUCTIONS:
 
-      const candidate = response.candidates?.[0];
-      const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
-      
-      if (!imagePart?.inlineData?.data) {
-        throw new Error("No image data in fallback response");
-      }
+PRESERVE EXACTLY (DO NOT CHANGE):
+- All architectural features: windows, doors, walls, ceiling, built-ins
+- The exact room layout, dimensions, and shape shown in the image
+- Window locations, sizes, and styles (keep as functional windows with glass)
+- Door locations and openings (keep in exact positions)
+- Wall positions and structural elements
+- Ceiling design and height
+- Floor area and proportions
 
-      const mimeType = imagePart.inlineData.mimeType || "image/png";
-      return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+REDESIGN ONLY:
+- Furniture arrangement and pieces
+- Wall colors and paint
+- Décor items, artwork, and accessories
+- Rugs, curtains, and soft furnishings
+- Lighting fixtures (not structural lighting)
+
+${prompt}
+
+Generate a photorealistic redesign that preserves the room's architecture while implementing the design vision described above. The output should look like a professional interior design photo of the SAME physical space with new furniture and styling.`;
+    
+    // Use Gemini's image-to-image capability with the uploaded room photo
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: imageToImagePrompt },
+          { inlineData: { data: roomPhotoBase64, mimeType: photoMimeType } }
+        ]
+      }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+
+    const candidate = response.candidates?.[0];
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+    
+    if (!imagePart?.inlineData?.data) {
+      throw new Error("No image data in response");
     }
+
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    console.log("✅ Successfully generated structure-preserving redesign with Gemini");
+    return `data:${mimeType};base64,${imagePart.inlineData.data}`;
   } catch (error) {
     console.error("AI generation error:", error);
     throw new Error(`Failed to generate interior design: ${error instanceof Error ? error.message : "Unknown error"}`);
