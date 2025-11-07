@@ -87,6 +87,75 @@ function stylesMatch(quizStyle: string, productStyle: string): boolean {
 }
 
 /**
+ * Validate that a product has at least one valid, accessible image
+ * Filters out broken/invalid image URLs
+ * @param product - Product to validate
+ * @returns true if product has at least one valid image
+ */
+function hasValidImages(product: Product): boolean {
+  // Must have images array
+  if (!product.images || product.images.length === 0) {
+    return false;
+  }
+  
+  // Check if at least one image is valid
+  const validImages = product.images.filter(imageUrl => {
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return false;
+    }
+    
+    // Trim whitespace
+    const trimmed = imageUrl.trim();
+    
+    // Check for empty strings
+    if (trimmed.length === 0) {
+      return false;
+    }
+    
+    // Check for placeholder/broken image indicators
+    const brokenIndicators = [
+      'placeholder',
+      'no-image',
+      'missing',
+      'broken',
+      'undefined',
+      'null',
+      '[object',
+    ];
+    
+    const lowerUrl = trimmed.toLowerCase();
+    if (brokenIndicators.some(indicator => lowerUrl.includes(indicator))) {
+      return false;
+    }
+    
+    // Basic URL format validation - must start with http:// or https:// or be a valid path
+    const isValidUrl = 
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('/') ||
+      trimmed.startsWith('./');
+    
+    if (!isValidUrl) {
+      return false;
+    }
+    
+    // Check for common image extensions (optional but helpful)
+    const hasImageExtension = /\.(jpg|jpeg|png|gif|webp|svg|avif)(\?|$)/i.test(trimmed);
+    
+    // Allow URLs without extensions (some CDNs don't use them)
+    // But if it has an extension, it should be an image extension
+    if (trimmed.includes('.') && !hasImageExtension) {
+      // Has a file extension but not an image extension
+      return false;
+    }
+    
+    return true;
+  });
+  
+  return validImages.length > 0;
+}
+
+/**
  * Filter products based on quiz preferences
  * Matches room type, style, features, and budget
  */
@@ -98,8 +167,8 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     // Filter by availability
     if (product.availability !== 'in_stock') return false;
     
-    // Filter by images (must have at least one image)
-    if (!product.images || product.images.length === 0) return false;
+    // Filter by images (must have at least one valid, non-broken image)
+    if (!hasValidImages(product)) return false;
     
     // Filter by room type
     if (product.roomType && product.roomType.length > 0) {
@@ -149,7 +218,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     const relaxedFeatures = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
-      if (!product.images || product.images.length === 0) return false;
+      if (!hasValidImages(product)) return false;
       
       // Room type still required
       if (product.roomType && product.roomType.length > 0) {
@@ -186,7 +255,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     const relaxedStyle = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
-      if (!product.images || product.images.length === 0) return false;
+      if (!hasValidImages(product)) return false;
       
       // Room type still required
       if (product.roomType && product.roomType.length > 0) {
@@ -215,7 +284,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     const styleOnly = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
-      if (!product.images || product.images.length === 0) return false;
+      if (!hasValidImages(product)) return false;
       
       // Style required
       if (product.designStyle && product.designStyle.length > 0) {
@@ -237,11 +306,11 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     if (styleOnly.length >= 5) return styleOnly;
   }
   
-  // Fallback 4: if still < 5, just return any in-stock products with images within budget
+  // Fallback 4: if still < 5, just return any in-stock products with valid images within budget
   console.warn(`Final fallback: returning any in-stock products within budget`);
   return products.filter(product => {
     if (product.availability !== 'in_stock') return false;
-    if (!product.images || product.images.length === 0) return false;
+    if (!hasValidImages(product)) return false;
     
     if (budgetMax && product.price) {
       const productPrice = parseFloat(product.price.toString());
