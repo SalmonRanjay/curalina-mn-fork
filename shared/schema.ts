@@ -233,6 +233,13 @@ export const quizResponses = pgTable("quiz_responses", {
   vibeImages: text("vibe_images").array(), // User-uploaded reference images
   preferences: text("preferences").array(), // Design preference bullets
   floorplanUrl: text("floorplan_url"), // Uploaded floorplan image
+  // Rich visual preferences from vibe image analysis
+  vibeColorPalette: text("vibe_color_palette").array(), // AI-extracted color palette from vibe images
+  vibeMaterials: text("vibe_materials").array(), // AI-extracted materials from vibe images
+  vibeTextures: text("vibe_textures").array(), // AI-extracted textures from vibe images
+  vibeLightingTone: text("vibe_lighting_tone"), // 'warm', 'cool', 'natural', 'dramatic'
+  vibeDensity: text("vibe_density"), // 'minimal', 'moderate', 'layered'
+  vibeOverallDescription: text("vibe_overall_description"), // Overall vibe/aesthetic description
   createdAt: timestamp("created_at").defaultNow(),
 });
 
