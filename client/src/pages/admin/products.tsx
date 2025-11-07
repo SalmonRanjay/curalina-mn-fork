@@ -789,7 +789,16 @@ export default function AdminProducts() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-sm">{product.sku}</TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {product.name}
+                        {(product as any).visualDescription && (
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-analyzed-${product.id}`}>
+                            ✨ AI Analyzed
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{getCategoryName(product.categoryId)}</TableCell>
                     <TableCell>{getSupplierName(product.supplierId)}</TableCell>
                     <TableCell className="font-semibold text-green-600">${product.price}</TableCell>
@@ -1060,6 +1069,25 @@ export default function AdminProducts() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No images uploaded</p>
+                )}
+              </div>
+
+              {/* AI Visual Description */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3">AI Visual Description</h3>
+                {(viewingProduct as any).visualDescription ? (
+                  <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{(viewingProduct as any).visualDescription}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ✨ Generated from multi-angle Gemini Vision analysis • Used to enhance AI room rendering
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">
+                      No visual description generated yet. Click "Analyze Product Images" to generate comprehensive AI descriptions from product photos.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
