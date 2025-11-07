@@ -162,14 +162,19 @@ export async function analyzeProductVisuals(
     const imageUrl = imageUrls[i];
     const imageName = `Image ${i + 1}/${imageUrls.length}`;
     
-    const description = await analyzeProductImage(imageUrl, imageName);
-    if (description) {
-      analyses.push(description);
+    try {
+      const description = await analyzeProductImage(imageUrl, imageName);
+      if (description) {
+        analyses.push(description);
+      }
+    } catch (error) {
+      console.error(`  ❌ Failed to analyze ${imageName}, continuing...`);
+      // Continue with other images even if one fails
     }
     
-    // Delay to avoid rate limiting (5 seconds between images to prevent URL fetch queue overflow)
+    // Delay to avoid rate limiting (8 seconds between images to prevent URL fetch queue overflow)
     if (i < imageUrls.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise(resolve => setTimeout(resolve, 8000));
     }
   }
   
@@ -261,7 +266,7 @@ export async function batchAnalyzeProducts(
       
       console.log(`✅ Success: ${product.sku}`);
     } catch (error) {
-      console.error(`❌ Failed: ${product.sku}`, error);
+      console.error(`❌ Failed: ${product.sku}`, error instanceof Error ? error.message : 'Unknown error');
       results.push({
         sku: product.sku,
         visualDescription: '',
@@ -269,9 +274,10 @@ export async function batchAnalyzeProducts(
       });
     }
     
-    // Delay between products to avoid rate limiting
+    // Longer delay between products to avoid overwhelming Gemini API (10 seconds)
     if (i < products.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(`⏸️ Waiting 10 seconds before next product to avoid rate limits...`);
+      await new Promise(resolve => setTimeout(resolve, 10000));
     }
   }
   

@@ -632,11 +632,19 @@ export function registerCuralinaRoutes(app: Express) {
         try {
           const { batchAnalyzeProducts } = await import('./services/product-visual-analyzer');
           
-          const productsToAnalyze = productsWithImages.map(p => ({
-            sku: p.sku,
-            name: p.name,
-            images: p.images || []
-          }));
+          // Limit to 20 products at a time to avoid overwhelming the API
+          const MAX_BATCH_SIZE = 20;
+          const productsToAnalyze = productsWithImages
+            .slice(0, MAX_BATCH_SIZE)
+            .map(p => ({
+              sku: p.sku,
+              name: p.name,
+              images: p.images || []
+            }));
+          
+          if (productsWithImages.length > MAX_BATCH_SIZE) {
+            console.log(`⚠️ Limiting batch to ${MAX_BATCH_SIZE} products (${productsWithImages.length} total). Run again to process more.`);
+          }
           
           const results = await batchAnalyzeProducts(productsToAnalyze);
           
