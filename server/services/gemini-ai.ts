@@ -158,6 +158,22 @@ function hasValidImages(product: Product): boolean {
 }
 
 /**
+ * Check if a product can be used for AI rendering
+ * A product is usable if it has either valid images OR a visual description
+ * @param product - Product to validate
+ * @returns true if product can be used for AI rendering
+ */
+function canUseForAIRendering(product: Product): boolean {
+  // Product is usable if it has visual description (from Gemini Vision or text generator)
+  if (product.visualDescription && product.visualDescription.trim().length > 0) {
+    return true;
+  }
+  
+  // Otherwise, check if it has valid images
+  return hasValidImages(product);
+}
+
+/**
  * Filter products based on quiz preferences
  * Matches room type, style, features, and budget
  */
@@ -169,8 +185,8 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     // Filter by availability
     if (product.availability !== 'in_stock') return false;
     
-    // Filter by images (must have at least one valid, non-broken image)
-    if (!hasValidImages(product)) return false;
+    // Filter by visual data (must have valid images OR visual description for AI rendering)
+    if (!canUseForAIRendering(product)) return false;
     
     // Filter by room type
     if (product.roomType && product.roomType.length > 0) {
@@ -220,7 +236,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     const relaxedFeatures = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
-      if (!hasValidImages(product)) return false;
+      if (!canUseForAIRendering(product)) return false;
       
       // Room type still required
       if (product.roomType && product.roomType.length > 0) {
@@ -257,7 +273,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     const relaxedStyle = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
-      if (!hasValidImages(product)) return false;
+      if (!canUseForAIRendering(product)) return false;
       
       // Room type still required
       if (product.roomType && product.roomType.length > 0) {
@@ -286,7 +302,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     const styleOnly = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
-      if (!hasValidImages(product)) return false;
+      if (!canUseForAIRendering(product)) return false;
       
       // Style required
       if (product.designStyle && product.designStyle.length > 0) {
@@ -308,11 +324,11 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     if (styleOnly.length >= 5) return styleOnly;
   }
   
-  // Fallback 4: if still < 5, just return any in-stock products with valid images within budget
+  // Fallback 4: if still < 5, just return any in-stock products with visual data within budget
   console.warn(`Final fallback: returning any in-stock products within budget`);
   return products.filter(product => {
     if (product.availability !== 'in_stock') return false;
-    if (!hasValidImages(product)) return false;
+    if (!canUseForAIRendering(product)) return false;
     
     if (budgetMax && product.price) {
       const productPrice = parseFloat(product.price.toString());
@@ -554,7 +570,7 @@ function validateAndAdjustForBudget(
  */
 export function buildPromptFromQuiz(
   quiz: QuizResponse, 
-  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string }>,
+  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
 ): string {
@@ -679,41 +695,30 @@ export function buildPromptFromQuiz(
   }
   
   // Add specific curated products with detailed visual descriptions
-  // Products are enriched with Gemini Vision analysis (300-400 word descriptions per product)
+  // Visual descriptions come from Gemini Vision analysis or text-based generator
   // These detailed descriptions ensure AI generates furniture that closely matches real products
   if (selectedProducts && selectedProducts.length > 0) {
     prompt += `\n\nCURATED FURNITURE & DÉCOR:
 The following specific pieces must be featured prominently in the design. Each product has detailed visual specifications to ensure accurate representation:\n\n`;
     
     selectedProducts.forEach((product, index) => {
-      // Check if this is an enriched product with visual description embedded in name
-      const hasDetailedDescription = product.name.includes(' - ') && product.name.length > 100;
+      prompt += `${index + 1}. ${product.name}\n`;
       
-      if (hasDetailedDescription) {
-        // Split enriched name to separate product name from description
-        const nameParts = product.name.split(' - ');
-        const productName = nameParts[0];
-        const visualDescription = nameParts.slice(1).join(' - ');
-        
-        prompt += `${index + 1}. ${productName}
+      // Use visualDescription if available (from Gemini Vision or text generator)
+      if (product.visualDescription && product.visualDescription.trim().length > 0) {
+        prompt += `   
+   VISUAL SPECIFICATIONS:
+   ${product.visualDescription}
    
-   VISUAL SPECIFICATIONS (from product analysis):
-   ${visualDescription}
-   
-   PLACEMENT REQUIREMENTS:
+`;
+      }
+      
+      prompt += `   PLACEMENT REQUIREMENTS:
    - Location: ${product.placement}
    - Integration: ${product.reasoning}
    - Ensure this product is clearly visible and prominent in the final render
    
 `;
-      } else {
-        // Fallback for products without detailed descriptions
-        prompt += `${index + 1}. ${product.name}
-   - Placement: ${product.placement}
-   - Integration: ${product.reasoning}
-   
-`;
-      }
     });
     
     prompt += `CRITICAL: Each product listed above must be rendered with photorealistic accuracy matching the visual specifications. The AI should generate furniture that closely resembles these exact products, using the detailed color, material, dimension, and style information provided.\n`;

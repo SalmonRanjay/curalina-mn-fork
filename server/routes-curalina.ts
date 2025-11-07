@@ -1074,34 +1074,30 @@ export function registerCuralinaRoutes(app: Express) {
             const fullProduct = allProducts.find(p => p.sku === sp.sku);
             if (!fullProduct) return sp;
             
-            // Build detailed description for AI
-            let detailedName = fullProduct.name;
-            const details: string[] = [];
-            
             // PRIORITY: Use Gemini Vision visual description if available (most detailed)
-            if (fullProduct.visualDescription) {
-              details.push(fullProduct.visualDescription);
-            } else {
-              // Fallback to text-based product data
+            let visualDescription = fullProduct.visualDescription;
+            
+            // Fallback: Build description from text-based product data if no visualDescription
+            if (!visualDescription) {
+              const details: string[] = [];
               if (fullProduct.description) {
                 details.push(fullProduct.description);
               }
               if (fullProduct.colors && fullProduct.colors.length > 0) {
-                details.push(`Colors: ${fullProduct.colors.join(", ")}`);
+                details.push(`Available in ${fullProduct.colors.join(", ")}`);
               }
               if (fullProduct.materials && fullProduct.materials.length > 0) {
-                details.push(`Materials: ${fullProduct.materials.join(", ")}`);
+                details.push(`Constructed from ${fullProduct.materials.join(", ")}`);
               }
-            }
-            
-            // If we have details, append them to the name for the AI
-            if (details.length > 0) {
-              detailedName = `${fullProduct.name} - ${details.join(". ")}`;
+              if (details.length > 0) {
+                visualDescription = details.join(". ");
+              }
             }
             
             return {
               ...sp,
-              name: detailedName, // Enhanced name with visual specifications
+              name: fullProduct.name, // Keep clean product name
+              visualDescription: visualDescription || undefined, // Add as separate field
             };
           });
           
