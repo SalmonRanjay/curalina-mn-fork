@@ -80,7 +80,7 @@ export default function AdminTrainingPage() {
 
   const createDesignExampleMutation = useMutation({
     mutationFn: async (data: Partial<DesignExample>) =>
-      await apiRequest("/api/admin/design-examples", "POST", data),
+      await apiRequest("POST", "/api/admin/design-examples", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/design-examples'] });
       toast({ title: "Design example created successfully" });
@@ -89,7 +89,7 @@ export default function AdminTrainingPage() {
 
   const deleteDesignExampleMutation = useMutation({
     mutationFn: async (id: string) =>
-      await apiRequest(`/api/admin/design-examples/${id}`, "DELETE"),
+      await apiRequest("DELETE", `/api/admin/design-examples/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/design-examples'] });
       toast({ title: "Design example deleted" });
@@ -103,7 +103,7 @@ export default function AdminTrainingPage() {
 
   const createProductPackageMutation = useMutation({
     mutationFn: async (data: Partial<ProductPackage>) =>
-      await apiRequest("/api/admin/product-packages", "POST", data),
+      await apiRequest("POST", "/api/admin/product-packages", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/product-packages'] });
       toast({ title: "Product package created successfully" });
@@ -112,7 +112,7 @@ export default function AdminTrainingPage() {
 
   const deleteProductPackageMutation = useMutation({
     mutationFn: async (id: string) =>
-      await apiRequest(`/api/admin/product-packages/${id}`, "DELETE"),
+      await apiRequest("DELETE", `/api/admin/product-packages/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/product-packages'] });
       toast({ title: "Product package deleted" });
@@ -126,7 +126,7 @@ export default function AdminTrainingPage() {
 
   const createPlacementGuidelineMutation = useMutation({
     mutationFn: async (data: Partial<PlacementGuideline>) =>
-      await apiRequest("/api/admin/placement-guidelines", "POST", data),
+      await apiRequest("POST", "/api/admin/placement-guidelines", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/placement-guidelines'] });
       toast({ title: "Placement guideline created successfully" });
@@ -135,7 +135,7 @@ export default function AdminTrainingPage() {
 
   const deletePlacementGuidelineMutation = useMutation({
     mutationFn: async (id: string) =>
-      await apiRequest(`/api/admin/placement-guidelines/${id}`, "DELETE"),
+      await apiRequest("DELETE", `/api/admin/placement-guidelines/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/placement-guidelines'] });
       toast({ title: "Placement guideline deleted" });
@@ -149,7 +149,7 @@ export default function AdminTrainingPage() {
 
   const createDesignRuleMutation = useMutation({
     mutationFn: async (data: Partial<DesignRule>) =>
-      await apiRequest("/api/admin/design-rules", "POST", data),
+      await apiRequest("POST", "/api/admin/design-rules", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/design-rules'] });
       toast({ title: "Design rule created successfully" });
@@ -158,7 +158,7 @@ export default function AdminTrainingPage() {
 
   const deleteDesignRuleMutation = useMutation({
     mutationFn: async (id: string) =>
-      await apiRequest(`/api/admin/design-rules/${id}`, "DELETE"),
+      await apiRequest("DELETE", `/api/admin/design-rules/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/design-rules'] });
       toast({ title: "Design rule deleted" });
@@ -201,23 +201,33 @@ export default function AdminTrainingPage() {
             <CardContent>
               <div className="grid gap-4">
                 {designExamples.map((example) => (
-                  <Card key={example.id}>
+                  <Card key={example.id} data-testid={`card-example-${example.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
-                            <Badge variant={example.type === 'good' ? 'default' : 'destructive'}>
+                            <Badge 
+                              variant={example.type === 'good' ? 'default' : 'destructive'}
+                              data-testid={`badge-example-type-${example.id}`}
+                            >
                               {example.type === 'good' ? 'Good Example' : 'Bad Example'}
                             </Badge>
-                            <Badge variant="outline">{example.roomType}</Badge>
+                            <Badge variant="outline" data-testid={`badge-example-room-${example.id}`}>
+                              {example.roomType}
+                            </Badge>
                           </div>
-                          <h4 className="font-semibold">{example.title}</h4>
-                          <p className="text-sm text-muted-foreground">{example.reasoning}</p>
+                          <h4 className="font-semibold" data-testid={`text-example-title-${example.id}`}>
+                            {example.title}
+                          </h4>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-example-reasoning-${example.id}`}>
+                            {example.reasoning}
+                          </p>
                           {example.imageUrl && (
                             <img
                               src={example.imageUrl}
                               alt={example.title}
                               className="w-48 h-32 object-cover rounded"
+                              data-testid={`img-example-${example.id}`}
                             />
                           )}
                         </div>
@@ -225,7 +235,7 @@ export default function AdminTrainingPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteDesignExampleMutation.mutate(example.id)}
-                          data-testid={`delete-example-${example.id}`}
+                          data-testid={`button-delete-example-${example.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -234,7 +244,7 @@ export default function AdminTrainingPage() {
                   </Card>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground mt-4">
+              <p className="text-sm text-muted-foreground mt-4" data-testid="text-examples-count">
                 Total Examples: {designExamples.length}
               </p>
             </CardContent>
@@ -252,26 +262,40 @@ export default function AdminTrainingPage() {
             <CardContent>
               <div className="grid gap-4">
                 {productPackages.map((pkg) => (
-                  <Card key={pkg.id}>
+                  <Card key={pkg.id} data-testid={`card-package-${pkg.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-semibold">{pkg.name}</h4>
-                            <Badge variant="outline">{pkg.roomType}</Badge>
-                            {pkg.active && <Badge variant="default">Active</Badge>}
+                            <h4 className="font-semibold" data-testid={`text-package-name-${pkg.id}`}>
+                              {pkg.name}
+                            </h4>
+                            <Badge variant="outline" data-testid={`badge-package-room-${pkg.id}`}>
+                              {pkg.roomType}
+                            </Badge>
+                            {pkg.active && (
+                              <Badge variant="default" data-testid={`badge-package-active-${pkg.id}`}>
+                                Active
+                              </Badge>
+                            )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{pkg.description}</p>
-                          <p className="text-sm">Products: {pkg.productSkus?.length || 0}</p>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-package-description-${pkg.id}`}>
+                            {pkg.description}
+                          </p>
+                          <p className="text-sm" data-testid={`text-package-products-${pkg.id}`}>
+                            Products: {pkg.productSkus?.length || 0}
+                          </p>
                           {pkg.priceRange && (
-                            <p className="text-sm font-medium">{pkg.priceRange}</p>
+                            <p className="text-sm font-medium" data-testid={`text-package-price-${pkg.id}`}>
+                              {pkg.priceRange}
+                            </p>
                           )}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteProductPackageMutation.mutate(pkg.id)}
-                          data-testid={`delete-package-${pkg.id}`}
+                          data-testid={`button-delete-package-${pkg.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -280,7 +304,7 @@ export default function AdminTrainingPage() {
                   </Card>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground mt-4">
+              <p className="text-sm text-muted-foreground mt-4" data-testid="text-packages-count">
                 Total Packages: {productPackages.length}
               </p>
             </CardContent>
@@ -298,25 +322,35 @@ export default function AdminTrainingPage() {
             <CardContent>
               <div className="grid gap-4">
                 {placementGuidelines.map((guideline) => (
-                  <Card key={guideline.id}>
+                  <Card key={guideline.id} data-testid={`card-guideline-${guideline.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
-                            <Badge>{guideline.productCategory}</Badge>
-                            <Badge variant="outline">{guideline.roomType}</Badge>
-                            <Badge variant="secondary">Priority: {guideline.priority}</Badge>
+                            <Badge data-testid={`badge-guideline-category-${guideline.id}`}>
+                              {guideline.productCategory}
+                            </Badge>
+                            <Badge variant="outline" data-testid={`badge-guideline-room-${guideline.id}`}>
+                              {guideline.roomType}
+                            </Badge>
+                            <Badge variant="secondary" data-testid={`badge-guideline-priority-${guideline.id}`}>
+                              Priority: {guideline.priority}
+                            </Badge>
                           </div>
-                          <p className="font-medium">{guideline.guideline}</p>
+                          <p className="font-medium" data-testid={`text-guideline-text-${guideline.id}`}>
+                            {guideline.guideline}
+                          </p>
                           {guideline.reasoning && (
-                            <p className="text-sm text-muted-foreground">{guideline.reasoning}</p>
+                            <p className="text-sm text-muted-foreground" data-testid={`text-guideline-reasoning-${guideline.id}`}>
+                              {guideline.reasoning}
+                            </p>
                           )}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => deletePlacementGuidelineMutation.mutate(guideline.id)}
-                          data-testid={`delete-guideline-${guideline.id}`}
+                          data-testid={`button-delete-guideline-${guideline.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -325,7 +359,7 @@ export default function AdminTrainingPage() {
                   </Card>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground mt-4">
+              <p className="text-sm text-muted-foreground mt-4" data-testid="text-guidelines-count">
                 Total Guidelines: {placementGuidelines.length}
               </p>
             </CardContent>
@@ -343,25 +377,37 @@ export default function AdminTrainingPage() {
             <CardContent>
               <div className="grid gap-4">
                 {designRules.map((rule) => (
-                  <Card key={rule.id}>
+                  <Card key={rule.id} data-testid={`card-rule-${rule.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
-                            <Badge>{rule.category}</Badge>
-                            <Badge variant="secondary">Priority: {rule.priority}</Badge>
-                            {rule.active && <Badge variant="default">Active</Badge>}
+                            <Badge data-testid={`badge-rule-category-${rule.id}`}>
+                              {rule.category}
+                            </Badge>
+                            <Badge variant="secondary" data-testid={`badge-rule-priority-${rule.id}`}>
+                              Priority: {rule.priority}
+                            </Badge>
+                            {rule.active && (
+                              <Badge variant="default" data-testid={`badge-rule-active-${rule.id}`}>
+                                Active
+                              </Badge>
+                            )}
                           </div>
-                          <p className="font-medium">{rule.rule}</p>
+                          <p className="font-medium" data-testid={`text-rule-text-${rule.id}`}>
+                            {rule.rule}
+                          </p>
                           {rule.description && (
-                            <p className="text-sm text-muted-foreground">{rule.description}</p>
+                            <p className="text-sm text-muted-foreground" data-testid={`text-rule-description-${rule.id}`}>
+                              {rule.description}
+                            </p>
                           )}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteDesignRuleMutation.mutate(rule.id)}
-                          data-testid={`delete-rule-${rule.id}`}
+                          data-testid={`button-delete-rule-${rule.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -370,7 +416,7 @@ export default function AdminTrainingPage() {
                   </Card>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground mt-4">
+              <p className="text-sm text-muted-foreground mt-4" data-testid="text-rules-count">
                 Total Rules: {designRules.length}
               </p>
             </CardContent>
@@ -378,26 +424,34 @@ export default function AdminTrainingPage() {
         </TabsContent>
       </Tabs>
 
-      <Card>
+      <Card data-testid="card-usage-summary">
         <CardHeader>
           <CardTitle>Usage Summary</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold">{designExamples.length}</p>
+              <p className="text-2xl font-bold" data-testid="text-summary-examples">
+                {designExamples.length}
+              </p>
               <p className="text-sm text-muted-foreground">Design Examples</p>
             </div>
             <div>
-              <p className="text-2xl font-bold">{productPackages.length}</p>
+              <p className="text-2xl font-bold" data-testid="text-summary-packages">
+                {productPackages.length}
+              </p>
               <p className="text-sm text-muted-foreground">Product Packages</p>
             </div>
             <div>
-              <p className="text-2xl font-bold">{placementGuidelines.length}</p>
+              <p className="text-2xl font-bold" data-testid="text-summary-guidelines">
+                {placementGuidelines.length}
+              </p>
               <p className="text-sm text-muted-foreground">Placement Guidelines</p>
             </div>
             <div>
-              <p className="text-2xl font-bold">{designRules.length}</p>
+              <p className="text-2xl font-bold" data-testid="text-summary-rules">
+                {designRules.length}
+              </p>
               <p className="text-sm text-muted-foreground">Design Rules</p>
             </div>
           </div>
