@@ -771,6 +771,93 @@ Return your analysis as a JSON object with these exact keys:
 }
 
 /**
+ * Identify which products from a list are actually visible in a generated room image
+ * @param imageDataUrl - Base64 data URL of the generated image
+ * @param selectedProducts - List of products that were intended for the room
+ * @returns Array of SKUs for products that are actually visible in the image
+ */
+export async function identifyVisibleProducts(
+  imageDataUrl: string,
+  selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }>
+): Promise<string[]> {
+  try {
+    console.log(`🔍 Analyzing generated image to identify visible products from ${selectedProducts.length} candidates...`);
+    
+    // Extract base64 data from data URL
+    const base64Match = imageDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
+    if (!base64Match) {
+      throw new Error("Invalid image data format");
+    }
+    const imageBase64 = base64Match[1];
+    const mimeType = imageDataUrl.match(/^data:(image\/\w+);/)?.[1] || 'image/png';
+    
+    // Create a detailed product list for Gemini to identify
+    const productList = selectedProducts.map((p, idx) => 
+      `${idx + 1}. ${p.name} (SKU: ${p.sku})`
+    ).join('\n');
+    
+    const analysisPrompt = `You are analyzing an AI-generated interior design image. Your task is to identify which products from the provided list are ACTUALLY VISIBLE in this image.
+
+PRODUCT LIST (products that were intended for this room):
+${productList}
+
+INSTRUCTIONS:
+1. Carefully examine the image and identify furniture and décor items that are clearly visible
+2. For each product in the list above, determine if it (or something very similar to it) is actually visible in the image
+3. A product is "visible" only if:
+   - You can clearly see it in the image
+   - It matches the product name/description
+   - It's not hidden, blocked, or outside the camera view
+4. Return ONLY the SKUs of products that are actually visible
+
+IMPORTANT:
+- Be strict: only include products you can actually see
+- If a product type is in the image but doesn't match the specific product name, DO NOT include it
+- If you're unsure whether a product is visible, DO NOT include it
+- An empty array is acceptable if no products are clearly visible
+
+Return your analysis as a JSON object with this format:
+{
+  "visibleSkus": ["SKU1", "SKU2", ...]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: analysisPrompt },
+          { inlineData: { data: imageBase64, mimeType } }
+        ]
+      }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            visibleSkus: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["visibleSkus"]
+        }
+      }
+    });
+
+    const analysis = JSON.parse(response.text || "{}");
+    const visibleSkus = analysis.visibleSkus || [];
+    
+    console.log(`✅ Identified ${visibleSkus.length} visible products out of ${selectedProducts.length} total: ${visibleSkus.join(', ')}`);
+    
+    return visibleSkus;
+  } catch (error) {
+    console.error("Product visibility analysis error:", error);
+    // Return all SKUs as fallback - better to show all than none
+    const allSkus = selectedProducts.map(p => p.sku);
+    console.warn(`⚠️ Falling back to showing all ${allSkus.length} products due to analysis error`);
+    return allSkus;
+  }
+}
+
+/**
  * Generate an interior design image using hybrid approach:
  * - Gemini for text-to-image (no room photo provided)
  * - Stability AI for structure-preserving image-to-image (room photo provided)

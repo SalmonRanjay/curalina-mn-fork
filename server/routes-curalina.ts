@@ -889,6 +889,7 @@ export function registerCuralinaRoutes(app: Express) {
           }
           
           // Step 3: Analyze uploaded images with Gemini Vision
+          const { identifyVisibleProducts } = await import('./services/gemini-ai');
           const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
           const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
           
@@ -954,18 +955,30 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // Store selected product SKUs
-          const productSkus = selectedProducts.map(p => p.sku);
+          // Step 5: Identify which products are actually visible in the generated image
+          let visibleProductSkus: string[];
+          if (selectedProducts.length > 0) {
+            try {
+              visibleProductSkus = await identifyVisibleProducts(imageDataUrl, selectedProducts);
+              console.log(`🛍️ Filtered products: ${selectedProducts.length} selected → ${visibleProductSkus.length} visible in image`);
+            } catch (error) {
+              console.error("Error identifying visible products:", error);
+              // Fallback to all selected products
+              visibleProductSkus = selectedProducts.map(p => p.sku);
+            }
+          } else {
+            visibleProductSkus = [];
+          }
           
-          // Update render with completed data
+          // Update render with completed data (only visible products)
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
-            productSkus,
+            productSkus: visibleProductSkus,
             prompt,
             status: 'completed',
           });
           
-          console.log(`✅ Render ${render.id} completed with ${productSkus.length} products`);
+          console.log(`✅ Render ${render.id} completed with ${visibleProductSkus.length} visible products`);
         } catch (error) {
           console.error("AI generation error:", error);
           
