@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X } from "lucide-react";
+import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertProductSchema, type Product, type Category, type Supplier, type InsertProduct } from "@shared/schema";
@@ -197,6 +197,25 @@ export default function AdminProducts() {
         variant: "destructive",
       });
       setUploadingFor(null);
+    },
+  });
+
+  const analyzeVisualsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/admin/products/analyze-visuals", "POST", {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Analysis started",
+        description: data.message || `Analyzing ${data.totalProducts} products. Check server logs for progress.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to start analysis",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -558,33 +577,45 @@ export default function AdminProducts() {
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-product">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Product</DialogTitle>
-              <DialogDescription>Create a new product in the catalog</DialogDescription>
-            </DialogHeader>
-            <Form {...addForm}>
-              <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4">
-                <ProductFormFields form={addForm} />
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-add">
-                    {createMutation.isPending ? "Creating..." : "Create Product"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => analyzeVisualsMutation.mutate()}
+            disabled={analyzeVisualsMutation.isPending}
+            data-testid="button-analyze-visuals"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {analyzeVisualsMutation.isPending ? "Starting..." : "Analyze Product Images"}
+          </Button>
+          
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-product">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Product</DialogTitle>
+                <DialogDescription>Create a new product in the catalog</DialogDescription>
+              </DialogHeader>
+              <Form {...addForm}>
+                <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4">
+                  <ProductFormFields form={addForm} />
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-add">
+                      {createMutation.isPending ? "Creating..." : "Create Product"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Advanced Filters */}
