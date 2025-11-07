@@ -1,212 +1,176 @@
 import type { Product } from '@shared/schema';
 
 /**
- * Generate rich, detailed product descriptions from existing product fields
- * This creates 300-400 word descriptions similar to Gemini Vision output
- * to use as a temporary solution until image analysis completes
+ * Generate rich product descriptions that scale naturally with available data
+ * Length adapts to product metadata completeness - sparse data yields shorter descriptions,
+ * rich data yields comprehensive descriptions
  */
 
 /**
- * Generate a comprehensive visual description from product data fields
- * Synthesizes name, description, colors, materials, dimensions, and other attributes
- * into a rich ~300-400 word description for AI prompt enhancement
+ * Generate a visual description from product data fields
+ * Output length scales with available metadata - no artificial word count targets
  */
 export function generateRichProductDescription(product: Product): string {
   const sections: string[] = [];
   
-  // 1. OVERVIEW SECTION (Product name and core description)
-  let overview = `${product.name}`;
+  // CORE IDENTITY: Always include product name and description
+  let intro = product.name;
   if (product.description) {
-    overview += ` - ${product.description}`;
+    intro += `. ${product.description}`;
   }
-  sections.push(overview);
+  sections.push(intro);
   
-  // 2. DESIGN & STYLE SECTION
+  // DESIGN STYLE: Only add if we have style data
   const styleElements: string[] = [];
   
   if (product.designStyle && product.designStyle.length > 0) {
-    styleElements.push(`Design aesthetic: ${product.designStyle.join(', ')}`);
+    styleElements.push(`This piece embodies ${product.designStyle.join(', ')} design aesthetics`);
   }
   
   if (product.styleTags && product.styleTags.length > 0) {
-    styleElements.push(`Style characteristics: ${product.styleTags.join(', ')}`);
+    const tags = product.styleTags.join(', ');
+    styleElements.push(`characterized by ${tags} qualities`);
   }
   
-  if (product.roomType && product.roomType.length > 0) {
-    styleElements.push(`Ideal for: ${product.roomType.join(', ')}`);
+  // Add visual form details if we can infer from product type
+  const nameLower = product.name.toLowerCase();
+  if (nameLower.includes('sofa') || nameLower.includes('couch')) {
+    styleElements.push('featuring upholstered cushioning with a structured framework');
+  } else if (nameLower.includes('chair')) {
+    styleElements.push('presenting a carefully considered seat and back profile');
+  } else if (nameLower.includes('table')) {
+    styleElements.push('with a clean surface plane and supporting base structure');
+  } else if (nameLower.includes('cabinet') || nameLower.includes('credenza')) {
+    styleElements.push('offering enclosed storage with door or drawer configurations');
+  } else if (nameLower.includes('shelf') || nameLower.includes('bookcase')) {
+    styleElements.push('providing open shelving for display and organization');
   }
   
   if (styleElements.length > 0) {
-    sections.push(`DESIGN STYLE: ${styleElements.join('. ')}.`);
+    sections.push(styleElements.join(', ') + '.');
   }
   
-  // 3. MATERIALS & COLORS SECTION
+  // MATERIALS & COLORS: Only add if we have material/color data
   const materialElements: string[] = [];
   
   if (product.materials && product.materials.length > 0) {
-    materialElements.push(`Constructed from ${product.materials.join(', ')}`);
+    const materials = product.materials.join(', ');
+    materialElements.push(`Constructed from ${materials}`);
+    
+    // Add brief material-specific details
+    if (product.materials.some((m: string) => m.toLowerCase().includes('wood'))) {
+      materialElements.push('with natural wood grain patterns adding organic warmth');
+    }
+    if (product.materials.some((m: string) => m.toLowerCase().includes('metal'))) {
+      materialElements.push('metal components providing structural support with smooth finishes');
+    }
+    if (product.materials.some((m: string) => m.toLowerCase().includes('fabric') || m.toLowerCase().includes('upholstery') || m.toLowerCase().includes('linen'))) {
+      materialElements.push('textile surfaces offering soft texture and comfort');
+    }
+    if (product.materials.some((m: string) => m.toLowerCase().includes('leather'))) {
+      materialElements.push('leather upholstery with smooth grain and natural character');
+    }
+    if (product.materials.some((m: string) => m.toLowerCase().includes('glass'))) {
+      materialElements.push('glass elements creating transparency and visual lightness');
+    }
   }
   
   if (product.colors && product.colors.length > 0) {
-    const colorList = product.colors.join(', ');
-    materialElements.push(`Available color palette includes ${colorList}`);
+    const colors = product.colors.join(', ');
+    materialElements.push(`Available in ${colors} finishes`);
+    
+    // Add color tone descriptions
+    const darkColors = ['black', 'dark', 'charcoal', 'navy', 'espresso', 'walnut', 'ebony'];
+    const lightColors = ['white', 'cream', 'beige', 'light', 'natural', 'oak', 'birch'];
+    
+    const hasDark = product.colors.some((c: string) => darkColors.some((dc: string) => c.toLowerCase().includes(dc)));
+    const hasLight = product.colors.some((c: string) => lightColors.some((lc: string) => c.toLowerCase().includes(lc)));
+    
+    if (hasDark && hasLight) {
+      materialElements.push('ranging from darker grounding tones to lighter airy finishes');
+    } else if (hasDark) {
+      materialElements.push('darker tones creating visual weight and depth');
+    } else if (hasLight) {
+      materialElements.push('lighter finishes contributing brightness and openness');
+    }
   }
   
   if (materialElements.length > 0) {
-    sections.push(`MATERIALS & FINISHES: ${materialElements.join('. ')}.`);
+    sections.push(materialElements.join(', ') + '.');
   }
   
-  // 4. DIMENSIONS & PHYSICAL SPECS
-  const physicalSpecs: string[] = [];
-  
+  // DIMENSIONS: Only add if we have dimension data
   if (product.dimensions) {
     const dims = product.dimensions as { w?: number; d?: number; h?: number; unit?: string };
+    const unit = dims.unit || 'inches';
+    
     if (dims.w || dims.h || dims.d) {
-      const unit = dims.unit || 'inches';
-      const dimensionParts: string[] = [];
-      if (dims.w) dimensionParts.push(`Width: ${dims.w}${unit}`);
-      if (dims.d) dimensionParts.push(`Depth: ${dims.d}${unit}`);
-      if (dims.h) dimensionParts.push(`Height: ${dims.h}${unit}`);
-      physicalSpecs.push(`Dimensions - ${dimensionParts.join(', ')}`);
+      const measurements: string[] = [];
+      if (dims.w) measurements.push(`${dims.w}${unit} W`);
+      if (dims.d) measurements.push(`${dims.d}${unit} D`);
+      if (dims.h) measurements.push(`${dims.h}${unit} H`);
+      
+      let dimText = `Dimensions: ${measurements.join(' × ')}`;
+      
+      // Add scale context if dimensions suggest it
+      if (dims.w && dims.w > 72) {
+        dimText += ', substantial scale for larger spaces';
+      } else if (dims.w && dims.w < 36) {
+        dimText += ', compact for space-efficient placement';
+      }
+      
+      sections.push(dimText + '.');
     }
   }
   
   if (product.weight) {
-    physicalSpecs.push(`Weight: ${product.weight}`);
+    sections.push(`Weight: ${product.weight}.`);
   }
   
-  if (physicalSpecs.length > 0) {
-    sections.push(`PHYSICAL SPECIFICATIONS: ${physicalSpecs.join('. ')}.`);
-  }
-  
-  // 5. FEATURES & FUNCTIONALITY
-  const functionalElements: string[] = [];
+  // FEATURES: Only add if we have feature data
+  const features: string[] = [];
   
   if (product.keyFeatures && product.keyFeatures.length > 0) {
-    functionalElements.push(`Key features include: ${product.keyFeatures.join(', ')}`);
+    features.push(`Features include ${product.keyFeatures.join(', ')}`);
   }
   
   if (product.storageSolutions && product.storageSolutions !== 'No Storage') {
-    functionalElements.push(`Storage: ${product.storageSolutions}`);
+    features.push(`storage capabilities: ${product.storageSolutions}`);
   }
   
   if (product.assembly) {
-    const assemblyText = product.assembly.toLowerCase() === 'yes' 
-      ? 'Requires assembly' 
-      : product.assembly.toLowerCase() === 'no' 
-        ? 'Arrives fully assembled' 
-        : `Assembly: ${product.assembly}`;
-    functionalElements.push(assemblyText);
-  }
-  
-  if (functionalElements.length > 0) {
-    sections.push(`FEATURES: ${functionalElements.join('. ')}.`);
-  }
-  
-  // 6. VISUAL DESCRIPTION (Synthesized based on available data)
-  const visualDescription: string[] = [];
-  
-  // Infer form and silhouette from product name and type
-  const nameLower = product.name.toLowerCase();
-  
-  if (nameLower.includes('sofa') || nameLower.includes('couch')) {
-    visualDescription.push('The silhouette features clean lines with upholstered cushioning');
-    if (product.materials?.some((m: string) => m.toLowerCase().includes('leather'))) {
-      visualDescription.push('smooth leather upholstery with subtle grain texture visible');
-    } else if (product.materials?.some((m: string) => m.toLowerCase().includes('fabric') || m.toLowerCase().includes('linen'))) {
-      visualDescription.push('soft fabric upholstery with woven textile texture');
-    }
-  } else if (nameLower.includes('chair')) {
-    visualDescription.push('The chair presents a structured profile with defined seat and back rest');
-    if (nameLower.includes('dining')) {
-      visualDescription.push('designed for dining table use with appropriate seat height');
-    } else if (nameLower.includes('lounge') || nameLower.includes('accent')) {
-      visualDescription.push('lower profile suitable for relaxed seating');
-    }
-  } else if (nameLower.includes('table')) {
-    visualDescription.push('The table features a flat horizontal surface');
-    if (nameLower.includes('coffee')) {
-      visualDescription.push('positioned at lower height appropriate for living room use');
-    } else if (nameLower.includes('dining')) {
-      visualDescription.push('standard dining height approximately 28-30 inches');
-    } else if (nameLower.includes('side') || nameLower.includes('end')) {
-      visualDescription.push('compact dimensions suitable for placement beside seating');
-    } else if (nameLower.includes('console')) {
-      visualDescription.push('narrow depth designed for placement against walls or behind sofas');
-    }
-  } else if (nameLower.includes('cabinet') || nameLower.includes('credenza')) {
-    visualDescription.push('The piece presents as a enclosed storage unit');
-    visualDescription.push('with doors or drawers concealing internal storage space');
-  } else if (nameLower.includes('shelf') || nameLower.includes('bookcase')) {
-    visualDescription.push('Open shelving design with multiple horizontal surfaces');
-    visualDescription.push('creating visual display and storage opportunities');
-  }
-  
-  // Add material-specific visual details
-  if (product.materials?.some((m: string) => m.toLowerCase().includes('wood'))) {
-    visualDescription.push('Natural wood grain patterns visible across surfaces adding organic warmth');
-  }
-  if (product.materials?.some((m: string) => m.toLowerCase().includes('metal'))) {
-    visualDescription.push('Metal elements provide structural support with smooth metallic finish');
-  }
-  if (product.materials?.some((m: string) => m.toLowerCase().includes('glass'))) {
-    visualDescription.push('Transparent or translucent glass components creating visual lightness');
-  }
-  
-  // Add color-specific visual details
-  if (product.colors) {
-    const darkColors = ['black', 'dark', 'charcoal', 'navy', 'espresso', 'walnut'];
-    const lightColors = ['white', 'cream', 'beige', 'light', 'natural', 'oak'];
-    const hasDark = product.colors.some((c: string) => darkColors.some((dc: string) => c.toLowerCase().includes(dc)));
-    const hasLight = product.colors.some((c: string) => lightColors.some((lc: string) => c.toLowerCase().includes(lc)));
-    
-    if (hasDark) {
-      visualDescription.push('Darker tones create grounding presence and visual weight in the space');
-    }
-    if (hasLight) {
-      visualDescription.push('Lighter finishes contribute airiness and brightness to the environment');
+    if (product.assembly.toLowerCase() === 'yes') {
+      features.push('requires assembly');
+    } else if (product.assembly.toLowerCase() === 'no') {
+      features.push('arrives fully assembled');
     }
   }
   
-  if (visualDescription.length > 0) {
-    sections.push(`VISUAL CHARACTERISTICS: ${visualDescription.join('. ')}.`);
+  if (features.length > 0) {
+    sections.push(features.join(', ') + '.');
   }
   
-  // 7. CONTEXTUAL PLACEMENT (if roomType is specified)
+  // ROOM PLACEMENT: Only add if we have room type data
   if (product.roomType && product.roomType.length > 0) {
-    const placementSuggestions = product.roomType.map((room: string) => {
+    const rooms = product.roomType.map((room: string) => {
       const roomLower = room.toLowerCase();
-      if (roomLower.includes('living')) {
-        return 'living rooms as focal or accent pieces';
-      } else if (roomLower.includes('bedroom')) {
-        return 'bedrooms for rest and relaxation';
-      } else if (roomLower.includes('dining')) {
-        return 'dining spaces for meals and gatherings';
-      } else if (roomLower.includes('office') || roomLower.includes('study')) {
-        return 'home offices or study areas for productive work';
-      } else if (roomLower.includes('entryway') || roomLower.includes('foyer')) {
-        return 'entryways to create welcoming first impressions';
-      } else {
-        return `${room} settings`;
-      }
+      if (roomLower.includes('living')) return 'living rooms';
+      if (roomLower.includes('bedroom')) return 'bedrooms';
+      if (roomLower.includes('dining')) return 'dining spaces';
+      if (roomLower.includes('office') || roomLower.includes('study')) return 'home offices';
+      if (roomLower.includes('entryway') || roomLower.includes('foyer')) return 'entryways';
+      return room;
     });
     
-    sections.push(`PLACEMENT CONTEXT: This piece works beautifully in ${placementSuggestions.join(', ')}.`);
+    sections.push(`Suitable for ${rooms.join(', ')}.`);
   }
   
-  // Combine all sections into final description
-  const finalDescription = sections.join(' ');
-  
-  // Ensure we have at least a basic description
-  if (finalDescription.trim().length < 50) {
-    return `${product.name}. ${product.description || 'A quality furniture piece designed for modern interiors.'}`;
-  }
-  
-  return finalDescription;
+  // Combine all sections - length naturally reflects available data
+  return sections.join(' ');
 }
 
 /**
- * Batch generate rich descriptions for multiple products
+ * Batch generate descriptions for multiple products
  * Returns a map of SKU to generated description
  */
 export function batchGenerateDescriptions(products: Product[]): Map<string, string> {
@@ -214,6 +178,10 @@ export function batchGenerateDescriptions(products: Product[]): Map<string, stri
   
   for (const product of products) {
     const richDescription = generateRichProductDescription(product);
+    const wordCount = richDescription.split(/\s+/).length;
+    
+    console.log(`Generated description for ${product.sku}: ${wordCount} words`);
+    
     descriptions.set(product.sku, richDescription);
   }
   
