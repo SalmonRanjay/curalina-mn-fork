@@ -93,51 +93,73 @@ export default function CSVImportPage() {
       return field;
     };
 
-    // Create CSV template matching user's Excel file
+    // CSV template with 12 required fields + 17 optional fields
     const headers = [
+      // ✅ REQUIRED FIELDS (12)
       'Product Name',
       'Overview',
       'Supplier',
       'SKU',
-      'Trade Price ',
-      'Retail Price',
       'Furniture Category',
       'Room Type',
       'Design Style',
       'Key Features',
       'Storage Solutions',
-      'General Dimensions (Inch)\r\nWidth x Depth x Height',
-      'Weight (lbs) ',
       'Colour',
       'Product Material',
-      'Assembly',
-      'LEAD Time',
       'Inventory',
+      // 🟨 OPTIONAL FIELDS (17)
+      'Trade Price',
+      'Retail Price',
+      'Dimensions (Height)',
+      'Dimensions (Width)',
+      'Dimensions (Depth)',
+      'Arm Width',
+      'Arm Depth',
+      'Seat Width',
+      'Seat Depth',
+      'Seating',
+      'Assembly',
+      'Lead Time',
+      'Delivery Options',
+      'Delivery Location',
+      'Delivery Policy',
       'Tags',
-      'Source File'
+      'Weight'
     ];
     
     const sampleRow = [
-      'Modern Leather Sofa',
-      'Premium Italian leather sofa with modern design and clean lines',
-      'Four Hands',
+      // REQUIRED (12 fields)
+      'Modern Boucle Sofa',
+      'Premium boucle fabric sofa with curved silhouette and natural oak legs',
+      'West Elm',
       'SOFA-001',
-      '999.00',
-      '1299.99',
-      'Sofa',
-      'Living room',
-      'Modern, Contemporary',
-      'pet-friendly, casual setting',
+      'Seating',
+      'Living Room, Family Room',
+      'Organic Modern, Minimalist',
+      'Pet-friendly fabric, Stain resistant, Easy to clean',
       'No Storage',
-      '84" W X 36" D X 32" H',
-      '150 lbs',
-      'Black, Brown',
-      'Leather, Wood',
-      'No',
-      '7',
-      '10',
-      'living room, modern, luxury',
-      'Products.xlsx'
+      'Ivory, Cream, Natural Oak',
+      'Boucle fabric, Oak wood, Foam cushions',
+      '15',
+      // OPTIONAL (17 fields)
+      '1199.00',           // Trade Price
+      '1499.00',           // Retail Price
+      '32',                // Dimensions (Height)
+      '84',                // Dimensions (Width)
+      '36',                // Dimensions (Depth)
+      '10',                // Arm Width
+      '32',                // Arm Depth
+      '60',                // Seat Width
+      '24',                // Seat Depth
+      '3 seats',           // Seating
+      'No',                // Assembly
+      '7',                 // Lead Time
+      'White glove delivery, Curbside delivery', // Delivery Options
+      'Continental US',    // Delivery Location
+      'Free shipping over $100', // Delivery Policy
+      'sofa, modern, luxury', // Tags
+      '150'                // Weight
     ];
 
     // Properly escape all fields for CSV format
@@ -172,10 +194,43 @@ export default function CSVImportPage() {
         <CardHeader>
           <CardTitle>Download Template</CardTitle>
           <CardDescription>
-            Download a sample CSV template with the correct column format
+            CSV template with 12 required fields and 17 optional fields. Download and fill in all required fields for each product.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <h4 className="font-semibold mb-2 text-green-700 dark:text-green-400">✅ Required Fields (12)</h4>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>• Product Name</li>
+                <li>• Overview</li>
+                <li>• Supplier</li>
+                <li>• SKU</li>
+                <li>• Furniture Category</li>
+                <li>• Room Type</li>
+                <li>• Design Style</li>
+                <li>• Key Features</li>
+                <li>• Storage Solutions</li>
+                <li>• Colour</li>
+                <li>• Product Material</li>
+                <li>• Inventory</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2 text-yellow-700 dark:text-yellow-400">🟨 Optional Fields (17)</h4>
+              <ul className="space-y-1 text-muted-foreground text-xs">
+                <li>• Trade Price, Retail Price</li>
+                <li>• Dimensions (Height, Width, Depth)</li>
+                <li>• Arm Width, Arm Depth</li>
+                <li>• Seat Width, Seat Depth</li>
+                <li>• Seating</li>
+                <li>• Assembly</li>
+                <li>• Lead Time</li>
+                <li>• Delivery Options, Location, Policy</li>
+                <li>• Tags, Weight</li>
+              </ul>
+            </div>
+          </div>
           <Button onClick={downloadTemplate} variant="outline" data-testid="button-download-template">
             <Download className="w-4 h-4 mr-2" />
             Download CSV Template

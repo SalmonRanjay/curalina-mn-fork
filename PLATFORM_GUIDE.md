@@ -1258,9 +1258,40 @@ app.post('/api/quiz', async (req, res) => {
 
 **Purpose**: Import hundreds of products quickly from Excel/CSV files
 
-**Supported Columns**:
-- Required: SKU, name, category, price, supplier
-- Optional: discount, width, depth, height, description, styleTags, colors, materials, stock, image1, image2, image3, image4, model3dUrl
+**Field Requirements**:
+
+✅ **Required Fields (12)**:
+1. Product Name
+2. Overview (description)
+3. Supplier
+4. SKU
+5. Furniture Category
+6. Room Type
+7. Design Style
+8. Key Features
+9. Storage Solutions
+10. Colour
+11. Product Material
+12. Inventory
+
+🟨 **Optional Fields (17)**:
+1. Trade Price
+2. Retail Price
+3. Dimensions (Height)
+4. Dimensions (Width)
+5. Dimensions (Depth)
+6. Arm Width
+7. Arm Depth
+8. Seat Width
+9. Seat Depth
+10. Seating (capacity)
+11. Assembly
+12. Lead Time
+13. Delivery Options
+14. Delivery Location
+15. Delivery Policy
+16. Tags
+17. Weight
 
 **Import Process**:
 ```
@@ -1287,9 +1318,9 @@ app.post('/api/quiz', async (req, res) => {
 
 **Example CSV**:
 ```csv
-sku,name,category,price,discount,supplier,styleTags,colors,materials
-SOFA-001,Boucle Cloud Sofa,Seating,1299,15,West Elm,"organic modern,minimalist","ivory,cream","bouclé fabric,oak wood"
-TABLE-042,Live Edge Coffee Table,Tables,599,0,CB2,"organic modern,rustic","natural wood","solid oak"
+Product Name,Overview,Supplier,SKU,Furniture Category,Room Type,Design Style,Key Features,Storage Solutions,Colour,Product Material,Inventory,Trade Price,Retail Price,Dimensions (Height),Dimensions (Width),Dimensions (Depth),Arm Width,Arm Depth,Seat Width,Seat Depth,Seating,Assembly,Lead Time,Delivery Options,Delivery Location,Delivery Policy,Tags,Weight
+Modern Boucle Sofa,Premium boucle fabric sofa with curved silhouette and natural oak legs,West Elm,SOFA-001,Seating,"Living Room, Family Room","Organic Modern, Minimalist","Pet-friendly fabric, Stain resistant, Easy to clean",No Storage,"Ivory, Cream, Natural Oak","Boucle fabric, Oak wood, Foam cushions",15,1199.00,1499.00,32,84,36,10,32,60,24,3 seats,No,7,"White glove delivery, Curbside delivery",Continental US,Free shipping over $100,"sofa, modern, luxury",150
+Live Edge Coffee Table,Natural oak coffee table with live edge and minimalist design,CB2,TABLE-042,Tables,Living Room,Organic Modern,"Natural wood grain, Sustainable materials",No Storage,Natural Oak,Solid oak,8,449.00,599.00,16,48,24,,,,,,No,5,Standard delivery,Continental US,Free shipping over $100,"coffee table, rustic, modern",75
 ```
 
 #### **3. Bulk Image Upload**

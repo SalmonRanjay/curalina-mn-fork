@@ -182,15 +182,16 @@ export const products = pgTable("products", {
   materials: text("materials").array(),
   
   // Physical specifications
-  dimensions: jsonb("dimensions"), // { w, d, h, unit }
+  dimensions: jsonb("dimensions"), // { w, d, h, armWidth, armDepth, seatWidth, seatDepth, unit }
   weight: text("weight"), // '150 lbs'
+  seating: text("seating"), // '2 seats', '3-4 people', etc.
   assembly: text("assembly"), // 'Yes', 'No', 'Partial'
   
   // Inventory & shipping
   inventory: integer("inventory"),
   leadTime: integer("lead_time"), // days
   availability: varchar("availability", { length: 20 }).notNull().default("in_stock"), // 'in_stock' or 'preorder'
-  shipping: jsonb("shipping"), // { cost, eta }
+  shipping: jsonb("shipping"), // { cost, eta, deliveryOptions, deliveryLocation, deliveryPolicy }
   
   // Media & metadata
   images: text("images").array(), // URLs to images

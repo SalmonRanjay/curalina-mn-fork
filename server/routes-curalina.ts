@@ -328,9 +328,11 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
 
-          // Parse dimensions from format "20.5" W X 18.5" D X 22.7" H"
+          // Parse dimensions - supports multiple field formats
           let dimensions = null;
           const dimString = row['General Dimensions (Inch)\r\nWidth x Depth x Height'] || row['General Dimensions (Inch)'];
+          
+          // Start with general dimensions
           if (dimString) {
             const matches = dimString.match(/(\d+\.?\d*)\s*"\s*W\s*X\s*(\d+\.?\d*)\s*"\s*D\s*X\s*(\d+\.?\d*)\s*"\s*H/i);
             if (matches) {
@@ -341,6 +343,32 @@ export function registerCuralinaRoutes(app: Express) {
                 unit: 'inches'
               };
             }
+          }
+          
+          // Parse individual dimension fields (override or supplement)
+          const parseNumeric = (val: any) => val ? parseFloat(String(val).replace(/[^0-9.]/g, '')) || null : null;
+          
+          const heightVal = parseNumeric(row['Dimensions (Height)']);
+          const widthVal = parseNumeric(row['Dimensions (Width)']);
+          const depthVal = parseNumeric(row['Dimensions (Depth)']);
+          const armWidthVal = parseNumeric(row['Arm Width']);
+          const armDepthVal = parseNumeric(row['Arm Depth']);
+          const seatWidthVal = parseNumeric(row['Seat Width']);
+          const seatDepthVal = parseNumeric(row['Seat Depth']);
+          
+          // If individual dimensions provided, use or merge them
+          if (heightVal || widthVal || depthVal || armWidthVal || armDepthVal || seatWidthVal || seatDepthVal) {
+            dimensions = {
+              ...dimensions,
+              w: widthVal || dimensions?.w || null,
+              d: depthVal || dimensions?.d || null,
+              h: heightVal || dimensions?.h || null,
+              armWidth: armWidthVal || null,
+              armDepth: armDepthVal || null,
+              seatWidth: seatWidthVal || null,
+              seatDepth: seatDepthVal || null,
+              unit: 'inches'
+            };
           }
 
           // Parse colors
@@ -375,7 +403,16 @@ export function registerCuralinaRoutes(app: Express) {
           const inventoryValue = row.Inventory ? (parseInt(row.Inventory) || null) : null;
           
           // Parse lead time (ensure valid integer or null)
-          const leadTimeValue = row['LEAD Time'] ? (parseInt(row['LEAD Time']) || null) : null;
+          const leadTimeValue = row['LEAD Time'] || row['Lead Time'];
+          const parsedLeadTime = leadTimeValue ? (parseInt(leadTimeValue) || null) : null;
+          
+          // Parse seating capacity
+          const seatingValue = row.Seating || null;
+          
+          // Parse delivery fields
+          const deliveryOptions = row['Delivery Options'] || null;
+          const deliveryLocation = row['Delivery Location'] || null;
+          const deliveryPolicy = row['Delivery Policy'] || null;
 
           // Insert product
           const productName = row['Product Name'] || 'Unknown Product';
@@ -396,16 +433,23 @@ export function registerCuralinaRoutes(app: Express) {
             colors: colorArray,
             materials: materialArray,
             dimensions,
-            weight: row['Weight (lbs) '] || row['Weight (lbs)'] || null,
+            weight: row['Weight (lbs) '] || row['Weight (lbs)'] || row.Weight || null,
+            seating: seatingValue,
             assembly: row.Assembly || null,
             inventory: inventoryValue,
-            leadTime: leadTimeValue,
+            leadTime: parsedLeadTime,
             availability: (inventoryValue && inventoryValue > 0) ? 'in_stock' : 'preorder',
             images: [],
             asset3dUrl: null,
             tags: tagsArray,
             sourceFile: row['Source File'] || null,
-            shipping: { cost: 0, eta: leadTimeValue ? `${leadTimeValue} days` : '5-7 business days' },
+            shipping: { 
+              cost: 0, 
+              eta: parsedLeadTime ? `${parsedLeadTime} days` : '5-7 business days',
+              deliveryOptions,
+              deliveryLocation,
+              deliveryPolicy
+            },
             seoMeta: { 
               title: productName, 
               description: row.Overview ? row.Overview.substring(0, 160) : '' 
