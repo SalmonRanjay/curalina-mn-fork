@@ -20,6 +20,17 @@ import About from "@/pages/about";
 import Blog from "@/pages/blog";
 import Dashboard from "@/pages/dashboard";
 import AdminDashboard from "@/pages/admin";
+import AdminProducts from "@/pages/admin/products";
+import AdminSuppliers from "@/pages/admin/suppliers";
+import AdminOrders from "@/pages/admin/orders";
+import AdminUsers from "@/pages/admin/users";
+import AdminSettings from "@/pages/admin/settings";
+import AdminTraining from "@/pages/admin/training";
+import AdminAnalytics from "@/pages/admin/analytics";
+import AdminBlog from "@/pages/admin/blog";
+import AdminContent from "@/pages/admin/content";
+import AdminBulkUpload from "@/pages/admin/bulk-upload";
+import AdminCsvImport from "@/pages/admin/csv-import";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 
@@ -73,9 +84,19 @@ function Router() {
         <Route path="/results" component={Results} />
         <Route path="/cart" component={Cart} />
         
-        {/* Admin routes - Unified dashboard with tabs */}
+        {/* Admin routes - Specific pages */}
         <Route path="/admin" component={AdminDashboard} />
-        <Route path="/admin/:rest*" component={AdminDashboard} />
+        <Route path="/admin/products" component={AdminProducts} />
+        <Route path="/admin/suppliers" component={AdminSuppliers} />
+        <Route path="/admin/orders" component={AdminOrders} />
+        <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/admin/settings" component={AdminSettings} />
+        <Route path="/admin/training" component={AdminTraining} />
+        <Route path="/admin/analytics" component={AdminAnalytics} />
+        <Route path="/admin/blog" component={AdminBlog} />
+        <Route path="/admin/content" component={AdminContent} />
+        <Route path="/admin/bulk-upload" component={AdminBulkUpload} />
+        <Route path="/admin/csv-import" component={AdminCsvImport} />
 
         {/* User portal routes (admins can access these too) */}
         <Route path="/portal" component={PortalDashboard} />
