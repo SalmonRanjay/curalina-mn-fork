@@ -921,8 +921,38 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // Step 4: Build enhanced prompt with selected products and image analysis
-          const prompt = buildPromptFromQuiz(quiz, selectedProducts, roomAnalysis, floorPlanAnalysis);
+          // Step 4: Enrich selected products with full details for better AI generation
+          const enrichedProducts = selectedProducts.map(sp => {
+            const fullProduct = allProducts.find(p => p.sku === sp.sku);
+            if (!fullProduct) return sp;
+            
+            // Build detailed description for AI
+            let detailedName = fullProduct.name;
+            const details: string[] = [];
+            
+            if (fullProduct.description) {
+              details.push(fullProduct.description);
+            }
+            if (fullProduct.colors && fullProduct.colors.length > 0) {
+              details.push(`Colors: ${fullProduct.colors.join(", ")}`);
+            }
+            if (fullProduct.materials && fullProduct.materials.length > 0) {
+              details.push(`Materials: ${fullProduct.materials.join(", ")}`);
+            }
+            
+            // If we have details, append them to the name for the AI
+            if (details.length > 0) {
+              detailedName = `${fullProduct.name} - ${details.join(". ")}`;
+            }
+            
+            return {
+              ...sp,
+              name: detailedName, // Enhanced name with specifications
+            };
+          });
+          
+          // Build enhanced prompt with enriched products and image analysis
+          const prompt = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
           console.log(`📝 Generated prompt with ${roomAnalysis ? 'room analysis' : 'no room analysis'} and ${floorPlanAnalysis ? 'floor plan analysis' : 'no floor plan analysis'}`);
           
           // Generate image with Gemini AI (passing analysis for context)
