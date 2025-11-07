@@ -578,8 +578,28 @@ export function buildPromptFromQuiz(
   const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
   
   // Start with professional photography framing
-  let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}. `;
+  let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}.`;
   
+  // Add structure preservation emphasis if room/floor plan analysis is available
+  if (roomAnalysis || floorPlanAnalysis) {
+    prompt += `\n\nCRITICAL STRUCTURE PRESERVATION REQUIREMENT:
+This is a REDESIGN of an existing space, not a new room. You must preserve the exact architectural structure while updating the design.
+
+MANDATORY PRESERVATION (NEVER CHANGE):
+- Room dimensions, shape, and proportions must match exactly
+- All walls, windows, doors, and openings in their exact locations and sizes
+- Ceiling height and architectural details
+- Structural elements and built-in features
+- The viewpoint and perspective of the original space
+
+WHAT YOU CAN CHANGE:
+- Furniture pieces and their arrangement
+- Wall paint colors and finishes
+- Decorative elements and artwork
+- Soft furnishings (rugs, curtains, pillows)
+- Lighting fixtures and accessories
+`;
+  }
   // Add current space context from image analysis
   if (roomAnalysis && roomAnalysis.overallDescription !== "Image analysis unavailable") {
     prompt += `\n\nCURRENT SPACE ANALYSIS:\n`;
