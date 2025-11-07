@@ -1083,14 +1083,14 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // Step 5: Identify which products are actually visible in the FINAL composited image
+          // Step 5: Identify which products are actually visible in the AI-generated image
           let visibleProductSkus: string[];
           if (selectedProducts.length > 0) {
             try {
-              // Convert final buffer to data URL for visibility detection
-              const finalImageDataUrl = `data:image/png;base64,${finalImageBuffer.toString('base64')}`;
+              // Convert image buffer to data URL for visibility detection
+              const finalImageDataUrl = `data:image/png;base64,${imageBuffer.toString('base64')}`;
               visibleProductSkus = await identifyVisibleProducts(finalImageDataUrl, selectedProducts);
-              console.log(`🛍️ Filtered products: ${selectedProducts.length} selected → ${visibleProductSkus.length} visible in final image`);
+              console.log(`🛍️ Filtered products: ${selectedProducts.length} selected → ${visibleProductSkus.length} visible in AI-generated image`);
             } catch (error) {
               console.error("Error identifying visible products:", error);
               // Fallback to all selected products
