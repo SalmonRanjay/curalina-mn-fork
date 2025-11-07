@@ -8,6 +8,10 @@ import {
   orders,
   orderItems,
   users,
+  designExamples,
+  productPackages,
+  placementGuidelines,
+  designRules,
   type Category,
   type InsertCategory,
   type Supplier,
@@ -25,6 +29,14 @@ import {
   type OrderItem,
   type InsertOrderItem,
   type User,
+  type DesignExample,
+  type InsertDesignExample,
+  type ProductPackage,
+  type InsertProductPackage,
+  type PlacementGuideline,
+  type InsertPlacementGuideline,
+  type DesignRule,
+  type InsertDesignRule,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -87,6 +99,35 @@ export interface ICuralinaStorage {
   // Admin operations
   getAllRenders(): Promise<Render[]>;
   getAllQuizResponses(): Promise<QuizResponse[]>;
+  
+  // AI Training Data operations
+  // Design Examples
+  getAllDesignExamples(filters?: { type?: 'good' | 'bad'; roomType?: string }): Promise<DesignExample[]>;
+  getDesignExample(id: string): Promise<DesignExample | undefined>;
+  createDesignExample(example: InsertDesignExample): Promise<DesignExample>;
+  updateDesignExample(id: string, example: Partial<InsertDesignExample>): Promise<DesignExample>;
+  deleteDesignExample(id: string): Promise<void>;
+  
+  // Product Packages
+  getAllProductPackages(filters?: { roomType?: string; active?: boolean }): Promise<ProductPackage[]>;
+  getProductPackage(id: string): Promise<ProductPackage | undefined>;
+  createProductPackage(pkg: InsertProductPackage): Promise<ProductPackage>;
+  updateProductPackage(id: string, pkg: Partial<InsertProductPackage>): Promise<ProductPackage>;
+  deleteProductPackage(id: string): Promise<void>;
+  
+  // Placement Guidelines
+  getAllPlacementGuidelines(filters?: { roomType?: string; productCategory?: string }): Promise<PlacementGuideline[]>;
+  getPlacementGuideline(id: string): Promise<PlacementGuideline | undefined>;
+  createPlacementGuideline(guideline: InsertPlacementGuideline): Promise<PlacementGuideline>;
+  updatePlacementGuideline(id: string, guideline: Partial<InsertPlacementGuideline>): Promise<PlacementGuideline>;
+  deletePlacementGuideline(id: string): Promise<void>;
+  
+  // Design Rules
+  getAllDesignRules(filters?: { category?: string; active?: boolean }): Promise<DesignRule[]>;
+  getDesignRule(id: string): Promise<DesignRule | undefined>;
+  createDesignRule(rule: InsertDesignRule): Promise<DesignRule>;
+  updateDesignRule(id: string, rule: Partial<InsertDesignRule>): Promise<DesignRule>;
+  deleteDesignRule(id: string): Promise<void>;
 }
 
 export class CuralinaStorage implements ICuralinaStorage {
@@ -381,6 +422,175 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async getAllQuizResponses(): Promise<QuizResponse[]> {
     return db.select().from(quizResponses).orderBy(desc(quizResponses.createdAt));
+  }
+
+  // AI Training Data operations
+  // Design Examples
+  async getAllDesignExamples(filters?: { type?: 'good' | 'bad'; roomType?: string }): Promise<DesignExample[]> {
+    let query = db.select().from(designExamples);
+    
+    const conditions = [];
+    if (filters?.type) {
+      conditions.push(eq(designExamples.type, filters.type));
+    }
+    if (filters?.roomType) {
+      conditions.push(eq(designExamples.roomType, filters.roomType));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+    
+    return query.orderBy(desc(designExamples.createdAt));
+  }
+
+  async getDesignExample(id: string): Promise<DesignExample | undefined> {
+    const [example] = await db.select().from(designExamples).where(eq(designExamples.id, id));
+    return example;
+  }
+
+  async createDesignExample(exampleData: InsertDesignExample): Promise<DesignExample> {
+    const [example] = await db.insert(designExamples).values(exampleData).returning();
+    return example;
+  }
+
+  async updateDesignExample(id: string, exampleData: Partial<InsertDesignExample>): Promise<DesignExample> {
+    const [example] = await db
+      .update(designExamples)
+      .set({ ...exampleData, updatedAt: new Date() })
+      .where(eq(designExamples.id, id))
+      .returning();
+    return example;
+  }
+
+  async deleteDesignExample(id: string): Promise<void> {
+    await db.delete(designExamples).where(eq(designExamples.id, id));
+  }
+
+  // Product Packages
+  async getAllProductPackages(filters?: { roomType?: string; active?: boolean }): Promise<ProductPackage[]> {
+    let query = db.select().from(productPackages);
+    
+    const conditions = [];
+    if (filters?.roomType) {
+      conditions.push(eq(productPackages.roomType, filters.roomType));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(productPackages.active, filters.active));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+    
+    return query.orderBy(desc(productPackages.createdAt));
+  }
+
+  async getProductPackage(id: string): Promise<ProductPackage | undefined> {
+    const [pkg] = await db.select().from(productPackages).where(eq(productPackages.id, id));
+    return pkg;
+  }
+
+  async createProductPackage(pkgData: InsertProductPackage): Promise<ProductPackage> {
+    const [pkg] = await db.insert(productPackages).values(pkgData).returning();
+    return pkg;
+  }
+
+  async updateProductPackage(id: string, pkgData: Partial<InsertProductPackage>): Promise<ProductPackage> {
+    const [pkg] = await db
+      .update(productPackages)
+      .set({ ...pkgData, updatedAt: new Date() })
+      .where(eq(productPackages.id, id))
+      .returning();
+    return pkg;
+  }
+
+  async deleteProductPackage(id: string): Promise<void> {
+    await db.delete(productPackages).where(eq(productPackages.id, id));
+  }
+
+  // Placement Guidelines
+  async getAllPlacementGuidelines(filters?: { roomType?: string; productCategory?: string }): Promise<PlacementGuideline[]> {
+    let query = db.select().from(placementGuidelines);
+    
+    const conditions = [];
+    if (filters?.roomType) {
+      conditions.push(eq(placementGuidelines.roomType, filters.roomType));
+    }
+    if (filters?.productCategory) {
+      conditions.push(eq(placementGuidelines.productCategory, filters.productCategory));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+    
+    return query.orderBy(desc(placementGuidelines.priority), desc(placementGuidelines.createdAt));
+  }
+
+  async getPlacementGuideline(id: string): Promise<PlacementGuideline | undefined> {
+    const [guideline] = await db.select().from(placementGuidelines).where(eq(placementGuidelines.id, id));
+    return guideline;
+  }
+
+  async createPlacementGuideline(guidelineData: InsertPlacementGuideline): Promise<PlacementGuideline> {
+    const [guideline] = await db.insert(placementGuidelines).values(guidelineData).returning();
+    return guideline;
+  }
+
+  async updatePlacementGuideline(id: string, guidelineData: Partial<InsertPlacementGuideline>): Promise<PlacementGuideline> {
+    const [guideline] = await db
+      .update(placementGuidelines)
+      .set({ ...guidelineData, updatedAt: new Date() })
+      .where(eq(placementGuidelines.id, id))
+      .returning();
+    return guideline;
+  }
+
+  async deletePlacementGuideline(id: string): Promise<void> {
+    await db.delete(placementGuidelines).where(eq(placementGuidelines.id, id));
+  }
+
+  // Design Rules
+  async getAllDesignRules(filters?: { category?: string; active?: boolean }): Promise<DesignRule[]> {
+    let query = db.select().from(designRules);
+    
+    const conditions = [];
+    if (filters?.category) {
+      conditions.push(eq(designRules.category, filters.category));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(designRules.active, filters.active));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+    
+    return query.orderBy(desc(designRules.priority), desc(designRules.createdAt));
+  }
+
+  async getDesignRule(id: string): Promise<DesignRule | undefined> {
+    const [rule] = await db.select().from(designRules).where(eq(designRules.id, id));
+    return rule;
+  }
+
+  async createDesignRule(ruleData: InsertDesignRule): Promise<DesignRule> {
+    const [rule] = await db.insert(designRules).values(ruleData).returning();
+    return rule;
+  }
+
+  async updateDesignRule(id: string, ruleData: Partial<InsertDesignRule>): Promise<DesignRule> {
+    const [rule] = await db
+      .update(designRules)
+      .set({ ...ruleData, updatedAt: new Date() })
+      .where(eq(designRules.id, id))
+      .returning();
+    return rule;
+  }
+
+  async deleteDesignRule(id: string): Promise<void> {
+    await db.delete(designRules).where(eq(designRules.id, id));
   }
 }
 
