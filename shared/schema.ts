@@ -342,3 +342,134 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
   id: true,
 });
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+
+// ===== AI TRAINING DATA SCHEMA =====
+
+// Design Examples - Reference designs for AI learning (good/bad examples)
+export const designExamples = pgTable("design_examples", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type", { length: 20 }).notNull(), // 'good' or 'bad'
+  roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
+  styles: text("styles").array(), // ['Modern', 'Contemporary']
+  imageUrl: text("image_url").notNull(), // URL to reference image
+  title: text("title").notNull(), // Short descriptive title
+  description: text("description"), // What makes this good/bad
+  reasoning: text("reasoning").notNull(), // Why this is a good/bad example
+  designPrinciples: text("design_principles").array(), // ['Balance', 'Proportion', 'Color Harmony']
+  tags: text("tags").array(), // Searchable tags
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const designExampleRelations = relations(designExamples, ({ one }) => ({
+  creator: one(users, {
+    fields: [designExamples.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type DesignExample = typeof designExamples.$inferSelect;
+export const insertDesignExampleSchema = createInsertSchema(designExamples).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDesignExample = z.infer<typeof insertDesignExampleSchema>;
+
+// Product Packages - Pre-curated product combinations that work well together
+export const productPackages = pgTable("product_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // 'Modern Living Room Essentials'
+  description: text("description"), // What makes this package special
+  roomType: text("room_type").notNull(), // 'Living Room'
+  styles: text("styles").array(), // ['Modern', 'Midcentury']
+  productSkus: text("product_skus").array().notNull(), // SKUs that work together
+  imageUrl: text("image_url"), // Package visualization
+  priceRange: text("price_range"), // '$3,000-$5,000'
+  designNotes: text("design_notes"), // Why these products work together
+  tags: text("tags").array(),
+  active: boolean("active").notNull().default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const productPackageRelations = relations(productPackages, ({ one }) => ({
+  creator: one(users, {
+    fields: [productPackages.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type ProductPackage = typeof productPackages.$inferSelect;
+export const insertProductPackageSchema = createInsertSchema(productPackages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProductPackage = z.infer<typeof insertProductPackageSchema>;
+
+// Placement Guidelines - Rules for where products should be placed in rooms
+export const placementGuidelines = pgTable("placement_guidelines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productCategory: text("product_category").notNull(), // 'Sofa', 'Coffee Table', 'Dining Table'
+  roomType: text("room_type").notNull(), // 'Living Room', 'Dining Room'
+  guideline: text("guideline").notNull(), // 'Place sofa 12-18 inches from wall'
+  doExamples: text("do_examples").array(), // List of good placement practices
+  dontExamples: text("dont_examples").array(), // List of bad placement practices
+  imageUrl: text("image_url"), // Visual reference
+  priority: integer("priority").notNull().default(1), // Higher priority = more important rule
+  reasoning: text("reasoning"), // Why this guideline matters
+  tags: text("tags").array(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const placementGuidelineRelations = relations(placementGuidelines, ({ one }) => ({
+  creator: one(users, {
+    fields: [placementGuidelines.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type PlacementGuideline = typeof placementGuidelines.$inferSelect;
+export const insertPlacementGuidelineSchema = createInsertSchema(placementGuidelines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPlacementGuideline = z.infer<typeof insertPlacementGuidelineSchema>;
+
+// Design Rules - General design principles and rules for AI to follow
+export const designRules = pgTable("design_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: varchar("category").notNull(), // 'color', 'spacing', 'proportion', 'balance', 'contrast'
+  rule: text("rule").notNull(), // The actual design rule
+  description: text("description"), // Detailed explanation
+  examples: text("examples").array(), // Examples of the rule in practice
+  counterExamples: text("counter_examples").array(), // What NOT to do
+  priority: integer("priority").notNull().default(1), // Higher = more important
+  applicableRooms: text("applicable_rooms").array(), // Which rooms this applies to
+  applicableStyles: text("applicable_styles").array(), // Which styles this applies to
+  active: boolean("active").notNull().default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const designRuleRelations = relations(designRules, ({ one }) => ({
+  creator: one(users, {
+    fields: [designRules.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type DesignRule = typeof designRules.$inferSelect;
+export const insertDesignRuleSchema = createInsertSchema(designRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDesignRule = z.infer<typeof insertDesignRuleSchema>;
