@@ -1050,77 +1050,21 @@ export function registerCuralinaRoutes(app: Express) {
           const prompt = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
           console.log(`📝 Generated prompt with ${roomAnalysis ? 'room analysis' : 'no room analysis'} and ${floorPlanAnalysis ? 'floor plan analysis' : 'no floor plan analysis'}`);
           
-          // Generate BASE image with Gemini AI (passing analysis for context)
-          const baseImageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
-          console.log(`✅ Base room image generated`);
+          // Generate AI image with detailed product descriptions embedded in prompt
+          // Products include rich Gemini Vision analysis (300-400 word descriptions)
+          // AI generates furniture matching real products based on these visual specifications
+          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
+          console.log(`✅ AI-generated room with text-based product rendering complete`);
           
           // Extract base64 data from data URL (format: data:image/png;base64,...)
-          const base64Match = baseImageDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
+          const base64Match = imageDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
           if (!base64Match) {
             throw new Error("Invalid image data format");
           }
           const base64Data = base64Match[1];
           
-          // Step 4.5: HYBRID COMPOSITING - Overlay real product images onto AI-generated base
-          let finalImageBuffer: Buffer;
-          
-          if (selectedProducts.length > 0) {
-            try {
-              console.log(`🎨 Starting hybrid compositing with ${selectedProducts.length} products`);
-              
-              // Save base image temporarily to get a URL for compositing
-              const baseImageBuffer = Buffer.from(base64Data, 'base64');
-              const tempBaseName = `temp-base-${render.id}-${Date.now()}.png`;
-              const publicPaths = objectStorageService.getPublicObjectSearchPaths();
-              const publicDir = publicPaths[0];
-              const tempBasePath = `${publicDir}/temp/${tempBaseName}`;
-              const { bucketName: tempBucketName, objectName: tempObjectName } = parseObjectPath(tempBasePath);
-              const tempBucket = (await import('./objectStorage')).objectStorageClient.bucket(tempBucketName);
-              const tempFile = tempBucket.file(tempObjectName);
-              
-              await tempFile.save(baseImageBuffer, {
-                metadata: { contentType: 'image/png' },
-              });
-              
-              const tempBaseUrl = `${fullDomain}/public-objects/temp/${tempBaseName}`;
-              
-              // Prepare product data with images for compositing
-              const productsWithImages = selectedProducts.map(sp => {
-                const fullProduct = allProducts.find(p => p.sku === sp.sku);
-                return {
-                  sku: sp.sku,
-                  name: fullProduct?.name || sp.name,
-                  placement: sp.placement,
-                  images: fullProduct?.images || []
-                };
-              }).filter(p => p.images.length > 0); // Only products with images
-              
-              if (productsWithImages.length > 0) {
-                // Generate placement guidelines and composite products
-                const { generatePlacementGuidelines, compositeProducts } = await import('./services/hybrid-compositing');
-                const placements = generatePlacementGuidelines(quiz.roomType, productsWithImages);
-                
-                finalImageBuffer = await compositeProducts(tempBaseUrl, placements);
-                console.log(`✅ Hybrid compositing complete - real products overlaid on AI-generated room`);
-                
-                // Clean up temp base image
-                await tempFile.delete().catch(() => {}); // Ignore errors
-              } else {
-                console.log(`⚠️ No products with images found, using base AI image`);
-                finalImageBuffer = baseImageBuffer;
-              }
-            } catch (error) {
-              console.error("Hybrid compositing error:", error);
-              console.log(`⚠️ Falling back to base AI image`);
-              finalImageBuffer = Buffer.from(base64Data, 'base64');
-            }
-          } else {
-            // No products selected, use base AI image
-            finalImageBuffer = Buffer.from(base64Data, 'base64');
-          }
-          
-          // Save FINAL composited image to object storage
-          const imageBuffer = finalImageBuffer;
+          // Convert to buffer for storage
+          const imageBuffer = Buffer.from(base64Data, 'base64');
           const imageName = `render-${render.id}-${Date.now()}.png`;
           
           const publicPaths = objectStorageService.getPublicObjectSearchPaths();
