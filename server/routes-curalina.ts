@@ -1112,13 +1112,25 @@ export function registerCuralinaRoutes(app: Express) {
           
           // Build enhanced prompt with enriched products and image analysis
           const prompt = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
-          console.log(`📝 Generated prompt with ${roomAnalysis ? 'room analysis' : 'no room analysis'} and ${floorPlanAnalysis ? 'floor plan analysis' : 'no floor plan analysis'}`);
+          
+          // Log what image analysis was used
+          const analysisTypes = [];
+          if (roomAnalysis) analysisTypes.push('room photo analysis');
+          if (floorPlanAnalysis) analysisTypes.push('floor plan analysis');
+          if (floorplanUrl && !roomAnalysis && !floorPlanAnalysis) analysisTypes.push('uploaded image (analysis pending)');
+          
+          console.log(`📝 Generated prompt with ${analysisTypes.length > 0 ? analysisTypes.join(' + ') : 'no image analysis'}`);
           
           // Generate AI image with detailed product descriptions embedded in prompt
           // Products include rich Gemini Vision analysis (300-400 word descriptions)
           // AI generates furniture matching real products based on these visual specifications
+          if (floorplanUrl) {
+            console.log(`🖼️ Using image-to-image mode with uploaded space photo`);
+          } else {
+            console.log(`🎨 Using text-to-image mode (no space photo uploaded)`);
+          }
           const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
-          console.log(`✅ AI-generated room with text-based product rendering complete`);
+          console.log(`✅ AI-generated room rendering complete`);
           
           // Extract base64 data from data URL (format: data:image/png;base64,...)
           const base64Match = imageDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
