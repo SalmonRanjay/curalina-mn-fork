@@ -379,13 +379,65 @@ Return a JSON array with this structure:
 /**
  * Build a highly detailed professional prompt from quiz responses and selected products
  * Optimized for clean, beautiful, realistic interior design renders
+ * @param quiz - Quiz response data
+ * @param selectedProducts - AI-selected products with placement
+ * @param roomAnalysis - Optional analysis of the current room from Gemini Vision
+ * @param floorPlanAnalysis - Optional analysis of the floor plan from Gemini Vision
  */
-export function buildPromptFromQuiz(quiz: QuizResponse, selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string }>): string {
+export function buildPromptFromQuiz(
+  quiz: QuizResponse, 
+  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string }>,
+  roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
+  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
+): string {
   const roomDesc = roomTypeDescriptions[quiz.roomType.toLowerCase()] || quiz.roomType;
   const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
   
   // Start with professional photography framing
   let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}. `;
+  
+  // Add current space context from image analysis
+  if (roomAnalysis && roomAnalysis.overallDescription !== "Image analysis unavailable") {
+    prompt += `\n\nCURRENT SPACE ANALYSIS:\n`;
+    prompt += `Overall: ${roomAnalysis.overallDescription}\n`;
+    
+    if (roomAnalysis.architecturalFeatures.length > 0) {
+      prompt += `\nARCHITECTURAL FEATURES TO PRESERVE:\n`;
+      roomAnalysis.architecturalFeatures.forEach(feature => {
+        prompt += `- ${feature}\n`;
+      });
+    }
+    
+    if (roomAnalysis.furniture.length > 0) {
+      prompt += `\nCURRENT FURNITURE (to be replaced):\n`;
+      roomAnalysis.furniture.forEach(item => {
+        prompt += `- ${item}\n`;
+      });
+    }
+    
+    if (roomAnalysis.colors.length > 0) {
+      prompt += `\nCurrent color palette (for reference): ${roomAnalysis.colors.join(", ")}\n`;
+    }
+  }
+  
+  // Add floor plan spatial context
+  if (floorPlanAnalysis && floorPlanAnalysis.overallDescription !== "Floor plan analysis unavailable") {
+    prompt += `\n\nSPATIAL LAYOUT ANALYSIS:\n`;
+    prompt += `${floorPlanAnalysis.overallDescription}\n`;
+    prompt += `Room Dimensions: ${floorPlanAnalysis.roomDimensions}\n`;
+    
+    if (floorPlanAnalysis.windowLocations.length > 0) {
+      prompt += `Windows: ${floorPlanAnalysis.windowLocations.join(", ")}\n`;
+    }
+    
+    if (floorPlanAnalysis.doorLocations.length > 0) {
+      prompt += `Doors/Openings: ${floorPlanAnalysis.doorLocations.join(", ")}\n`;
+    }
+    
+    if (floorPlanAnalysis.builtInFeatures.length > 0) {
+      prompt += `Built-in Features: ${floorPlanAnalysis.builtInFeatures.join(", ")}\n`;
+    }
+  }
   
   // Add comprehensive style description
   prompt += `\n\nDESIGN STYLE:\n${styleDesc}\n`;
@@ -454,16 +506,219 @@ CRITICAL REQUIREMENTS:
 }
 
 /**
+ * Analyze a room photo using Gemini Vision to extract detailed information
+ * Returns structured text descriptions of the space for better AI understanding
+ */
+export async function analyzeRoomImage(imageUrl: string): Promise<{
+  furniture: string[];
+  colors: string[];
+  style: string;
+  layout: string;
+  lighting: string;
+  architecturalFeatures: string[];
+  overallDescription: string;
+}> {
+  try {
+    console.log(`Analyzing room image with Gemini Vision: ${imageUrl}`);
+    
+    // Fetch the image
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+    
+    // Detect MIME type
+    let mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    if (!mimeType.startsWith('image/')) {
+      const urlLower = imageUrl.toLowerCase();
+      if (urlLower.endsWith('.png')) mimeType = 'image/png';
+      else if (urlLower.endsWith('.webp')) mimeType = 'image/webp';
+      else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else mimeType = 'image/jpeg';
+    }
+    
+    const analysisPrompt = `Analyze this room image in detail as an expert interior designer. Extract the following information:
+
+1. FURNITURE: List all visible furniture pieces with their approximate condition and style
+2. COLORS: Identify the dominant colors in walls, furniture, and décor
+3. STYLE: Determine the overall design style (modern, traditional, eclectic, etc.)
+4. LAYOUT: Describe the room's spatial arrangement and traffic flow
+5. LIGHTING: Describe natural and artificial lighting sources and quality
+6. ARCHITECTURAL FEATURES: List windows, doors, ceiling details, built-ins, moldings, etc.
+7. OVERALL DESCRIPTION: Provide a comprehensive 2-3 sentence description
+
+Return your analysis as a JSON object with these exact keys:
+{
+  "furniture": ["item 1 description", "item 2 description", ...],
+  "colors": ["color 1", "color 2", ...],
+  "style": "style name",
+  "layout": "layout description",
+  "lighting": "lighting description",
+  "architecturalFeatures": ["feature 1", "feature 2", ...],
+  "overallDescription": "comprehensive description"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: analysisPrompt },
+          { inlineData: { data: imageBase64, mimeType } }
+        ]
+      }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            furniture: { type: Type.ARRAY, items: { type: Type.STRING } },
+            colors: { type: Type.ARRAY, items: { type: Type.STRING } },
+            style: { type: Type.STRING },
+            layout: { type: Type.STRING },
+            lighting: { type: Type.STRING },
+            architecturalFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
+            overallDescription: { type: Type.STRING },
+          },
+          required: ["furniture", "colors", "style", "layout", "lighting", "architecturalFeatures", "overallDescription"]
+        }
+      }
+    });
+
+    const analysis = JSON.parse(response.text || "{}");
+    console.log("Room analysis completed:", analysis);
+    
+    return analysis;
+  } catch (error) {
+    console.error("Room image analysis error:", error);
+    // Return empty analysis on error
+    return {
+      furniture: [],
+      colors: [],
+      style: "unknown",
+      layout: "Unable to analyze layout",
+      lighting: "Unable to analyze lighting",
+      architecturalFeatures: [],
+      overallDescription: "Image analysis unavailable"
+    };
+  }
+}
+
+/**
+ * Analyze a floor plan using Gemini Vision to extract spatial information
+ * Returns structured text descriptions of dimensions, layout, and features
+ */
+export async function analyzeFloorPlan(imageUrl: string): Promise<{
+  roomDimensions: string;
+  windowLocations: string[];
+  doorLocations: string[];
+  builtInFeatures: string[];
+  layoutNotes: string;
+  overallDescription: string;
+}> {
+  try {
+    console.log(`Analyzing floor plan with Gemini Vision: ${imageUrl}`);
+    
+    // Fetch the image
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch floor plan: ${imageResponse.status}`);
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+    
+    // Detect MIME type
+    let mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    if (!mimeType.startsWith('image/')) {
+      const urlLower = imageUrl.toLowerCase();
+      if (urlLower.endsWith('.png')) mimeType = 'image/png';
+      else if (urlLower.endsWith('.webp')) mimeType = 'image/webp';
+      else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else mimeType = 'image/jpeg';
+    }
+    
+    const analysisPrompt = `Analyze this floor plan image as an expert architect. Extract the following spatial information:
+
+1. ROOM DIMENSIONS: Approximate size and proportions (if measurements visible, include them)
+2. WINDOW LOCATIONS: List all windows with their approximate positions (e.g., "north wall", "east wall near corner")
+3. DOOR LOCATIONS: List all doors/openings with positions and swing direction if visible
+4. BUILT-IN FEATURES: Identify any built-in elements like closets, fireplaces, alcoves, columns
+5. LAYOUT NOTES: Describe the overall room shape, ceiling height indicators, and any special architectural considerations
+6. OVERALL DESCRIPTION: Provide a 2-3 sentence summary of the space's layout and key features
+
+Return your analysis as a JSON object with these exact keys:
+{
+  "roomDimensions": "dimension description",
+  "windowLocations": ["window 1 location", "window 2 location", ...],
+  "doorLocations": ["door 1 location", "door 2 location", ...],
+  "builtInFeatures": ["feature 1", "feature 2", ...],
+  "layoutNotes": "layout description",
+  "overallDescription": "comprehensive description"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: analysisPrompt },
+          { inlineData: { data: imageBase64, mimeType } }
+        ]
+      }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            roomDimensions: { type: Type.STRING },
+            windowLocations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            doorLocations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            builtInFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
+            layoutNotes: { type: Type.STRING },
+            overallDescription: { type: Type.STRING },
+          },
+          required: ["roomDimensions", "windowLocations", "doorLocations", "builtInFeatures", "layoutNotes", "overallDescription"]
+        }
+      }
+    });
+
+    const analysis = JSON.parse(response.text || "{}");
+    console.log("Floor plan analysis completed:", analysis);
+    
+    return analysis;
+  } catch (error) {
+    console.error("Floor plan analysis error:", error);
+    // Return empty analysis on error
+    return {
+      roomDimensions: "Unknown dimensions",
+      windowLocations: [],
+      doorLocations: [],
+      builtInFeatures: [],
+      layoutNotes: "Unable to analyze layout",
+      overallDescription: "Floor plan analysis unavailable"
+    };
+  }
+}
+
+/**
  * Generate an interior design image using hybrid approach:
  * - Gemini for text-to-image (no room photo provided)
  * - Stability AI for structure-preserving image-to-image (room photo provided)
  * @param prompt - Detailed description of the desired room
  * @param floorplanUrl - Optional floorplan/room image URL for structure-preserving generation
+ * @param roomAnalysis - Optional analysis of the current room from analyzeRoomImage
+ * @param floorPlanAnalysis - Optional analysis of the floor plan from analyzeFloorPlan
  * @returns Base64 data URL (data:image/png;base64,...)
  */
 export async function generateInteriorImage(
   prompt: string,
-  floorplanUrl?: string
+  floorplanUrl?: string,
+  roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
+  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
 ): Promise<string> {
   try {
     // Text-to-image generation with Gemini (creative generation)

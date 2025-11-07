@@ -1,7 +1,15 @@
 # Curalina AI - Interior Design Platform
 
 ## Overview
-Curalina AI is a full-stack AI-powered interior design platform that integrates AI-generated room rendering (using Stability AI SDXL) with an e-commerce marketplace for furniture. Built with React, Express, and PostgreSQL, the platform allows users to take a design quiz, generate AI renders, and purchase products through a complete shopping and checkout experience. It supports anonymous user tracking and includes object storage for user uploads and AI-generated renders. The project aims to provide a seamless interior design and shopping journey, from inspiration to purchase, leveraging AI for personalized visual experiences.
+Curalina AI is a full-stack AI-powered interior design platform that integrates hybrid AI-generated room rendering with an e-commerce marketplace for furniture. Built with React, Express, and PostgreSQL, the platform features:
+
+- **Intelligent Image Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
+- **Hybrid AI Rendering**: Gemini 2.5 Flash for creative text-to-image generation, Stability AI SDXL with ControlNet for structure-preserving image-to-image edits
+- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context, ensuring generated designs respect architectural features, room dimensions, and spatial constraints
+- **Complete E-commerce Journey**: 7-step design quiz, AI-powered product selection, shopping cart, Stripe checkout integration
+- **Training Data System**: Admin-managed design examples, product packages, placement guidelines, and design rules to continuously improve AI performance
+
+The platform provides a seamless interior design and shopping experience, from inspiration to purchase, leveraging multimodal AI for highly personalized and contextually appropriate visual experiences.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -51,8 +59,9 @@ Preferred communication style: Simple, everyday language.
     - Google Cloud Storage (via Replit sidecar endpoint for credentials)
     - AWS S3 (for product images, bucket "curalina")
 - **AI/ML**:
-    - Stability AI SDXL (for AI room rendering)
-    - Google Gemini 2.5 Flash (for AI image matching in product import)
+    - Stability AI SDXL (for structure-preserving image-to-image room rendering)
+    - Google Gemini 2.5 Flash (for text-to-image creative generation, AI image matching in product import)
+    - Google Gemini Vision (for automated room photo and floor plan analysis, extracting spatial and design information)
 - **Payment Processing**:
     - Stripe (ready for API key integration)
 - **UI Libraries**:

@@ -860,7 +860,7 @@ export function registerCuralinaRoutes(app: Express) {
           console.log(`Found ${allProducts.length} total products`);
           
           // Step 2: Check if specific products were requested (for regeneration with swaps)
-          const { filterProductsByQuiz, selectProductsWithAI, buildPromptFromQuiz } = await import('./services/gemini-ai');
+          const { filterProductsByQuiz, selectProductsWithAI, buildPromptFromQuiz, analyzeRoomImage, analyzeFloorPlan } = await import('./services/gemini-ai');
           let selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }> = [];
           
           if (req.body.productSkus && req.body.productSkus.length > 0) {
@@ -888,19 +888,44 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // Step 4: Build enhanced prompt with selected products
-          const prompt = buildPromptFromQuiz(quiz, selectedProducts);
+          // Step 3: Analyze uploaded images with Gemini Vision
+          const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
+          const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
           
-          // Generate image with Gemini AI
-          let floorplanUrl: string | undefined = undefined;
-          if (quiz.floorplanUrl) {
-            const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
-            // Ensure domain has protocol
-            const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
-            floorplanUrl = `${fullDomain}${quiz.floorplanUrl}`;
+          let roomAnalysis;
+          let floorPlanAnalysis;
+          
+          // Analyze room photo (vibe image) if provided
+          if (quiz.vibeImages && quiz.vibeImages.length > 0) {
+            try {
+              const vibeImageUrl = `${fullDomain}${quiz.vibeImages[0]}`;
+              console.log(`🔍 Analyzing room photo with Gemini Vision...`);
+              roomAnalysis = await analyzeRoomImage(vibeImageUrl);
+              console.log(`✅ Room analysis complete: ${roomAnalysis.style} style detected`);
+            } catch (error) {
+              console.error("Room analysis error:", error);
+            }
           }
           
-          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl);
+          // Analyze floor plan if provided
+          let floorplanUrl: string | undefined = undefined;
+          if (quiz.floorplanUrl) {
+            floorplanUrl = `${fullDomain}${quiz.floorplanUrl}`;
+            try {
+              console.log(`🔍 Analyzing floor plan with Gemini Vision...`);
+              floorPlanAnalysis = await analyzeFloorPlan(floorplanUrl);
+              console.log(`✅ Floor plan analysis complete: ${floorPlanAnalysis.roomDimensions}`);
+            } catch (error) {
+              console.error("Floor plan analysis error:", error);
+            }
+          }
+          
+          // Step 4: Build enhanced prompt with selected products and image analysis
+          const prompt = buildPromptFromQuiz(quiz, selectedProducts, roomAnalysis, floorPlanAnalysis);
+          console.log(`📝 Generated prompt with ${roomAnalysis ? 'room analysis' : 'no room analysis'} and ${floorPlanAnalysis ? 'floor plan analysis' : 'no floor plan analysis'}`);
+          
+          // Generate image with Gemini AI (passing analysis for context)
+          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
           
           // Extract base64 data from data URL (format: data:image/png;base64,...)
           const base64Match = imageDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
