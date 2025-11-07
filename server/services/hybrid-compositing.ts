@@ -130,13 +130,37 @@ async function fetchImage(url: string): Promise<sharp.Sharp> {
 
 /**
  * Create a subtle shadow for a product image
+ * Creates a neutral black semi-transparent shadow by:
+ * 1. Starting with black canvas
+ * 2. Masking it with product's alpha channel
+ * 3. Blurring for soft shadow effect
  */
 async function createShadow(productBuffer: Buffer): Promise<Buffer> {
-  const shadowColor = { r: 0, g: 0, b: 0, alpha: 0.3 };
+  const productImage = sharp(productBuffer);
+  const metadata = await productImage.metadata();
   
-  return sharp(productBuffer)
+  if (!metadata.width || !metadata.height) {
+    throw new Error('Invalid shadow image dimensions');
+  }
+  
+  // Create a semi-transparent black canvas with subtle opacity
+  const blackCanvas = await sharp({
+    create: {
+      width: metadata.width,
+      height: metadata.height,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0.25 } // 25% opacity black for subtle shadow
+    }
+  }).png().toBuffer();
+  
+  // Composite product onto black canvas using 'dest-in' blend
+  // This creates a black silhouette with product's alpha channel
+  return sharp(blackCanvas)
+    .composite([{
+      input: productBuffer,
+      blend: 'dest-in' // Use product's alpha as mask for black canvas
+    }])
     .blur(10) // Blur for soft shadow
-    .tint(shadowColor)
     .toBuffer();
 }
 
@@ -188,12 +212,15 @@ export async function compositeProducts(
         (productMetadata.height / productMetadata.width) * targetWidth
       );
       
-      // Resize product image
+      // Resize product image and force PNG with transparency
+      // This ensures alpha channel is preserved even for JPEG sources
       const resizedProduct = await productImage
         .resize(targetWidth, targetHeight, {
           fit: 'contain',
           background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent background
         })
+        .ensureAlpha() // Ensure alpha channel exists
+        .png() // Force PNG output with transparency
         .toBuffer();
       
       // Calculate absolute position
