@@ -195,6 +195,7 @@ export const products = pgTable("products", {
   // Media & metadata
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
+  visualDescription: text("visual_description"), // Gemini Vision analysis of product images
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }

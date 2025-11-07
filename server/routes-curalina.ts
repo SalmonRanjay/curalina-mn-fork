@@ -598,6 +598,86 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Batch product visual analysis endpoint (Admin only)
+  app.post('/api/admin/products/analyze-visuals', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('\n🎨 Starting batch product visual analysis...');
+      
+      // Get all products with images
+      const allProducts = await curalinaStorage.getAllProducts();
+      const productsWithImages = allProducts.filter(p => 
+        p.images && p.images.length > 0 && p.images[0].startsWith('https://curalina')
+      );
+      
+      console.log(`Found ${productsWithImages.length} products with valid S3 images`);
+      
+      if (productsWithImages.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: 'No products with images found',
+          analyzed: 0,
+          failed: 0
+        });
+      }
+      
+      // Start async analysis
+      res.json({ 
+        success: true, 
+        message: `Analysis started for ${productsWithImages.length} products. Check server logs for progress.`,
+        totalProducts: productsWithImages.length
+      });
+      
+      // Run analysis in background
+      (async () => {
+        try {
+          const { batchAnalyzeProducts } = await import('./services/product-visual-analyzer');
+          
+          const productsToAnalyze = productsWithImages.map(p => ({
+            sku: p.sku,
+            name: p.name,
+            images: p.images || []
+          }));
+          
+          const results = await batchAnalyzeProducts(productsToAnalyze);
+          
+          // Update products with visual descriptions
+          let updated = 0;
+          let failed = 0;
+          
+          for (const result of results) {
+            if (result.visualDescription && !result.error) {
+              try {
+                const product = allProducts.find(p => p.sku === result.sku);
+                if (product) {
+                  await curalinaStorage.updateProduct(product.id, {
+                    visualDescription: result.visualDescription
+                  });
+                  updated++;
+                  console.log(`✅ Updated ${result.sku} with visual description`);
+                }
+              } catch (error) {
+                console.error(`Failed to update ${result.sku}:`, error);
+                failed++;
+              }
+            } else {
+              failed++;
+            }
+          }
+          
+          console.log(`\n📊 Batch Analysis Complete:`);
+          console.log(`  ✅ Updated: ${updated}`);
+          console.log(`  ❌ Failed: ${failed}`);
+        } catch (error) {
+          console.error('Batch analysis error:', error);
+        }
+      })();
+      
+    } catch (error) {
+      console.error("Error starting product visual analysis:", error);
+      res.status(500).json({ error: "Failed to start visual analysis" });
+    }
+  });
+
   app.get('/api/products/alternatives/:id', async (req, res) => {
     try {
       const alternatives = await curalinaStorage.getProductAlternatives(req.params.id);
@@ -921,7 +1001,7 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // Step 4: Enrich selected products with full details for better AI generation
+          // Step 4: Enrich selected products with full details AND visual descriptions for better AI generation
           const enrichedProducts = selectedProducts.map(sp => {
             const fullProduct = allProducts.find(p => p.sku === sp.sku);
             if (!fullProduct) return sp;
@@ -930,14 +1010,20 @@ export function registerCuralinaRoutes(app: Express) {
             let detailedName = fullProduct.name;
             const details: string[] = [];
             
-            if (fullProduct.description) {
-              details.push(fullProduct.description);
-            }
-            if (fullProduct.colors && fullProduct.colors.length > 0) {
-              details.push(`Colors: ${fullProduct.colors.join(", ")}`);
-            }
-            if (fullProduct.materials && fullProduct.materials.length > 0) {
-              details.push(`Materials: ${fullProduct.materials.join(", ")}`);
+            // PRIORITY: Use Gemini Vision visual description if available (most detailed)
+            if (fullProduct.visualDescription) {
+              details.push(fullProduct.visualDescription);
+            } else {
+              // Fallback to text-based product data
+              if (fullProduct.description) {
+                details.push(fullProduct.description);
+              }
+              if (fullProduct.colors && fullProduct.colors.length > 0) {
+                details.push(`Colors: ${fullProduct.colors.join(", ")}`);
+              }
+              if (fullProduct.materials && fullProduct.materials.length > 0) {
+                details.push(`Materials: ${fullProduct.materials.join(", ")}`);
+              }
             }
             
             // If we have details, append them to the name for the AI
@@ -947,9 +1033,18 @@ export function registerCuralinaRoutes(app: Express) {
             
             return {
               ...sp,
-              name: detailedName, // Enhanced name with specifications
+              name: detailedName, // Enhanced name with visual specifications
             };
           });
+          
+          const productsWithVisuals = enrichedProducts.filter((p: any) => {
+            const fullProduct = allProducts.find(fp => fp.sku === p.sku);
+            return fullProduct?.visualDescription;
+          }).length;
+          
+          if (productsWithVisuals > 0) {
+            console.log(`✨ Using visual descriptions for ${productsWithVisuals}/${selectedProducts.length} products`);
+          }
           
           // Build enhanced prompt with enriched products and image analysis
           const prompt = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
