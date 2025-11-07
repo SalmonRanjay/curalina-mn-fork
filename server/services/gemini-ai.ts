@@ -437,6 +437,10 @@ export function buildPromptFromQuiz(
     if (floorPlanAnalysis.builtInFeatures.length > 0) {
       prompt += `Built-in Features: ${floorPlanAnalysis.builtInFeatures.join(", ")}\n`;
     }
+    
+    if (floorPlanAnalysis.ceilingRoofDesign && floorPlanAnalysis.ceilingRoofDesign !== "Unable to analyze ceiling/roof design") {
+      prompt += `\nCEILING/ROOF DESIGN TO PRESERVE:\n${floorPlanAnalysis.ceilingRoofDesign}\nIMPORTANT: Maintain the existing ceiling design, including all architectural details, beams, height, and special features described above.\n`;
+    }
   }
   
   // Add comprehensive style description
@@ -616,6 +620,7 @@ export async function analyzeFloorPlan(imageUrl: string): Promise<{
   windowLocations: string[];
   doorLocations: string[];
   builtInFeatures: string[];
+  ceilingRoofDesign: string;
   layoutNotes: string;
   overallDescription: string;
 }> {
@@ -641,14 +646,15 @@ export async function analyzeFloorPlan(imageUrl: string): Promise<{
       else mimeType = 'image/jpeg';
     }
     
-    const analysisPrompt = `Analyze this floor plan image as an expert architect. Extract the following spatial information:
+    const analysisPrompt = `Analyze this floor plan or room image as an expert architect. Extract the following spatial information:
 
 1. ROOM DIMENSIONS: Approximate size and proportions (if measurements visible, include them)
 2. WINDOW LOCATIONS: List all windows with their approximate positions (e.g., "north wall", "east wall near corner")
 3. DOOR LOCATIONS: List all doors/openings with positions and swing direction if visible
 4. BUILT-IN FEATURES: Identify any built-in elements like closets, fireplaces, alcoves, columns
-5. LAYOUT NOTES: Describe the overall room shape, ceiling height indicators, and any special architectural considerations
-6. OVERALL DESCRIPTION: Provide a 2-3 sentence summary of the space's layout and key features
+5. CEILING/ROOF DESIGN: Describe the ceiling or roof design in detail - height, materials, exposed beams, coffers, vaulted ceilings, skylights, crown molding, ceiling fans, lighting fixtures, architectural details, and any special ceiling features
+6. LAYOUT NOTES: Describe the overall room shape, floor materials, and any special architectural considerations
+7. OVERALL DESCRIPTION: Provide a 2-3 sentence summary of the space's layout and key features
 
 Return your analysis as a JSON object with these exact keys:
 {
@@ -656,6 +662,7 @@ Return your analysis as a JSON object with these exact keys:
   "windowLocations": ["window 1 location", "window 2 location", ...],
   "doorLocations": ["door 1 location", "door 2 location", ...],
   "builtInFeatures": ["feature 1", "feature 2", ...],
+  "ceilingRoofDesign": "detailed ceiling/roof design description",
   "layoutNotes": "layout description",
   "overallDescription": "comprehensive description"
 }`;
@@ -678,10 +685,11 @@ Return your analysis as a JSON object with these exact keys:
             windowLocations: { type: Type.ARRAY, items: { type: Type.STRING } },
             doorLocations: { type: Type.ARRAY, items: { type: Type.STRING } },
             builtInFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
+            ceilingRoofDesign: { type: Type.STRING },
             layoutNotes: { type: Type.STRING },
             overallDescription: { type: Type.STRING },
           },
-          required: ["roomDimensions", "windowLocations", "doorLocations", "builtInFeatures", "layoutNotes", "overallDescription"]
+          required: ["roomDimensions", "windowLocations", "doorLocations", "builtInFeatures", "ceilingRoofDesign", "layoutNotes", "overallDescription"]
         }
       }
     });
@@ -698,6 +706,7 @@ Return your analysis as a JSON object with these exact keys:
       windowLocations: [],
       doorLocations: [],
       builtInFeatures: [],
+      ceilingRoofDesign: "Unable to analyze ceiling/roof design",
       layoutNotes: "Unable to analyze layout",
       overallDescription: "Floor plan analysis unavailable"
     };
