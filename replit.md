@@ -34,6 +34,11 @@ Preferred communication style: Simple, everyday language.
     - `cartItems`: Shopping cart items per session.
     - `orders`: Purchase orders with customer and shipping details.
     - `orderItems`: Individual items within orders.
+    - **AI Training Data**:
+      - `designExamples`: Good and bad design references for AI learning.
+      - `productPackages`: Pre-curated product combinations that work well together.
+      - `placementGuidelines`: Rules for where products should be placed in rooms.
+      - `designRules`: General design principles and rules for AI to follow.
 - **Object Storage**: Google Cloud Storage for user uploads (floorplans, vibe images, AI renders), AWS S3 for product images.
 
 ## External Dependencies
