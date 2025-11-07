@@ -30,9 +30,9 @@ export default function Results() {
       return res.json();
     },
     enabled: !!sessionId,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Poll every 2 seconds if status is still 'generating'
-      return data?.status === 'generating' ? 2000 : false;
+      return query.state.data?.status === 'generating' ? 2000 : false;
     },
   });
 
@@ -214,7 +214,7 @@ export default function Results() {
           >
             <Card className="p-4 relative">
               <img
-                src={render.imageUrl}
+                src={render.imageUrl ?? ''}
                 alt="AI Generated Interior Design"
                 className="w-full h-auto rounded-lg cursor-pointer"
                 onClick={() => setShowFullImage(true)}
@@ -322,10 +322,10 @@ export default function Results() {
                           </p>
                           <div className="flex items-center justify-between mb-3">
                             <div>
-                              {product.discount ? (
+                              {product.discount && Number(product.discount) > 0 ? (
                                 <div className="flex items-center gap-2">
                                   <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                                    ${(product.price * (1 - product.discount / 100)).toFixed(2)}
+                                    ${(Number(product.price) * (1 - Number(product.discount) / 100)).toFixed(2)}
                                   </span>
                                   <span className="text-sm text-stone-500 line-through">
                                     ${product.price}
@@ -602,7 +602,7 @@ export default function Results() {
             <X className="w-4 h-4" />
           </Button>
           <img
-            src={render.imageUrl}
+            src={render.imageUrl ?? ''}
             alt="AI Generated Interior Design"
             className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}
