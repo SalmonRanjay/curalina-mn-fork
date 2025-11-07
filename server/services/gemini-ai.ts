@@ -128,12 +128,14 @@ function hasValidImages(product: Product): boolean {
       return false;
     }
     
-    // Basic URL format validation - must start with http:// or https:// or be a valid path
-    const isValidUrl = 
-      trimmed.startsWith('http://') ||
-      trimmed.startsWith('https://') ||
-      trimmed.startsWith('/') ||
-      trimmed.startsWith('./');
+    // Basic URL format validation
+    const isExternalUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+    const isObjectStorage = trimmed.startsWith('/public-objects/') || trimmed.startsWith('/private-objects/');
+    const isS3Path = trimmed.includes('s3.amazonaws.com') || trimmed.includes('curalina');
+    
+    // Accept only external URLs (https) or object storage paths
+    // Reject generic relative paths like "/images/" which are likely broken
+    const isValidUrl = isExternalUrl || isObjectStorage || isS3Path;
     
     if (!isValidUrl) {
       return false;
@@ -1009,11 +1011,18 @@ Return your analysis as a JSON object with this format:
     });
 
     const analysis = JSON.parse(response.text || "{}");
-    const visibleSkus = analysis.visibleSkus || [];
+    const visibleSkus: string[] = analysis.visibleSkus || [];
     
-    console.log(`✅ Identified ${visibleSkus.length} visible products out of ${selectedProducts.length} total: ${visibleSkus.join(', ')}`);
+    // Deduplicate SKUs - Gemini may return the same SKU multiple times if it sees multiple identical items
+    const uniqueSkus: string[] = Array.from(new Set(visibleSkus));
     
-    return visibleSkus;
+    if (uniqueSkus.length < visibleSkus.length) {
+      console.log(`🔄 Deduplicated ${visibleSkus.length} visible products to ${uniqueSkus.length} unique products`);
+    }
+    
+    console.log(`✅ Identified ${uniqueSkus.length} unique visible products out of ${selectedProducts.length} total: ${uniqueSkus.join(', ')}`);
+    
+    return uniqueSkus;
   } catch (error) {
     console.error("Product visibility analysis error:", error);
     // Return all SKUs as fallback - better to show all than none
