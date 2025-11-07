@@ -22,10 +22,31 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 // Extend the schema for form handling with comma-separated strings
 const productFormSchema = insertProductSchema.extend({
   price: z.string().min(1, "Price is required"),
+  tradePrice: z.string().optional(),
   discount: z.string().optional(),
+  inventory: z.string().optional(),
+  leadTime: z.string().optional(),
+  roomType: z.string().optional(),
+  designStyle: z.string().optional(),
+  keyFeatures: z.string().optional(),
+  storageSolutions: z.string().optional(),
   styleTags: z.string().optional(),
   colors: z.string().optional(),
   materials: z.string().optional(),
+  tags: z.string().optional(),
+  dimensionsWidth: z.string().optional(),
+  dimensionsDepth: z.string().optional(),
+  dimensionsHeight: z.string().optional(),
+  dimensionsArmWidth: z.string().optional(),
+  dimensionsArmDepth: z.string().optional(),
+  dimensionsSeatWidth: z.string().optional(),
+  dimensionsSeatDepth: z.string().optional(),
+  weight: z.string().optional(),
+  seating: z.string().optional(),
+  assembly: z.string().optional(),
+  deliveryOptions: z.string().optional(),
+  deliveryLocation: z.string().optional(),
+  deliveryPolicy: z.string().optional(),
 });
 
 type ProductFormData = z.infer<typeof productFormSchema>;
@@ -68,12 +89,33 @@ export default function AdminProducts() {
       categoryId: "",
       supplierId: "",
       price: "",
+      tradePrice: "",
       discount: "0",
       availability: "in_stock",
+      inventory: "",
+      leadTime: "",
       slug: "",
+      roomType: "",
+      designStyle: "",
+      keyFeatures: "",
+      storageSolutions: "",
       styleTags: "",
       colors: "",
       materials: "",
+      tags: "",
+      dimensionsWidth: "",
+      dimensionsDepth: "",
+      dimensionsHeight: "",
+      dimensionsArmWidth: "",
+      dimensionsArmDepth: "",
+      dimensionsSeatWidth: "",
+      dimensionsSeatDepth: "",
+      weight: "",
+      seating: "",
+      assembly: "",
+      deliveryOptions: "",
+      deliveryLocation: "",
+      deliveryPolicy: "",
     },
   });
 
@@ -82,6 +124,25 @@ export default function AdminProducts() {
   });
 
   const transformFormData = (data: ProductFormData): any => {
+    // Build dimensions object if any dimension fields are provided
+    const dimensions: any = {};
+    if (data.dimensionsWidth) dimensions.w = parseFloat(data.dimensionsWidth);
+    if (data.dimensionsDepth) dimensions.d = parseFloat(data.dimensionsDepth);
+    if (data.dimensionsHeight) dimensions.h = parseFloat(data.dimensionsHeight);
+    if (data.dimensionsArmWidth) dimensions.armWidth = parseFloat(data.dimensionsArmWidth);
+    if (data.dimensionsArmDepth) dimensions.armDepth = parseFloat(data.dimensionsArmDepth);
+    if (data.dimensionsSeatWidth) dimensions.seatWidth = parseFloat(data.dimensionsSeatWidth);
+    if (data.dimensionsSeatDepth) dimensions.seatDepth = parseFloat(data.dimensionsSeatDepth);
+    if (Object.keys(dimensions).length > 0) {
+      dimensions.unit = "inches";
+    }
+    
+    // Build shipping object if any delivery fields are provided
+    const shipping: any = {};
+    if (data.deliveryOptions) shipping.deliveryOptions = data.deliveryOptions;
+    if (data.deliveryLocation) shipping.deliveryLocation = data.deliveryLocation;
+    if (data.deliveryPolicy) shipping.deliveryPolicy = data.deliveryPolicy;
+    
     return {
       sku: data.sku,
       name: data.name,
@@ -89,12 +150,25 @@ export default function AdminProducts() {
       categoryId: data.categoryId,
       supplierId: data.supplierId,
       price: parseFloat(data.price),
+      tradePrice: data.tradePrice ? parseFloat(data.tradePrice) : undefined,
       discount: data.discount ? parseFloat(data.discount) : 0,
       availability: data.availability,
+      inventory: data.inventory ? parseInt(data.inventory) : undefined,
+      leadTime: data.leadTime ? parseInt(data.leadTime) : undefined,
       slug: data.slug,
+      roomType: data.roomType ? data.roomType.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      designStyle: data.designStyle ? data.designStyle.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      keyFeatures: data.keyFeatures ? data.keyFeatures.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      storageSolutions: data.storageSolutions || undefined,
       styleTags: data.styleTags ? data.styleTags.split(",").map((s) => s.trim()).filter(Boolean) : [],
       colors: data.colors ? data.colors.split(",").map((c) => c.trim()).filter(Boolean) : [],
       materials: data.materials ? data.materials.split(",").map((m) => m.trim()).filter(Boolean) : [],
+      tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      dimensions: Object.keys(dimensions).length > 0 ? dimensions : undefined,
+      weight: data.weight || undefined,
+      seating: data.seating || undefined,
+      assembly: data.assembly || undefined,
+      shipping: Object.keys(shipping).length > 0 ? shipping : undefined,
     };
   };
 
@@ -295,6 +369,8 @@ export default function AdminProducts() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    const dims = product.dimensions as any;
+    const ship = product.shipping as any;
     editForm.reset({
       sku: product.sku,
       name: product.name,
@@ -302,12 +378,33 @@ export default function AdminProducts() {
       categoryId: product.categoryId,
       supplierId: product.supplierId,
       price: product.price?.toString() || "",
+      tradePrice: (product as any).tradePrice?.toString() || "",
       discount: product.discount?.toString() || "0",
       availability: product.availability || "in_stock",
+      inventory: (product as any).inventory?.toString() || "",
+      leadTime: (product as any).leadTime?.toString() || "",
       slug: product.slug,
+      roomType: (product as any).roomType?.join(", ") || "",
+      designStyle: (product as any).designStyle?.join(", ") || "",
+      keyFeatures: (product as any).keyFeatures?.join(", ") || "",
+      storageSolutions: (product as any).storageSolutions || "",
       styleTags: product.styleTags?.join(", ") || "",
       colors: product.colors?.join(", ") || "",
       materials: product.materials?.join(", ") || "",
+      tags: (product as any).tags?.join(", ") || "",
+      dimensionsWidth: dims?.w?.toString() || "",
+      dimensionsDepth: dims?.d?.toString() || "",
+      dimensionsHeight: dims?.h?.toString() || "",
+      dimensionsArmWidth: dims?.armWidth?.toString() || "",
+      dimensionsArmDepth: dims?.armDepth?.toString() || "",
+      dimensionsSeatWidth: dims?.seatWidth?.toString() || "",
+      dimensionsSeatDepth: dims?.seatDepth?.toString() || "",
+      weight: (product as any).weight || "",
+      seating: (product as any).seating || "",
+      assembly: (product as any).assembly || "",
+      deliveryOptions: ship?.deliveryOptions || "",
+      deliveryLocation: ship?.deliveryLocation || "",
+      deliveryPolicy: ship?.deliveryPolicy || "",
     });
   };
 
@@ -391,109 +488,18 @@ export default function AdminProducts() {
 
   const ProductFormFields = ({ form }: { form: any }) => (
     <>
-      <FormField
-        control={form.control}
-        name="sku"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>SKU</FormLabel>
-            <FormControl>
-              <Input {...field} data-testid="input-sku" placeholder="PROD-001" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="name"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Name</FormLabel>
-            <FormControl>
-              <Input {...field} data-testid="input-name" placeholder="Product name" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Description</FormLabel>
-            <FormControl>
-              <Textarea {...field} data-testid="input-description" placeholder="Product description" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <div className="grid grid-cols-2 gap-4">
+      {/* Basic Information */}
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg">Basic Information</h3>
+        
         <FormField
           control={form.control}
-          name="categoryId"
+          name="sku"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {categories?.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="supplierId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Supplier</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-supplier">
-                    <SelectValue placeholder="Select supplier" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {suppliers?.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <FormField
-          control={form.control}
-          name="price"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Price ($)</FormLabel>
+              <FormLabel>SKU</FormLabel>
               <FormControl>
-                <Input {...field} data-testid="input-price" type="number" step="0.01" placeholder="99.99" />
+                <Input {...field} data-testid="input-sku" placeholder="PROD-001" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -502,12 +508,12 @@ export default function AdminProducts() {
 
         <FormField
           control={form.control}
-          name="discount"
+          name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Discount ($)</FormLabel>
+              <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input {...field} data-testid="input-discount" type="number" step="0.01" placeholder="0" />
+                <Input {...field} data-testid="input-name" placeholder="Product name" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -516,83 +522,501 @@ export default function AdminProducts() {
 
         <FormField
           control={form.control}
-          name="availability"
+          name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Availability</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-availability">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="in_stock">In Stock</SelectItem>
-                  <SelectItem value="preorder">Preorder</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                </SelectContent>
-              </Select>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea {...field} data-testid="input-description" placeholder="Product description" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories?.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="supplierId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Supplier</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-supplier">
+                      <SelectValue placeholder="Select supplier" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {suppliers?.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="slug"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL Slug</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-slug" placeholder="product-name" />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
       </div>
 
-      <FormField
-        control={form.control}
-        name="slug"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Slug</FormLabel>
-            <FormControl>
-              <Input {...field} data-testid="input-slug" placeholder="product-name" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {/* Pricing & Inventory */}
+      <div className="space-y-4 pt-4 border-t">
+        <h3 className="font-semibold text-lg">Pricing & Inventory</h3>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="tradePrice"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Trade Price ($)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-trade-price" type="number" step="0.01" placeholder="79.99" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <FormField
-        control={form.control}
-        name="styleTags"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Style Tags (comma separated)</FormLabel>
-            <FormControl>
-              <Input {...field} data-testid="input-style-tags" placeholder="modern, organic, minimalist" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Retail Price ($)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-price" type="number" step="0.01" placeholder="99.99" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <FormField
-        control={form.control}
-        name="colors"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Colors (comma separated)</FormLabel>
-            <FormControl>
-              <Input {...field} data-testid="input-colors" placeholder="white, black, brown" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+          <FormField
+            control={form.control}
+            name="discount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Discount ($)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-discount" type="number" step="0.01" placeholder="0" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-      <FormField
-        control={form.control}
-        name="materials"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Materials (comma separated)</FormLabel>
-            <FormControl>
-              <Input {...field} data-testid="input-materials" placeholder="wood, fabric, metal" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="inventory"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Inventory</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-inventory" type="number" placeholder="10" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="availability"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Availability</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-availability">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="in_stock">In Stock</SelectItem>
+                    <SelectItem value="preorder">Preorder</SelectItem>
+                    <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="leadTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Lead Time (days)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-lead-time" type="number" placeholder="7" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Product Attributes */}
+      <div className="space-y-4 pt-4 border-t">
+        <h3 className="font-semibold text-lg">Product Attributes</h3>
+        
+        <FormField
+          control={form.control}
+          name="roomType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Room Type (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-room-type" placeholder="Living Room, Bedroom" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="designStyle"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Design Style (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-design-style" placeholder="Modern, Contemporary, Minimalist" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="keyFeatures"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Key Features (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-key-features" placeholder="Pet-friendly, Stain resistant, Easy to clean" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="storageSolutions"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Storage Solutions</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-storage-solutions" placeholder="No Storage, 3 Drawers, Built-in Shelves" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="styleTags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Style Tags (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-style-tags" placeholder="modern, organic, minimalist" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="colors"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Colors (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-colors" placeholder="white, black, brown" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="materials"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Materials (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-materials" placeholder="wood, fabric, metal" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-tags" placeholder="sofa, luxury, modern" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Physical Specifications */}
+      <div className="space-y-4 pt-4 border-t">
+        <h3 className="font-semibold text-lg">Physical Specifications</h3>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="dimensionsWidth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Width (inches)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-width" type="number" placeholder="84" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dimensionsDepth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Depth (inches)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-depth" type="number" placeholder="36" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dimensionsHeight"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Height (inches)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-height" type="number" placeholder="32" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          <FormField
+            control={form.control}
+            name="dimensionsArmWidth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Arm Width (in)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-arm-width" type="number" placeholder="10" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dimensionsArmDepth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Arm Depth (in)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-arm-depth" type="number" placeholder="32" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dimensionsSeatWidth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Seat Width (in)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-seat-width" type="number" placeholder="60" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dimensionsSeatDepth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Seat Depth (in)</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-seat-depth" type="number" placeholder="24" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="weight"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Weight</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-weight" placeholder="150 lbs" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="seating"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Seating Capacity</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-seating" placeholder="3 seats, 2-4 people" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="assembly"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Assembly Required</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-assembly" placeholder="Yes, No, Partial" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Shipping & Delivery */}
+      <div className="space-y-4 pt-4 border-t">
+        <h3 className="font-semibold text-lg">Shipping & Delivery</h3>
+        
+        <FormField
+          control={form.control}
+          name="deliveryOptions"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Delivery Options (comma separated)</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-delivery-options" placeholder="White glove delivery, Curbside delivery" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="deliveryLocation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Delivery Location</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-delivery-location" placeholder="Continental US, Worldwide" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="deliveryPolicy"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Delivery Policy</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-delivery-policy" placeholder="Free shipping over $100" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </>
   );
 
@@ -1090,12 +1514,32 @@ export default function AdminProducts() {
                 <h3 className="font-semibold text-lg mb-3">Physical Specifications</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Dimensions</Label>
+                    <Label className="text-muted-foreground">Dimensions (W × D × H)</Label>
                     <p className="text-sm">
                       {viewingProduct.dimensions 
                         ? `${(viewingProduct.dimensions as any).w}" W × ${(viewingProduct.dimensions as any).d}" D × ${(viewingProduct.dimensions as any).h}" H`
                         : "N/A"}
                     </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Arm Dimensions</Label>
+                    <p className="text-sm">
+                      {(viewingProduct.dimensions as any)?.armWidth || (viewingProduct.dimensions as any)?.armDepth
+                        ? `${(viewingProduct.dimensions as any).armWidth || "?"}" W × ${(viewingProduct.dimensions as any).armDepth || "?"}" D`
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Seat Dimensions</Label>
+                    <p className="text-sm">
+                      {(viewingProduct.dimensions as any)?.seatWidth || (viewingProduct.dimensions as any)?.seatDepth
+                        ? `${(viewingProduct.dimensions as any).seatWidth || "?"}" W × ${(viewingProduct.dimensions as any).seatDepth || "?"}" D`
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Seating Capacity</Label>
+                    <p className="text-sm">{(viewingProduct as any).seating || "N/A"}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Weight</Label>
@@ -1107,6 +1551,27 @@ export default function AdminProducts() {
                   </div>
                 </div>
               </div>
+              
+              {/* Shipping & Delivery */}
+              {((viewingProduct as any).shipping?.deliveryOptions || (viewingProduct as any).shipping?.deliveryLocation || (viewingProduct as any).shipping?.deliveryPolicy) && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-3">Shipping & Delivery</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Delivery Options</Label>
+                      <p className="text-sm">{(viewingProduct as any).shipping?.deliveryOptions || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Delivery Location</Label>
+                      <p className="text-sm">{(viewingProduct as any).shipping?.deliveryLocation || "N/A"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-muted-foreground">Delivery Policy</Label>
+                      <p className="text-sm">{(viewingProduct as any).shipping?.deliveryPolicy || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Images */}
               <div>
