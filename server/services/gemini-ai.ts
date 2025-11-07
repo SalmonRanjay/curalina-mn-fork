@@ -103,7 +103,7 @@ function calculateVisualSimilarityScore(product: Product, quiz: QuizResponse): n
   const colorWeight = 0.4;
   if (quiz.vibeColorPalette && quiz.vibeColorPalette.length > 0) {
     const productColors = [
-      ...(product.color ? [product.color] : []),
+      ...(product.colors || []),
       ...(product.visualDescription?.toLowerCase() || '').split(/[,\s]+/)
     ].map(c => c.toLowerCase().trim()).filter(Boolean);
     

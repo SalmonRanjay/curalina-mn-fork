@@ -969,7 +969,42 @@ export function registerCuralinaRoutes(app: Express) {
   app.post('/api/quiz', async (req, res) => {
     try {
       const validatedData = insertQuizResponseSchema.parse(req.body);
-      const quiz = await curalinaStorage.createQuizResponse(validatedData);
+      
+      // If vibe images are present, analyze them to extract visual preferences
+      let vibePreferences = {};
+      if (validatedData.vibeImages && validatedData.vibeImages.length > 0) {
+        console.log(`🎨 Analyzing ${validatedData.vibeImages.length} vibe image(s) to extract visual preferences...`);
+        const { analyzeVibeImages } = await import('./services/gemini-ai');
+        
+        try {
+          const analysis = await analyzeVibeImages(validatedData.vibeImages);
+          vibePreferences = {
+            vibeColorPalette: analysis.colorPalette,
+            vibeMaterials: analysis.materials,
+            vibeTextures: analysis.textures,
+            vibeLightingTone: analysis.lightingTone,
+            vibeDensity: analysis.density,
+            vibeOverallDescription: analysis.overallVibe,
+          };
+          console.log(`✅ Vibe image analysis complete:`, {
+            colors: analysis.colorPalette.length,
+            materials: analysis.materials.length,
+            textures: analysis.textures.length,
+            tone: analysis.lightingTone,
+            density: analysis.density
+          });
+        } catch (error) {
+          console.error("Error analyzing vibe images:", error);
+          // Continue without vibe preferences if analysis fails
+        }
+      }
+      
+      // Create quiz response with vibe preferences
+      const quiz = await curalinaStorage.createQuizResponse({
+        ...validatedData,
+        ...vibePreferences
+      });
+      
       res.json(quiz);
     } catch (error) {
       if (error instanceof z.ZodError) {
