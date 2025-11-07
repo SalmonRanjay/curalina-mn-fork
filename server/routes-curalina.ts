@@ -10,6 +10,10 @@ import {
   insertCategorySchema,
   insertSupplierSchema,
   insertProductSchema,
+  insertDesignExampleSchema,
+  insertProductPackageSchema,
+  insertPlacementGuidelineSchema,
+  insertDesignRuleSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
@@ -601,6 +605,207 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching alternatives:", error);
       res.status(500).json({ error: "Failed to fetch alternatives" });
+    }
+  });
+
+  // AI Training Data endpoints (Admin only)
+  // Design Examples
+  app.get('/api/admin/design-examples', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { type, roomType } = req.query;
+      const filters: any = {};
+      if (type) filters.type = type as 'good' | 'bad';
+      if (roomType) filters.roomType = roomType as string;
+      
+      const examples = await curalinaStorage.getAllDesignExamples(filters);
+      res.json(examples);
+    } catch (error) {
+      console.error("Error fetching design examples:", error);
+      res.status(500).json({ error: "Failed to fetch design examples" });
+    }
+  });
+
+  app.post('/api/admin/design-examples', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertDesignExampleSchema.parse(req.body);
+      const example = await curalinaStorage.createDesignExample(validatedData);
+      res.json(example);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid design example data", details: error.errors });
+      }
+      console.error("Error creating design example:", error);
+      res.status(500).json({ error: "Failed to create design example" });
+    }
+  });
+
+  app.patch('/api/admin/design-examples/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const example = await curalinaStorage.updateDesignExample(req.params.id, req.body);
+      res.json(example);
+    } catch (error) {
+      console.error("Error updating design example:", error);
+      res.status(500).json({ error: "Failed to update design example" });
+    }
+  });
+
+  app.delete('/api/admin/design-examples/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteDesignExample(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting design example:", error);
+      res.status(500).json({ error: "Failed to delete design example" });
+    }
+  });
+
+  // Product Packages
+  app.get('/api/admin/product-packages', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { roomType, active } = req.query;
+      const filters: any = {};
+      if (roomType) filters.roomType = roomType as string;
+      if (active !== undefined) filters.active = active === 'true';
+      
+      const packages = await curalinaStorage.getAllProductPackages(filters);
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching product packages:", error);
+      res.status(500).json({ error: "Failed to fetch product packages" });
+    }
+  });
+
+  app.post('/api/admin/product-packages', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertProductPackageSchema.parse(req.body);
+      const pkg = await curalinaStorage.createProductPackage(validatedData);
+      res.json(pkg);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid product package data", details: error.errors });
+      }
+      console.error("Error creating product package:", error);
+      res.status(500).json({ error: "Failed to create product package" });
+    }
+  });
+
+  app.patch('/api/admin/product-packages/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const pkg = await curalinaStorage.updateProductPackage(req.params.id, req.body);
+      res.json(pkg);
+    } catch (error) {
+      console.error("Error updating product package:", error);
+      res.status(500).json({ error: "Failed to update product package" });
+    }
+  });
+
+  app.delete('/api/admin/product-packages/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteProductPackage(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting product package:", error);
+      res.status(500).json({ error: "Failed to delete product package" });
+    }
+  });
+
+  // Placement Guidelines
+  app.get('/api/admin/placement-guidelines', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { roomType, productCategory } = req.query;
+      const filters: any = {};
+      if (roomType) filters.roomType = roomType as string;
+      if (productCategory) filters.productCategory = productCategory as string;
+      
+      const guidelines = await curalinaStorage.getAllPlacementGuidelines(filters);
+      res.json(guidelines);
+    } catch (error) {
+      console.error("Error fetching placement guidelines:", error);
+      res.status(500).json({ error: "Failed to fetch placement guidelines" });
+    }
+  });
+
+  app.post('/api/admin/placement-guidelines', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertPlacementGuidelineSchema.parse(req.body);
+      const guideline = await curalinaStorage.createPlacementGuideline(validatedData);
+      res.json(guideline);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid placement guideline data", details: error.errors });
+      }
+      console.error("Error creating placement guideline:", error);
+      res.status(500).json({ error: "Failed to create placement guideline" });
+    }
+  });
+
+  app.patch('/api/admin/placement-guidelines/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const guideline = await curalinaStorage.updatePlacementGuideline(req.params.id, req.body);
+      res.json(guideline);
+    } catch (error) {
+      console.error("Error updating placement guideline:", error);
+      res.status(500).json({ error: "Failed to update placement guideline" });
+    }
+  });
+
+  app.delete('/api/admin/placement-guidelines/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await curalinaStorage.deletePlacementGuideline(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting placement guideline:", error);
+      res.status(500).json({ error: "Failed to delete placement guideline" });
+    }
+  });
+
+  // Design Rules
+  app.get('/api/admin/design-rules', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { category, active } = req.query;
+      const filters: any = {};
+      if (category) filters.category = category as string;
+      if (active !== undefined) filters.active = active === 'true';
+      
+      const rules = await curalinaStorage.getAllDesignRules(filters);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching design rules:", error);
+      res.status(500).json({ error: "Failed to fetch design rules" });
+    }
+  });
+
+  app.post('/api/admin/design-rules', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertDesignRuleSchema.parse(req.body);
+      const rule = await curalinaStorage.createDesignRule(validatedData);
+      res.json(rule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid design rule data", details: error.errors });
+      }
+      console.error("Error creating design rule:", error);
+      res.status(500).json({ error: "Failed to create design rule" });
+    }
+  });
+
+  app.patch('/api/admin/design-rules/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const rule = await curalinaStorage.updateDesignRule(req.params.id, req.body);
+      res.json(rule);
+    } catch (error) {
+      console.error("Error updating design rule:", error);
+      res.status(500).json({ error: "Failed to update design rule" });
+    }
+  });
+
+  app.delete('/api/admin/design-rules/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteDesignRule(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting design rule:", error);
+      res.status(500).json({ error: "Failed to delete design rule" });
     }
   });
 
