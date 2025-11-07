@@ -406,6 +406,7 @@ export function buildPromptFromQuiz(
       roomAnalysis.architecturalFeatures.forEach(feature => {
         prompt += `- ${feature}\n`;
       });
+      prompt += `IMPORTANT: All architectural features listed above are permanent fixtures. Windows must remain as functional windows with glass and natural light. Do not add, remove, or relocate any architectural elements.\n`;
     }
     
     if (roomAnalysis.furniture.length > 0) {
@@ -439,11 +440,26 @@ export function buildPromptFromQuiz(
     prompt += `Room Dimensions: ${floorPlanAnalysis.roomDimensions}\n`;
     
     if (floorPlanAnalysis.windowLocations.length > 0) {
-      prompt += `Windows: ${floorPlanAnalysis.windowLocations.join(", ")}\n`;
+      prompt += `\nWINDOWS - CRITICAL ARCHITECTURAL CONSTRAINT:\n`;
+      prompt += `The room has EXACTLY ${floorPlanAnalysis.windowLocations.length} window(s) located at:\n`;
+      floorPlanAnalysis.windowLocations.forEach((location, idx) => {
+        prompt += `${idx + 1}. ${location}\n`;
+      });
+      prompt += `\nCRITICAL REQUIREMENTS FOR WINDOWS:\n`;
+      prompt += `- Preserve the EXACT location, size, and architectural style of these ${floorPlanAnalysis.windowLocations.length} window(s)\n`;
+      prompt += `- Windows must remain FUNCTIONAL WINDOWS with visible glass, frames, and natural light coming through\n`;
+      prompt += `- DO NOT add any additional windows beyond the ${floorPlanAnalysis.windowLocations.length} listed above\n`;
+      prompt += `- DO NOT convert windows into wall decorations, murals, or non-functional architectural elements\n`;
+      prompt += `- DO NOT place windows where they don't exist in the original space\n`;
+      prompt += `- Windows are permanent architectural features that cannot be moved or changed\n\n`;
     }
     
     if (floorPlanAnalysis.doorLocations.length > 0) {
-      prompt += `Doors/Openings: ${floorPlanAnalysis.doorLocations.join(", ")}\n`;
+      prompt += `\nDOORS/OPENINGS - PRESERVE EXACT LOCATIONS:\n`;
+      floorPlanAnalysis.doorLocations.forEach((location, idx) => {
+        prompt += `${idx + 1}. ${location}\n`;
+      });
+      prompt += `IMPORTANT: Doors and openings are fixed architectural elements. Maintain their exact positions.\n\n`;
     }
     
     if (floorPlanAnalysis.builtInFeatures.length > 0) {
@@ -518,7 +534,14 @@ CRITICAL REQUIREMENTS:
 - Composition must be balanced and professionally styled
 - All furniture pieces must be properly proportioned and positioned
 - The space must feel cohesive, harmonious, and thoughtfully designed
-- Avoid overly perfect symmetry - include subtle organic asymmetry for realism`;
+- Avoid overly perfect symmetry - include subtle organic asymmetry for realism
+
+ARCHITECTURAL PRESERVATION (NON-NEGOTIABLE):
+- Windows: Preserve EXACT locations and quantities specified above. Windows must remain FUNCTIONAL with visible glass and natural light
+- DO NOT add extra windows or convert windows into decorative wall elements
+- Ceiling/roof design: Maintain all existing architectural details (beams, height, materials, etc.)
+- Wall colors and patterns: Preserve existing wall finishes as specified
+- Doors and built-in features: Keep in their exact original locations`;
   
   return prompt;
 }
