@@ -173,15 +173,14 @@ function canUseForAIRendering(product: Product): boolean {
 
 /**
  * Filter products based on quiz preferences
- * Matches room type, style, features, and budget
+ * Matches room type, style, and features (budget is NOT enforced for quality renders)
  */
 export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): Product[] {
-  const budgetMax = parseBudgetRange(quiz.budgetRange);
-  
   // Log initial filtering stats
   const inStockCount = products.filter(p => p.availability === 'in_stock').length;
   const withValidImages = products.filter(p => p.availability === 'in_stock' && hasValidImages(p)).length;
   console.log(`📊 Product Pool: ${products.length} total → ${inStockCount} in stock → ${withValidImages} with valid images`);
+  console.log(`⚠️ Budget NOT enforced during filtering - focusing on render quality`);
   
   // First pass: strict filtering
   const strictlyFiltered = products.filter(product => {
@@ -208,11 +207,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       if (!styleMatch) return false;
     }
     
-    // Filter by budget (if budget is set)
-    if (budgetMax && product.price) {
-      const productPrice = parseFloat(product.price.toString());
-      if (productPrice > budgetMax) return false;
-    }
+    // Budget NOT enforced - focusing on quality renders
     
     // STRICT: Require at least one key feature match if features are specified
     if (quiz.keyFeatures && quiz.keyFeatures.length > 0) {
@@ -258,11 +253,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
         if (!styleMatch) return false;
       }
       
-      // Budget still required
-      if (budgetMax && product.price) {
-        const productPrice = parseFloat(product.price.toString());
-        if (productPrice > budgetMax) return false;
-      }
+      // Budget NOT enforced
       
       return true;
     });
@@ -287,11 +278,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
         if (!roomMatch) return false;
       }
       
-      // Budget still required
-      if (budgetMax && product.price) {
-        const productPrice = parseFloat(product.price.toString());
-        if (productPrice > budgetMax) return false;
-      }
+      // Budget NOT enforced
       
       return true;
     });
@@ -315,11 +302,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
         if (!styleMatch) return false;
       }
       
-      // Budget still required
-      if (budgetMax && product.price) {
-        const productPrice = parseFloat(product.price.toString());
-        if (productPrice > budgetMax) return false;
-      }
+      // Budget NOT enforced
       
       return true;
     });
@@ -327,16 +310,13 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     if (styleOnly.length >= 5) return styleOnly;
   }
   
-  // Fallback 4: if still < 5, just return any in-stock products with visual data within budget
-  console.warn(`Final fallback: returning any in-stock products within budget`);
+  // Fallback 4: if still < 5, just return any in-stock products with valid images
+  console.warn(`Final fallback: returning any in-stock products with valid images`);
   return products.filter(product => {
     if (product.availability !== 'in_stock') return false;
     if (!canUseForAIRendering(product)) return false;
     
-    if (budgetMax && product.price) {
-      const productPrice = parseFloat(product.price.toString());
-      if (productPrice > budgetMax) return false;
-    }
+    // Budget NOT enforced
     
     return true;
   }).slice(0, 20); // Limit to 20 for AI selection
