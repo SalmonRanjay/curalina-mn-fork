@@ -418,6 +418,18 @@ export function buildPromptFromQuiz(
     if (roomAnalysis.colors.length > 0) {
       prompt += `\nCurrent color palette (for reference): ${roomAnalysis.colors.join(", ")}\n`;
     }
+    
+    if (roomAnalysis.wallPaintColors && 
+        roomAnalysis.wallPaintColors !== "Unable to analyze wall paint colors" &&
+        roomAnalysis.wallPaintColors.trim().length > 0) {
+      prompt += `\nWALL PAINT COLORS TO PRESERVE:\n${roomAnalysis.wallPaintColors}\nIMPORTANT: Maintain these exact wall colors in the redesign.\n`;
+    }
+    
+    if (roomAnalysis.wallPatterns && 
+        roomAnalysis.wallPatterns !== "Unable to analyze wall patterns" &&
+        roomAnalysis.wallPatterns.trim().length > 0) {
+      prompt += `\nWALL PATTERNS & TEXTURES TO PRESERVE:\n${roomAnalysis.wallPatterns}\nIMPORTANT: Preserve these wall patterns and textures in the redesign.\n`;
+    }
   }
   
   // Add floor plan spatial context
@@ -438,7 +450,9 @@ export function buildPromptFromQuiz(
       prompt += `Built-in Features: ${floorPlanAnalysis.builtInFeatures.join(", ")}\n`;
     }
     
-    if (floorPlanAnalysis.ceilingRoofDesign && floorPlanAnalysis.ceilingRoofDesign !== "Unable to analyze ceiling/roof design") {
+    if (floorPlanAnalysis.ceilingRoofDesign && 
+        floorPlanAnalysis.ceilingRoofDesign !== "Unable to analyze ceiling/roof design" &&
+        floorPlanAnalysis.ceilingRoofDesign.trim().length > 0) {
       prompt += `\nCEILING/ROOF DESIGN TO PRESERVE:\n${floorPlanAnalysis.ceilingRoofDesign}\nIMPORTANT: Maintain the existing ceiling design, including all architectural details, beams, height, and special features described above.\n`;
     }
   }
@@ -516,6 +530,8 @@ CRITICAL REQUIREMENTS:
 export async function analyzeRoomImage(imageUrl: string): Promise<{
   furniture: string[];
   colors: string[];
+  wallPaintColors: string;
+  wallPatterns: string;
   style: string;
   layout: string;
   lighting: string;
@@ -548,16 +564,20 @@ export async function analyzeRoomImage(imageUrl: string): Promise<{
 
 1. FURNITURE: List all visible furniture pieces with their approximate condition and style
 2. COLORS: Identify the dominant colors in walls, furniture, and décor
-3. STYLE: Determine the overall design style (modern, traditional, eclectic, etc.)
-4. LAYOUT: Describe the room's spatial arrangement and traffic flow
-5. LIGHTING: Describe natural and artificial lighting sources and quality
-6. ARCHITECTURAL FEATURES: List windows, doors, ceiling details, built-ins, moldings, etc.
-7. OVERALL DESCRIPTION: Provide a comprehensive 2-3 sentence description
+3. WALL PAINT COLORS: Describe the specific paint colors on the walls in detail - include primary wall color, accent wall colors if present, color names or descriptions (e.g., "soft dove gray", "warm beige", "crisp white with cool undertones"), and finish type (matte, eggshell, semi-gloss, glossy)
+4. WALL PATTERNS & TEXTURES: Describe any wallpaper patterns, painted patterns, stencils, murals, texture finishes (e.g., "geometric wallpaper", "striped accent wall", "textured plaster", "smooth painted walls", "brick accent wall", "wood paneling"). If walls are plain painted, state "Plain painted walls with no patterns"
+5. STYLE: Determine the overall design style (modern, traditional, eclectic, etc.)
+6. LAYOUT: Describe the room's spatial arrangement and traffic flow
+7. LIGHTING: Describe natural and artificial lighting sources and quality
+8. ARCHITECTURAL FEATURES: List windows, doors, ceiling details, built-ins, moldings, etc.
+9. OVERALL DESCRIPTION: Provide a comprehensive 2-3 sentence description
 
 Return your analysis as a JSON object with these exact keys:
 {
   "furniture": ["item 1 description", "item 2 description", ...],
   "colors": ["color 1", "color 2", ...],
+  "wallPaintColors": "detailed wall paint color description",
+  "wallPatterns": "wall patterns and textures description",
   "style": "style name",
   "layout": "layout description",
   "lighting": "lighting description",
@@ -581,13 +601,15 @@ Return your analysis as a JSON object with these exact keys:
           properties: {
             furniture: { type: Type.ARRAY, items: { type: Type.STRING } },
             colors: { type: Type.ARRAY, items: { type: Type.STRING } },
+            wallPaintColors: { type: Type.STRING },
+            wallPatterns: { type: Type.STRING },
             style: { type: Type.STRING },
             layout: { type: Type.STRING },
             lighting: { type: Type.STRING },
             architecturalFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
             overallDescription: { type: Type.STRING },
           },
-          required: ["furniture", "colors", "style", "layout", "lighting", "architecturalFeatures", "overallDescription"]
+          required: ["furniture", "colors", "wallPaintColors", "wallPatterns", "style", "layout", "lighting", "architecturalFeatures", "overallDescription"]
         }
       }
     });
@@ -602,6 +624,8 @@ Return your analysis as a JSON object with these exact keys:
     return {
       furniture: [],
       colors: [],
+      wallPaintColors: "Unable to analyze wall paint colors",
+      wallPatterns: "Unable to analyze wall patterns",
       style: "unknown",
       layout: "Unable to analyze layout",
       lighting: "Unable to analyze lighting",
