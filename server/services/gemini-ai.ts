@@ -678,12 +678,45 @@ export function buildPromptFromQuiz(
     }
   }
   
-  // Add specific curated products with detailed placement
+  // Add specific curated products with detailed visual descriptions
+  // Products are enriched with Gemini Vision analysis (300-400 word descriptions per product)
+  // These detailed descriptions ensure AI generates furniture that closely matches real products
   if (selectedProducts && selectedProducts.length > 0) {
-    prompt += `\nCURATED FURNITURE & DÉCOR:\nThe following specific pieces must be featured prominently and naturalistically:\n`;
+    prompt += `\n\nCURATED FURNITURE & DÉCOR:
+The following specific pieces must be featured prominently in the design. Each product has detailed visual specifications to ensure accurate representation:\n\n`;
+    
     selectedProducts.forEach((product, index) => {
-      prompt += `${index + 1}. ${product.name}\n   Placement: ${product.placement}\n   Integration: ${product.reasoning}\n`;
+      // Check if this is an enriched product with visual description embedded in name
+      const hasDetailedDescription = product.name.includes(' - ') && product.name.length > 100;
+      
+      if (hasDetailedDescription) {
+        // Split enriched name to separate product name from description
+        const nameParts = product.name.split(' - ');
+        const productName = nameParts[0];
+        const visualDescription = nameParts.slice(1).join(' - ');
+        
+        prompt += `${index + 1}. ${productName}
+   
+   VISUAL SPECIFICATIONS (from product analysis):
+   ${visualDescription}
+   
+   PLACEMENT REQUIREMENTS:
+   - Location: ${product.placement}
+   - Integration: ${product.reasoning}
+   - Ensure this product is clearly visible and prominent in the final render
+   
+`;
+      } else {
+        // Fallback for products without detailed descriptions
+        prompt += `${index + 1}. ${product.name}
+   - Placement: ${product.placement}
+   - Integration: ${product.reasoning}
+   
+`;
+      }
     });
+    
+    prompt += `CRITICAL: Each product listed above must be rendered with photorealistic accuracy matching the visual specifications. The AI should generate furniture that closely resembles these exact products, using the detailed color, material, dimension, and style information provided.\n`;
   }
   
   // Professional photography and rendering specifications
