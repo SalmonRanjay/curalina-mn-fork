@@ -825,6 +825,66 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Visual Analysis Jobs API (Admin only)
+  app.post('/api/admin/visual-analysis/start', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { productIds, onlyMissingDescriptions } = req.body;
+      
+      const { 
+        createVisualAnalysisJob, 
+        processVisualAnalysisJob 
+      } = await import('./services/visual-analysis-job-service');
+      
+      // Create the job
+      const job = await createVisualAnalysisJob(
+        req.user?.id || null,
+        'manual',
+        undefined,
+        { productIds, onlyMissingDescriptions }
+      );
+      
+      // Start processing in background
+      setTimeout(() => processVisualAnalysisJob(job.id), 1000);
+      
+      res.json({ 
+        success: true,
+        jobId: job.id,
+        message: `Visual analysis started for ${job.totalProducts} products`
+      });
+      
+    } catch (error) {
+      console.error("Error starting visual analysis job:", error);
+      res.status(500).json({ error: "Failed to start visual analysis" });
+    }
+  });
+  
+  app.get('/api/admin/visual-analysis/active', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { getActiveVisualAnalysisJobs } = await import('./services/visual-analysis-job-service');
+      const jobs = await getActiveVisualAnalysisJobs();
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching active visual analysis jobs:", error);
+      res.status(500).json({ error: "Failed to fetch active jobs" });
+    }
+  });
+  
+  app.get('/api/admin/visual-analysis/job/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { getVisualAnalysisJobDetails } = await import('./services/visual-analysis-job-service');
+      const details = await getVisualAnalysisJobDetails(req.params.id);
+      
+      if (!details) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching visual analysis job details:", error);
+      res.status(500).json({ error: "Failed to fetch job details" });
+    }
+  });
+
   // Generate text-based descriptions for products without visual analysis (Admin only)
   app.post('/api/admin/products/generate-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
