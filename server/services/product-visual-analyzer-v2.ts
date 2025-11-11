@@ -1,5 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
-import { analyzeProductVisualsWithOpenAI } from "./openai-vision";
+import OpenAI from "openai";
+
+// Initialize OpenAI client
+const openaiClient = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY 
+});
 import { findFrontViewImage, categorizeImages, isValidImageUrl } from "../utils/image-helpers";
 import { needsAnalysis, markAsAnalyzed, sessionCache } from '../utils/image-cache';
 
@@ -94,7 +99,7 @@ ${isFrontView ?
 /**
  * Analyze a single image using Gemini
  */
-async function analyzeImageWithGemini(imageUrl: string, imageName: string): Promise<string> {
+async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFrontView: boolean = false): Promise<string> {
   try {
     const imageData = await downloadImageAsBase64(imageUrl);
     const response = await ai.models.generateContent({
@@ -102,7 +107,7 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string): Prom
       contents: [{
         role: 'user',
         parts: [
-          { text: getDetailedAnalysisPrompt() },
+          { text: getStructuredAnalysisPrompt(isFrontView) },
           { 
             inlineData: {
               mimeType: imageData.mimeType,
@@ -113,7 +118,16 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string): Prom
       }]
     });
     
-    return response.text?.trim() || '';
+    const text = response.text?.trim() || '';
+    
+    // Validate character limits
+    const charLimit = isFrontView ? 1000 : 2000;
+    if (text.length > charLimit) {
+      console.warn(`Description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
+      return text.substring(0, charLimit);
+    }
+    
+    return text;
   } catch (error) {
     console.error(`Error analyzing ${imageName} with Gemini:`, error);
     throw error;
@@ -121,22 +135,33 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string): Prom
 }
 
 /**
- * Synthesize multiple image analyses into one description
+ * Synthesize multiple image analyses into one structured description
  */
 async function synthesizeAnalyses(analyses: string[]): Promise<string> {
   if (analyses.length === 0) return '';
   if (analyses.length === 1) return analyses[0];
   
-  const synthesisPrompt = `Synthesize these ${analyses.length} detailed furniture descriptions from different angles into ONE comprehensive master description:
+  const synthesisPrompt = `Synthesize these ${analyses.length} structured furniture descriptions from different angles into ONE comprehensive structured description:
 
 ${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n---\n\n')}
 
-Create a 400-500 word synthesis that:
-1. Preserves ALL precise details (measurements, color codes, material names)
-2. Resolves contradictions by using most detailed description
-3. Describes features from all angles in logical sequence
-4. Maintains technical specificity throughout
-5. Integrates spatial relationships across views`;
+**OUTPUT REQUIREMENTS:**
+1. Maintain the EXACT same structured format as the input descriptions
+2. Merge information from all views, resolving conflicts by using the most specific/detailed value
+3. Keep total response under 2000 characters
+4. Use the same field structure:
+   - Product Name:
+   - Primary Material:
+   - Color & Finish:
+   - Form Factor:
+   - Dimensions:
+   - Key Geometry:
+   - Edge Profile:
+   - Distinctive Features:
+   - Lighting & Texture Behavior:
+   - Multi-Angle Synthesis:
+
+Focus on technical precision and exact values over descriptive prose.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -147,10 +172,18 @@ Create a 400-500 word synthesis that:
       }]
     });
     
-    return response.text?.trim() || analyses.join(' ');
+    const text = response.text?.trim() || analyses.join('\n\n');
+    
+    // Enforce character limit for combined descriptions
+    if (text.length > 2000) {
+      console.warn(`Combined description exceeds 2000 character limit (${text.length} chars). Truncating...`);
+      return text.substring(0, 2000);
+    }
+    
+    return text;
   } catch (error) {
     console.error('Error synthesizing descriptions:', error);
-    return analyses.join(' ');
+    return analyses.join('\n\n');
   }
 }
 
@@ -171,7 +204,7 @@ async function analyzeWithGemini(
   if (frontView && isValidImageUrl(frontView)) {
     try {
       console.log(`  🎯 Gemini: Analyzing front-view image`);
-      frontViewDescription = await analyzeImageWithGemini(frontView, 'Front View');
+      frontViewDescription = await analyzeImageWithGemini(frontView, 'Front View', true); // true = isFrontView
     } catch (error) {
       console.error(`  ⚠️ Gemini: Front-view analysis failed`);
     }
@@ -195,7 +228,8 @@ async function analyzeWithGemini(
       try {
         const analysis = await analyzeImageWithGemini(
           imagesToAnalyze[i], 
-          `Image ${i + 1}`
+          `Image ${i + 1}`,
+          false // false = not front-view
         );
         if (analysis) analyses.push(analysis);
       } catch (error) {
@@ -224,6 +258,108 @@ async function analyzeWithGemini(
 }
 
 /**
+ * Analyze a single image using OpenAI with structured format
+ */
+async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFrontView: boolean = false): Promise<string> {
+  try {
+    // Download image as base64
+    const imageData = await downloadImageAsBase64(imageUrl);
+    
+    const response = await openaiClient.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: getStructuredAnalysisPrompt(isFrontView)
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${imageData.mimeType};base64,${imageData.data}`
+              }
+            }
+          ],
+        },
+      ],
+      max_completion_tokens: isFrontView ? 1024 : 2048, // Enforce token limits
+    });
+    
+    const text = response.choices[0].message.content?.trim() || '';
+    
+    // Validate character limits
+    const charLimit = isFrontView ? 1000 : 2000;
+    if (text.length > charLimit) {
+      console.warn(`OpenAI description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
+      return text.substring(0, charLimit);
+    }
+    
+    return text;
+  } catch (error) {
+    console.error(`Error analyzing ${imageName} with OpenAI:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Synthesize multiple analyses with OpenAI using structured format
+ */
+async function synthesizeAnalysesWithOpenAI(analyses: string[]): Promise<string> {
+  if (analyses.length === 0) return '';
+  if (analyses.length === 1) return analyses[0];
+  
+  const synthesisPrompt = `Synthesize these ${analyses.length} structured furniture descriptions into ONE comprehensive structured description:
+
+${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n---\n\n')}
+
+**OUTPUT REQUIREMENTS:**
+1. Maintain the EXACT same structured format as the input descriptions
+2. Merge information from all views, resolving conflicts by using the most specific/detailed value
+3. Keep total response under 2000 characters
+4. Use the same field structure:
+   - Product Name:
+   - Primary Material:
+   - Color & Finish:
+   - Form Factor:
+   - Dimensions:
+   - Key Geometry:
+   - Edge Profile:
+   - Distinctive Features:
+   - Lighting & Texture Behavior:
+   - Multi-Angle Synthesis:
+
+Focus on technical precision and exact values over descriptive prose.`;
+
+  try {
+    const response = await openaiClient.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "user",
+          content: synthesisPrompt
+        }
+      ],
+      max_completion_tokens: 2048,
+    });
+    
+    const text = response.choices[0].message.content?.trim() || analyses.join('\n\n');
+    
+    // Enforce character limit
+    if (text.length > 2000) {
+      console.warn(`OpenAI combined description exceeds 2000 character limit (${text.length} chars). Truncating...`);
+      return text.substring(0, 2000);
+    }
+    
+    return text;
+  } catch (error) {
+    console.error('Error synthesizing with OpenAI:', error);
+    return analyses.join('\n\n');
+  }
+}
+
+/**
  * Two-phase analysis with OpenAI: Front-view first, then combined
  */
 async function analyzeWithOpenAI(
@@ -240,11 +376,7 @@ async function analyzeWithOpenAI(
   if (frontView && isValidImageUrl(frontView)) {
     try {
       console.log(`  🎯 OpenAI: Analyzing front-view image`);
-      // Use existing OpenAI function for single front-view
-      frontViewDescription = await analyzeProductVisualsWithOpenAI(
-        productName, 
-        [frontView]
-      );
+      frontViewDescription = await analyzeImageWithOpenAI(frontView, 'Front View', true);
     } catch (error) {
       console.error(`  ⚠️ OpenAI: Front-view analysis failed`);
     }
@@ -252,13 +384,41 @@ async function analyzeWithOpenAI(
   
   // Phase 2: Analyze all images for combined description
   if (validImages.length > 0) {
-    try {
-      combinedDescription = await analyzeProductVisualsWithOpenAI(
-        productName,
-        validImages.slice(0, 4) // Limit to 4 images for OpenAI
-      );
-    } catch (error) {
-      console.error(`  ⚠️ OpenAI: Combined analysis failed`);
+    const analyses: string[] = [];
+    
+    // Include front-view analysis if we have it
+    if (frontViewDescription) {
+      analyses.push(frontViewDescription);
+    }
+    
+    // Analyze other views (skip front-view if already analyzed)
+    const imagesToAnalyze = frontViewDescription 
+      ? validImages.filter(img => img !== frontView)
+      : validImages;
+    
+    for (let i = 0; i < Math.min(imagesToAnalyze.length, 3); i++) { // Limit to 3 additional images
+      try {
+        const analysis = await analyzeImageWithOpenAI(
+          imagesToAnalyze[i], 
+          `Image ${i + 1}`,
+          false // not front-view
+        );
+        if (analysis) analyses.push(analysis);
+      } catch (error) {
+        // Continue with other images
+      }
+      
+      // Small delay between images
+      if (i < imagesToAnalyze.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+    
+    // Synthesize all analyses using OpenAI
+    if (analyses.length > 1) {
+      combinedDescription = await synthesizeAnalysesWithOpenAI(analyses);
+    } else if (analyses.length === 1) {
+      combinedDescription = analyses[0];
     }
   }
   
