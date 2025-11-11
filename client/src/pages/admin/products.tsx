@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles } from "lucide-react";
+import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertProductSchema, type Product, type Category, type Supplier, type InsertProduct } from "@shared/schema";
@@ -67,6 +69,8 @@ export default function AdminProducts() {
   const [imageFilter, setImageFilter] = useState<string>("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
   const [analysisFilter, setAnalysisFilter] = useState<string>("all");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [analyzeAllProducts, setAnalyzeAllProducts] = useState(false);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -78,6 +82,18 @@ export default function AdminProducts() {
 
   const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/admin/suppliers"],
+  });
+
+  // Visual Analysis Jobs queries
+  const { data: activeAnalysisJobs, refetch: refetchAnalysisJobs } = useQuery<any[]>({
+    queryKey: ["/api/admin/visual-analysis/active"],
+    refetchInterval: (query) => {
+      // Poll while there are active jobs
+      const hasActiveJobs = query.state.data?.some(
+        (job: any) => job.status === "pending" || job.status === "processing"
+      );
+      return hasActiveJobs ? 3000 : false; // Poll every 3 seconds if jobs are active
+    },
   });
 
   const addForm = useForm<ProductFormData>({
@@ -314,20 +330,24 @@ export default function AdminProducts() {
     },
   });
 
-  const analyzeVisualsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/admin/products/analyze-visuals", {});
+  // New job-based visual analysis mutation
+  const startVisualAnalysisMutation = useMutation({
+    mutationFn: async (params: { productIds?: string[]; onlyMissingDescriptions?: boolean }) => {
+      const response = await apiRequest("POST", "/api/admin/visual-analysis/start", params);
       return response.json();
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Analysis started",
-        description: data.message || `Analyzing ${data.totalProducts} products. Check server logs for progress.`,
+        title: "Visual analysis started",
+        description: `Job started for ${data.message}`,
       });
+      refetchAnalysisJobs();
+      setSelectedProductIds([]);
+      setAnalyzeAllProducts(false);
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to start analysis",
+        title: "Failed to start visual analysis",
         description: error.message,
         variant: "destructive",
       });
@@ -1083,12 +1103,15 @@ export default function AdminProducts() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => analyzeVisualsMutation.mutate()}
-            disabled={analyzeVisualsMutation.isPending}
+            onClick={() => {
+              // Start visual analysis for all products without descriptions
+              startVisualAnalysisMutation.mutate({ onlyMissingDescriptions: true });
+            }}
+            disabled={startVisualAnalysisMutation.isPending}
             data-testid="button-analyze-visuals"
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            {analyzeVisualsMutation.isPending ? "Starting..." : "Analyze Product Images"}
+            {startVisualAnalysisMutation.isPending ? "Starting..." : "Analyze Visuals"}
           </Button>
           
           <Button
@@ -1267,6 +1290,87 @@ export default function AdminProducts() {
           )}
         </div>
       </Card>
+
+      {/* Visual Analysis Jobs */}
+      {activeAnalysisJobs && activeAnalysisJobs.length > 0 && (
+        <Card className="p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Loader2 className="w-5 h-5 text-stone-600 animate-spin" />
+            <h2 className="text-lg font-semibold">Active Visual Analysis Jobs</h2>
+          </div>
+          
+          <div className="space-y-4">
+            {activeAnalysisJobs.map((job: any) => (
+              <div key={job.id} className="border rounded-lg p-4 bg-stone-50 dark:bg-stone-900">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    {job.status === "processing" ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                    )}
+                    <span className="font-medium">
+                      {job.jobType === "auto_after_upload" ? "Auto-triggered" : "Manual"} Analysis
+                    </span>
+                    <Badge variant={job.status === "processing" ? "default" : "secondary"}>
+                      {job.status}
+                    </Badge>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    Started {new Date(job.createdAt).toLocaleTimeString()}
+                  </span>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>Progress</span>
+                    <span>{job.analyzedProducts + job.failedProducts + job.skippedProducts} / {job.totalProducts}</span>
+                  </div>
+                  <Progress 
+                    value={((job.analyzedProducts + job.failedProducts + job.skippedProducts) / job.totalProducts) * 100} 
+                    className="h-2"
+                  />
+                </div>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-4 gap-2 text-sm">
+                  <div className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    <span className="text-muted-foreground">Analyzed:</span>
+                    <span className="font-medium">{job.analyzedProducts}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <XCircle className="w-3 h-3 text-red-600" />
+                    <span className="text-muted-foreground">Failed:</span>
+                    <span className="font-medium">{job.failedProducts}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    <span className="text-muted-foreground">Skipped:</span>
+                    <span className="font-medium">{job.skippedProducts}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-blue-600" />
+                    <span className="text-muted-foreground">Remaining:</span>
+                    <span className="font-medium">
+                      {job.totalProducts - (job.analyzedProducts + job.failedProducts + job.skippedProducts)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Current Product */}
+                {job.currentProductName && (
+                  <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+                    <span className="text-sm text-muted-foreground">Currently analyzing: </span>
+                    <span className="text-sm font-medium">{job.currentProductName}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="text-center py-12">
