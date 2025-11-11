@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
@@ -23,12 +23,26 @@ interface FileWithMeta {
   reasoning?: string;
 }
 
+interface UploadJob {
+  id: string;
+  productId: string;
+  productName: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  totalFiles: number;
+  completedFiles: number;
+  failedFiles: number;
+  skippedFiles: number;
+  progress: number;
+}
+
 export default function BulkUpload() {
   const { toast } = useToast();
   const [files, setFiles] = useState<FileWithMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [totalProgress, setTotalProgress] = useState(0);
   const [isAiMatching, setIsAiMatching] = useState(false);
+  const [jobFileMapping, setJobFileMapping] = useState<Map<string, string[]>>(new Map()); // jobId -> filenames
+  const [completedJobIds, setCompletedJobIds] = useState<Set<string>>(new Set());
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -197,27 +211,54 @@ export default function BulkUpload() {
     noKeyboard: isLoadingProducts,
   });
 
-  const uploadFile = async (fileWithMeta: FileWithMeta): Promise<void> => {
-    if (!fileWithMeta.productId) {
-      throw new Error("No product ID");
-    }
+  // Fetch active jobs on mount to restore in-flight work
+  const { data: activeJobs = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/upload-jobs/active"],
+    refetchInterval: 3000,
+  });
 
-    const formData = new FormData();
-    formData.append('image', fileWithMeta.file);
+  // Sync job completion status with files UI
+  useEffect(() => {
+    if (!activeJobs || activeJobs.length === 0) return;
 
-    const response = await fetch(`/api/admin/products/${fileWithMeta.productId}/upload-image`, {
-      method: 'POST',
-      body: formData,
+    activeJobs.forEach((job: any) => {
+      // Check if job just completed
+      if ((job.status === 'completed' || job.status === 'failed') && !completedJobIds.has(job.id)) {
+        setCompletedJobIds(prev => new Set(prev).add(job.id));
+
+        // Show completion toast
+        const successMsg = job.status === 'completed' 
+          ? `✅ Upload complete for ${job.productName || 'product'}: ${job.completedFiles} uploaded, ${job.skippedFiles} skipped`
+          : `❌ Upload failed for ${job.productName || 'product'}: ${job.failedFiles} errors`;
+
+        toast({
+          title: job.status === 'completed' ? "Upload Complete" : "Upload Failed",
+          description: successMsg,
+          variant: job.status === 'completed' ? "default" : "destructive",
+        });
+
+        // Mark associated files as success/error
+        const fileNames = jobFileMapping.get(job.id);
+        if (fileNames) {
+          setFiles(prev => prev.map(f => {
+            if (fileNames.includes(f.file.name)) {
+              return {
+                ...f,
+                status: job.status === 'completed' ? 'success' : 'error',
+                error: job.status === 'failed' ? job.errorMessage : undefined,
+              };
+            }
+            return f;
+          }));
+        }
+
+        // Invalidate products cache to show new images
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      }
     });
+  }, [activeJobs, completedJobIds, jobFileMapping, toast]);
 
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Upload failed');
-    }
-
-    return response.json();
-  };
-
+  // Background upload handler - creates jobs and lets server process them
   const handleBulkUpload = async () => {
     const pendingFiles = files.filter(f => f.status === "pending");
     if (pendingFiles.length === 0) {
@@ -230,75 +271,80 @@ export default function BulkUpload() {
     }
 
     setIsUploading(true);
-    setTotalProgress(0);
 
-    let completed = 0;
-    const total = pendingFiles.length;
-
-    // Upload files with concurrency limit (5 at a time)
-    const concurrencyLimit = 5;
-    for (let i = 0; i < pendingFiles.length; i += concurrencyLimit) {
-      const batch = pendingFiles.slice(i, i + concurrencyLimit);
-      
-      await Promise.all(
-        batch.map(async (fileWithMeta) => {
-          const index = files.findIndex(f => f === fileWithMeta);
-          
-          // Update status to uploading
-          setFiles(prev => {
-            const updated = [...prev];
-            updated[index] = { ...updated[index], status: "uploading" };
-            return updated;
-          });
-
-          try {
-            await uploadFile(fileWithMeta);
-            
-            // Update status to success
-            setFiles(prev => {
-              const updated = [...prev];
-              updated[index] = { ...updated[index], status: "success" };
-              return updated;
-            });
-
-            completed++;
-            setTotalProgress(Math.round((completed / total) * 100));
-          } catch (error) {
-            // Update status to error
-            setFiles(prev => {
-              const updated = [...prev];
-              updated[index] = { 
-                ...updated[index], 
-                status: "error",
-                error: error instanceof Error ? error.message : "Upload failed"
-              };
-              return updated;
-            });
-            
-            completed++;
-            setTotalProgress(Math.round((completed / total) * 100));
-          }
-        })
-      );
-    }
-
-    // Invalidate products cache
-    await queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
-
-    setIsUploading(false);
-
-    // Get fresh counts from state after all updates
-    setFiles(currentFiles => {
-      const successCount = currentFiles.filter(f => f.status === "success").length;
-      const errorCount = currentFiles.filter(f => f.status === "error").length;
-
-      toast({
-        title: "Upload complete",
-        description: `${successCount} successful, ${errorCount} failed`,
+    try {
+      // Group files by productId (one job per product)
+      const filesByProduct = new Map<string, FileWithMeta[]>();
+      pendingFiles.forEach(file => {
+        if (!file.productId) return;
+        if (!filesByProduct.has(file.productId)) {
+          filesByProduct.set(file.productId, []);
+        }
+        filesByProduct.get(file.productId)!.push(file);
       });
 
-      return currentFiles;
-    });
+      const jobsCreated: string[] = [];
+
+      // Create upload jobs for each product
+      for (const [productId, productFiles] of Array.from(filesByProduct.entries())) {
+        // Cap at 50 files per job to avoid oversized payloads (~75-100MB limit)
+        const MAX_FILES_PER_JOB = 50;
+        
+        for (let i = 0; i < productFiles.length; i += MAX_FILES_PER_JOB) {
+          const batch = productFiles.slice(i, i + MAX_FILES_PER_JOB);
+          
+          const formData = new FormData();
+          formData.append('productId', productId);
+          batch.forEach((file: FileWithMeta) => {
+            formData.append('images', file.file);
+          });
+
+          const response = await fetch('/api/admin/upload-jobs/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to create upload job for product ${productId}`);
+          }
+
+          const { jobId } = await response.json();
+          jobsCreated.push(jobId);
+
+          // Track which files belong to this job
+          const fileNames = batch.map(f => f.file.name);
+          setJobFileMapping(prev => new Map(prev).set(jobId, fileNames));
+
+          // Mark files as uploading (job created)
+          setFiles(prev => prev.map(f => {
+            if (batch.includes(f)) {
+              return { ...f, status: "uploading" as const };
+            }
+            return f;
+          }));
+        }
+      }
+
+      // Invalidate active jobs query to start polling
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/upload-jobs/active"] });
+
+      toast({
+        title: "Upload jobs started",
+        description: `${jobsCreated.length} background job(s) created. You can navigate away - processing continues!`,
+      });
+
+      // DO NOT remove files here - let the polling effect update them to success/error when jobs complete
+
+    } catch (error) {
+      console.error("Failed to start upload jobs:", error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to start background upload",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const clearCompleted = () => {
@@ -622,13 +668,70 @@ export default function BulkUpload() {
         </div>
       )}
 
-      {/* Progress Bar */}
+      {/* Active Background Jobs */}
+      {activeJobs && activeJobs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Background Upload Jobs</CardTitle>
+            <CardDescription>
+              {activeJobs.length} active job{activeJobs.length !== 1 ? 's' : ''} - You can navigate away, processing continues!
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {activeJobs.map((job: any) => {
+              const progress = job.totalFiles > 0 
+                ? Math.round(((job.completedFiles + job.failedFiles + job.skippedFiles) / job.totalFiles) * 100)
+                : 0;
+              const isActive = job.status === 'pending' || job.status === 'processing';
+              
+              return (
+                <div key={job.id} className="space-y-2 p-4 border rounded-lg" data-testid={`job-${job.id}`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">{job.productName || `Product ${job.productId}`}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {job.completedFiles + job.failedFiles + job.skippedFiles} / {job.totalFiles} files processed
+                      </p>
+                    </div>
+                    <Badge variant={isActive ? "secondary" : job.status === 'completed' ? "default" : "destructive"}>
+                      {job.status}
+                    </Badge>
+                  </div>
+                  
+                  <Progress value={progress} />
+                  
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 text-green-600" />
+                      {job.completedFiles} uploaded
+                    </span>
+                    {job.skippedFiles > 0 && (
+                      <span className="flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-yellow-600" />
+                        {job.skippedFiles} duplicates skipped
+                      </span>
+                    )}
+                    {job.failedFiles > 0 && (
+                      <span className="flex items-center gap-1">
+                        <XCircle className="w-3 h-3 text-red-600" />
+                        {job.failedFiles} failed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progress Bar (for local uploads) */}
       {isUploading && (
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Uploading...</span>
+                <span>Creating upload jobs...</span>
                 <span>{totalProgress}%</span>
               </div>
               <Progress value={totalProgress} />
