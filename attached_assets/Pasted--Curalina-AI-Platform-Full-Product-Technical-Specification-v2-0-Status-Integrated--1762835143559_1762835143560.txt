@@ -1,0 +1,115 @@
+# Curalina AI Platform – Full Product & Technical Specification v2.0
+
+> **Status:** Integrated • **Scope:** Unified Product+UX, AI/Rendering, SaaS, MLOps, SRE, Compliance • **Audience:** Product, Engineering, Go-To-Market, Partners
+
+## Master Table of Contents
+
+**Part I — Product & Experience Layer**
+
+1. User Journey Overview
+2. The 7‑Step Design Quiz
+3. AI‑Powered Room Generation (Text→Image & Image→Image)
+4. Vibe Image Analysis
+5. Product Visual Analysis
+6. Intelligent Product Selection
+7. Image Compositing System (Hybrid)
+8. Shopping Experience (Shop‑the‑Look, Swaps, Cart, Checkout)
+
+**Part II — Platform & SaaS Core**
+9. Authentication & User Management (Anon → Account → Admin)
+10. Admin Management Tools (Catalog, Bulk Import, AI Training)
+11. Technical Architecture (Frontend/Backend/Infra)
+12. Database Schema (Operational + Vector + Training)
+
+**Part III — AI, Rendering & Ops (from v1.1 addendum)**
+13. Generative & Rendering Architecture (beyond text→image)
+14. Fine‑Tuning Stack (Stability SDXL/SD3, LoRA, ControlNet)
+15. Similarity, Constraints & Regeneration
+16. SaaS Operations (Tenancy, Billing, Quotas)
+17. Security, Governance & Compliance
+18. ML Ops, Evaluation & QA
+19. Observability, SRE & Cost Model
+20. Risks, Runbooks, Roadmap
+
+---
+
+## Part I — Product & Experience Layer (Integrated)
+
+### 1) User Journey Overview
+
+**Flow:** Landing → Design Quiz → AI Generation → Results (Shop‑the‑Look) → Cart → Checkout.
+**Session Management:** Anonymous session ID (localStorage) supports guest generation, cart persistence, design history; seamlessly promotes to account on signup.
+
+### 2) The 7‑Step Design Quiz
+
+1. **Room Type** (LR/BR/DR/Office/Nursery/Entry) → drives category lists & layout rules.
+2. **Style (≤2)**: Organic Modern, Modern Farmhouse, Mid‑century Scandi, Contemporary Luxe, Warm Transitional, Artful Eclectic → injected style paragraphs in prompts.
+3. **Color Palette (≤2)**: Light Neutrals, Warm & Cozy, Dark & Moody, Fresh & Airy, Earth Tones, Bold & Vibrant → mapped to concrete palettes.
+4. **Functional Features**: Storage, Workspace, Entertainment, Dining, Reading Nook, Natural Light → toggles product families & placement constraints.
+5. **Budget**: tiers (not enforced v1, planned filter toggle).
+6. **Vibe Images (≤3)**: inspiration photos → feed Vibe Analysis.
+7. **Room Photo / Floor Plan (1)**: enables **structure‑preserving** redesign; floor plans capture dims, windows, doors, swings, ceiling.
+   **Post‑Submit:** persist quiz → loading page with 2s polling → redirect to Results when ready.
+
+### 3) AI‑Powered Room Generation
+
+**Mode A: Text→Image** (no photo): Compose prompt with room type, style paragraphs, palette, function, seeded products.
+**Mode B: Image→Image** (photo/floor plan):
+
+* **Phase 1 (Analysis):** Gemini Vision extracts geometry (walls/doors/windows), lighting, materials, layout/flow; floor plans → dims, openings, ceiling/roof, built‑ins.
+* **Phase 2 (Structure‑Preserving Prompt):** hard requirements keep architecture, camera POV, and dimensions; allow décor, paint, furniture swaps.
+* **Phase 3 (Generation):** render redesigned room that matches the real space.
+
+### 4) Vibe Image Analysis
+
+Gemini Vision returns structured JSON: palette (named/hex), materials, textures, lighting tone, density, 2–3 sentence vibe. Used for **visual similarity** features during product ranking and prompt conditioning.
+
+### 5) Product Visual Analysis
+
+Per‑SKU multi‑angle analysis generates a **visualDescription** capturing silhouette, proportions, materials, textures, finish, precise color references, distinctive details → stored with product and used in prompts and similarity.
+
+### 6) Intelligent Product Selection (Unified Scoring)
+
+**Weights (example start):** Category Match 40% • Style Match 30% • Vibe Similarity 20% • Function Bonus 10%.
+**Pipeline:** quality gate (images), initial filter by room type → score → **category balancing** to avoid redundancy → select 6–10 items.
+**Vibe Similarity:** color/material/texture sub‑scores as specified in guide; contributes to overall ranking.
+
+### 7) Image Compositing System (Hybrid)
+
+**Current:** AI base render + overlay real product photos (PNG with alpha) using Sharp.
+**Limitations:** backgrounds, naive placement, no perspective/occlusion.
+**Improvements:** background removal (remove.bg/ClipDrop), depth maps & surface detection via Gemini Vision, perspective‑matched scaling, floor‑plane shadows with estimated light.
+
+### 8) Shopping Experience
+
+**Results Page:** large render; right rail **Shop‑the‑Look** with thumbnails, price/discount, Add to Cart, **Swap Product** (alternatives ranked by fit).
+**Swaps:** queue changes → **Regenerate** (fast preview ≤3s, final ≤15s).
+**Cart/Checkout:** session‑based cart, pricing/discount calc, shipping/tax rules, Stripe checkout with webhooks; order items lock price at purchase.
+
+---
+
+## Part II — Platform & SaaS Core (Integrated)
+
+### 9) Authentication & User Management
+
+Anon → Local (email/password bcrypt) → OIDC (Google/GitHub). Sessions in Postgres with secure cookies; admin role gates.
+
+### 10) Admin Management Tools
+
+Manual product CRUD; **Bulk CSV import** (required/optional fields); **Bulk image upload** (folder or SKU naming); **Gemini Vision batch analysis** for visualDescription; **AI Training** assets: Design Examples (good/bad), Product Packages, Placement Guidelines, Design Rules.
+
+### 11) Technical Architecture
+
+Frontend: React+TS, Vite, shadcn/ui, Tailwind, React Query, RHF+Zod, Framer Motion, Wouter.
+Backend: Express TS, Neon Postgres (Drizzle ORM), GCS (user assets), S3 (catalog), Sharp, Stripe.
+(Combined with v1.1 infra: API GW+WAF, queues, GPU pools, vector DB, CDN, caching.)
+
+### 12) Database Schema
+
+Merged operational tables from the guide with v1.1 entities (rooms/designs/design_items/bom/carts/orders/product_vectors/training datasets). Session schema retained; vector indexes added.
+
+---
+
+## Part III — AI, Rendering & Ops (kept from v1.1 and aligned)
+
+*(This section maps to sections 20–33 that were added previously and remains intact, now cross‑referenced from Part I/II.)*
