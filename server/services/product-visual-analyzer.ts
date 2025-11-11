@@ -13,6 +13,28 @@ const ai = new GoogleGenAI({
  * Analyze a single product image using Gemini Vision
  * Returns detailed visual description of the product from that angle
  */
+/**
+ * Download image from URL and convert to base64
+ */
+async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download image: ${response.statusText}`);
+  }
+  
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64 = buffer.toString('base64');
+  
+  // Get MIME type from response headers or URL
+  let mimeType = response.headers.get('content-type') || 'image/jpeg';
+  if (!mimeType.startsWith('image/')) {
+    mimeType = 'image/jpeg'; // Default fallback
+  }
+  
+  return { data: base64, mimeType };
+}
+
 async function analyzeProductImage(imageUrl: string, imageName: string): Promise<string> {
   console.log(`  🔍 Analyzing image: ${imageName}`);
   
@@ -109,6 +131,11 @@ Write a single flowing paragraph (300-400 words) that integrates ALL these detai
 Now analyze this product image with the same level of detail and precision.`;
 
   try {
+    // Download image as base64 to avoid Gemini timeout issues
+    console.log(`  📥 Downloading image...`);
+    const { data, mimeType } = await downloadImageAsBase64(imageUrl);
+    
+    console.log(`  🤖 Sending to Gemini Vision...`);
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{
@@ -116,9 +143,9 @@ Now analyze this product image with the same level of detail and precision.`;
         parts: [
           { text: prompt },
           {
-            fileData: {
-              mimeType: 'image/jpeg',
-              fileUri: imageUrl
+            inlineData: {
+              mimeType,
+              data
             }
           }
         ]
