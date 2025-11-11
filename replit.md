@@ -6,7 +6,12 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
 - **Intelligent Image Analysis**: 
   - **Room & Floor Plan Analysis**: Gemini Vision automatically analyzes uploaded room photos and floor plans to extract detailed spatial information, architectural features, existing furniture, and design elements
   - **Vibe Image Analysis** (NEW): Gemini Vision analyzes user-uploaded inspiration images to extract detailed visual preferences - color palette (5-8 specific colors with hex codes), materials (wood, metal, fabric, etc.), textures (smooth, rough, glossy, etc.), lighting tone (warm/cool/natural/dramatic), and density (minimal/moderate/layered). This creates a rich preference profile for semantic product matching.
-  - **Product Visual Analysis**: Multi-angle Gemini Vision analysis of all product images to generate comprehensive visual descriptions (color, material, style, form, design details), stored in database for AI prompt enhancement
+  - **Product Visual Analysis** (DUAL AI PROVIDER): 
+    - **Gemini 2.5 Flash Vision**: Multi-angle product image analysis generating comprehensive visual descriptions (color, material, style, form, design details)
+    - **OpenAI GPT-5 Vision**: Parallel analysis with identical prompts for quality comparison and cross-platform experimentation
+    - **Resilient Analysis**: Uses Promise.allSettled to ensure partial failures don't abort batch - if one provider fails, the other's result is still saved
+    - **Flexible Active Description**: Gemini prioritized by default with OpenAI fallback, stored separately to enable testing either description with any AI rendering provider
+    - **Admin UI**: Side-by-side comparison view showing both analyses with color-coded panels (blue for Gemini, green for OpenAI, amber for legacy single-provider data)
 - **AI-Powered Rendering**: 
   - **Text-to-Image Mode** (no room photo): Gemini 2.5 Flash generates creative room designs from scratch based on quiz preferences
   - **Image-to-Image Mode** (room photo uploaded): Gemini 2.5 Flash sees and preserves the actual uploaded space while redesigning furniture and decor - ensures architectural features, dimensions, and layout match the real room
@@ -64,7 +69,10 @@ Preferred communication style: Simple, everyday language.
 - **Curalina AI Schema Design**:
     - `categories`: Product categorization.
     - `suppliers`: Furniture suppliers.
-    - `products`: Full product catalog including SKU, pricing, images, 3D assets, and `visualDescription` field (comprehensive Gemini Vision analysis of all product angles for AI prompt enhancement).
+    - `products`: Full product catalog including SKU, pricing, images, 3D assets, and three visual description fields:
+      - `visualDescription`: Active description (backward compatibility - automatically set to Gemini with OpenAI fallback)
+      - `visualDescriptionGemini`: Gemini 2.5 Flash Vision analysis
+      - `visualDescriptionOpenAI`: OpenAI GPT-5 Vision analysis
     - `quizResponses`: User design preferences, including floorplans and vibe images.
     - `renders`: AI-generated room designs with associated products.
     - `cartItems`: Shopping cart items per session.
@@ -91,7 +99,10 @@ Preferred communication style: Simple, everyday language.
     - Google Gemini 2.5 Flash (for text-to-image creative generation, AI image matching in product import)
     - Google Gemini Vision (for multi-modal image analysis):
       - Room photo and floor plan analysis (spatial information, architectural features, design elements)
-      - Batch product image analysis (comprehensive visual descriptions from all angles for AI prompt enhancement)
+      - Product image analysis (comprehensive visual descriptions from all angles for AI prompt enhancement)
+    - OpenAI GPT-5 Vision (for dual-provider product visual analysis):
+      - Parallel product image analysis with identical prompts as Gemini for quality comparison
+      - Enables cross-platform experimentation (using Gemini description with OpenAI rendering and vice versa)
 - **Image Processing**:
     - Sharp (high-performance image compositing, resizing, transparency handling, shadow generation)
 - **Payment Processing**:

@@ -298,21 +298,29 @@ export async function batchAnalyzeProducts(
     console.log(`  🔄 Running both Gemini AND OpenAI analysis in parallel...`);
     
     try {
-      // Run both AI providers in parallel for maximum efficiency
-      const [geminiDescription, openaiDescription] = await Promise.all([
-        analyzeProductVisuals(product.name, product.images).catch(err => {
-          console.error(`  ⚠️ Gemini analysis failed:`, err.message);
-          return '';
-        }),
-        analyzeProductVisualsWithOpenAI(product.name, product.images).catch(err => {
-          console.error(`  ⚠️ OpenAI analysis failed:`, err.message);
-          return '';
-        })
+      // Run both AI providers in parallel using Promise.allSettled for independent failure handling
+      // This ensures that if one provider fails, the other's result is still captured and saved
+      const [geminiResult, openaiResult] = await Promise.allSettled([
+        analyzeProductVisuals(product.name, product.images),
+        analyzeProductVisualsWithOpenAI(product.name, product.images)
       ]);
       
-      // Use Gemini as default active description (can be changed later in UI)
+      // Extract descriptions from settled promises
+      const geminiDescription = geminiResult.status === 'fulfilled' ? geminiResult.value : '';
+      const openaiDescription = openaiResult.status === 'fulfilled' ? openaiResult.value : '';
+      
+      // Log individual provider failures with detailed error info
+      if (geminiResult.status === 'rejected') {
+        console.error(`  ⚠️ Gemini analysis failed:`, geminiResult.reason?.message || geminiResult.reason);
+      }
+      if (openaiResult.status === 'rejected') {
+        console.error(`  ⚠️ OpenAI analysis failed:`, openaiResult.reason?.message || openaiResult.reason);
+      }
+      
+      // Use Gemini as default active description with OpenAI fallback
       const activeDescription = geminiDescription || openaiDescription || '';
       
+      // Save result even if one provider failed - this is the key benefit of allSettled
       results.push({
         sku: product.sku,
         visualDescription: activeDescription,
@@ -320,9 +328,9 @@ export async function batchAnalyzeProducts(
         visualDescriptionOpenAI: openaiDescription
       });
       
-      console.log(`✅ Success: ${product.sku}`);
-      console.log(`  📊 Gemini: ${geminiDescription ? 'OK' : 'FAILED'} (${geminiDescription.length} chars)`);
-      console.log(`  📊 OpenAI: ${openaiDescription ? 'OK' : 'FAILED'} (${openaiDescription.length} chars)`);
+      console.log(`✅ Completed: ${product.sku}`);
+      console.log(`  📊 Gemini: ${geminiDescription ? `OK (${geminiDescription.length} chars)` : 'FAILED'}`);
+      console.log(`  📊 OpenAI: ${openaiDescription ? `OK (${openaiDescription.length} chars)` : 'FAILED'}`);
       
     } catch (error) {
       console.error(`❌ Failed: ${product.sku}`, error instanceof Error ? error.message : 'Unknown error');
