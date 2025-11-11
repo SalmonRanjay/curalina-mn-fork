@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 
 const BUCKET_NAME = "curalina";
 // AWS_REGION might be set to "global" which is invalid - default to us-east-1
@@ -104,4 +105,45 @@ export function generateProductImageKey(productSku: string, filename: string): s
   const timestamp = Date.now();
   const extension = filename.split('.').pop();
   return `products/${productSku}-${timestamp}.${extension}`;
+}
+
+/**
+ * Generate a presigned POST URL for direct browser-to-S3 uploads
+ * This allows the browser to upload files directly to S3 without going through the server,
+ * significantly improving upload speeds by eliminating the server bottleneck.
+ * 
+ * @param key - The S3 object key where the file will be stored
+ * @param contentType - The MIME type of the file
+ * @param maxFileSize - Maximum file size in bytes (default: 10MB)
+ * @returns Presigned POST data including URL and form fields
+ */
+export async function generatePresignedUploadUrl(
+  key: string,
+  contentType: string,
+  maxFileSize: number = MAX_FILE_SIZE
+): Promise<{
+  url: string;
+  fields: Record<string, string>;
+  key: string;
+}> {
+  // Validate content type
+  if (!ALLOWED_MIME_TYPES.includes(contentType)) {
+    throw new Error(`File type ${contentType} not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`);
+  }
+
+  const { url, fields } = await createPresignedPost(s3Client, {
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Conditions: [
+      ["content-length-range", 0, maxFileSize],
+      ["eq", "$Content-Type", contentType],
+    ],
+    Fields: {
+      acl: "public-read",
+      "Content-Type": contentType,
+    },
+    Expires: 600, // URL expires in 10 minutes
+  });
+
+  return { url, fields, key };
 }

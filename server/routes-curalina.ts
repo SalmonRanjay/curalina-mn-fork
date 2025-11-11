@@ -19,7 +19,7 @@ import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
-import { uploadToS3, generateProductImageKey } from "./s3";
+import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl } from "./s3";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
@@ -176,7 +176,83 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Upload product image to S3
+  // Generate presigned URL for direct browser-to-S3 upload (FAST - no server relay)
+  app.post('/api/admin/products/:id/presigned-upload-url', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { filename, contentType } = req.body;
+      
+      if (!filename || !contentType) {
+        return res.status(400).json({ error: "filename and contentType are required" });
+      }
+
+      const productId = req.params.id;
+      
+      // Get product to retrieve SKU
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Generate S3 key for the upload
+      const s3Key = generateProductImageKey(product.sku, filename);
+      
+      // Generate presigned POST URL
+      const presignedData = await generatePresignedUploadUrl(s3Key, contentType);
+      
+      res.json({
+        ...presignedData,
+        publicUrl: `https://curalina.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${s3Key}`
+      });
+    } catch (error) {
+      console.error("Error generating presigned URL:", error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('File type')) {
+          return res.status(400).json({ error: error.message });
+        }
+      }
+      
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Confirm product image upload (after direct S3 upload)
+  app.post('/api/admin/products/:id/confirm-upload', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { imageUrl } = req.body;
+      
+      if (!imageUrl) {
+        return res.status(400).json({ error: "imageUrl is required" });
+      }
+
+      const productId = req.params.id;
+      
+      // Get product
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Update product with new image URL
+      const currentImages = product.images || [];
+      const updatedImages = [...currentImages, imageUrl];
+      
+      const updatedProduct = await curalinaStorage.updateProduct(productId, {
+        images: updatedImages
+      });
+
+      res.json({ 
+        success: true, 
+        imageUrl,
+        product: updatedProduct
+      });
+    } catch (error) {
+      console.error("Error confirming image upload:", error);
+      res.status(500).json({ error: "Failed to confirm upload" });
+    }
+  });
+
+  // Upload product image to S3 (LEGACY - slower server relay method, kept for backward compatibility)
   app.post('/api/admin/products/:id/upload-image', isAuthenticated, isAdmin, upload.single('image'), async (req: any, res) => {
     try {
       if (!req.file) {
