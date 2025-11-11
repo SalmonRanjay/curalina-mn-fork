@@ -1,0 +1,86 @@
+🧭 1. Define a Clear Rule-Based Structure for Visual Descriptions
+
+Instead of freeform descriptive paragraphs, treat each visual description as structured metadata for the product.
+A standardized schema improves both interpretability and generative fidelity.
+
+Recommended Format
+
+Use a consistent sectioned structure such as:
+
+Product Name:
+Primary Material:
+Color & Finish:
+Form Factor:
+Dimensions:
+Key Geometry:
+Edge Profile:
+Distinctive Features:
+Lighting & Texture Behavior:
+Front View Priority:
+
+Example (Front View Table)
+Product Name: Sculptural White Side Table
+Primary Material: High-gloss lacquered composite (fiberglass or ABS)
+Color & Finish: Pure white (#F8F8F8), mirror-gloss surface (~98% sheen)
+Form Factor: Cylindrical pedestal base with organic triangular domed top
+Dimensions: 21.5” height, top width 18.5”, depth 16.5”, base diameter 11”
+Key Geometry: Domed top, continuous concave transition to base
+Edge Profile: 2.75” radius corners, 0.6” bullnose at perimeter
+Distinctive Features: Seamless, monolithic construction; no visible joints
+Lighting & Texture Behavior: Reflects specular highlights; diffused soft shadows
+Front View Priority: Centered frontal view capturing full pedestal and tabletop edge
+
+
+This helps the model understand hierarchy and importance (e.g., geometry > texture > lighting).
+
+📸 2. Always Prioritize the Front-View Image
+
+You’re absolutely right — using only the front view yields more stable and realistic results.
+
+When you combine multiple images into a single description:
+
+The model tries to average out features from different angles.
+
+That causes distortions in shape (flattened tops, inconsistent curvature, odd reflections).
+
+So:
+
+Use only the front-view image for the “main” product visual description.
+
+You can still use other views for reference or detail enrichment, but keep them out of the primary prompt.
+
+Then create two columns:
+
+Front View Description: short, geometry-focused (used for model generation or analysis).
+
+Combined Description: a longer composite (used for semantic search, classification, or documentation).
+
+⚙️ 3. Strategy for Precision and Efficiency
+Goal	Strategy
+Faster analysis	Automate front-view extraction using filename filters (front_view, front, fview)
+Consistent geometry	Use structured fields (avoid poetic language)
+Accurate lighting	Describe lighting setup briefly (“neutral softbox lighting from front-left”)
+Color fidelity	Use HEX or RGB values; models handle exact tones better than adjectives (“warm white” vs #F8F8F8)
+Material clarity	Specify “matte”, “satin”, or “gloss” with sheen %
+Avoid overload	Keep total description under ~1000 characters for front-view; below 2000 for combined multi-image
+🧠 4. Suggested Workflow (for Gemini + OpenAI)
+
+Preprocessing:
+
+Auto-detect and tag “front view” image via filename.
+
+Run Gemini for visual parsing → structured attributes (geometry, color, material).
+
+Store metadata as structured fields (JSON or tabular).
+
+Text Normalization:
+
+Merge Gemini outputs with descriptive schema.
+
+Keep front-view concise (<200 words).
+
+OpenAI Use:
+
+Use the front-view description for generation, reconstruction, or visual summary.
+
+Use the combined description for comparison, clustering, or catalog analytics.

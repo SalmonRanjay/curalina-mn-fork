@@ -1321,17 +1321,70 @@ export default function AdminProducts() {
                   </span>
                 </div>
                 
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                    <span>Progress</span>
-                    <span>{job.analyzedProducts + job.failedProducts + job.skippedProducts} / {job.totalProducts}</span>
+                {/* Progress Bars for Two-Phase Analysis */}
+                {job.phaseStats ? (
+                  <div className="space-y-3 mb-3">
+                    {/* Phase 1: Front View Analysis */}
+                    <div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
+                        <div className="flex items-center gap-2">
+                          <span>Phase 1: Front View Analysis</span>
+                          {job.currentPhase === 'front-view' && (
+                            <Badge variant="outline" className="text-xs">Active</Badge>
+                          )}
+                        </div>
+                        <span>{job.phaseStats.frontView.completed} / {job.totalProducts}</span>
+                      </div>
+                      <Progress 
+                        value={(job.phaseStats.frontView.completed / job.totalProducts) * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                    
+                    {/* Phase 2: Combined Analysis */}
+                    <div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
+                        <div className="flex items-center gap-2">
+                          <span>Phase 2: Combined Analysis</span>
+                          {job.currentPhase === 'combined' && (
+                            <Badge variant="outline" className="text-xs">Active</Badge>
+                          )}
+                        </div>
+                        <span>{job.phaseStats.combined.completed} / {job.totalProducts}</span>
+                      </div>
+                      <Progress 
+                        value={(job.phaseStats.combined.completed / job.totalProducts) * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                    
+                    {/* Overall Progress */}
+                    <div>
+                      <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                        <span className="font-medium">Overall Progress</span>
+                        <span className="font-medium">
+                          {job.analyzedProducts + job.failedProducts + job.skippedProducts} / {job.totalProducts}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={((job.analyzedProducts + job.failedProducts + job.skippedProducts) / job.totalProducts) * 100} 
+                        className="h-2 bg-stone-200"
+                      />
+                    </div>
                   </div>
-                  <Progress 
-                    value={((job.analyzedProducts + job.failedProducts + job.skippedProducts) / job.totalProducts) * 100} 
-                    className="h-2"
-                  />
-                </div>
+                ) : (
+                  /* Legacy single-phase progress for V1 */
+                  <div className="mb-3">
+                    <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                      <span>Progress</span>
+                      <span>{job.analyzedProducts + job.failedProducts + job.skippedProducts} / {job.totalProducts}</span>
+                    </div>
+                    <Progress 
+                      value={((job.analyzedProducts + job.failedProducts + job.skippedProducts) / job.totalProducts) * 100} 
+                      className="h-2"
+                    />
+                  </div>
+                )}
                 
                 {/* Stats */}
                 <div className="grid grid-cols-4 gap-2 text-sm">
@@ -1359,11 +1412,28 @@ export default function AdminProducts() {
                   </div>
                 </div>
                 
-                {/* Current Product */}
+                {/* Current Product and Phase Details */}
                 {job.currentProductName && (
                   <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-700">
-                    <span className="text-sm text-muted-foreground">Currently analyzing: </span>
-                    <span className="text-sm font-medium">{job.currentProductName}</span>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-muted-foreground">Currently analyzing: </span>
+                        <span className="text-sm font-medium">{job.currentProductName}</span>
+                      </div>
+                      {job.currentPhase && (
+                        <Badge variant="outline" className="text-xs">
+                          {job.currentPhase === 'front-view' ? 'Front View' : 'Combined'}
+                        </Badge>
+                      )}
+                    </div>
+                    {job.processingDetails && (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <span>Workers: {job.processingDetails.activeWorkers || 0}/{job.processingDetails.totalWorkers || 5}</span>
+                        {job.processingDetails.batchNumber && (
+                          <span className="ml-3">Batch: {job.processingDetails.batchNumber}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
