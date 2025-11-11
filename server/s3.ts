@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 
@@ -96,15 +96,51 @@ export async function listS3Objects(prefix: string = ""): Promise<string[]> {
 }
 
 /**
- * Generate a unique S3 key for a product image
+ * Check if an S3 object exists
+ * @param key - The S3 object key to check
+ * @returns true if the object exists, false otherwise
+ */
+export async function checkS3ObjectExists(key: string): Promise<boolean> {
+  try {
+    const command = new HeadObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    
+    await s3Client.send(command);
+    return true;
+  } catch (error: any) {
+    if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Generate S3 key for a product image
+ * Uses original filename to enable duplicate detection
  * @param productSku - The product SKU
  * @param filename - Original filename
  * @returns S3 object key
  */
 export function generateProductImageKey(productSku: string, filename: string): string {
-  const timestamp = Date.now();
-  const extension = filename.split('.').pop();
-  return `products/${productSku}-${timestamp}.${extension}`;
+  // Sanitize SKU: trim, lowercase, replace non-alphanumerics with hyphens
+  const sanitizedSku = String(productSku)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  
+  // Sanitize filename: lowercase, remove leading dots, replace special chars with hyphens
+  const sanitizedFilename = filename
+    .toLowerCase()
+    .replace(/^\.+/, '')  // Remove leading dots to prevent directory traversal
+    .replace(/[^a-z0-9.]+/g, '-')
+    .replace(/-+/g, '-')  // Collapse repeated hyphens
+    .replace(/^-|-$/g, '');
+  
+  return `products/${sanitizedSku}/${sanitizedFilename}`;
 }
 
 /**

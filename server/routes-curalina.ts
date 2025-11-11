@@ -19,7 +19,7 @@ import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
-import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl } from "./s3";
+import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
@@ -193,9 +193,20 @@ export function registerCuralinaRoutes(app: Express) {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // Generate S3 key for the upload
+      // Generate S3 key for this upload
       const s3Key = generateProductImageKey(product.sku, filename);
       
+      // Check if this exact file already exists in S3
+      const existsInS3 = await checkS3ObjectExists(s3Key);
+      
+      if (existsInS3) {
+        return res.json({
+          duplicate: true,
+          filename,
+          message: `Image "${filename}" already exists for this product`
+        });
+      }
+
       // Generate presigned POST URL
       const presignedData = await generatePresignedUploadUrl(s3Key, contentType);
       
@@ -203,6 +214,7 @@ export function registerCuralinaRoutes(app: Express) {
       const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
       
       res.json({
+        duplicate: false,
         ...presignedData,
         publicUrl: `https://curalina.s3.${AWS_REGION}.amazonaws.com/${s3Key}`
       });
@@ -533,7 +545,7 @@ export function registerCuralinaRoutes(app: Express) {
               title: productName, 
               description: row.Overview ? row.Overview.substring(0, 160) : '' 
             },
-            slug: productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + sku.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            slug: productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(sku).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           });
 
           imported++;

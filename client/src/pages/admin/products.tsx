@@ -248,7 +248,18 @@ export default function AdminProducts() {
         contentType: file.type,
       });
 
-      const { url, fields, publicUrl } = await presignedResponse.json();
+      const presignedData = await presignedResponse.json();
+
+      // Check if duplicate
+      if (presignedData.duplicate) {
+        return { 
+          skipped: true, 
+          filename: file.name,
+          message: presignedData.message 
+        };
+      }
+
+      const { url, fields, publicUrl } = presignedData;
 
       // Step 2: Upload directly to S3 (FAST - no server bottleneck)
       const formData = new FormData();
@@ -276,13 +287,20 @@ export default function AdminProducts() {
         imageUrl: publicUrl,
       });
 
-      return confirmResponse.json();
+      return { skipped: false, ...(await confirmResponse.json()) };
     },
-    onSuccess: () => {
-      toast({
-        title: "Image uploaded",
-        description: "Product image uploaded successfully via direct S3 upload (faster!)",
-      });
+    onSuccess: (data: any) => {
+      if (data.skipped) {
+        toast({
+          title: "Image skipped",
+          description: `"${data.filename}" already exists for this product`,
+        });
+      } else {
+        toast({
+          title: "Image uploaded",
+          description: "Product image uploaded successfully via direct S3 upload",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       setUploadingFor(null);
     },
