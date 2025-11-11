@@ -9,6 +9,7 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
   - **Product Visual Analysis** (DUAL AI PROVIDER): 
     - **Gemini 2.5 Flash Vision**: Multi-angle product image analysis generating comprehensive visual descriptions (color, material, style, form, design details)
     - **OpenAI GPT-5 Vision**: Parallel analysis with identical prompts for quality comparison and cross-platform experimentation
+    - **Front View Prioritization**: Both analyzers automatically detect and prioritize images with "Front View" in filename (case-insensitive: "front view", "front_view", "frontview") for primary analysis, falling back to multi-image analysis if not found or if analysis fails
     - **Resilient Analysis**: Uses Promise.allSettled to ensure partial failures don't abort batch - if one provider fails, the other's result is still saved
     - **Flexible Active Description**: Gemini prioritized by default with OpenAI fallback, stored separately to enable testing either description with any AI rendering provider
     - **Admin UI**: Side-by-side comparison view showing both analyses with color-coded panels (blue for Gemini, green for OpenAI, amber for legacy single-provider data)
@@ -27,6 +28,7 @@ Curalina AI is a full-stack AI-powered interior design platform that integrates 
 - **Smart Product Selection**:
   - **Strict Image Validation**: Products MUST have valid, working images to be used in AI generation - visual descriptions alone are not sufficient
   - **Focus on Quality**: Budget constraints are NOT enforced during product filtering - prioritizes best matching products for high-quality renders
+  - **Front View Display Priority**: Results page automatically reorders product image arrays to display Front View images first in Shop the Look carousel
   - Image Quality Filter: Comprehensive validation checks for broken/invalid images (placeholders, missing URLs, invalid formats)
   - Visibility Filtering: Gemini Vision analyzes generated images to show only products actually visible in the final render
 - **Complete E-commerce Journey**: 7-step design quiz, AI-powered product selection, shopping cart, Stripe checkout integration
