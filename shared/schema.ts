@@ -9,6 +9,7 @@ import {
   boolean,
   decimal,
   integer,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -556,3 +557,84 @@ export const insertUploadJobFileSchema = createInsertSchema(uploadJobFiles).omit
   createdAt: true,
 });
 export type InsertUploadJobFile = z.infer<typeof insertUploadJobFileSchema>;
+
+// Visual Analysis Jobs - Track AI-powered visual description generation
+export const visualAnalysisJobs = pgTable("visual_analysis_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'paused'
+  jobType: varchar("job_type").notNull().default("manual"), // 'manual', 'auto_after_upload'
+  uploadJobId: varchar("upload_job_id").references(() => uploadJobs.id), // Link to upload job if auto-triggered
+  totalProducts: integer("total_products").notNull().default(0),
+  analyzedProducts: integer("analyzed_products").notNull().default(0),
+  failedProducts: integer("failed_products").notNull().default(0),
+  skippedProducts: integer("skipped_products").notNull().default(0), // Already have visual descriptions
+  currentProductName: text("current_product_name"), // Currently analyzing product
+  errorMessage: text("error_message"), // Error details if failed
+  metadata: jsonb("metadata"), // Additional job info (batch size, filters, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_analysis_job_status").on(table.status),
+  index("idx_analysis_job_upload").on(table.uploadJobId),
+]);
+
+export const visualAnalysisJobRelations = relations(visualAnalysisJobs, ({ one, many }) => ({
+  user: one(users, {
+    fields: [visualAnalysisJobs.userId],
+    references: [users.id],
+  }),
+  uploadJob: one(uploadJobs, {
+    fields: [visualAnalysisJobs.uploadJobId],
+    references: [uploadJobs.id],
+  }),
+  products: many(visualAnalysisProducts),
+}));
+
+export type VisualAnalysisJob = typeof visualAnalysisJobs.$inferSelect;
+export const insertVisualAnalysisJobSchema = createInsertSchema(visualAnalysisJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertVisualAnalysisJob = z.infer<typeof insertVisualAnalysisJobSchema>;
+
+// Visual Analysis Products - Track individual products within an analysis job
+export const visualAnalysisProducts = pgTable("visual_analysis_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => visualAnalysisJobs.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  productSku: varchar("product_sku").notNull(),
+  productName: text("product_name").notNull(),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'analyzing', 'completed', 'failed', 'skipped'
+  geminiStatus: varchar("gemini_status"), // 'success', 'failed', null
+  openaiStatus: varchar("openai_status"), // 'success', 'failed', null
+  geminiDescription: text("gemini_description"), // Gemini result
+  openaiDescription: text("openai_description"), // OpenAI result
+  errorMessage: text("error_message"),
+  analyzedAt: timestamp("analyzed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_analysis_product_job_status").on(table.jobId, table.status),
+  index("idx_analysis_product_id").on(table.productId),
+  unique("job_product_unique").on(table.jobId, table.productId),
+]);
+
+export const visualAnalysisProductRelations = relations(visualAnalysisProducts, ({ one }) => ({
+  job: one(visualAnalysisJobs, {
+    fields: [visualAnalysisProducts.jobId],
+    references: [visualAnalysisJobs.id],
+  }),
+  product: one(products, {
+    fields: [visualAnalysisProducts.productId],
+    references: [products.id],
+  }),
+}));
+
+export type VisualAnalysisProduct = typeof visualAnalysisProducts.$inferSelect;
+export const insertVisualAnalysisProductSchema = createInsertSchema(visualAnalysisProducts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertVisualAnalysisProduct = z.infer<typeof insertVisualAnalysisProductSchema>;
