@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { analyzeProductVisualsWithOpenAI } from "./openai-vision";
 import { findFrontViewImage, categorizeImages, isValidImageUrl } from "../utils/image-helpers";
+import { needsAnalysis, markAsAnalyzed, sessionCache } from '../utils/image-cache';
 
 // Initialize Gemini client
 const ai = new GoogleGenAI({
@@ -333,6 +334,24 @@ export async function analyzeProductVisualsV2(
     };
   }
   
+  // Check cache if product has already been analyzed
+  if (product.productId) {
+    const needsBothAnalysis = await needsAnalysis(product.productId, 'both');
+    if (!needsBothAnalysis) {
+      console.log(`  ⚡ Skipping analysis - already complete (using cached results)`);
+      return {
+        sku: product.sku,
+        productId: product.productId,
+        visualDescription: '[cached]',
+        visualDescriptionGemini: '[cached]',
+        visualDescriptionOpenAI: '[cached]',
+        visualDescriptionFrontView: '[cached]',
+        visualDescriptionFrontViewGemini: '[cached]',
+        visualDescriptionFrontViewOpenAI: '[cached]'
+      };
+    }
+  }
+  
   // Run both providers in parallel with independent failure handling
   const [geminiResult, openaiResult] = await Promise.allSettled([
     analyzeWithGemini(product.name, product.images),
@@ -362,7 +381,7 @@ export async function analyzeProductVisualsV2(
   console.log(`     - OpenAI combined: ${openai?.combinedDescription ? `${openai.combinedDescription.length} chars` : 'N/A'}`);
   console.log(`     - OpenAI front: ${openai?.frontViewDescription ? `${openai.frontViewDescription.length} chars` : 'N/A'}`);
   
-  return {
+  const result = {
     sku: product.sku,
     productId: product.productId,
     // Combined descriptions
@@ -374,6 +393,20 @@ export async function analyzeProductVisualsV2(
     visualDescriptionFrontViewGemini: gemini?.frontViewDescription || '',
     visualDescriptionFrontViewOpenAI: openai?.frontViewDescription || ''
   };
+  
+  // Mark as analyzed in cache for future skipping
+  if (product.productId && product.images) {
+    markAsAnalyzed(product.productId, product.images, {
+      visualDescription: result.visualDescription,
+      visualDescriptionGemini: result.visualDescriptionGemini,
+      visualDescriptionOpenAI: result.visualDescriptionOpenAI,
+      visualDescriptionFrontView: result.visualDescriptionFrontView,
+      visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
+      visualDescriptionFrontViewOpenAI: result.visualDescriptionFrontViewOpenAI
+    });
+  }
+  
+  return result;
 }
 
 /**
