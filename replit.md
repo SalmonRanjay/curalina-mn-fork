@@ -39,6 +39,17 @@ The platform provides a seamless interior design and shopping experience, from i
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 11, 2025)
+- **Visual Analysis Job System**: Implemented a robust job-based queue system for AI-powered visual product analysis
+  - Database schema with `visualAnalysisJobs` and `visualAnalysisProducts` tables
+  - Unique constraint on (jobId, productId) for data integrity
+  - Full storage interface with 13 methods following repository pattern
+  - Batch processing (20 products per batch) with 8-second delays to prevent API rate limiting
+  - Auto-trigger visual analysis after upload job completion
+  - Real-time progress tracking UI with React Query polling (3-second intervals)
+  - Dual AI provider support with resilient Promise.allSettled for independent failure handling
+  - Front view image detection and prioritization
+
 ## System Architecture
 
 ### Frontend Architecture
