@@ -783,20 +783,24 @@ export function registerCuralinaRoutes(app: Express) {
           
           const results = await batchAnalyzeProducts(productsToAnalyze);
           
-          // Update products with visual descriptions
+          // Update products with BOTH Gemini and OpenAI visual descriptions
           let updated = 0;
           let failed = 0;
           
           for (const result of results) {
-            if (result.visualDescription && !result.error) {
+            if ((result.visualDescriptionGemini || result.visualDescriptionOpenAI) && !result.error) {
               try {
                 const product = allProducts.find(p => p.sku === result.sku);
                 if (product) {
                   await curalinaStorage.updateProduct(product.id, {
-                    visualDescription: result.visualDescription
+                    visualDescription: result.visualDescription,
+                    visualDescriptionGemini: result.visualDescriptionGemini,
+                    visualDescriptionOpenAI: result.visualDescriptionOpenAI
                   });
                   updated++;
-                  console.log(`✅ Updated ${result.sku} with visual description`);
+                  console.log(`✅ Updated ${result.sku} with dual AI descriptions`);
+                  console.log(`   Gemini: ${result.visualDescriptionGemini?.length || 0} chars`);
+                  console.log(`   OpenAI: ${result.visualDescriptionOpenAI?.length || 0} chars`);
                 }
               } catch (error) {
                 console.error(`Failed to update ${result.sku}:`, error);
@@ -807,8 +811,8 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          console.log(`\n📊 Batch Analysis Complete:`);
-          console.log(`  ✅ Updated: ${updated}`);
+          console.log(`\n📊 Dual AI Batch Analysis Complete:`);
+          console.log(`  ✅ Updated with dual descriptions: ${updated}`);
           console.log(`  ❌ Failed: ${failed}`);
         } catch (error) {
           console.error('Batch analysis error:', error);

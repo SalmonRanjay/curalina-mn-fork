@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { analyzeProductVisualsWithOpenAI } from "./openai-vision";
 
 // Initialize Gemini client with AI Integrations credentials
 const ai = new GoogleGenAI({
@@ -274,46 +275,83 @@ Now synthesize the product views above with this same level of comprehensive det
  */
 export async function batchAnalyzeProducts(
   products: Array<{ sku: string; name: string; images: string[] }>
-): Promise<Array<{ sku: string; visualDescription: string; error?: string }>> {
-  console.log(`\n🚀 Starting batch analysis of ${products.length} products...`);
+): Promise<Array<{ 
+  sku: string; 
+  visualDescription: string;
+  visualDescriptionGemini: string;
+  visualDescriptionOpenAI: string;
+  error?: string 
+}>> {
+  console.log(`\n🚀 Starting DUAL AI batch analysis of ${products.length} products (Gemini + OpenAI)...`);
   
-  const results: Array<{ sku: string; visualDescription: string; error?: string }> = [];
+  const results: Array<{ 
+    sku: string; 
+    visualDescription: string;
+    visualDescriptionGemini: string;
+    visualDescriptionOpenAI: string;
+    error?: string 
+  }> = [];
   
   for (let i = 0; i < products.length; i++) {
     const product = products[i];
     console.log(`\n[${i + 1}/${products.length}] Processing: ${product.name} (${product.sku})`);
+    console.log(`  🔄 Running both Gemini AND OpenAI analysis in parallel...`);
     
     try {
-      const visualDescription = await analyzeProductVisuals(product.name, product.images);
+      // Run both AI providers in parallel for maximum efficiency
+      const [geminiDescription, openaiDescription] = await Promise.all([
+        analyzeProductVisuals(product.name, product.images).catch(err => {
+          console.error(`  ⚠️ Gemini analysis failed:`, err.message);
+          return '';
+        }),
+        analyzeProductVisualsWithOpenAI(product.name, product.images).catch(err => {
+          console.error(`  ⚠️ OpenAI analysis failed:`, err.message);
+          return '';
+        })
+      ]);
+      
+      // Use Gemini as default active description (can be changed later in UI)
+      const activeDescription = geminiDescription || openaiDescription || '';
       
       results.push({
         sku: product.sku,
-        visualDescription
+        visualDescription: activeDescription,
+        visualDescriptionGemini: geminiDescription,
+        visualDescriptionOpenAI: openaiDescription
       });
       
       console.log(`✅ Success: ${product.sku}`);
+      console.log(`  📊 Gemini: ${geminiDescription ? 'OK' : 'FAILED'} (${geminiDescription.length} chars)`);
+      console.log(`  📊 OpenAI: ${openaiDescription ? 'OK' : 'FAILED'} (${openaiDescription.length} chars)`);
+      
     } catch (error) {
       console.error(`❌ Failed: ${product.sku}`, error instanceof Error ? error.message : 'Unknown error');
       results.push({
         sku: product.sku,
         visualDescription: '',
+        visualDescriptionGemini: '',
+        visualDescriptionOpenAI: '',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
     
-    // Longer delay between products to avoid overwhelming Gemini API (10 seconds)
+    // Longer delay between products to avoid overwhelming APIs (12 seconds to be safe)
     if (i < products.length - 1) {
-      console.log(`⏸️ Waiting 10 seconds before next product to avoid rate limits...`);
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      console.log(`⏸️ Waiting 12 seconds before next product to avoid rate limits...`);
+      await new Promise(resolve => setTimeout(resolve, 12000));
     }
   }
   
-  const successful = results.filter(r => r.visualDescription && !r.error).length;
+  const successful = results.filter(r => (r.visualDescriptionGemini || r.visualDescriptionOpenAI) && !r.error).length;
   const failed = results.filter(r => r.error).length;
+  const geminiSuccesses = results.filter(r => r.visualDescriptionGemini).length;
+  const openaiSuccesses = results.filter(r => r.visualDescriptionOpenAI).length;
   
-  console.log(`\n📊 Batch Analysis Complete:`);
-  console.log(`  ✅ Successful: ${successful}/${products.length}`);
-  console.log(`  ❌ Failed: ${failed}/${products.length}`);
+  console.log(`\n📊 Dual AI Batch Analysis Complete:`);
+  console.log(`  ✅ At least one AI successful: ${successful}/${products.length}`);
+  console.log(`  🤖 Gemini successes: ${geminiSuccesses}/${products.length}`);
+  console.log(`  🤖 OpenAI successes: ${openaiSuccesses}/${products.length}`);
+  console.log(`  ❌ Both failed: ${failed}/${products.length}`);
   
   return results;
 }
