@@ -303,9 +303,11 @@ export async function createAndStartVisualAnalysisJob(
       const allProducts = await curalinaStorage.getAllProducts();
       productsToAnalyze = skipExisting 
         ? allProducts.filter(p => 
-            !p.visualDescription && 
-            !p.visualDescriptionGemini && 
-            !p.visualDescriptionOpenAI &&
+            // Check if product needs any type of analysis (combined or front-view)
+            (!p.visualDescriptionGemini || 
+             !p.visualDescriptionOpenAI ||
+             !p.visualDescriptionFrontViewGemini ||
+             !p.visualDescriptionFrontViewOpenAI) &&
             p.images && 
             p.images.length > 0
           )
