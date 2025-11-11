@@ -169,8 +169,22 @@ Now analyze this product image with the same level of detail and precision.`;
 }
 
 /**
+ * Find the Front View image URL from a list of image URLs
+ * Front View images are the main product images that start with "Front View"
+ */
+function getFrontViewImage(imageUrls: string[]): string | null {
+  // Look for image URL that contains "Front View" (case insensitive)
+  const frontViewImage = imageUrls.find(url => 
+    url.toLowerCase().includes('front view') || 
+    url.toLowerCase().includes('front_view') ||
+    url.toLowerCase().includes('frontview')
+  );
+  return frontViewImage || null;
+}
+
+/**
  * Analyze all images for a product and create comprehensive visual description
- * Combines insights from multiple angles for complete understanding
+ * Prioritizes Front View image for main analysis
  */
 export async function analyzeProductVisuals(
   productName: string,
@@ -183,7 +197,25 @@ export async function analyzeProductVisuals(
     return '';
   }
   
-  // Analyze each image
+  // Prioritize Front View image for analysis
+  const frontViewImage = getFrontViewImage(imageUrls);
+  
+  if (frontViewImage) {
+    console.log(`  🎯 Found Front View image - using as primary analysis source`);
+    try {
+      const description = await analyzeProductImage(frontViewImage, 'Front View (Primary)');
+      if (description) {
+        console.log(`  ✅ Front View analysis complete`);
+        return description;
+      }
+    } catch (error) {
+      console.error(`  ⚠️ Failed to analyze Front View, falling back to all images...`);
+    }
+  } else {
+    console.log(`  ℹ️ No Front View image found - analyzing all images`);
+  }
+  
+  // Fallback: Analyze each image if no Front View or Front View analysis failed
   const analyses: string[] = [];
   
   for (let i = 0; i < imageUrls.length; i++) {

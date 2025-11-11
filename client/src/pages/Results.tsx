@@ -10,6 +10,31 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Render, Product } from "@shared/schema";
 
+/**
+ * Helper function to reorder product images to prioritize Front View
+ * Front View images should be displayed first in the Shop the Look carousel
+ */
+function prioritizeFrontViewImage(images: string[] | null): string[] {
+  if (!images || images.length === 0) return [];
+  
+  // Find the Front View image (case insensitive)
+  const frontViewIndex = images.findIndex(url => 
+    url.toLowerCase().includes('front view') || 
+    url.toLowerCase().includes('front_view') ||
+    url.toLowerCase().includes('frontview')
+  );
+  
+  // If Front View found, move it to the front
+  if (frontViewIndex > 0) {
+    const reordered = [...images];
+    const frontView = reordered.splice(frontViewIndex, 1)[0];
+    return [frontView, ...reordered];
+  }
+  
+  // Return original order if Front View is already first or not found
+  return images;
+}
+
 export default function Results() {
   const [, setLocation] = useLocation();
   const sessionId = getSessionId();
@@ -254,64 +279,68 @@ export default function Results() {
                     >
                       <Card className="overflow-hidden hover-elevate" data-testid={`card-product-${product.id}`}>
                         <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
-                          {product.images && product.images.length > 0 ? (
-                            <>
-                              <img
-                                src={product.images[currentImageIndex[product.id] || 0]}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                                data-testid={`img-product-${product.id}`}
-                              />
-                              {product.images.length > 1 && (
-                                <>
-                                  <Button
-                                    size="icon"
-                                    variant="secondary"
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const currentIdx = currentImageIndex[product.id] || 0;
-                                      const newIdx = currentIdx === 0 ? product.images!.length - 1 : currentIdx - 1;
-                                      setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
-                                    }}
-                                    data-testid={`button-prev-image-${product.id}`}
-                                  >
-                                    <ChevronLeft className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="secondary"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const currentIdx = currentImageIndex[product.id] || 0;
-                                      const newIdx = (currentIdx + 1) % product.images!.length;
-                                      setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
-                                    }}
-                                    data-testid={`button-next-image-${product.id}`}
-                                  >
-                                    <ChevronRight className="w-4 h-4" />
-                                  </Button>
-                                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                    {product.images.map((_, idx) => (
-                                      <div
-                                        key={idx}
-                                        className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                          idx === (currentImageIndex[product.id] || 0)
-                                            ? 'bg-white w-4'
-                                            : 'bg-white/50'
-                                        }`}
-                                      />
-                                    ))}
-                                  </div>
-                                </>
-                              )}
-                            </>
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-stone-400">
-                              No image
-                            </div>
-                          )}
+                          {(() => {
+                            // Prioritize Front View image to show first
+                            const prioritizedImages = prioritizeFrontViewImage(product.images);
+                            return prioritizedImages && prioritizedImages.length > 0 ? (
+                              <>
+                                <img
+                                  src={prioritizedImages[currentImageIndex[product.id] || 0]}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                  data-testid={`img-product-${product.id}`}
+                                />
+                                {prioritizedImages.length > 1 && (
+                                  <>
+                                    <Button
+                                      size="icon"
+                                      variant="secondary"
+                                      className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const currentIdx = currentImageIndex[product.id] || 0;
+                                        const newIdx = currentIdx === 0 ? prioritizedImages.length - 1 : currentIdx - 1;
+                                        setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
+                                      }}
+                                      data-testid={`button-prev-image-${product.id}`}
+                                    >
+                                      <ChevronLeft className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="secondary"
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const currentIdx = currentImageIndex[product.id] || 0;
+                                        const newIdx = (currentIdx + 1) % prioritizedImages.length;
+                                        setCurrentImageIndex(prev => ({ ...prev, [product.id]: newIdx }));
+                                      }}
+                                      data-testid={`button-next-image-${product.id}`}
+                                    >
+                                      <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                      {prioritizedImages.map((_, idx) => (
+                                        <div
+                                          key={idx}
+                                          className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                            idx === (currentImageIndex[product.id] || 0)
+                                              ? 'bg-white w-4'
+                                              : 'bg-white/50'
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-stone-400">
+                                No image
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="p-4">
                           <h3 className="font-semibold text-lg mb-1" data-testid={`text-product-name-${product.id}`}>
