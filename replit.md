@@ -57,6 +57,7 @@ Preferred communication style: Simple, everyday language.
   - **Flow**: (1) Frontend requests presigned URL from backend → (2) Browser uploads directly to S3 → (3) Backend confirms and updates product record
   - **Security**: AWS SDK presigned POST with constraints (10MB max file size, 1hr expiry, content-type validation)
   - **Performance**: Eliminates server RAM buffering, enables parallel uploads, reduces latency by ~70-80% vs traditional relay uploads
+  - **Duplicate Detection**: Before generating presigned URL, backend checks S3 using HeadObject to detect existing files by filename - skips redundant uploads, saves storage costs, prevents multi-angle image duplicates (Front View, Side View, etc.)
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM for schema management.
