@@ -1,0 +1,96 @@
+2025-11-11 09:24:14.69
+00b19341
+User
+Error importing row: TypeError: sku.toLowerCase is not a function
+2025-11-11 09:24:14.69
+00b19341
+User
+at file:///home/runner/workspace/dist/index.js:3533:107
+2025-11-11 09:24:14.69
+00b19341
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-11 09:24:17.11
+00b19341
+User
+Error importing row: TypeError: sku.toLowerCase is not a function
+2025-11-11 09:24:17.11
+00b19341
+User
+at file:///home/runner/workspace/dist/index.js:3533:107
+2025-11-11 09:24:17.11
+00b19341
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-11 09:24:17.69
+00b19341
+User
+Error importing row: TypeError: sku.toLowerCase is not a function
+2025-11-11 09:24:17.69
+00b19341
+User
+at file:///home/runner/workspace/dist/index.js:3533:107
+2025-11-11 09:24:17.69
+00b19341
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-11 10:00:04.01
+00b19341
+User
+❌ Error analyzing Image 1/2: ApiError: {"error":{"code":400,"message":"Cannot fetch content from the provided URL. Please ensure the URL is valid and accessible by Vertex AI. Vertex AI respects robots.txt rules, so confirm the URL is allowed to be crawled. Status: URL_REJECTED-REJECTED_FC_TIMEOUT","status":"INVALID_ARGUMENT"}}
+2025-11-11 10:00:04.01
+00b19341
+User
+at throwErrorIfNotOK (file:///home/runner/workspace/node_modules/@google/genai/dist/node/index.mjs:11103:30)
+2025-11-11 10:00:04.01
+00b19341
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-11 10:00:04.01
+00b19341
+User
+at async file:///home/runner/workspace/node_modules/@google/genai/dist/node/index.mjs:10880:13
+2025-11-11 10:00:04.01
+00b19341
+User
+at async Models.generateContent (file:///home/runner/workspace/node_modules/@google/genai/dist/node/index.mjs:12137:24)
+2025-11-11 10:00:04.01
+00b19341
+User
+at async analyzeProductImage (file:///home/runner/workspace/dist/index.js:2842:22)
+2025-11-11 10:00:04.01
+00b19341
+User
+at async analyzeProductVisuals (file:///home/runner/workspace/dist/index.js:2881:27)
+2025-11-11 10:00:04.01
+00b19341
+User
+at async batchAnalyzeProducts (file:///home/runner/workspace/dist/index.js:2956:33)
+2025-11-11 10:00:04.01
+00b19341
+User
+at async file:///home/runner/workspace/dist/index.js:3704:27 {
+2025-11-11 10:00:04.01
+00b19341
+User
+status: 400
+2025-11-11 10:00:04.01
+00b19341
+User
+}
+2025-11-11 10:00:43.61
+00b19341
+User
+Floor plan analysis error: Error: Failed to fetch floor plan: 500
+2025-11-11 10:00:43.61
+00b19341
+User
+at analyzeFloorPlan (file:///home/runner/workspace/dist/index.js:2200:13)
+2025-11-11 10:00:43.61
+00b19341
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-11 10:00:43.61
+00b19341
+User
+at async file:///home/runner/workspace/dist/index.js:4084:35
