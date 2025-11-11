@@ -1626,4 +1626,263 @@ export function registerCuralinaRoutes(app: Express) {
       res.status(500).json({ error: "Failed to fetch quiz responses" });
     }
   });
+
+  // Background Upload Job endpoints
+  // TRUE background upload - accepts files and processes them server-side
+  app.post('/api/admin/upload-jobs/upload', isAuthenticated, isAdmin, upload.array('images', 200), async (req: any, res) => {
+    try {
+      const { productId } = req.body;
+      
+      if (!productId) {
+        return res.status(400).json({ error: "productId required" });
+      }
+      
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+      
+      // Validate product exists
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Create upload job and file records
+      const { createUploadJob, processUploadJobBatch } = await import('./services/upload-job-service');
+      
+      const filesData = Array.from(req.files as any[]).map(file => ({
+        fileName: file.originalname,
+        buffer: file.buffer,
+        contentType: file.mimetype,
+      }));
+      
+      const job = await createUploadJob(productId, filesData, req.user?.id);
+      
+      // Start processing in background (non-blocking)
+      setImmediate(async () => {
+        try {
+          let hasMore = true;
+          while (hasMore) {
+            hasMore = await processUploadJobBatch(job.id, filesData);
+          }
+        } catch (error) {
+          console.error(`Background processing failed for job ${job.id}:`, error);
+          await curalinaStorage.updateUploadJob(job.id, {
+            status: "failed",
+            errorMessage: error instanceof Error ? error.message : "Processing failed",
+          });
+        }
+      });
+      
+      // Return immediately with job ID
+      res.json({
+        jobId: job.id,
+        totalFiles: filesData.length,
+        message: "Upload job started - processing in background",
+      });
+    } catch (error) {
+      console.error("Error creating upload job:", error);
+      res.status(500).json({ error: "Failed to create upload job" });
+    }
+  });
+
+  app.post('/api/admin/upload-jobs/create', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { productId, fileList } = req.body;
+      
+      if (!productId || !Array.isArray(fileList) || fileList.length === 0) {
+        return res.status(400).json({ error: "productId and non-empty fileList required" });
+      }
+      
+      // Validate product exists
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Create upload job
+      const job = await curalinaStorage.createUploadJob({
+        productId,
+        userId: req.user?.id,
+        status: "pending",
+        totalFiles: fileList.length,
+        completedFiles: 0,
+        failedFiles: 0,
+        skippedFiles: 0,
+      });
+      
+      // Create file records and generate presigned URLs
+      const fileRecords = await Promise.all(
+        fileList.map(async ({ filename, contentType, fileSize }: any) => {
+          const s3Key = generateProductImageKey(product.sku, filename);
+          
+          // Check for duplicates
+          const existsInS3 = await checkS3ObjectExists(s3Key);
+          
+          if (existsInS3) {
+            const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
+            const s3Url = `https://curalina.s3.${AWS_REGION}.amazonaws.com/${s3Key}`;
+            
+            return {
+              fileRecord: {
+                jobId: job.id,
+                fileName: filename,
+                fileSize,
+                status: "skipped" as const,
+                isDuplicate: true,
+                s3Url,
+              },
+              presignedData: null,
+            };
+          }
+          
+          // Generate presigned URL for new files
+          const presignedData = await generatePresignedUploadUrl(s3Key, contentType);
+          const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
+          
+          return {
+            fileRecord: {
+              jobId: job.id,
+              fileName: filename,
+              fileSize,
+              status: "pending" as const,
+              isDuplicate: false,
+            },
+            presignedData: {
+              ...presignedData,
+              publicUrl: `https://curalina.s3.${AWS_REGION}.amazonaws.com/${s3Key}`,
+              filename,
+            },
+          };
+        })
+      );
+      
+      // Save file records to database
+      const fileRecordsToSave = fileRecords.map(r => r.fileRecord);
+      await curalinaStorage.createUploadJobFiles(fileRecordsToSave);
+      
+      // Update job with skipped count
+      const skippedCount = fileRecords.filter(r => r.fileRecord.isDuplicate).length;
+      if (skippedCount > 0) {
+        await curalinaStorage.updateUploadJob(job.id, { skippedFiles: skippedCount });
+      }
+      
+      // Return job ID and presigned URLs for files that need uploading
+      const uploadsNeeded = fileRecords
+        .filter(r => r.presignedData !== null)
+        .map(r => r.presignedData);
+      
+      res.json({
+        jobId: job.id,
+        uploadsNeeded,
+        skippedCount,
+        totalFiles: fileList.length,
+      });
+    } catch (error) {
+      console.error("Error creating upload job:", error);
+      res.status(500).json({ error: "Failed to create upload job" });
+    }
+  });
+
+  // Confirm file upload completion
+  app.post('/api/admin/upload-jobs/:jobId/confirm/:filename', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { jobId, filename } = req.params;
+      const { s3Url, success, error } = req.body;
+      
+      // Find the file record
+      const files = await curalinaStorage.getUploadJobFiles(jobId);
+      const fileRecord = files.find(f => f.fileName === filename);
+      
+      if (!fileRecord) {
+        return res.status(404).json({ error: "File record not found" });
+      }
+      
+      // Update file status
+      if (success) {
+        await curalinaStorage.updateUploadJobFile(fileRecord.id, {
+          status: "completed",
+          s3Url,
+          uploadedAt: new Date(),
+        });
+        
+        // Update job completed count
+        const job = await curalinaStorage.getUploadJob(jobId);
+        if (job) {
+          await curalinaStorage.updateUploadJob(jobId, {
+            completedFiles: job.completedFiles + 1,
+          });
+          
+          // Check if job is complete
+          const totalProcessed = job.completedFiles + 1 + job.failedFiles + job.skippedFiles;
+          if (totalProcessed >= job.totalFiles) {
+            // Update product images
+            const allFiles = await curalinaStorage.getUploadJobFiles(jobId);
+            const successfulUploads = allFiles
+              .filter(f => f.status === "completed" && f.s3Url)
+              .map(f => f.s3Url!);
+            
+            if (successfulUploads.length > 0) {
+              const product = await curalinaStorage.getProduct(job.productId);
+              if (product) {
+                const existingImages = product.images || [];
+                const newImages = [...existingImages, ...successfulUploads];
+                await curalinaStorage.updateProduct(job.productId, { images: newImages });
+              }
+            }
+            
+            await curalinaStorage.updateUploadJob(jobId, {
+              status: job.failedFiles > 0 ? "failed" : "completed",
+              completedAt: new Date(),
+            });
+          }
+        }
+      } else {
+        await curalinaStorage.updateUploadJobFile(fileRecord.id, {
+          status: "failed",
+          errorMessage: error || "Upload failed",
+        });
+        
+        // Update job failed count
+        const job = await curalinaStorage.getUploadJob(jobId);
+        if (job) {
+          await curalinaStorage.updateUploadJob(jobId, {
+            failedFiles: job.failedFiles + 1,
+          });
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error confirming upload:", error);
+      res.status(500).json({ error: "Failed to confirm upload" });
+    }
+  });
+
+  app.get('/api/admin/upload-jobs/active', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const jobs = await curalinaStorage.getActiveUploadJobs(userId);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching active upload jobs:", error);
+      res.status(500).json({ error: "Failed to fetch active upload jobs" });
+    }
+  });
+
+  app.get('/api/admin/upload-jobs/:id/status', async (req: any, res) => {
+    try {
+      const { getJobStatus } = await import('./services/upload-job-service');
+      const status = await getJobStatus(req.params.id);
+      
+      if (!status) {
+        return res.status(404).json({ error: "Upload job not found" });
+      }
+      
+      res.json(status);
+    } catch (error) {
+      console.error("Error fetching upload job status:", error);
+      res.status(500).json({ error: "Failed to fetch upload job status" });
+    }
+  });
 }
