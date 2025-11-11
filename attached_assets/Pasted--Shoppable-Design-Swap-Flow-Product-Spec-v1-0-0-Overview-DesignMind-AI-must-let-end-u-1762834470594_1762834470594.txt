@@ -1,0 +1,504 @@
+# Shoppable Design & Swap Flow — Product Spec v1.0
+
+## 0) Overview
+
+DesignMind AI must let end‑users (homeowners, business buyers) input preferences (colors, style, room type), see a **shoppable bill of materials (BOM)** while a design is generating, swap any product with a similar alternative, and **buy the whole look**. This spec defines UX, data contracts, APIs, algorithms, and operational guardrails to make the flow performant, reliable, and enterprise‑ready (multi‑tenant SaaS).
+
+---
+
+## 1) Goals & Non‑Goals
+
+**Goals**
+
+* Real‑time, SKU‑accurate BOM visible during and after design generation.
+* One‑click swaps with **constraint‑aware similar products**.
+* Regenerate design incrementally (surgical updates) after swaps.
+* Buy‑the‑Look checkout with inventory/lead‑time integrity.
+* Multi‑tenant safety: strong isolation, brand configs, tax/shipping rules.
+
+**Non‑Goals (v1)**
+
+* Financing integrations beyond Stripe/Shop Pay.• Complex bundles across external vendors (v2).
+* Custom finishes configurator (advanced parametric materials in v2).
+
+---
+
+## 2) User Stories
+
+1. *As a shopper*, I input style/color/room and upload a photo/floor plan; while the image renders, I can already see the items being used (names, prices, stock) and click through to PDPs.
+2. *As a shopper*, I can click any item in the BOM to see **Similar Alternatives** filtered by size, colorway, price, brand, availability.
+3. *As a shopper*, I can select alternatives and **Regenerate** to preview the updated room quickly.
+4. *As a shopper*, I can **Buy the Look** (entire cart) or remove items and checkout with taxes, shipping, and lead times shown.
+5. *As a retailer/designer*, I can lock certain SKUs, set preferred substitutes, and define margin/upsell rules.
+
+---
+
+## 3) Experience Architecture (UX)
+
+### 3.1 Wizard → Canvas → Checkout
+
+1. **Preferences Wizard** (style, palette, budget, must‑keep items, exclusions, constraints) →
+2. **Design Canvas**
+
+   * Left: generated render (2D composite; AR button when available)
+   * Right: **BOM panel** (live), Filters, Similar Alternatives drawer, Swap Queue
+   * Top: Regenerate variants (A/B), Lighting toggle, Scale confidence
+3. **Checkout** (Buy the Look)
+
+### 3.2 BOM Panel (Right rail)
+
+* For each line item: thumbnail, title, SKU, dimensions, finish/variant, price, stock badge, lead time, vendor.
+* CTAs: *Swap*, *Lock*, *Hide*, *Favorite*, quantity selector.
+* Totals: items subtotal, shipping estimator, taxes, promo codes, ETA range.
+
+### 3.3 Similar Alternatives Drawer
+
+* Opened via *Swap* on a line item.
+* Tabs: **Recommended**, Size‑match, Colorway, Budget, Premium.
+* Each card: visual, SKU, dimensions, delta price vs current, availability, *Compare*.
+* Controls: filters (width range, color, material, brand, price), sort by *fit score*.
+
+### 3.4 Regeneration States
+
+* **Fast Swap Preview (≤3s):** placeholder composite using pre‑cut masks + relighting.
+* **Final Render (≤15s):** full quality with occlusion, shadows, and relight.
+* Non‑blocking: shopper can continue browsing alternatives while finalizes.
+
+---
+
+## 4) Data Model (Core Tables)
+
+**tenants**(id, name, domain, branding, tax_profile_id, created_at)
+**users**(id, tenant_id, role, email, ...)
+**products**(id, tenant_id, sku, title, brand, category, price, currency, cost, weight, dims_w,dims_d,dims_h, materials, color_hex, images[], model_3d_url, variants_json, tags[], is_active)
+**inventory**(product_id, tenant_id, location, available_qty, backorder_policy, lead_time_days, updated_at)
+**product_vectors**(product_id, tenant_id, img_embed, text_embed, style_embed, metadata_json)
+**rooms**(id, tenant_id, user_id, source_type{photo,floorplan,scan}, assets[], room_json, vectors, scale_confidence, created_at)
+**designs**(id, tenant_id, room_id, state{draft,rendering,ready}, prompt_json, constraints_json, scene_graph_json, bom_json, thumbnails[], render_url, ar_url, price_total, created_at, updated_at)
+**design_items**(design_id, product_id, placement_json, locked_bool, swap_group, fit_score, price_snap, variant_sel)
+**carts**(id, tenant_id, user_id, design_id, status{active,checked_out}, subtotal, shipping_est, taxes_est, discounts, total)
+**cart_items**(cart_id, product_id, qty, price_snap, vendor, lead_time_snap, variant_sel)
+**substitutions**(tenant_id, product_id, substitute_id, priority, rule_json)
+**events**(id, tenant_id, type, payload_json, created_at)
+
+---
+
+## 5) APIs (Public/Partner)
+
+**POST /v1/preferences** → create/update preference profile (style, colors, budget, keep_items)
+**POST /v1/rooms** → upload photo/floorplan; returns `room_id`
+**POST /v1/designs** → `{room_id, preferences}`; returns `design_id` and SSE channel
+**GET /v1/designs/{id}** → design state + `bom_json`
+**POST /v1/designs/{id}/swap** → `{product_id, substitute_product_id}`; returns updated scene + partial render
+**GET /v1/products/{id}/similar** → query by vector + constraints
+**POST /v1/carts** → `{design_id}` → initializes cart from current BOM
+**PATCH /v1/carts/{id}** → modify quantities, remove items
+**POST /v1/checkout/session** → starts Stripe session; webhooks for success/cancel
+**POST /v1/webhooks/inventory** → updates stock/lead‑time
+
+**Streaming (SSE/WebSocket)**
+
+* `design.progress` (0–100, current stage)
+* `design.bom.updated` (list changes, price deltas)
+* `design.render.preview` (fast composite URL)
+* `design.render.final` (full URL)
+
+---
+
+## 6) Similarity & Constraint Matching
+
+### 6.1 Fit Score
+
+`fit_score = w1*style_sim + w2*color_sim + w3*dimension_fit + w4*budget_fit + w5*availability + w6*brand_bias`
+
+* **style_sim**: cosine(product.style_embed, room.style_embed)
+* **color_sim**: ΔE color distance vs palette
+* **dimension_fit**: penalty if width/depth/height breach constraints
+* **budget_fit**: soft‑clipped toward target budget tier
+* **availability**: in‑stock=1, backorder penalty, lead_time normalization
+* **brand_bias**: per‑tenant merchandising preference
+
+### 6.2 Hard Constraints (must pass)
+
+* Clearance rules (egress ≥ 760mm, door swing, window obstruction)
+* Max width/depth per placement anchor
+* Electrical/plumbing proximity (for appliances/lighting where flagged)
+
+### 6.3 Reranking & Diversity
+
+* MMR (Maximal Marginal Relevance) to avoid near‑duplicates
+* Vendor diversity caps (optional)
+
+---
+
+## 7) Regeneration Pipeline
+
+1. **Swap Request** → validate constraints → update `scene_graph_json` and `design_items`.
+2. **Fast Preview**
+
+   * Use saved alpha mask for placement zone
+   * Composite substitute product cutout
+   * Compute relight: estimate scene light dir/intensity → apply shading & drop shadows
+3. **Final Render**
+
+   * Patch‑based diffusion conditioned on scene graph
+   * Depth/occlusion from room depth map
+   * Output at 2K; background upscaled to 4K as needed
+4. **BOM Sync**
+
+   * Update line item, price, lead time; recalc totals
+   * Fire `design.bom.updated`
+
+> **Note:** Locked items (`locked_bool=true`) are never swapped by auto‑regen.
+
+---
+
+## 8) Checkout — “Buy the Look”
+
+* **Cart Initialization**: one click from Design → Cart; copy current `design_items` into `cart_items` with price & lead‑time snapshots.
+* **Split Ship/Drop Ship** (optional): multi‑vendor shipments grouped by vendor.
+* **Tax & Shipping**: address → tax calc → shipping methods; display ship windows based on slowest lead‑time in cart.
+* **Inventory Hold**: temporary reservation (e.g., 15 minutes) on `available_qty` during checkout session.
+* **Failure Handling**: if item goes OOS during checkout → suggest top 3 substitutes and allow “replace & continue.”
+
+---
+
+## 9) Admin & Merchandising Controls (Tenant)
+
+* Lock SKUs per template/look; define **preferred substitutes** and disallowed lists.
+* Set **brand priority** and **margin targets** to bias recommendations.
+* Configure **lead‑time overrides** and warehouse routing.
+* Theme BOM panel (logos, colors); choose fields shown to shoppers.
+
+---
+
+## 10) Performance SLAs
+
+* BOM visible with provisional items within **<2s** of design start.
+* Fast Preview swaps in **≤3s**; Final Render in **≤15s** (p95 under 25s).
+* Similar Alternatives API **≤400ms** for top‑N=24.
+* Checkout inventory validation **≤800ms**.
+
+---
+
+## 11) Telemetry & KPIs
+
+* Time to first BOM, swap rate, swap acceptance rate, regen count per session.
+* Add‑to‑cart from designs, Buy‑the‑Look conversion, AOV uplift vs PDP baseline.
+* OOS rate, substitute acceptance rate, return rate (if integrated).
+
+---
+
+## 12) Error Handling & Edge Cases
+
+* **OOS mid‑render**: mark item with badge; auto‑swap suggestion.
+* **Constraint violation**: show dimension error; auto‑resize to next size (if variant) or propose alternatives.
+* **Variant conflicts**: fabric not available → fallback palette suggestion.
+* **Render timeout**: keep Fast Preview, allow retry; notify via SSE.
+
+---
+
+## 13) Security & Compliance
+
+* Tenant‑scoped API keys; per‑role permissions (viewer, shopper, designer, admin).
+* PII minimization: room photos treated as sensitive; retention policies; user data export/delete.
+* PCI delegated to Stripe; we never store card PAN.
+
+---
+
+## 14) Pseudocode — Swap & Regenerate
+
+```pseudo
+function swapAndRegenerate(designId, oldSku, newSku):
+  design = getDesign(designId)
+  if design.state != 'ready' and design.state != 'rendering':
+    throw ERROR_BAD_STATE
+
+  oldItem = design.items.find(sku==oldSku)
+  newProd = getProduct(newSku)
+
+  if !passesHardConstraints(newProd, oldItem.placement):
+    return {error: 'CONSTRAINT_FAIL', suggestions: topSimilar(newProd, alt=true)}
+
+  // Update scene graph
+  design.sceneGraph.replaceNode(oldItem.nodeId, newProd.assetId)
+  oldItem.product_id = newProd.id
+  oldItem.fit_score = computeFitScore(newProd, design.room)
+  save(design)
+
+  // Emit Fast Preview
+  previewUrl = compositePreview(design, targetNode=oldItem.nodeId)
+  emit('design.render.preview', {designId, previewUrl})
+
+  // Queue Final Render (async job)
+  jobId = queueFinalRender(designId, targetNode=oldItem.nodeId)
+  return {ok:true, previewUrl, jobId}
+```
+
+---
+
+## 15) API Contracts (Selected)
+
+### GET /v1/products/{id}/similar
+
+**Query Params:** width_min, width_max, color_hex, price_min, price_max, brand[], in_stock, topN
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "product_id": "p_123",
+      "sku": "SOFA‑L‑OAK",
+      "fit_score": 0.87,
+      "price": 1299,
+      "dims": {"w": 2200, "d": 880, "h": 760},
+      "availability": {"in_stock": true, "lead_time_days": 7},
+      "thumb": "https://.../sofa.jpg"
+    }
+  ]
+}
+```
+
+### POST /v1/designs/{id}/swap
+
+**Body:** `{ "product_id": "old", "substitute_product_id": "new" }`
+**Response:** `{ "preview_url": "...", "bom": {...}, "render_state": "queued" }`
+
+### POST /v1/checkout/session
+
+**Body:** `{ "cart_id": "...", "shipping_address": {...} }`
+**Response:** `{ "stripe_url": "...", "reservation_expires_at": "ISO8601" }`
+
+---
+
+## 16) UI States (Wireframe Notes)
+
+* **Generating…** progress bar with step pills: *Analyzing Room → Selecting Items → Compositing → Finalizing*.
+* BOM items appear progressively with a skeleton loader; clicking an item opens drawer.
+* Swap queue badge shows pending changes; *Apply & Regenerate* button consolidates multiple edits.
+* Scale confidence meter (Low/Med/High) with tooltip about single‑measurement improvement.
+
+---
+
+## 17) Multi‑Tenant Considerations
+
+* Per‑tenant: branding theme, currency, tax profile, shipping rules, substitutes, brand priority.
+* Data isolation at DB level (schema‑per‑tenant or row‑level security).
+* Rate limits per tenant on rendering endpoints; burst credits tied to plan.
+
+---
+
+## 18) Launch Checklist (v1)
+
+* [ ] SKU ingestion from Shopify/Akeneo + nightly delta sync
+* [ ] Vectorization pipeline (images + text)
+* [ ] Room analysis + depth/scale pipeline
+* [ ] BOM panel with live pricing & lead times
+* [ ] Similar Alternatives with fit score
+* [ ] Swap → Fast Preview → Final Render
+* [ ] Cart/Checkout with reservations + webhooks
+* [ ] Telemetry dashboards (Grafana/Amplitude)
+* [ ] SLO alerts (p95 render latency, error rates)
+
+---
+
+## 19) Future Enhancements
+
+* Collaborative board (designer ↔ client comments, versioning)
+* Parametric materials (fabric/leather swatches) with on‑the‑fly rendering
+* Auto‑staging scenes for seasonal campaigns (batch generation)
+* 3D room capture with true occlusion and physically based lighting
+
+---
+
+**End of Spec v1.0**
+
+---
+
+## 20) SaaS Platform Operations (Deep Dive)
+
+### 20.1 Tenant Lifecycle
+
+* **Provisioning:** automated on signup → creates isolated DB schema (or RLS) + S3/GCS bucket prefix + KMS key.
+* **Branding:** custom domain (CNAME), logo/colors, email templates (DKIM/SPF).
+* **Entitlements:** plan → render credits, max team seats, API rate limit, AR export quota, storage cap.
+* **Seat Management:** owner, admin, designer, merchandiser, viewer roles. SSO (SAML/OIDC), SCIM for user provisioning (Enterprise).
+* **Offboarding:** data export (rooms, designs, BOMs) + hard delete upon request; revoke API keys; KMS key retire.
+
+### 20.2 Billing & Credits
+
+* Stripe subscriptions (metered + seat-based). Webhooks update **tenant_balance**.
+* **Credit Buckets:** `render_2d`, `render_hd`, `ar_export`, `fine_tune_minutes` (GPU time). Grace overage window.
+* **Cost Transparency:** per‑render credit cost surfaced pre‑action; monthly forecast.
+
+### 20.3 Quotas & Rate Limits
+
+* Per‑tenant limits for `/designs`, `/similar`, `/checkout/session`. Token‑bucket with exponential backoff.
+* Burst protection for flash sales; waiting room UI.
+
+---
+
+## 21) Infrastructure & Scalability
+
+### 21.1 Reference Topology
+
+* **API Layer:** FastAPI/NestJS behind API Gateway + WAF. CF/CloudFront for CDN.
+* **Async Compute:** Kafka or SQS for jobs; workers on K8s node pools.
+* **GPU Pools:** Separate queues for 2D fast preview (T4/L4), HD diffusion (A10/A100), and fine‑tuning (A100/H100).
+* **Vector DB:** Pinecone/Weaviate with HNSW/IVF. Nightly re‑index.
+* **Caching:** Redis for session/SSE, Cloudflare cache for images; signed URLs.
+* **Media:** S3 with lifecycle rules (hot → infrequent → glacier). Thumbor/imgproxy for on‑the‑fly thumbs.
+
+### 21.2 Autoscaling & Scheduling
+
+* Horizontal Pod Autoscaling on queue depth & GPU util. Priority classes: checkout > rendering > fine‑tune.
+* Preemption allowed for low‑priority renders to protect checkout.
+
+### 21.3 Resilience
+
+* Multi‑AZ DB; point‑in‑time recovery. Object‑storage versioning. Blue‑green deploys.
+* Synthetic probes for `/healthz`, `/renderz` (mock renders) every 60s.
+
+---
+
+## 22) Data Governance, Security & Privacy
+
+* **RBAC + RLS:** row‑level security enforced at DB; services assert `tenant_id` on every query.
+* **Encryption:** TLS 1.3 in transit; S3 SSE‑KMS at rest per tenant. Periodic key rotation.
+* **Secrets:** managed via AWS Secrets Manager; automatic rotation for DB/API keys.
+* **PII Minimization:** room images flagged as sensitive. Configurable retention (e.g., 90 days). On‑device processing path for mobile SDK when feasible.
+* **Audit Logs:** immutable append‑only store for admin actions, data exports, and checkout events.
+* **Compliance:** GDPR/CCPA data subject rights; DPA templates; SOC2 roadmap; DPIA for vision processing.
+
+---
+
+## 23) Generative & Rendering Architecture (Beyond Text→Image)
+
+### 23.1 Multistage Pipeline
+
+1. **Scene Graph Build:** from room JSON + constraints + anchors.
+2. **Placement Solve:** ILP/heuristics → positions, rotations, scale.
+3. **Fast Preview:** 2D composite (alpha masks, matting) + relight & shadows.
+4. **HD Render:** Diffusion in‑painting conditioned on depth/normal maps; control via ControlNets (depth, canny, line‑art).
+5. **AR Asset Path:** when 3D exists (glTF/USDZ), place directly; otherwise **2.5D billboards** with estimated normals.
+
+### 23.2 Fine‑Tuning for Photorealism
+
+* **LoRA on SDXL / Stable Diffusion 3:** tenant‑specific styles (e.g., brand look). Cold‑start dataset: product hero shots + staged photos.
+* **DreamBooth/Custom Diffusion:** for small catalogs; cap to avoid overfitting.
+* **ControlNets:** training lightweight adapters for catalog‑specific silhouettes to keep geometry consistent.
+* **Relighting:** intrinsic image decomposition + environment map estimation (inverse rendering). Shadow‑catchers via depth + plane fit.
+
+### 23.3 3D Consistency (Optional v2+)
+
+* **3D Gaussian Splatting / NeRF** for rooms captured via short video; export coarse mesh + baked lighting for higher fidelity occlusion.
+* **Material Estimation:** predict roughness/metalness for physically‑based rendering of inserted items.
+
+### 23.4 Watermarking & Disclosure
+
+* Tiny corner watermark and EXIF/XMP metadata flag set on generated images (enterprise‑toggleable) to comply with AI‑content disclosure policies.
+
+---
+
+## 24) Model Lifecycle Management (ML Ops)
+
+* **Registry:** versioned models (base, LoRA per tenant), scene solvers, ControlNets. Semantic versioning `major.minor.patch`.
+* **Promotion Flow:** dev → staging → 1% canary → 25% → 100% with guardrails.
+* **Rollback:** traffic‑switch within 60s if KPIs regress.
+* **Feature Flags:** per‑tenant enablement (e.g., new relighter, new solver).
+* **Datasets:** stored with data cards (source, license, consent). Weak‑labeling via heuristics; human review loop.
+
+---
+
+## 25) Evaluation & Quality Assurance
+
+### 25.1 Automatic Metrics
+
+* **Scale Error (cm):** from known reference (door height) + user supplied measure.
+* **Occlusion Accuracy:** IoU vs manually labeled masks on gold set.
+* **Color Fidelity:** ΔE vs target palette.
+* **Placement Violations:** % designs breaching clearance rules.
+* **Realism Score:** learned discriminator calibrated with human MOS.
+
+### 25.2 Human‑in‑the‑Loop (HITL)
+
+* Weekly sample review per tenant; track *approval rate*, *swap necessity*, *customer complaints*.
+* Visual diff tool comparing preview vs final; flag drift.
+
+### 25.3 Business Metrics Gates (for deploy)
+
+* p95 render latency, conversion uplift, OOS conflict rate, return rate proxy.
+
+---
+
+## 26) Content/IP, Legal & Ethics
+
+* **Rights Management:** verify license for product imagery and 3D; forbid 3rd‑party logos unless consented.
+* **Customer Consent:** explicit consent for room photos; terms cover AI transformation and storage period.
+* **Moderation:** block NSFW/illegal content via vision classifier before processing.
+* **Claims:** clear scale tolerance (±3–5%); spec sheets linked; not a substitute for professional compliance where mandated.
+
+---
+
+## 27) Cost Model & Unit Economics
+
+* **COGS Drivers:** GPU minutes (preview vs HD vs fine‑tune), storage, egress, vector DB ops, 3D conversion.
+* **Target COGS:** $0.03–$0.08 per preview, $0.20–$0.65 per HD render (tenant‑tuned), fine‑tune ~$6–$18 per LoRA.
+* **Pricing Levers:** credit packs, off‑peak render discounts, annual prepay, enterprise committed use.
+
+---
+
+## 28) Observability & SRE
+
+* **SLOs:** API availability 99.9%, Render p95 < 25s, Checkout API p95 < 500ms.
+* **Error Budget Policy:** feature rollout paused if SLO breached for 7‑day window.
+* **Tracing & Logs:** OpenTelemetry, structured logs (PII‑safe). Redaction at sink.
+* **Incident Response:** on‑call rotation, runbooks (render queue stuck, GPU pool exhausted, inventory webhook failures). Postmortems with action items.
+
+---
+
+## 29) Abuse, Security Threats & Protections
+
+* CSRF on checkout; JWT with short TTL + refresh. Device fingerprint to curb card testing.
+* Prompt/parameter injection defenses on LLM planner; allowlist tool calls.
+* Rate‑limit and CAPTCHA on unauth flows.
+* Image malware scanning (Exif bombs, steganography) before processing.
+
+---
+
+## 30) Accessibility, Localization & Mobile
+
+* **A11y:** WCAG 2.2 AA; keyboard‑navigable BOM; captions for progress; color‑contrast safe palettes.
+* **i18n:** currencies, measurement units (imperial/metric), RTL support.
+* **Mobile SDKs:** iOS/Android capture helpers (ARKit/ARCore), offline queueing for poor networks.
+
+---
+
+## 31) Packaging & GTM (Refined)
+
+* **Designer Studio:** small teams; emphasis on canvases, client approvals.
+* **Retail Pro:** catalogs, PDP widget, Buy‑the‑Look, store kiosks.
+* **Enterprise:** SSO/SCIM, white‑label, priority rendering, custom LoRA styles, dedicated GPU pool.
+* **Marketplace/API:** monetized widget with rev‑share.
+
+---
+
+## 32) Risks & Mitigations
+
+* **Asset Scarcity (3D):** auto‑generate proxies; prioritize top‑seller SKUs; vendor‑assisted capture.
+* **Hallucinations:** strict hard constraints, detect geometry mismatch; watermark and disclose.
+* **Latency Spikes:** pre‑warm GPU pools; defer HD while showing high‑quality previews.
+* **Inventory Drift:** webhook retries + nightly reconciliation + cart‑time validation.
+
+---
+
+## 33) Appendix: Operational Runbooks (Summaries)
+
+* **Render Queue Saturation:** scale up GPU pool; shed low‑prio jobs; notify tenants.
+* **Vector DB Degradation:** switch to read replicas; degrade to cached recommendations.
+* **Checkout Failures:** toggle to card‑present backup or defer orders; preserve carts.
+
+---
+
+**v1.1 Addendum:** This addendum matures the spec for SaaS ops, MLOps, fine‑tuning (Stability AI/SDXL LoRA), evaluation, compliance, cost controls, and SRE practices so you can confidently operate a multi‑tenant production system.

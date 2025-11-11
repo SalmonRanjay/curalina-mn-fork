@@ -241,26 +241,47 @@ export default function AdminProducts() {
 
   const uploadMutation = useMutation({
     mutationFn: async ({ productId, file }: { productId: string; file: File }) => {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch(`/api/admin/products/${productId}/upload-image`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
+      // Step 1: Get presigned URL from server (FAST - just metadata exchange)
+      // apiRequest throws on error, so no need to check .ok
+      const presignedResponse = await apiRequest("POST", `/api/admin/products/${productId}/presigned-upload-url`, {
+        filename: file.name,
+        contentType: file.type,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Upload failed");
+      const { url, fields, publicUrl } = await presignedResponse.json();
+
+      // Step 2: Upload directly to S3 (FAST - no server bottleneck)
+      const formData = new FormData();
+      
+      // Add presigned fields first
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      
+      // Add file last
+      formData.append("file", file);
+
+      const uploadResponse = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("S3 upload failed");
       }
 
-      return response.json();
+      // Step 3: Confirm upload with server to update product record
+      // apiRequest throws on error, so no need to check .ok
+      const confirmResponse = await apiRequest("POST", `/api/admin/products/${productId}/confirm-upload`, {
+        imageUrl: publicUrl,
+      });
+
+      return confirmResponse.json();
     },
     onSuccess: () => {
       toast({
         title: "Image uploaded",
-        description: "Product image uploaded successfully to S3",
+        description: "Product image uploaded successfully via direct S3 upload (faster!)",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       setUploadingFor(null);

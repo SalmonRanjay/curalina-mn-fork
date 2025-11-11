@@ -199,9 +199,12 @@ export function registerCuralinaRoutes(app: Express) {
       // Generate presigned POST URL
       const presignedData = await generatePresignedUploadUrl(s3Key, contentType);
       
+      // Use the same sanitized AWS_REGION as in s3.ts
+      const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
+      
       res.json({
         ...presignedData,
-        publicUrl: `https://curalina.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${s3Key}`
+        publicUrl: `https://curalina.s3.${AWS_REGION}.amazonaws.com/${s3Key}`
       });
     } catch (error) {
       console.error("Error generating presigned URL:", error);
