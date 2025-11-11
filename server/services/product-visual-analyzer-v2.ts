@@ -59,68 +59,36 @@ async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; 
 }
 
 /**
- * Get the detailed analysis prompt for furniture
+ * Get the structured analysis prompt for furniture (front-view focused)
  */
-function getDetailedAnalysisPrompt(): string {
-  return `You are an expert furniture designer analyzing this product image for exact reproduction in AI-generated interior designs. Provide an extremely detailed visual description that would allow an AI image generator to recreate this furniture piece with precision.
+function getStructuredAnalysisPrompt(isFrontView: boolean = false): string {
+  const charLimit = isFrontView ? '1000' : '2000';
+  
+  return `You are an expert furniture designer analyzing this product image for AI-generated interior designs.
+
+**OUTPUT FORMAT - STRUCTURED METADATA (Required fields):**
+
+Product Name: [Descriptive name based on furniture type and style]
+Primary Material: [Specific material type with grade/quality, e.g., "High-gloss lacquered composite (fiberglass or ABS)"]
+Color & Finish: [Exact color with HEX code when possible, sheen percentage, e.g., "Pure white (#F8F8F8), mirror-gloss surface (~98% sheen)"]
+Form Factor: [Core shape and construction, e.g., "Cylindrical pedestal base with organic triangular domed top"]
+Dimensions: [Visible measurements or proportions, e.g., "21.5" height, top width 18.5", depth 16.5", base diameter 11""]
+Key Geometry: [Essential geometric features, e.g., "Domed top, continuous concave transition to base"]
+Edge Profile: [Edge details with measurements, e.g., "2.75" radius corners, 0.6" bullnose at perimeter"]
+Distinctive Features: [Unique design elements, e.g., "Seamless, monolithic construction; no visible joints"]
+Lighting & Texture Behavior: [How light interacts, e.g., "Reflects specular highlights; diffused soft shadows"]
+${isFrontView ? 'Front View Priority: [Confirmation this is frontal view, e.g., "Centered frontal view capturing full pedestal and tabletop edge"]' : 'Multi-Angle Synthesis: [Brief note on viewing angles captured]'}
 
 **CRITICAL REQUIREMENTS:**
-- Use SPECIFIC measurements when visible (e.g., "approximately 6 inches wide" not "narrow")
-- Include EXACT color names and codes when possible (e.g., "warm charcoal gray #4A4A4A" not "dark gray")
-- Describe textures with tactile precision (e.g., "tightly woven linen with 2mm raised texture" not "textured fabric")
-- Note exact geometric shapes (e.g., "perfect 90-degree angles" or "gentle 15-degree curve")
-- Specify material types precisely (e.g., "solid oak with quarter-sawn grain pattern" not "wood")
+- Use EXACT values: HEX colors (#F8F8F8), sheen percentages (98% gloss), measurements (21.5")
+- Avoid poetic language - be technical and precise
+- Focus on geometry and materials over abstract descriptions
+- Keep total response under ${charLimit} characters
+- Structure MUST match the format above exactly
 
-**DETAILED ANALYSIS FRAMEWORK:**
-
-1. **OVERALL FORM & SILHOUETTE**
-   - Exact shape description (rectangular, L-shaped, curved, asymmetric, etc.)
-   - Precise proportions (width to depth to height ratios)
-   - Design style with specific era/movement
-   - Overall scale indicators
-
-2. **STRUCTURAL COMPONENTS**
-   - Frame construction and joinery
-   - Leg design, dimensions, and angles
-   - Support structures and placement
-   - Weight distribution indicators
-
-3. **MATERIALS & SURFACES**
-   - Primary material with specific type
-   - Wood grain pattern and direction
-   - Metal type and finish
-   - Fabric weave type
-   - Surface treatments and texture depth
-
-4. **COLOR PALETTE - EXTREMELY SPECIFIC**
-   - Dominant color with exact shade name
-   - Secondary colors with percentages
-   - Color temperature and undertones
-   - Finish sheen levels
-
-5. **DIMENSIONAL DETAILS**
-   - All visible measurements
-   - Component proportions
-   - Gap widths and spacing
-   - Border and trim widths
-
-6. **DISTINCTIVE DESIGN ELEMENTS**
-   - Unique curves with measurements
-   - Angular details with degrees
-   - Decorative patterns and symmetry
-   - Tufting/stitching patterns
-
-7. **HARDWARE & FASTENERS**
-   - Handle/pull specifications
-   - Visible hardware details
-   - Finish matching or contrasting
-
-8. **FINISH QUALITY & LIGHTING**
-   - Surface quality and edge treatments
-   - How light interacts with surfaces
-   - Shadow and highlight zones
-
-Provide a 300-400 word detailed description focusing on visual accuracy for AI reproduction.`;
+${isFrontView ? 
+  '**FRONT VIEW FOCUS:** This is the primary view for generation. Capture complete frontal geometry and proportions.' :
+  '**COMBINED VIEW SYNTHESIS:** Integrate features from all angles while maintaining structural clarity.'}`;
 }
 
 /**
