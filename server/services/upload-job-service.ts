@@ -2,7 +2,7 @@ import { curalinaStorage } from "../storage-curalina";
 import { S3Client, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { InsertUploadJob, UploadJob, UploadJobFile } from "@shared/schema";
 import crypto from "crypto";
-import { createVisualAnalysisJob } from "./visual-analysis-job-service";
+// Visual analysis import moved to dynamic import based on feature flag
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -237,13 +237,21 @@ async function updateProductImages(productId: string, jobId: string): Promise<vo
       // Auto-trigger visual analysis for products with new images if they don't have descriptions
       if (!product.visualDescription || !product.visualDescriptionGemini) {
         try {
+          // Import configuration and check feature flag
+          const visualAnalysisConfig = (await import('../config/visual-analysis')).default;
+          const servicePath = visualAnalysisConfig.useV2 
+            ? './visual-analysis-job-service-v2'
+            : './visual-analysis-job-service';
+          
+          const { createVisualAnalysisJob } = await import(servicePath);
+          
           const analysisJob = await createVisualAnalysisJob(
             null, // userId (null for system-triggered jobs)
             "auto_after_upload", // jobType
             jobId, // uploadJobId
             { productIds: [productId] } // filters
           );
-          console.log(`Auto-triggered visual analysis job ${analysisJob.id} for product ${productId} after upload`);
+          console.log(`Auto-triggered visual analysis job ${analysisJob.id} for product ${productId} after upload (${visualAnalysisConfig.useV2 ? 'V2' : 'V1'})`);
         } catch (error) {
           console.error(`Failed to auto-trigger visual analysis for product ${productId}:`, error);
           // Don't fail the upload job if visual analysis trigger fails

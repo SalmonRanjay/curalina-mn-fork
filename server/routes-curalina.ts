@@ -830,10 +830,18 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       const { productIds, onlyMissingDescriptions } = req.body;
       
+      // Import configuration and check feature flag
+      const { visualAnalysisConfig } = await import('./config/visual-analysis');
+      const servicePath = visualAnalysisConfig.useV2 
+        ? './services/visual-analysis-job-service-v2'
+        : './services/visual-analysis-job-service';
+      
+      console.log(`Using visual analysis service: ${visualAnalysisConfig.useV2 ? 'V2 (Enhanced)' : 'V1 (Legacy)'}`);
+      
       const { 
         createVisualAnalysisJob, 
         processVisualAnalysisJob 
-      } = await import('./services/visual-analysis-job-service');
+      } = await import(servicePath);
       
       // Create the job
       const job = await createVisualAnalysisJob(
@@ -843,13 +851,16 @@ export function registerCuralinaRoutes(app: Express) {
         { productIds, onlyMissingDescriptions }
       );
       
-      // Start processing in background
-      setTimeout(() => processVisualAnalysisJob(job.id), 1000);
+      // Start processing in background (V2 auto-starts, but V1 needs manual trigger)
+      if (!visualAnalysisConfig.useV2) {
+        setTimeout(() => processVisualAnalysisJob(job.id), 1000);
+      }
       
       res.json({ 
         success: true,
         jobId: job.id,
-        message: `Visual analysis started for ${job.totalProducts} products`
+        message: `Visual analysis started for ${job.totalProducts} products`,
+        version: visualAnalysisConfig.useV2 ? 'v2' : 'v1'
       });
       
     } catch (error) {
@@ -860,7 +871,12 @@ export function registerCuralinaRoutes(app: Express) {
   
   app.get('/api/admin/visual-analysis/active', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const { getActiveVisualAnalysisJobs } = await import('./services/visual-analysis-job-service');
+      const { visualAnalysisConfig } = await import('./config/visual-analysis');
+      const servicePath = visualAnalysisConfig.useV2 
+        ? './services/visual-analysis-job-service-v2'
+        : './services/visual-analysis-job-service';
+      
+      const { getActiveVisualAnalysisJobs } = await import(servicePath);
       const jobs = await getActiveVisualAnalysisJobs();
       res.json(jobs);
     } catch (error) {
@@ -871,7 +887,12 @@ export function registerCuralinaRoutes(app: Express) {
   
   app.get('/api/admin/visual-analysis/job/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const { getVisualAnalysisJobDetails } = await import('./services/visual-analysis-job-service');
+      const { visualAnalysisConfig } = await import('./config/visual-analysis');
+      const servicePath = visualAnalysisConfig.useV2 
+        ? './services/visual-analysis-job-service-v2'
+        : './services/visual-analysis-job-service';
+      
+      const { getVisualAnalysisJobDetails } = await import(servicePath);
       const details = await getVisualAnalysisJobDetails(req.params.id);
       
       if (!details) {
