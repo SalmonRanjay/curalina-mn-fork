@@ -2,6 +2,7 @@ import { curalinaStorage } from "../storage-curalina";
 import { S3Client, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { InsertUploadJob, UploadJob, UploadJobFile } from "@shared/schema";
 import crypto from "crypto";
+import { createVisualAnalysisJob } from "./visual-analysis-job-service";
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -232,6 +233,22 @@ async function updateProductImages(productId: string, jobId: string): Promise<vo
       const newImages = [...existingImages, ...successfulUploads];
       await curalinaStorage.updateProduct(productId, { images: newImages });
       console.log(`Updated product ${productId} with ${successfulUploads.length} new images`);
+      
+      // Auto-trigger visual analysis for products with new images if they don't have descriptions
+      if (!product.visualDescription || !product.visualDescriptionGemini) {
+        try {
+          const analysisJob = await createVisualAnalysisJob(
+            null, // userId (null for system-triggered jobs)
+            "auto_after_upload", // jobType
+            jobId, // uploadJobId
+            { productIds: [productId] } // filters
+          );
+          console.log(`Auto-triggered visual analysis job ${analysisJob.id} for product ${productId} after upload`);
+        } catch (error) {
+          console.error(`Failed to auto-trigger visual analysis for product ${productId}:`, error);
+          // Don't fail the upload job if visual analysis trigger fails
+        }
+      }
     }
   }
 }
