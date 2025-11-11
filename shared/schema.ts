@@ -484,3 +484,75 @@ export const insertDesignRuleSchema = createInsertSchema(designRules).omit({
   updatedAt: true,
 });
 export type InsertDesignRule = z.infer<typeof insertDesignRuleSchema>;
+
+// Upload Jobs - Track background upload jobs for products
+export const uploadJobs = pgTable("upload_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'paused'
+  totalFiles: integer("total_files").notNull().default(0),
+  completedFiles: integer("completed_files").notNull().default(0),
+  failedFiles: integer("failed_files").notNull().default(0),
+  skippedFiles: integer("skipped_files").notNull().default(0), // Duplicates
+  currentFileName: text("current_file_name"), // Currently processing file
+  errorMessage: text("error_message"), // Error details if failed
+  metadata: jsonb("metadata"), // Additional job info (folder path, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_job_product_status").on(table.productId, table.status),
+  index("idx_job_status").on(table.status),
+]);
+
+export const uploadJobRelations = relations(uploadJobs, ({ one, many }) => ({
+  user: one(users, {
+    fields: [uploadJobs.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [uploadJobs.productId],
+    references: [products.id],
+  }),
+  files: many(uploadJobFiles),
+}));
+
+export type UploadJob = typeof uploadJobs.$inferSelect;
+export const insertUploadJobSchema = createInsertSchema(uploadJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUploadJob = z.infer<typeof insertUploadJobSchema>;
+
+// Upload Job Files - Track individual files within an upload job
+export const uploadJobFiles = pgTable("upload_job_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => uploadJobs.id).notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"), // Size in bytes
+  fileHash: text("file_hash"), // SHA-256 hash for durable duplicate detection
+  status: varchar("status").notNull().default("pending"), // 'pending', 'uploading', 'completed', 'failed', 'skipped'
+  s3Url: text("s3_url"), // URL after successful upload
+  errorMessage: text("error_message"),
+  isDuplicate: boolean("is_duplicate").notNull().default(false),
+  uploadedAt: timestamp("uploaded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_file_job_status").on(table.jobId, table.status),
+]);
+
+export const uploadJobFileRelations = relations(uploadJobFiles, ({ one }) => ({
+  job: one(uploadJobs, {
+    fields: [uploadJobFiles.jobId],
+    references: [uploadJobs.id],
+  }),
+}));
+
+export type UploadJobFile = typeof uploadJobFiles.$inferSelect;
+export const insertUploadJobFileSchema = createInsertSchema(uploadJobFiles).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertUploadJobFile = z.infer<typeof insertUploadJobFileSchema>;

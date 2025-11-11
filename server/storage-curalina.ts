@@ -12,6 +12,8 @@ import {
   productPackages,
   placementGuidelines,
   designRules,
+  uploadJobs,
+  uploadJobFiles,
   type Category,
   type InsertCategory,
   type Supplier,
@@ -37,6 +39,10 @@ import {
   type InsertPlacementGuideline,
   type DesignRule,
   type InsertDesignRule,
+  type UploadJob,
+  type InsertUploadJob,
+  type UploadJobFile,
+  type InsertUploadJobFile,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -128,6 +134,22 @@ export interface ICuralinaStorage {
   createDesignRule(rule: InsertDesignRule): Promise<DesignRule>;
   updateDesignRule(id: string, rule: Partial<InsertDesignRule>): Promise<DesignRule>;
   deleteDesignRule(id: string): Promise<void>;
+  
+  // Upload Job operations
+  createUploadJob(job: InsertUploadJob): Promise<UploadJob>;
+  getUploadJob(id: string): Promise<UploadJob | undefined>;
+  getUploadJobsByProduct(productId: string): Promise<UploadJob[]>;
+  getActiveUploadJobs(userId?: string): Promise<UploadJob[]>;
+  updateUploadJob(id: string, data: Partial<InsertUploadJob>): Promise<UploadJob>;
+  deleteUploadJob(id: string): Promise<void>;
+  
+  // Upload Job File operations
+  createUploadJobFile(file: InsertUploadJobFile): Promise<UploadJobFile>;
+  createUploadJobFiles(files: InsertUploadJobFile[]): Promise<UploadJobFile[]>;
+  getUploadJobFiles(jobId: string): Promise<UploadJobFile[]>;
+  getPendingUploadJobFiles(jobId: string): Promise<UploadJobFile[]>;
+  updateUploadJobFile(id: string, data: Partial<InsertUploadJobFile>): Promise<UploadJobFile>;
+  deleteUploadJobFile(id: string): Promise<void>;
 }
 
 export class CuralinaStorage implements ICuralinaStorage {
@@ -591,6 +613,78 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async deleteDesignRule(id: string): Promise<void> {
     await db.delete(designRules).where(eq(designRules.id, id));
+  }
+
+  // Upload Job operations
+  async createUploadJob(jobData: InsertUploadJob): Promise<UploadJob> {
+    const [job] = await db.insert(uploadJobs).values(jobData).returning();
+    return job;
+  }
+
+  async getUploadJob(id: string): Promise<UploadJob | undefined> {
+    const [job] = await db.select().from(uploadJobs).where(eq(uploadJobs.id, id));
+    return job;
+  }
+
+  async getUploadJobsByProduct(productId: string): Promise<UploadJob[]> {
+    return db.select().from(uploadJobs).where(eq(uploadJobs.productId, productId)).orderBy(desc(uploadJobs.createdAt));
+  }
+
+  async getActiveUploadJobs(userId?: string): Promise<UploadJob[]> {
+    const conditions = [inArray(uploadJobs.status, ["pending", "processing"])];
+    if (userId) {
+      conditions.push(eq(uploadJobs.userId, userId));
+    }
+    return db.select().from(uploadJobs).where(and(...conditions)).orderBy(desc(uploadJobs.createdAt));
+  }
+
+  async updateUploadJob(id: string, data: Partial<InsertUploadJob>): Promise<UploadJob> {
+    const [job] = await db
+      .update(uploadJobs)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(uploadJobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteUploadJob(id: string): Promise<void> {
+    await db.delete(uploadJobs).where(eq(uploadJobs.id, id));
+  }
+
+  // Upload Job File operations
+  async createUploadJobFile(fileData: InsertUploadJobFile): Promise<UploadJobFile> {
+    const [file] = await db.insert(uploadJobFiles).values(fileData).returning();
+    return file;
+  }
+
+  async createUploadJobFiles(filesData: InsertUploadJobFile[]): Promise<UploadJobFile[]> {
+    return db.insert(uploadJobFiles).values(filesData).returning();
+  }
+
+  async getUploadJobFiles(jobId: string): Promise<UploadJobFile[]> {
+    return db.select().from(uploadJobFiles).where(eq(uploadJobFiles.jobId, jobId));
+  }
+
+  async getPendingUploadJobFiles(jobId: string): Promise<UploadJobFile[]> {
+    return db.select().from(uploadJobFiles).where(
+      and(
+        eq(uploadJobFiles.jobId, jobId),
+        inArray(uploadJobFiles.status, ["pending", "failed"])
+      )
+    );
+  }
+
+  async updateUploadJobFile(id: string, data: Partial<InsertUploadJobFile>): Promise<UploadJobFile> {
+    const [file] = await db
+      .update(uploadJobFiles)
+      .set(data)
+      .where(eq(uploadJobFiles.id, id))
+      .returning();
+    return file;
+  }
+
+  async deleteUploadJobFile(id: string): Promise<void> {
+    await db.delete(uploadJobFiles).where(eq(uploadJobFiles.id, id));
   }
 }
 
