@@ -196,7 +196,9 @@ export const products = pgTable("products", {
   // Media & metadata
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
-  visualDescription: text("visual_description"), // Gemini Vision analysis of product images
+  visualDescription: text("visual_description"), // Active visual description (selected from Gemini or OpenAI)
+  visualDescriptionGemini: text("visual_description_gemini"), // Gemini Vision analysis
+  visualDescriptionOpenAI: text("visual_description_openai"), // OpenAI GPT-4 Vision analysis
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
