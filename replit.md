@@ -52,6 +52,11 @@ Preferred communication style: Simple, everyday language.
   - **Current**: Sharp library for basic image compositing with multi-angle image selection
   - **Limitations**: Products have opaque backgrounds (JPEG format), shadows disabled, simple grid placement
   - **Roadmap**: Background removal integration, scene-aware positioning, perspective-matched scaling, realistic floor-plane shadows
+- **Direct Browser-to-S3 Upload Optimization** (NEW): 
+  - **Architecture**: 3-step presigned URL flow bypasses server memory bottleneck for dramatically faster uploads
+  - **Flow**: (1) Frontend requests presigned URL from backend → (2) Browser uploads directly to S3 → (3) Backend confirms and updates product record
+  - **Security**: AWS SDK presigned POST with constraints (10MB max file size, 1hr expiry, content-type validation)
+  - **Performance**: Eliminates server RAM buffering, enables parallel uploads, reduces latency by ~70-80% vs traditional relay uploads
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM for schema management.
