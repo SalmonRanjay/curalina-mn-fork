@@ -1,16 +1,8 @@
-import { db } from "../db";
-import { 
-  visualAnalysisJobs, 
-  visualAnalysisProducts,
-  products,
-  InsertVisualAnalysisJob,
-  InsertVisualAnalysisProduct,
-  VisualAnalysisJob,
-  VisualAnalysisProduct
-} from "@shared/schema";
-import { eq, and, inArray, isNull, or, sql } from "drizzle-orm";
+import { ulid } from "ulid";
+import { curalinaStorage } from "../storage-curalina";
 import { analyzeProductVisuals } from "./product-visual-analyzer";
 import { analyzeProductVisualsWithOpenAI } from "./openai-vision";
+import type { VisualAnalysisJob, VisualAnalysisProduct, Product } from "@shared/schema";
 
 const BATCH_SIZE = 20; // Max products per batch to avoid API overload
 const ANALYSIS_DELAY = 8000; // 8 seconds between analyses to prevent rate limiting
@@ -30,7 +22,7 @@ export async function createVisualAnalysisJob(
   console.log('\n📊 Creating visual analysis job...');
   
   // Get products to analyze
-  let productsToAnalyze = await db.select().from(products);
+  let productsToAnalyze = await curalinaStorage.getAllProducts();
   
   // Filter for products with valid S3 images
   productsToAnalyze = productsToAnalyze.filter(p => 
@@ -51,7 +43,8 @@ export async function createVisualAnalysisJob(
   console.log(`Found ${productsToAnalyze.length} products to analyze`);
   
   // Create the job
-  const [job] = await db.insert(visualAnalysisJobs).values({
+  const job = await curalinaStorage.createVisualAnalysisJob({
+    id: ulid(),
     userId,
     status: 'pending',
     jobType,
@@ -60,305 +53,233 @@ export async function createVisualAnalysisJob(
     analyzedProducts: 0,
     failedProducts: 0,
     skippedProducts: 0,
+    currentProductName: null,
+    currentProductSku: null,
+    errorMessage: null,
     metadata: { 
       filters, 
       batchSize: BATCH_SIZE,
       startedAt: new Date().toISOString() 
-    }
-  }).returning();
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    completedAt: null,
+  });
   
   // Create product records for the job
   if (productsToAnalyze.length > 0) {
-    const productRecords: InsertVisualAnalysisProduct[] = productsToAnalyze.map(p => ({
+    const productRecords = productsToAnalyze.map(p => ({
+      id: ulid(),
       jobId: job.id,
       productId: p.id,
       productSku: p.sku,
       productName: p.name,
-      status: p.visualDescriptionGemini && p.visualDescriptionOpenAI ? 'skipped' : 'pending'
+      status: 'pending' as const,
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }));
     
-    // Insert products with ON CONFLICT DO NOTHING to handle uniqueness
-    for (const record of productRecords) {
-      try {
-        await db.insert(visualAnalysisProducts).values(record);
-      } catch (error: any) {
-        // Ignore duplicate key errors
-        if (!error?.message?.includes('duplicate key')) {
-          console.error('Error inserting analysis product:', error);
-        }
-      }
-    }
-    
-    // Update skipped count
-    const skippedCount = productRecords.filter(r => r.status === 'skipped').length;
-    if (skippedCount > 0) {
-      await db.update(visualAnalysisJobs)
-        .set({ skippedProducts: skippedCount })
-        .where(eq(visualAnalysisJobs.id, job.id));
-    }
+    // Use upsert to handle unique constraint on (jobId, productId)
+    await curalinaStorage.upsertVisualAnalysisProducts(productRecords);
   }
+  
+  console.log(`✅ Created visual analysis job ${job.id} with ${productsToAnalyze.length} products`);
+  
+  // Start processing in the background
+  processJobAsync(job.id).catch(err => {
+    console.error(`Failed to process job ${job.id}:`, err);
+    curalinaStorage.updateVisualAnalysisJob(job.id, {
+      status: 'failed',
+      errorMessage: err.message,
+      completedAt: new Date()
+    });
+  });
   
   return job;
 }
 
 /**
- * Process a visual analysis job
+ * Process a visual analysis job asynchronously
  */
-export async function processVisualAnalysisJob(jobId: string): Promise<void> {
-  console.log(`\n🚀 Starting visual analysis job: ${jobId}`);
+async function processJobAsync(jobId: string): Promise<void> {
+  console.log(`\n🚀 Starting async processing for job ${jobId}`);
   
-  try {
-    // Update job status to processing
-    await db.update(visualAnalysisJobs)
-      .set({ status: 'processing', updatedAt: new Date() })
-      .where(eq(visualAnalysisJobs.id, jobId));
+  // Update job status to processing
+  await curalinaStorage.updateVisualAnalysisJob(jobId, {
+    status: 'processing'
+  });
+  
+  let hasMore = true;
+  let iteration = 0;
+  
+  while (hasMore) {
+    iteration++;
+    console.log(`\n📦 Processing batch ${iteration} for job ${jobId}`);
     
-    // Get pending products for this job
-    const pendingProducts = await db.select()
-      .from(visualAnalysisProducts)
-      .where(and(
-        eq(visualAnalysisProducts.jobId, jobId),
-        eq(visualAnalysisProducts.status, 'pending')
-      ))
-      .limit(BATCH_SIZE);
+    const processedCount = await processVisualAnalysisJob(jobId);
+    hasMore = processedCount > 0;
     
-    console.log(`Processing ${pendingProducts.length} products in this batch`);
-    
-    for (let i = 0; i < pendingProducts.length; i++) {
-      const analysisProduct = pendingProducts[i];
+    if (hasMore) {
+      console.log(`⏳ Waiting ${ANALYSIS_DELAY / 1000}s before next batch...`);
+      await new Promise(resolve => setTimeout(resolve, ANALYSIS_DELAY));
+    }
+  }
+  
+  // Mark job as completed
+  const job = await curalinaStorage.getVisualAnalysisJob(jobId);
+  if (job) {
+    const status = job.failedProducts > 0 ? 'completed_with_errors' : 'completed';
+    await curalinaStorage.updateVisualAnalysisJob(jobId, {
+      status,
+      completedAt: new Date(),
+      currentProductName: null,
+      currentProductSku: null
+    });
+    console.log(`✅ Job ${jobId} completed with status: ${status}`);
+  }
+}
+
+/**
+ * Process a batch of products for a visual analysis job
+ */
+export async function processVisualAnalysisJob(jobId: string): Promise<number> {
+  // Get pending products for this job (up to BATCH_SIZE)
+  const pendingProducts = await curalinaStorage.getPendingVisualAnalysisProducts(jobId, BATCH_SIZE);
+  
+  if (pendingProducts.length === 0) {
+    console.log(`No pending products for job ${jobId}`);
+    return 0;
+  }
+  
+  console.log(`Processing ${pendingProducts.length} products...`);
+  
+  let analyzedCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  
+  for (const productRecord of pendingProducts) {
+    try {
+      // Get the full product data
+      const product = await curalinaStorage.getProduct(productRecord.productId);
       
-      // Get full product data
-      const [product] = await db.select()
-        .from(products)
-        .where(eq(products.id, analysisProduct.productId));
-      
-      if (!product || !product.images || product.images.length === 0) {
-        await updateAnalysisProductStatus(analysisProduct.id, jobId, 'skipped', 
-          null, null, 'No valid images found');
+      if (!product) {
+        console.log(`Product ${productRecord.productId} not found, skipping`);
+        await curalinaStorage.updateVisualAnalysisProduct(productRecord.id, {
+          status: 'skipped',
+          errorMessage: 'Product not found'
+        });
+        skippedCount++;
         continue;
       }
       
-      console.log(`\n[${i + 1}/${pendingProducts.length}] Analyzing: ${product.name} (${product.sku})`);
+      // Skip products without valid images
+      if (!product.images || product.images.length === 0 || 
+          !product.images[0].startsWith('https://curalina')) {
+        console.log(`Product ${product.name} has no valid images, skipping`);
+        await curalinaStorage.updateVisualAnalysisProduct(productRecord.id, {
+          status: 'skipped',
+          errorMessage: 'No valid S3 images'
+        });
+        skippedCount++;
+        continue;
+      }
       
-      // Update status to analyzing
-      await db.update(visualAnalysisProducts)
-        .set({ status: 'analyzing' })
-        .where(eq(visualAnalysisProducts.id, analysisProduct.id));
+      // Update current product being analyzed
+      await curalinaStorage.updateVisualAnalysisJob(jobId, {
+        currentProductName: product.name,
+        currentProductSku: product.sku || 'N/A'
+      });
       
-      // Update job with current product
-      await db.update(visualAnalysisJobs)
-        .set({ currentProductName: product.name, updatedAt: new Date() })
-        .where(eq(visualAnalysisJobs.id, jobId));
+      console.log(`\n🔍 Analyzing: ${product.name} (SKU: ${product.sku || 'N/A'})`);
       
-      // Run both AI providers in parallel using Promise.allSettled
-      const [geminiResult, openaiResult] = await Promise.allSettled([
-        analyzeProductVisuals(product.name, product.images),
-        analyzeProductVisualsWithOpenAI(product.name, product.images)
+      // Run both analyses in parallel using Promise.allSettled
+      const [geminiResult, openAiResult] = await Promise.allSettled([
+        analyzeProductVisuals(product),
+        analyzeProductVisualsWithOpenAI(product)
       ]);
       
-      // Extract descriptions from settled promises
-      const geminiDescription = geminiResult.status === 'fulfilled' ? geminiResult.value : '';
-      const openaiDescription = openaiResult.status === 'fulfilled' ? openaiResult.value : '';
+      let updateData: any = {};
+      let hasAnySuccess = false;
+      let errorMessages: string[] = [];
       
-      // Determine status for each provider
-      const geminiStatus = geminiResult.status === 'fulfilled' && geminiDescription ? 'success' : 'failed';
-      const openaiStatus = openaiResult.status === 'fulfilled' && openaiDescription ? 'success' : 'failed';
-      
-      // Log individual provider failures
-      if (geminiResult.status === 'rejected') {
-        console.error(`  ⚠️ Gemini analysis failed:`, geminiResult.reason?.message || geminiResult.reason);
+      // Process Gemini result
+      if (geminiResult.status === 'fulfilled' && geminiResult.value) {
+        updateData.visualDescriptionGemini = geminiResult.value;
+        // Set as main description if empty (backward compatibility)
+        if (!product.visualDescription) {
+          updateData.visualDescription = geminiResult.value;
+        }
+        hasAnySuccess = true;
+        console.log('✅ Gemini analysis succeeded');
+      } else if (geminiResult.status === 'rejected') {
+        errorMessages.push(`Gemini: ${geminiResult.reason}`);
+        console.log('❌ Gemini analysis failed:', geminiResult.reason);
       }
-      if (openaiResult.status === 'rejected') {
-        console.error(`  ⚠️ OpenAI analysis failed:`, openaiResult.reason?.message || openaiResult.reason);
+      
+      // Process OpenAI result
+      if (openAiResult.status === 'fulfilled' && openAiResult.value) {
+        updateData.visualDescriptionOpenAI = openAiResult.value;
+        // Set as main description if Gemini failed and this is empty
+        if (!product.visualDescription && !updateData.visualDescriptionGemini) {
+          updateData.visualDescription = openAiResult.value;
+        }
+        hasAnySuccess = true;
+        console.log('✅ OpenAI analysis succeeded');
+      } else if (openAiResult.status === 'rejected') {
+        errorMessages.push(`OpenAI: ${openAiResult.reason}`);
+        console.log('❌ OpenAI analysis failed:', openAiResult.reason);
       }
       
-      // Update product with visual descriptions
-      if (geminiDescription || openaiDescription) {
-        const activeDescription = geminiDescription || openaiDescription;
-        await db.update(products)
-          .set({
-            visualDescription: activeDescription,
-            visualDescriptionGemini: geminiDescription || undefined,
-            visualDescriptionOpenAI: openaiDescription || undefined
-          })
-          .where(eq(products.id, product.id));
-        
-        await updateAnalysisProductStatus(
-          analysisProduct.id, 
-          jobId, 
-          'completed',
-          geminiDescription,
-          openaiDescription,
-          null,
-          geminiStatus,
-          openaiStatus
-        );
-        
-        console.log(`✅ Analysis completed for: ${product.sku}`);
-        console.log(`  📊 Gemini: ${geminiStatus === 'success' ? `OK (${geminiDescription.length} chars)` : 'FAILED'}`);
-        console.log(`  📊 OpenAI: ${openaiStatus === 'success' ? `OK (${openaiDescription.length} chars)` : 'FAILED'}`);
+      // Update product and job record based on results
+      if (hasAnySuccess) {
+        await curalinaStorage.updateProduct(product.id, updateData);
+        await curalinaStorage.updateVisualAnalysisProduct(productRecord.id, {
+          status: 'analyzed'
+        });
+        analyzedCount++;
+        console.log(`✅ Product analysis complete`);
       } else {
-        await updateAnalysisProductStatus(
-          analysisProduct.id, 
-          jobId, 
-          'failed',
-          null,
-          null,
-          'Both AI providers failed',
-          'failed',
-          'failed'
-        );
-        console.error(`❌ Analysis failed for: ${product.sku} - Both providers failed`);
+        // Both analyses failed
+        await curalinaStorage.updateVisualAnalysisProduct(productRecord.id, {
+          status: 'failed',
+          errorMessage: errorMessages.join('; ')
+        });
+        failedCount++;
+        console.log(`❌ Product analysis failed completely`);
       }
       
-      // Delay between analyses to avoid rate limiting
-      if (i < pendingProducts.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, ANALYSIS_DELAY));
-      }
-    }
-    
-    // Check if there are more products to process
-    const remainingProducts = await db.select({ count: sql<number>`count(*)` })
-      .from(visualAnalysisProducts)
-      .where(and(
-        eq(visualAnalysisProducts.jobId, jobId),
-        eq(visualAnalysisProducts.status, 'pending')
-      ));
-    
-    const hasMore = remainingProducts[0].count > 0;
-    
-    if (hasMore) {
-      console.log(`\n📋 Batch complete. ${remainingProducts[0].count} products remaining.`);
-      // Continue processing in next batch
-      setTimeout(() => processVisualAnalysisJob(jobId), 1000);
-    } else {
-      // Job complete
-      await db.update(visualAnalysisJobs)
-        .set({ 
-          status: 'completed', 
-          completedAt: new Date(),
-          updatedAt: new Date(),
-          currentProductName: null
-        })
-        .where(eq(visualAnalysisJobs.id, jobId));
+      // Small delay between products
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      console.log(`\n✅ Visual analysis job completed: ${jobId}`);
+    } catch (error: any) {
+      console.error(`Error processing product ${productRecord.productId}:`, error);
+      await curalinaStorage.updateVisualAnalysisProduct(productRecord.id, {
+        status: 'failed',
+        errorMessage: error.message || 'Unknown error'
+      });
+      failedCount++;
     }
-    
-  } catch (error) {
-    console.error('Error processing visual analysis job:', error);
-    await db.update(visualAnalysisJobs)
-      .set({ 
-        status: 'failed', 
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        updatedAt: new Date()
-      })
-      .where(eq(visualAnalysisJobs.id, jobId));
   }
-}
-
-/**
- * Helper to update analysis product status and job counters
- */
-async function updateAnalysisProductStatus(
-  productId: string,
-  jobId: string,
-  status: 'completed' | 'failed' | 'skipped',
-  geminiDescription: string | null,
-  openaiDescription: string | null,
-  errorMessage: string | null,
-  geminiStatus?: string,
-  openaiStatus?: string
-): Promise<void> {
-  // Update product status
-  await db.update(visualAnalysisProducts)
-    .set({
-      status,
-      geminiDescription,
-      openaiDescription,
-      geminiStatus,
-      openaiStatus,
-      errorMessage,
-      analyzedAt: status === 'completed' ? new Date() : undefined
-    })
-    .where(eq(visualAnalysisProducts.id, productId));
   
   // Update job counters
-  const counterField = status === 'completed' ? 'analyzedProducts' : 
-                       status === 'failed' ? 'failedProducts' : 
-                       'skippedProducts';
-  
-  await db.update(visualAnalysisJobs)
-    .set({ 
-      [counterField]: sql`${sql.identifier(counterField)} + 1`,
-      updatedAt: new Date()
-    })
-    .where(eq(visualAnalysisJobs.id, jobId));
-}
-
-/**
- * Get active visual analysis jobs
- */
-export async function getActiveVisualAnalysisJobs(): Promise<VisualAnalysisJob[]> {
-  return await db.select()
-    .from(visualAnalysisJobs)
-    .where(inArray(visualAnalysisJobs.status, ['pending', 'processing']));
-}
-
-/**
- * Get visual analysis job details with products
- */
-export async function getVisualAnalysisJobDetails(jobId: string): Promise<{
-  job: VisualAnalysisJob;
-  products: VisualAnalysisProduct[];
-} | null> {
-  const [job] = await db.select()
-    .from(visualAnalysisJobs)
-    .where(eq(visualAnalysisJobs.id, jobId));
-  
-  if (!job) return null;
-  
-  const products = await db.select()
-    .from(visualAnalysisProducts)
-    .where(eq(visualAnalysisProducts.jobId, jobId));
-  
-  return { job, products };
-}
-
-/**
- * Trigger visual analysis after upload job completion
- */
-export async function triggerAnalysisAfterUpload(
-  uploadJobId: string, 
-  productId: string,
-  userId: string | null
-): Promise<void> {
-  console.log(`\n🔄 Auto-triggering visual analysis after upload job: ${uploadJobId}`);
-  
-  // Check if product has images
-  const [product] = await db.select()
-    .from(products)
-    .where(eq(products.id, productId));
-  
-  if (!product || !product.images || product.images.length === 0) {
-    console.log('Product has no images, skipping visual analysis');
-    return;
+  const job = await curalinaStorage.getVisualAnalysisJob(jobId);
+  if (job) {
+    await curalinaStorage.updateVisualAnalysisJob(jobId, {
+      analyzedProducts: job.analyzedProducts + analyzedCount,
+      skippedProducts: job.skippedProducts + skippedCount,
+      failedProducts: job.failedProducts + failedCount
+    });
   }
   
-  // Check if product already has visual descriptions
-  if (product.visualDescriptionGemini && product.visualDescriptionOpenAI) {
-    console.log('Product already has visual descriptions, skipping');
-    return;
-  }
+  console.log(`\n📊 Batch complete: ${analyzedCount} analyzed, ${skippedCount} skipped, ${failedCount} failed`);
   
-  // Create and process the job
-  const job = await createVisualAnalysisJob(
-    userId,
-    'auto_after_upload',
-    uploadJobId,
-    { productIds: [productId] }
-  );
-  
-  // Process job in background
-  setTimeout(() => processVisualAnalysisJob(job.id), 1000);
+  return pendingProducts.length;
+}
+
+/**
+ * Get active visual analysis jobs (pending or processing)
+ */
+export async function getActiveJobs(userId?: string): Promise<VisualAnalysisJob[]> {
+  return curalinaStorage.getActiveVisualAnalysisJobs(userId);
 }

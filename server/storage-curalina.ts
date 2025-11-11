@@ -14,6 +14,8 @@ import {
   designRules,
   uploadJobs,
   uploadJobFiles,
+  visualAnalysisJobs,
+  visualAnalysisProducts,
   type Category,
   type InsertCategory,
   type Supplier,
@@ -43,6 +45,10 @@ import {
   type InsertUploadJob,
   type UploadJobFile,
   type InsertUploadJobFile,
+  type VisualAnalysisJob,
+  type InsertVisualAnalysisJob,
+  type VisualAnalysisProduct,
+  type InsertVisualAnalysisProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -150,6 +156,22 @@ export interface ICuralinaStorage {
   getPendingUploadJobFiles(jobId: string): Promise<UploadJobFile[]>;
   updateUploadJobFile(id: string, data: Partial<InsertUploadJobFile>): Promise<UploadJobFile>;
   deleteUploadJobFile(id: string): Promise<void>;
+  
+  // Visual Analysis Job operations
+  createVisualAnalysisJob(job: InsertVisualAnalysisJob): Promise<VisualAnalysisJob>;
+  getVisualAnalysisJob(id: string): Promise<VisualAnalysisJob | undefined>;
+  getActiveVisualAnalysisJobs(userId?: string): Promise<VisualAnalysisJob[]>;
+  updateVisualAnalysisJob(id: string, data: Partial<InsertVisualAnalysisJob>): Promise<VisualAnalysisJob>;
+  deleteVisualAnalysisJob(id: string): Promise<void>;
+  
+  // Visual Analysis Product operations
+  createVisualAnalysisProduct(product: InsertVisualAnalysisProduct): Promise<VisualAnalysisProduct>;
+  createVisualAnalysisProducts(products: InsertVisualAnalysisProduct[]): Promise<VisualAnalysisProduct[]>;
+  getVisualAnalysisProducts(jobId: string): Promise<VisualAnalysisProduct[]>;
+  getPendingVisualAnalysisProducts(jobId: string, limit: number): Promise<VisualAnalysisProduct[]>;
+  updateVisualAnalysisProduct(id: string, data: Partial<InsertVisualAnalysisProduct>): Promise<VisualAnalysisProduct>;
+  deleteVisualAnalysisProduct(id: string): Promise<void>;
+  upsertVisualAnalysisProducts(products: InsertVisualAnalysisProduct[]): Promise<void>;
 }
 
 export class CuralinaStorage implements ICuralinaStorage {
@@ -685,6 +707,100 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async deleteUploadJobFile(id: string): Promise<void> {
     await db.delete(uploadJobFiles).where(eq(uploadJobFiles.id, id));
+  }
+  
+  // Visual Analysis Job operations
+  async createVisualAnalysisJob(jobData: InsertVisualAnalysisJob): Promise<VisualAnalysisJob> {
+    const [job] = await db.insert(visualAnalysisJobs).values(jobData).returning();
+    return job;
+  }
+
+  async getVisualAnalysisJob(id: string): Promise<VisualAnalysisJob | undefined> {
+    const [job] = await db.select().from(visualAnalysisJobs).where(eq(visualAnalysisJobs.id, id));
+    return job;
+  }
+
+  async getActiveVisualAnalysisJobs(userId?: string): Promise<VisualAnalysisJob[]> {
+    const conditions = [inArray(visualAnalysisJobs.status, ["pending", "processing"])];
+    if (userId) {
+      conditions.push(eq(visualAnalysisJobs.userId, userId));
+    }
+    return db.select().from(visualAnalysisJobs).where(and(...conditions)).orderBy(desc(visualAnalysisJobs.createdAt));
+  }
+
+  async updateVisualAnalysisJob(id: string, data: Partial<InsertVisualAnalysisJob>): Promise<VisualAnalysisJob> {
+    const [job] = await db
+      .update(visualAnalysisJobs)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(visualAnalysisJobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteVisualAnalysisJob(id: string): Promise<void> {
+    await db.delete(visualAnalysisJobs).where(eq(visualAnalysisJobs.id, id));
+  }
+  
+  // Visual Analysis Product operations
+  async createVisualAnalysisProduct(productData: InsertVisualAnalysisProduct): Promise<VisualAnalysisProduct> {
+    const [product] = await db.insert(visualAnalysisProducts).values(productData).returning();
+    return product;
+  }
+
+  async createVisualAnalysisProducts(productsData: InsertVisualAnalysisProduct[]): Promise<VisualAnalysisProduct[]> {
+    if (productsData.length === 0) return [];
+    return db.insert(visualAnalysisProducts).values(productsData).returning();
+  }
+
+  async getVisualAnalysisProducts(jobId: string): Promise<VisualAnalysisProduct[]> {
+    return db.select().from(visualAnalysisProducts).where(eq(visualAnalysisProducts.jobId, jobId));
+  }
+
+  async getPendingVisualAnalysisProducts(jobId: string, limit: number): Promise<VisualAnalysisProduct[]> {
+    return db
+      .select()
+      .from(visualAnalysisProducts)
+      .where(
+        and(
+          eq(visualAnalysisProducts.jobId, jobId),
+          eq(visualAnalysisProducts.status, "pending")
+        )
+      )
+      .limit(limit);
+  }
+
+  async updateVisualAnalysisProduct(id: string, data: Partial<InsertVisualAnalysisProduct>): Promise<VisualAnalysisProduct> {
+    const [product] = await db
+      .update(visualAnalysisProducts)
+      .set(data)
+      .where(eq(visualAnalysisProducts.id, id))
+      .returning();
+    return product;
+  }
+
+  async deleteVisualAnalysisProduct(id: string): Promise<void> {
+    await db.delete(visualAnalysisProducts).where(eq(visualAnalysisProducts.id, id));
+  }
+  
+  async upsertVisualAnalysisProducts(productsData: InsertVisualAnalysisProduct[]): Promise<void> {
+    if (productsData.length === 0) return;
+    
+    // Use transaction for batch upsert
+    await db.transaction(async (tx) => {
+      for (const product of productsData) {
+        await tx
+          .insert(visualAnalysisProducts)
+          .values(product)
+          .onConflictDoUpdate({
+            target: [visualAnalysisProducts.jobId, visualAnalysisProducts.productId],
+            set: {
+              status: product.status,
+              productSku: product.productSku,
+              productName: product.productName,
+            },
+          });
+      }
+    });
   }
 }
 
