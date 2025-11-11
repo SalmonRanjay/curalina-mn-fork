@@ -200,6 +200,10 @@ export const products = pgTable("products", {
   visualDescription: text("visual_description"), // Active visual description (selected from Gemini or OpenAI)
   visualDescriptionGemini: text("visual_description_gemini"), // Gemini Vision analysis
   visualDescriptionOpenAI: text("visual_description_openai"), // OpenAI GPT-4 Vision analysis
+  // Front-view specific descriptions (for prioritized analysis)
+  visualDescriptionFrontView: text("visual_description_front_view"), // Active front-view description
+  visualDescriptionFrontViewGemini: text("visual_description_front_view_gemini"), // Gemini front-view analysis
+  visualDescriptionFrontViewOpenAI: text("visual_description_front_view_openai"), // OpenAI front-view analysis
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
