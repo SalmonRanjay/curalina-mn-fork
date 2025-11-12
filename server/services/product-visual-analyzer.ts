@@ -170,16 +170,30 @@ Now analyze this product image with the same level of detail and precision.`;
 
 /**
  * Find the Front View image URL from a list of image URLs
- * Front View images are the main product images that start with "Front View"
+ * Priority order:
+ * 1. Image URL that contains "Front View" in the name
+ * 2. If only one image exists, treat it as the Front View (it's the only option)
  */
 function getFrontViewImage(imageUrls: string[]): string | null {
-  // Look for image URL that contains "Front View" (case insensitive)
+  // First, look for image URL that contains "Front View" (case insensitive)
   const frontViewImage = imageUrls.find(url => 
     url.toLowerCase().includes('front view') || 
     url.toLowerCase().includes('front_view') ||
     url.toLowerCase().includes('frontview')
   );
-  return frontViewImage || null;
+  
+  if (frontViewImage) {
+    return frontViewImage;
+  }
+  
+  // Fallback: If product has exactly one image, treat it as the Front View
+  // (since it's the only image available, it must be the front view)
+  if (imageUrls.length === 1) {
+    console.log(`  💡 Single image detected - treating as Front View`);
+    return imageUrls[0];
+  }
+  
+  return null;
 }
 
 /**
