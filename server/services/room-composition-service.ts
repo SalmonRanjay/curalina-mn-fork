@@ -103,10 +103,19 @@ function detectFunctionalCategory(product: Product): string[] {
   }
   
   // Analyze product name and description
+  const productName = product.name.toLowerCase();
   const text = `${product.name} ${product.description || ''}`.toLowerCase();
   
-  // Primary seating detection
-  if (text.includes('sofa') || text.includes('couch') || text.includes('sectional') || text.includes('loveseat')) {
+  // Primary seating detection - STRICT: only check product name and exclude ottomans/benches/stools
+  // This prevents "pairs with sofa" descriptions from misclassifying accent pieces
+  const isPrimarySeatingExcluded = productName.includes('ottoman') || 
+                                    productName.includes('bench') || 
+                                    productName.includes('stool') || 
+                                    productName.includes('pouf');
+  
+  if (!isPrimarySeatingExcluded && 
+      (productName.includes('sofa') || productName.includes('couch') || 
+       productName.includes('sectional') || productName.includes('loveseat'))) {
     categories.add('primary_seating');
   }
   
