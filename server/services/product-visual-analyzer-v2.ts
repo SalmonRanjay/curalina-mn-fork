@@ -254,6 +254,8 @@ async function analyzeWithGemini(
   let frontViewDescription = '';
   let combinedDescription = '';
   
+  let lastError: Error | null = null;
+  
   // Phase 1: Analyze front-view if available
   if (frontView && isValidImageUrl(frontView)) {
     try {
@@ -261,6 +263,7 @@ async function analyzeWithGemini(
       frontViewDescription = await analyzeImageWithGemini(frontView, 'Front View', true); // true = isFrontView
     } catch (error) {
       console.error(`  ⚠️ Gemini: Front-view analysis failed`);
+      lastError = error as Error;
     }
   }
   
@@ -287,13 +290,19 @@ async function analyzeWithGemini(
         );
         if (analysis) analyses.push(analysis);
       } catch (error) {
-        // Continue with other images
+        lastError = error as Error;
+        // Continue with other images - might be individual image issue
       }
       
       // Small delay between images
       if (i < imagesToAnalyze.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
+    }
+    
+    // If we got zero results but had errors, it's likely a provider-wide issue - propagate
+    if (analyses.length === 0 && lastError) {
+      throw lastError;
     }
     
     // Synthesize all analyses
@@ -437,6 +446,7 @@ async function analyzeWithOpenAI(
   
   let frontViewDescription = '';
   let combinedDescription = '';
+  let lastError: Error | null = null;
   
   // Phase 1: Analyze front-view if available
   if (frontView && isValidImageUrl(frontView)) {
@@ -445,6 +455,7 @@ async function analyzeWithOpenAI(
       frontViewDescription = await analyzeImageWithOpenAI(frontView, 'Front View', true);
     } catch (error) {
       console.error(`  ⚠️ OpenAI: Front-view analysis failed`);
+      lastError = error as Error;
     }
   }
   
@@ -471,13 +482,19 @@ async function analyzeWithOpenAI(
         );
         if (analysis) analyses.push(analysis);
       } catch (error) {
-        // Continue with other images
+        lastError = error as Error;
+        // Continue with other images - might be individual image issue
       }
       
       // Small delay between images
       if (i < imagesToAnalyze.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
+    }
+    
+    // If we got zero results but had errors, it's likely a provider-wide issue - propagate
+    if (analyses.length === 0 && lastError) {
+      throw lastError;
     }
     
     // Synthesize all analyses using OpenAI
