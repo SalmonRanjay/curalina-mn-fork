@@ -18,6 +18,7 @@ import { useLocation } from "wouter";
 import AdminProductsPage from "@/pages/admin/products";
 import BulkUploadPage from "@/pages/admin/bulk-upload";
 import CSVImportPage from "@/pages/admin/csv-import";
+import FrontViewUpload from "@/pages/admin/front-view-upload";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("analytics");
@@ -46,6 +47,7 @@ export default function AdminDashboard() {
     { id: "products", label: "Products", icon: Package },
     { id: "csv-import", label: "CSV Import", icon: FileText },
     { id: "bulk-upload", label: "Bulk Upload", icon: Upload },
+    { id: "front-view-upload", label: "Front View Upload", icon: ImageIcon },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
     { id: "suppliers", label: "Suppliers", icon: Store },
@@ -89,6 +91,7 @@ export default function AdminDashboard() {
           {activeSection === "products" && <ProductsSection />}
           {activeSection === "csv-import" && <CSVImportPage />}
           {activeSection === "bulk-upload" && <BulkUploadPage />}
+          {activeSection === "front-view-upload" && <FrontViewUpload />}
           {activeSection === "orders" && <OrdersSection />}
           {activeSection === "users" && <UsersSection />}
           {activeSection === "suppliers" && <SuppliersSection />}
