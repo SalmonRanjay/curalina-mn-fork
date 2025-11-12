@@ -715,8 +715,13 @@ export function buildPromptFromQuiz(
   const roomDesc = roomTypeDescriptions[quiz.roomType.toLowerCase()] || quiz.roomType;
   const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
   
-  // Start with professional photography framing
-  let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}.`;
+  // Start with professional photography framing AND strict constraints upfront
+  let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}.
+
+⚠️ CRITICAL INSTRUCTION - READ FIRST:
+You will be given a SPECIFIC LIST of furniture items to include. DO NOT ADD ANY FURNITURE BEYOND THAT LIST.
+If you add sofas, sectionals, chairs, tables, or any furniture NOT on the provided list, the image will be REJECTED.
+`;
   
   // Add structure preservation emphasis if room/floor plan analysis is available
   if (roomAnalysis || floorPlanAnalysis) {
@@ -889,12 +894,33 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
     prompt += `🚫 CRITICAL CONSTRAINTS - ABSOLUTELY NO EXCEPTIONS:
 1. Include EXACTLY ${selectedProducts.length} products listed above - NO MORE, NO LESS
 2. DO NOT add any furniture, decor, or accessories not explicitly listed above
-3. DO NOT create additional chairs, tables, lamps, plants, or any items beyond the list
-4. DO NOT "fill in" empty spaces with extra furniture - use only what's specified
-5. Each listed product MUST be clearly recognizable and match its visual specifications
-6. If a space seems empty, use styling elements like lighting and shadows rather than adding furniture
+3. DO NOT create additional chairs, dining chairs, accent chairs, armchairs, or seating beyond the list
+4. DO NOT add sofas, sectionals, couches, loveseats, or any large upholstered seating
+5. DO NOT create additional tables, coffee tables, side tables, console tables, or desks beyond the list
+6. DO NOT add extra lamps, floor lamps, table lamps, or lighting fixtures beyond the list
+7. DO NOT add plants, vases, artwork, or decorative items beyond the list
+8. DO NOT "fill in" empty spaces with extra furniture - use only what's specified
+9. Each listed product MUST be clearly recognizable and match its visual specifications
+10. If a space seems empty, use styling elements like lighting, shadows, and wall textures rather than adding furniture
 
-⚠️ FAILURE CRITERIA: The render will be REJECTED if it contains ANY furniture or major decor items not in the above list of ${selectedProducts.length} products.\n`;
+⚠️ FAILURE CRITERIA: The render will be REJECTED if it contains ANY furniture or major decor items not in the above list of ${selectedProducts.length} products.
+
+SPECIFICALLY PROHIBITED ITEMS (unless explicitly listed above):
+- Sofas, sectionals, couches, loveseats
+- Dining chairs, accent chairs, armchairs (unless listed)
+- Coffee tables, side tables, console tables (unless listed)
+- Bookcases, shelving units (unless listed)
+- Additional lighting fixtures (unless listed)
+- Rugs, carpets (unless listed)
+- Plants, planters (unless listed)
+- Wall art, mirrors (unless listed)\n`;
+  }
+  
+  // Repeat constraints before photography specs to reinforce
+  if (selectedProducts && selectedProducts.length > 0) {
+    prompt += `\n\n🚨 FINAL REMINDER BEFORE RENDERING:
+This room contains ONLY ${selectedProducts.length} items. DO NOT add sofas, sectionals, extra chairs, tables, or any furniture not explicitly listed above.
+The ${selectedProducts.length} products listed are THE COMPLETE AND ONLY furniture/decor in this space.\n`;
   }
   
   // Professional photography and rendering specifications
