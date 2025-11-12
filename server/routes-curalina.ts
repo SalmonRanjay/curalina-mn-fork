@@ -831,10 +831,10 @@ export function registerCuralinaRoutes(app: Express) {
       const { productIds, onlyMissingDescriptions } = req.body;
       
       // Import configuration and check feature flag
-      const { visualAnalysisConfig } = await import('./config/visual-analysis');
+      const { visualAnalysisConfig } = await import('./config/visual-analysis.js');
       const servicePath = visualAnalysisConfig.useV2 
-        ? './services/visual-analysis-job-service-v2'
-        : './services/visual-analysis-job-service';
+        ? './services/visual-analysis-job-service-v2.js'
+        : './services/visual-analysis-job-service.js';
       
       console.log(`Using visual analysis service: ${visualAnalysisConfig.useV2 ? 'V2 (Enhanced)' : 'V1 (Legacy)'}`);
       
