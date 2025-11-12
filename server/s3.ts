@@ -81,18 +81,33 @@ export async function getSignedS3Url(
 }
 
 /**
- * List all objects in a specific folder/prefix
+ * List all objects in a specific folder/prefix with pagination support
  * @param prefix - The folder prefix to list (e.g., 'products/')
- * @returns Array of object keys
+ * @returns Array of all object keys (handles pagination automatically)
  */
 export async function listS3Objects(prefix: string = ""): Promise<string[]> {
-  const command = new ListObjectsV2Command({
-    Bucket: BUCKET_NAME,
-    Prefix: prefix,
-  });
+  const allKeys: string[] = [];
+  let continuationToken: string | undefined;
+  
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    });
 
-  const response = await s3Client.send(command);
-  return response.Contents?.map(obj => obj.Key || "") || [];
+    const response = await s3Client.send(command);
+    
+    // Add keys from this page
+    if (response.Contents) {
+      allKeys.push(...response.Contents.map(obj => obj.Key || ""));
+    }
+    
+    // Check if there are more pages
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+  
+  return allKeys;
 }
 
 /**

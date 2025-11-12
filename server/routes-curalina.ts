@@ -574,6 +574,158 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Sync Front View images from S3 to database
+  app.post('/api/admin/products/sync-s3-front-views', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('🔍 Starting S3 Front View sync...');
+      
+      // List all objects in the S3 bucket
+      const { listS3Objects } = await import('./s3');
+      const allObjects = await listS3Objects('products/');
+      
+      console.log(`📦 Found ${allObjects.length} total objects in S3`);
+      
+      // Filter for Front View images (case-insensitive)
+      const frontViewImages = allObjects.filter(key => {
+        const lowerKey = key.toLowerCase();
+        return lowerKey.includes('front-view') || 
+               lowerKey.includes('front_view') || 
+               lowerKey.includes('frontview');
+      });
+      
+      console.log(`🎯 Found ${frontViewImages.length} Front View images in S3`);
+      
+      // Get all products for matching
+      const products = await curalinaStorage.getAllProducts();
+      console.log(`📊 Total products in database: ${products.length}`);
+      
+      let updated = 0;
+      let skipped = 0;
+      let errors: string[] = [];
+      
+      // Helper to clean SKU for matching
+      const cleanSku = (sku: string): string => {
+        return String(sku)
+          .trim()
+          .toLowerCase()
+          .replace(/[\s_-]+/g, '-')
+          .replace(/^-|-$/g, '');
+      };
+      
+      // Create maps for faster lookup
+      const productIdMap = new Map<string, string>();
+      const productCacheMap = new Map<string, typeof products[0]>();
+      
+      for (const product of products) {
+        const cleaned = cleanSku(product.sku);
+        productIdMap.set(cleaned, product.id);
+        productCacheMap.set(product.id, product);
+      }
+      
+      // Track products that have been updated (need fresh fetch for multiple images)
+      const updatedProductIds = new Set<string>();
+      
+      // Process each Front View image
+      for (const s3Key of frontViewImages) {
+        try {
+          // Extract SKU from S3 key: products/{sku}/front-view.jpg
+          const parts = s3Key.split('/');
+          if (parts.length < 3) {
+            console.log(`⚠️ Skipping invalid S3 key: ${s3Key}`);
+            skipped++;
+            continue;
+          }
+          
+          const skuFromPath = parts[1]; // Second part is the SKU
+          const cleanedSku = cleanSku(skuFromPath);
+          
+          // Find matching product ID
+          const productId = productIdMap.get(cleanedSku);
+          
+          if (!productId) {
+            console.log(`⚠️ No product found for SKU: ${skuFromPath} (cleaned: ${cleanedSku})`);
+            skipped++;
+            continue;
+          }
+          
+          // Get product - if already updated, fetch fresh; otherwise use cache
+          let product;
+          if (updatedProductIds.has(productId)) {
+            // Product was already updated, fetch fresh data to avoid stale cache
+            product = await curalinaStorage.getProduct(productId);
+            if (product) {
+              productCacheMap.set(productId, product);
+            }
+          } else {
+            // First time seeing this product, use cached data
+            product = productCacheMap.get(productId);
+          }
+          
+          if (!product) {
+            console.log(`⚠️ Product ${productId} no longer exists`);
+            skipped++;
+            continue;
+          }
+          
+          // Build the public URL
+          const BUCKET_NAME = "curalina";
+          const AWS_REGION = process.env.AWS_REGION === "global" ? "us-east-1" : (process.env.AWS_REGION || "us-east-1");
+          const imageUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${s3Key}`;
+          
+          // Check if image already exists in product's images array
+          const existingImages = product.images || [];
+          if (existingImages.includes(imageUrl)) {
+            console.log(`✓ Image already exists for ${product.sku}`);
+            skipped++;
+            continue;
+          }
+          
+          // Add Front View image to the BEGINNING of the images array (prioritize it)
+          const updatedImages = [imageUrl, ...existingImages];
+          
+          // Update product in database
+          await curalinaStorage.updateProduct(product.id, {
+            images: updatedImages
+          });
+          
+          // Mark this product as updated and refresh cache
+          updatedProductIds.add(productId);
+          productCacheMap.set(productId, { ...product, images: updatedImages });
+          
+          console.log(`✅ Added Front View to ${product.sku} (${product.name})`);
+          updated++;
+          
+        } catch (error) {
+          const errorMsg = `Error processing ${s3Key}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
+        }
+      }
+      
+      console.log(`✨ Sync complete! Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors.length}`);
+      
+      res.json({
+        success: true,
+        updated,
+        skipped,
+        errors,
+        totalFrontViewsInS3: frontViewImages.length,
+        totalProducts: products.length,
+        message: `Successfully synced ${updated} Front View images from S3 to database`
+      });
+      
+    } catch (error) {
+      console.error('❌ Error syncing S3 Front Views:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to sync S3 Front Views',
+        updated: 0,
+        skipped: 0,
+        errors: []
+      });
+    }
+  });
+
   // Public asset serving endpoint
   app.get('/public-objects/:filePath(*)', async (req, res) => {
     try {
