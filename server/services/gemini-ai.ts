@@ -806,21 +806,45 @@ function validateAndAdjustForBudget(
 
 /**
  * Get the best available visual description for a product
- * Priority: Front View → Gemini → OpenAI → legacy
+ * Priority: Actual Front View → Synthesized Front View → Gemini → OpenAI → Complete Description → Legacy
  */
 function getBestVisualDescription(product: any): { description: string; source: string } {
+  // First priority: Actual front view from direct image analysis
   if (product.visualDescriptionFrontView && product.visualDescriptionFrontView.trim().length > 0) {
     return { description: product.visualDescriptionFrontView, source: 'Front View' };
   }
   
+  // Second priority: Synthesized front view from multi-angle analysis
+  if (product.synthesizedFrontView && product.synthesizedFrontView.trim().length > 0) {
+    return { description: product.synthesizedFrontView, source: 'Synthesized Front View' };
+  }
+  
+  // Third priority: Gemini Vision analysis
   if (product.visualDescriptionGemini && product.visualDescriptionGemini.trim().length > 0) {
     return { description: product.visualDescriptionGemini, source: 'Gemini Vision' };
   }
   
+  // Fourth priority: OpenAI Vision analysis
   if (product.visualDescriptionOpenAI && product.visualDescriptionOpenAI.trim().length > 0) {
     return { description: product.visualDescriptionOpenAI, source: 'OpenAI Vision' };
   }
   
+  // Fifth priority: Complete product description from all angles
+  if (product.completeProductDescription && product.completeProductDescription.trim().length > 0) {
+    // Extract just the front view or overall section if available
+    const lines = product.completeProductDescription.split('\n');
+    const frontViewIdx = lines.findIndex((l: string) => l.includes('FRONT VIEW:'));
+    if (frontViewIdx >= 0 && frontViewIdx < lines.length - 1) {
+      return { description: lines[frontViewIdx + 1], source: 'Multi-Angle Analysis' };
+    }
+    // Otherwise use the first meaningful paragraph
+    const firstParagraph = lines.find((l: string) => l.length > 50);
+    if (firstParagraph) {
+      return { description: firstParagraph, source: 'Multi-Angle Analysis' };
+    }
+  }
+  
+  // Sixth priority: Legacy visual description
   if (product.visualDescription && product.visualDescription.trim().length > 0) {
     return { description: product.visualDescription, source: 'Legacy' };
   }
