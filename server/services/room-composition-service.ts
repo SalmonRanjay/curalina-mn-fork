@@ -10,10 +10,10 @@ const ROOM_TEMPLATES = {
     },
     complementary: {
       'accent_seating': { min: 0, max: 2, priority: 3 }, // Chairs, ottomans
-      'side_table': { min: 0, max: 2, priority: 4 },
-      'storage': { min: 0, max: 2, priority: 5 }, // Cabinets, shelving
-      'lighting': { min: 1, max: 3, priority: 6 }, // Floor lamps, table lamps
-      'decor': { min: 0, max: 3, priority: 7 }, // Art, plants, accessories
+      'side_table': { min: 0, max: 1, priority: 4 },
+      'storage': { min: 0, max: 1, priority: 5 }, // Cabinets, shelving
+      'lighting': { min: 1, max: 2, priority: 6 }, // Floor lamps, table lamps (reduced from 3)
+      'decor': { min: 0, max: 2, priority: 7 }, // Art, plants, accessories
     }
   },
   'Bedroom': {
