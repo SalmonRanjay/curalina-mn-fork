@@ -9,6 +9,7 @@ Key capabilities include:
 - **Hybrid Image Compositing**: Aims for exact product matching by compositing real product images onto AI-generated rooms.
 - **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context and detailed product visual descriptions for more accurate and relevant designs. Visual descriptions are prioritized: Front View → Gemini Vision → OpenAI Vision → Legacy, ensuring the highest-quality product information is used.
 - **Smart Product Selection**: Filters and prioritizes products based on image quality, visibility in renders, and user preferences, with a focus on displaying "Front View" images.
+- **Data Quality Transparency**: Shop the Look product cards display visual description source badges (Front View, Gemini Vision, OpenAI Vision, or Legacy) to show users which AI analysis method was used for each product recommendation, providing insight into recommendation quality and data provenance.
 - **Complete E-commerce Journey**: Features a 7-step design quiz, AI-powered product selection, shopping cart, and Stripe checkout integration.
 - **Training Data System**: Admin-managed data for continuously improving AI performance.
 - **Quiz Mapping Analysis**: Dashboard for analyzing how quiz questions map to product recommendations, identifying data quality gaps and normalization opportunities.
