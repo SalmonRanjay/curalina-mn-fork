@@ -79,33 +79,30 @@ async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; 
  * Get the structured analysis prompt for furniture (front-view focused)
  */
 function getStructuredAnalysisPrompt(isFrontView: boolean = false): string {
-  const charLimit = isFrontView ? '1000' : '2000';
+  const charLimit = isFrontView ? '500' : '800';  // Reduced from 1000/2000 to be more concise
   
   return `You are an expert furniture designer analyzing this product image for AI-generated interior designs.
 
-**OUTPUT FORMAT - STRUCTURED METADATA (Required fields):**
+**OUTPUT FORMAT - ULTRA-CONCISE STRUCTURED DATA:**
 
-Product Name: [Descriptive name based on furniture type and style]
-Primary Material: [Specific material type with grade/quality, e.g., "High-gloss lacquered composite (fiberglass or ABS)"]
-Color & Finish: [Exact color with HEX code when possible, sheen percentage, e.g., "Pure white (#F8F8F8), mirror-gloss surface (~98% sheen)"]
-Form Factor: [Core shape and construction, e.g., "Cylindrical pedestal base with organic triangular domed top"]
-Dimensions: [Visible measurements or proportions, e.g., "21.5" height, top width 18.5", depth 16.5", base diameter 11""]
-Key Geometry: [Essential geometric features, e.g., "Domed top, continuous concave transition to base"]
-Edge Profile: [Edge details with measurements, e.g., "2.75" radius corners, 0.6" bullnose at perimeter"]
-Distinctive Features: [Unique design elements, e.g., "Seamless, monolithic construction; no visible joints"]
-Lighting & Texture Behavior: [How light interacts, e.g., "Reflects specular highlights; diffused soft shadows"]
-${isFrontView ? 'Front View Priority: [Confirmation this is frontal view, e.g., "Centered frontal view capturing full pedestal and tabletop edge"]' : 'Multi-Angle Synthesis: [Brief note on viewing angles captured]'}
+Product Name: [Short descriptive name]
+Primary Material: [Material type, e.g., "Lacquered MDF"]
+Color & Finish: [Color with HEX, e.g., "White (#F8F8F8), gloss"]
+Form Factor: [Basic shape, e.g., "Round pedestal table"]
+Dimensions: [Key measurements, e.g., "H:21.5" W:18.5""]
+Key Geometry: [Main shape features, e.g., "Domed top, tapered base"]
+Distinctive Features: [1-2 unique elements max]
 
 **CRITICAL REQUIREMENTS:**
-- Use EXACT values: HEX colors (#F8F8F8), sheen percentages (98% gloss), measurements (21.5")
-- Avoid poetic language - be technical and precise
-- Focus on geometry and materials over abstract descriptions
-- Keep total response under ${charLimit} characters
-- Structure MUST match the format above exactly
+- MAXIMUM ${charLimit} characters total
+- Use EXACT values: HEX colors, measurements
+- BE EXTREMELY CONCISE - essential details only
+- NO descriptive prose, only technical facts
+- Focus on geometry and materials ONLY
 
 ${isFrontView ? 
-  '**FRONT VIEW FOCUS:** This is the primary view for generation. Capture complete frontal geometry and proportions.' :
-  '**COMBINED VIEW SYNTHESIS:** Integrate features from all angles while maintaining structural clarity.'}`;
+  '**FRONT VIEW ONLY:** Primary angle for AI rendering. Capture frontal geometry.' :
+  '**SKIP THIS - Use front view instead for rendering**'}`;
 }
 
 /**
@@ -132,8 +129,8 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
     
     const text = response.text?.trim() || '';
     
-    // Validate character limits
-    const charLimit = isFrontView ? 1000 : 2000;
+    // Validate character limits - much stricter now
+    const charLimit = isFrontView ? 500 : 800;
     if (text.length > charLimit) {
       console.warn(`Description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
       return text.substring(0, charLimit);
@@ -301,8 +298,8 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
     
     const text = response.choices[0].message.content?.trim() || '';
     
-    // Validate character limits
-    const charLimit = isFrontView ? 1000 : 2000;
+    // Validate character limits - much stricter now
+    const charLimit = isFrontView ? 500 : 800;
     if (text.length > charLimit) {
       console.warn(`OpenAI description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
       return text.substring(0, charLimit);
