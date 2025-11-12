@@ -1667,33 +1667,36 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // Step 5: Identify which products are actually visible in the AI-generated image
-          let visibleProductSkus: string[];
+          // Step 5: Log visibility analysis for debugging (but show all products to users)
           if (selectedProducts.length > 0) {
             try {
               // Convert image buffer to data URL for visibility detection
               const finalImageDataUrl = `data:image/png;base64,${imageBuffer.toString('base64')}`;
-              visibleProductSkus = await identifyVisibleProducts(finalImageDataUrl, selectedProducts);
-              console.log(`🛍️ Filtered products: ${selectedProducts.length} selected → ${visibleProductSkus.length} visible in AI-generated image`);
+              const visibleProductSkus = await identifyVisibleProducts(finalImageDataUrl, selectedProducts);
+              console.log(`🛍️ Visibility analysis: ${visibleProductSkus.length}/${selectedProducts.length} products clearly identified in image`);
+              console.log(`   Visible: ${visibleProductSkus.join(', ')}`);
+              if (visibleProductSkus.length < selectedProducts.length) {
+                const notIdentified = selectedProducts.filter(p => !visibleProductSkus.includes(p.sku)).map(p => p.sku);
+                console.log(`   Not clearly visible: ${notIdentified.join(', ')}`);
+              }
             } catch (error) {
-              console.error("Error identifying visible products:", error);
-              // Fallback to all selected products
-              visibleProductSkus = selectedProducts.map(p => p.sku);
+              console.error("Error in visibility analysis (non-blocking):", error);
             }
-          } else {
-            visibleProductSkus = [];
           }
           
-          // Update render with completed data (only visible products)
+          // Store ALL selected products (users should see everything the AI recommended)
+          const allProductSkus = selectedProducts.map(p => p.sku);
+          
+          // Update render with completed data (all selected products)
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
-            productSkus: visibleProductSkus,
+            productSkus: allProductSkus,
             productMetadata,
             prompt,
             status: 'completed',
           });
           
-          console.log(`✅ Render ${render.id} completed with ${visibleProductSkus.length} visible products`);
+          console.log(`✅ Render ${render.id} completed with ${allProductSkus.length} products available in Shop the Look`);
         } catch (error) {
           console.error("AI generation error:", error);
           
