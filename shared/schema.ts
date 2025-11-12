@@ -653,3 +653,76 @@ export const insertVisualAnalysisProductSchema = createInsertSchema(visualAnalys
   createdAt: true,
 });
 export type InsertVisualAnalysisProduct = z.infer<typeof insertVisualAnalysisProductSchema>;
+
+// Room Templates - Define standard composition for each room type
+export const roomTemplates = pgTable("room_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomType: text("room_type").notNull().unique(), // 'Living Room', 'Bedroom', 'Dining Room', 'Office'
+  name: text("name").notNull(), // Human-readable name
+  description: text("description"), // Template description
+  minRoomSize: integer("min_room_size"), // Minimum square footage
+  maxRoomSize: integer("max_room_size"), // Maximum square footage
+  metadata: jsonb("metadata"), // Additional configuration
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type RoomTemplate = typeof roomTemplates.$inferSelect;
+export const insertRoomTemplateSchema = createInsertSchema(roomTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertRoomTemplate = z.infer<typeof insertRoomTemplateSchema>;
+
+// Functional Categories - Define product roles in a room
+export const functionalCategories = pgTable("functional_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(), // 'primary_seating', 'accent_seating', 'coffee_table', 'side_table', 'storage', 'lighting', 'decor'
+  displayName: text("display_name").notNull(), // Human-readable name
+  description: text("description"),
+  spatialRequirements: jsonb("spatial_requirements"), // { minFloorSpace: 20, verticalSpace: 'floor' | 'wall' | 'ceiling' }
+  visualWeight: text("visual_weight"), // 'dominant', 'supporting', 'accent'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type FunctionalCategory = typeof functionalCategories.$inferSelect;
+export const insertFunctionalCategorySchema = createInsertSchema(functionalCategories).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFunctionalCategory = z.infer<typeof insertFunctionalCategorySchema>;
+
+// Template Category Rules - Define composition rules for each template
+export const templateCategoryRules = pgTable("template_category_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").notNull().references(() => roomTemplates.id),
+  functionalCategoryId: varchar("functional_category_id").notNull().references(() => functionalCategories.id),
+  minCount: integer("min_count").notNull().default(0), // Minimum required items
+  maxCount: integer("max_count").notNull().default(1), // Maximum allowed items
+  priority: integer("priority").notNull().default(100), // Selection priority (lower = higher priority)
+  isEssential: boolean("is_essential").notNull().default(false), // Must be included
+  placementZone: text("placement_zone"), // 'center', 'perimeter', 'corner', 'focal'
+  adjacencyRules: jsonb("adjacency_rules"), // Rules for what can be placed nearby
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type TemplateCategoryRule = typeof templateCategoryRules.$inferSelect;
+export const insertTemplateCategoryRuleSchema = createInsertSchema(templateCategoryRules).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertTemplateCategoryRule = z.infer<typeof insertTemplateCategoryRuleSchema>;
+
+// Product Functional Categories - Map products to functional categories
+export const productFunctionalCategories = pgTable("product_functional_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  functionalCategoryId: varchar("functional_category_id").notNull().references(() => functionalCategories.id),
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).notNull().default("1.00"), // 0.00-1.00 confidence score
+  source: text("source").notNull().default("manual"), // 'manual', 'ai_analysis', 'rule_based'
+  metadata: jsonb("metadata"), // Additional classification data
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("product_functional_unique").on(table.productId, table.functionalCategoryId),
+]);
