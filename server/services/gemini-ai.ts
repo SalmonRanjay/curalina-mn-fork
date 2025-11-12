@@ -864,13 +864,18 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
     selectedProducts.forEach((product, index) => {
       prompt += `${index + 1}. ${product.name} [REQUIRED]\n`;
       
-      // Use visualDescription if available (from Gemini Vision or text generator)
-      if (product.visualDescription && product.visualDescription.trim().length > 0) {
+      // Get the best available visual description using priority system
+      const { description, source } = getBestVisualDescription(product);
+      
+      if (description) {
+        console.log(`   📸 Using ${source} description for: ${product.name}`);
         prompt += `   
    VISUAL SPECIFICATIONS:
-   ${product.visualDescription}
+   ${description}
    
 `;
+      } else {
+        console.log(`   ⚠️ No visual description available for: ${product.name}`);
       }
       
       prompt += `   PLACEMENT REQUIREMENTS:
