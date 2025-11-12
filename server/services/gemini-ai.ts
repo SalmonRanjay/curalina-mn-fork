@@ -838,7 +838,7 @@ function getBestVisualDescription(product: any): { description: string; source: 
  */
 export function buildPromptFromQuiz(
   quiz: QuizResponse, 
-  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionFrontView?: string; visualDescriptionGemini?: string; visualDescriptionOpenAI?: string }>,
+  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
 ): { prompt: string; productMetadata: Record<string, { visualDescriptionSource: string }> } {
@@ -1002,21 +1002,28 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
     selectedProducts.forEach((product, index) => {
       prompt += `${index + 1}. ${product.name} [REQUIRED]\n`;
       
-      // Get the best available visual description using priority system
-      const { description, source } = getBestVisualDescription(product);
+      // Use visual description already attached to the selected product
+      const description = product.visualDescription || '';
+      const source = product.visualDescriptionSource || 'None';
       
       // Track the source for this product
       productMetadata[product.sku] = { visualDescriptionSource: source };
       
-      if (description) {
+      if (description && description !== "No visual description available - use product name and materials to approximate appearance") {
         console.log(`   📸 Using ${source} description for: ${product.name}`);
         prompt += `   
-   VISUAL SPECIFICATIONS:
+   VISUAL SPECIFICATIONS (MUST MATCH EXACTLY):
    ${description}
+   
+   ⚠️ CRITICAL: This product MUST look exactly as described above. Do not substitute or approximate.
    
 `;
       } else {
-        console.log(`   ⚠️ No visual description available for: ${product.name}`);
+        console.log(`   ⚠️ No visual description available for: ${product.name} - AI will approximate based on name and style`);
+        prompt += `   
+   VISUAL NOTE: No specific visual description available. Use product name and room style to determine appropriate appearance.
+   
+`;
       }
       
       prompt += `   PLACEMENT REQUIREMENTS:
