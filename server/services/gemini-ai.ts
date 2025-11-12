@@ -402,8 +402,10 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
   }
   
   // Fallback 1: if strict filtering yields too few products, relax key features requirement
-  if (strictlyFiltered.length < 5) {
-    console.warn(`Strict filter yielded only ${strictlyFiltered.length} products, relaxing key features requirement`);
+  let currentFiltered = strictlyFiltered;
+  
+  if (currentFiltered.length < 5) {
+    console.warn(`Strict filter yielded only ${currentFiltered.length} products, relaxing key features requirement`);
     
     const relaxedFeatures = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
@@ -441,12 +443,14 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       return true;
     });
     
-    if (relaxedFeatures.length >= 5) return relaxedFeatures;
+    if (relaxedFeatures.length >= 5) {
+      currentFiltered = relaxedFeatures;
+    }
   }
   
   // Fallback 2: if still < 5, relax style requirement (keep room type)
-  if (strictlyFiltered.length < 5) {
-    console.warn(`Still only ${strictlyFiltered.length} products, relaxing style requirement`);
+  if (currentFiltered.length < 5) {
+    console.warn(`Still only ${currentFiltered.length} products, relaxing style requirement (keeping room type)`);
     
     const relaxedStyle = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
@@ -466,12 +470,14 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       return true;
     });
     
-    if (relaxedStyle.length >= 5) return relaxedStyle;
+    if (relaxedStyle.length >= 5) {
+      currentFiltered = relaxedStyle;
+    }
   }
   
   // Fallback 3: if still < 5, only require style match (relax room type)
-  if (strictlyFiltered.length < 5) {
-    console.warn(`Still only ${strictlyFiltered.length} products, trying style-only match`);
+  if (currentFiltered.length < 5) {
+    console.warn(`Still only ${currentFiltered.length} products, trying style-only match (relaxing room type)`);
     
     const styleOnly = products.filter(product => {
       if (product.availability !== 'in_stock') return false;
@@ -500,24 +506,39 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       return true;
     });
     
-    if (styleOnly.length >= 5) return styleOnly;
+    if (styleOnly.length >= 5) {
+      currentFiltered = styleOnly;
+    }
   }
   
-  // Fallback 4: if still < 5, just return any in-stock products with valid images
-  console.warn(`Final fallback: returning any in-stock products with valid images`);
+  // Return current filtered if we have enough products
+  if (currentFiltered.length >= 5) {
+    return currentFiltered;
+  }
+  
+  // Fallback 4: if still < 5, just return any in-stock products with valid images (NO quiz matching)
+  console.warn(`Final fallback: only ${currentFiltered.length} products matched quiz, selecting ANY in-stock products with valid images`);
   const finalFiltered = products.filter(product => {
     if (product.availability !== 'in_stock') return false;
     if (!canUseForAIRendering(product)) return false;
     
-    // Budget NOT enforced
+    // NO quiz matching requirements - accept any product
     
     return true;
   });
   
+  // Merge current filtered results with fallback products
+  const mergedProducts = [...currentFiltered];
+  for (const product of finalFiltered) {
+    if (!mergedProducts.find(p => p.id === product.id)) {
+      mergedProducts.push(product);
+    }
+  }
+  
   // If we have vibe preferences, sort by visual similarity
   if (quiz.vibeColorPalette && quiz.vibeColorPalette.length > 0) {
-    console.log(`🎨 Sorting products by visual similarity to vibe images...`);
-    const withScores = finalFiltered.map(product => ({
+    console.log(`🎨 Sorting ${mergedProducts.length} products by visual similarity to vibe images...`);
+    const withScores = mergedProducts.map(product => ({
       product,
       score: calculateVisualSimilarityScore(product, quiz)
     }));
@@ -533,10 +554,11 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       });
     }
     
-    return withScores.map(item => item.product).slice(0, 20);
+    return withScores.map(item => item.product).slice(0, 50);
   }
   
-  return finalFiltered.slice(0, 20);
+  console.log(`📦 Final candidate pool: ${mergedProducts.length} products (${currentFiltered.length} matched quiz, ${mergedProducts.length - currentFiltered.length} from fallback)`);
+  return mergedProducts.slice(0, 50);
 }
 
 /**
