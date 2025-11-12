@@ -675,6 +675,30 @@ function validateAndAdjustForBudget(
 }
 
 /**
+ * Get the best available visual description for a product
+ * Priority: Front View → Gemini → OpenAI → legacy
+ */
+function getBestVisualDescription(product: any): { description: string; source: string } {
+  if (product.visualDescriptionFrontView && product.visualDescriptionFrontView.trim().length > 0) {
+    return { description: product.visualDescriptionFrontView, source: 'Front View' };
+  }
+  
+  if (product.visualDescriptionGemini && product.visualDescriptionGemini.trim().length > 0) {
+    return { description: product.visualDescriptionGemini, source: 'Gemini Vision' };
+  }
+  
+  if (product.visualDescriptionOpenAI && product.visualDescriptionOpenAI.trim().length > 0) {
+    return { description: product.visualDescriptionOpenAI, source: 'OpenAI Vision' };
+  }
+  
+  if (product.visualDescription && product.visualDescription.trim().length > 0) {
+    return { description: product.visualDescription, source: 'Legacy' };
+  }
+  
+  return { description: '', source: 'None' };
+}
+
+/**
  * Build a highly detailed professional prompt from quiz responses and selected products
  * Optimized for clean, beautiful, realistic interior design renders
  * @param quiz - Quiz response data
@@ -684,7 +708,7 @@ function validateAndAdjustForBudget(
  */
 export function buildPromptFromQuiz(
   quiz: QuizResponse, 
-  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string }>,
+  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionFrontView?: string; visualDescriptionGemini?: string; visualDescriptionOpenAI?: string }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
 ): string {
