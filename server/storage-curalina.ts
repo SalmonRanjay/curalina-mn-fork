@@ -72,6 +72,7 @@ export interface ICuralinaStorage {
     categoryId?: string;
     styleTags?: string[];
   }): Promise<Product[]>;
+  getProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
   getProductBySku(sku: string): Promise<Product | undefined>;
   getProductAlternatives(productId: string): Promise<Product[]>;
@@ -243,6 +244,10 @@ export class CuralinaStorage implements ICuralinaStorage {
     }
     
     return results;
+  }
+
+  async getProducts(): Promise<Product[]> {
+    return db.select().from(products);
   }
 
   async getProduct(id: string): Promise<Product | undefined> {

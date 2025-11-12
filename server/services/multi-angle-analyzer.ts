@@ -1,18 +1,16 @@
 import { Product } from "@shared/schema";
-import { ai } from "@genkit-ai/core";
-import * as googleai from "@genkit-ai/google";
-import { z } from "zod";
+import { GoogleGenAI, Type } from "@google/genai";
 import { ICuralinaStorage } from "../storage-curalina";
-import { Type } from '@genkit-ai/core';
 
-// Configure Google AI
-if (!process.env.GOOGLE_AI_API_KEY) {
-  console.warn("⚠️ GOOGLE_AI_API_KEY not found. Multi-angle analysis will be unavailable.");
-}
-
-ai.registry.registerPlugin(googleai.default({
-  apiKey: process.env.GOOGLE_AI_API_KEY || "dummy-key-for-local-dev"
-}));
+// Initialize Gemini client with AI Integrations credentials  
+// This is using Replit's AI Integrations service
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
+  httpOptions: {
+    apiVersion: "",
+    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
+  },
+});
 
 // Type definitions for angle analysis
 export type ViewingAngle = 'front' | 'front-angled' | 'side' | 'back' | 'top' | 'bottom' | 'detail' | 'lifestyle' | 'unknown';
