@@ -96,17 +96,31 @@ export default function AdminProducts() {
     },
   });
 
-  // Count products with Front View images
+  // Count products that need Front View analysis
+  // Includes: named Front View images, single-image products, and missing Front View data
   const frontViewProductCount = useMemo(() => {
     if (!products) return 0;
     return products.filter(product => {
       if (!product.images || product.images.length === 0) return false;
-      return product.images.some(imageUrl => {
+      
+      // Case 1: Has a named Front View image
+      const hasNamedFrontView = product.images.some(imageUrl => {
         const lowerUrl = imageUrl.toLowerCase();
         return lowerUrl.includes('front-view') || 
                lowerUrl.includes('front_view') || 
                lowerUrl.includes('frontview');
       });
+      
+      // Case 2: Has exactly one image (should be treated as Front View)
+      const hasSingleImage = product.images.length === 1;
+      
+      // Case 3: Missing Front View analysis data
+      const missingFrontViewData = !product.visualDescriptionFrontView || 
+                                    product.visualDescriptionFrontView.trim().length === 0;
+      
+      // Include if: (has named front view OR single image) AND missing data
+      // OR just has single image (needs re-analysis with new logic)
+      return (hasNamedFrontView || hasSingleImage) && (missingFrontViewData || hasSingleImage);
     }).length;
   }, [products]);
 
@@ -374,9 +388,16 @@ export default function AdminProducts() {
       return response.json();
     },
     onSuccess: (data: any) => {
+      const breakdown = data.breakdown || {};
+      const details = [
+        breakdown.namedFrontView > 0 ? `${breakdown.namedFrontView} named Front View` : null,
+        breakdown.singleImage > 0 ? `${breakdown.singleImage} single-image` : null,
+        breakdown.missingData > 0 ? `${breakdown.missingData} missing data` : null,
+      ].filter(Boolean).join(', ');
+      
       toast({
         title: "Front View re-analysis started",
-        description: `Job started for ${data.totalProducts} products with Front View images`,
+        description: `Analyzing ${data.totalProducts} products: ${details || 'checking all criteria'}`,
       });
       refetchAnalysisJobs();
     },
