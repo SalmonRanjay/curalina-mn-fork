@@ -762,7 +762,7 @@ export function buildPromptFromQuiz(
   selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionFrontView?: string; visualDescriptionGemini?: string; visualDescriptionOpenAI?: string }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
-): string {
+): { prompt: string; productMetadata: Record<string, { visualDescriptionSource: string }> } {
   const roomDesc = roomTypeDescriptions[quiz.roomType.toLowerCase()] || quiz.roomType;
   const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
   
@@ -908,6 +908,9 @@ WHAT YOU CAN CHANGE:
     }
   }
   
+  // Track visual description sources for each product
+  const productMetadata: Record<string, { visualDescriptionSource: string }> = {};
+  
   // Add specific curated products with detailed visual descriptions
   // Visual descriptions come from Gemini Vision analysis or text-based generator
   // These detailed descriptions ensure AI generates furniture that closely matches real products
@@ -922,6 +925,9 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
       
       // Get the best available visual description using priority system
       const { description, source } = getBestVisualDescription(product);
+      
+      // Track the source for this product
+      productMetadata[product.sku] = { visualDescriptionSource: source };
       
       if (description) {
         console.log(`   📸 Using ${source} description for: ${product.name}`);
@@ -1009,7 +1015,7 @@ ARCHITECTURAL PRESERVATION (NON-NEGOTIABLE):
 - Wall colors and patterns: Preserve existing wall finishes as specified
 - Doors and built-in features: Keep in their exact original locations`;
   
-  return prompt;
+  return { prompt, productMetadata };
 }
 
 /**

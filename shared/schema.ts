@@ -267,6 +267,7 @@ export const renders = pgTable("renders", {
   prompt: text("prompt").notNull(), // Full AI prompt used
   productSkus: text("product_skus").array(), // Products featured in render
   productPlacements: jsonb("product_placements"), // Spatial metadata: [{ sku, region, boundingBox }]
+  productMetadata: jsonb("product_metadata"), // Product-specific metadata: { [sku]: { visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'OpenAI Vision' | 'Legacy' | 'None' } }
   parentRenderId: varchar("parent_render_id"), // References parent render if this is a swap
   swappedSku: text("swapped_sku"), // SKU that was replaced (if this is a swap)
   status: varchar("status", { length: 20 }).notNull().default("generating"), // 'generating', 'completed', 'failed'

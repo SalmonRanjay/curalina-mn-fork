@@ -1587,7 +1587,7 @@ export function registerCuralinaRoutes(app: Express) {
           }
           
           // Build enhanced prompt with enriched products and image analysis
-          const prompt = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
+          const { prompt, productMetadata } = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
           
           // Log what image analysis was used
           const analysisTypes = [];
@@ -1656,6 +1656,7 @@ export function registerCuralinaRoutes(app: Express) {
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
             productSkus: visibleProductSkus,
+            productMetadata,
             prompt,
             status: 'completed',
           });
