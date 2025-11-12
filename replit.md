@@ -7,10 +7,11 @@ Key capabilities include:
 - **Intelligent Image Analysis**: AI analysis of room photos, floor plans, vibe images, and product images (using Gemini Vision and OpenAI GPT-5 Vision) to extract spatial information, user preferences, and detailed visual product descriptions.
 - **AI-Powered Rendering**: Generates creative room designs from scratch (text-to-image) or redesigns existing spaces while preserving architectural features (image-to-image) using Gemini 2.5 Flash.
 - **Hybrid Image Compositing**: Aims for exact product matching by compositing real product images onto AI-generated rooms.
-- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context and detailed product visual descriptions for more accurate and relevant designs.
+- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context and detailed product visual descriptions for more accurate and relevant designs. Visual descriptions are prioritized: Front View → Gemini Vision → OpenAI Vision → Legacy, ensuring the highest-quality product information is used.
 - **Smart Product Selection**: Filters and prioritizes products based on image quality, visibility in renders, and user preferences, with a focus on displaying "Front View" images.
 - **Complete E-commerce Journey**: Features a 7-step design quiz, AI-powered product selection, shopping cart, and Stripe checkout integration.
 - **Training Data System**: Admin-managed data for continuously improving AI performance.
+- **Quiz Mapping Analysis**: Dashboard for analyzing how quiz questions map to product recommendations, identifying data quality gaps and normalization opportunities.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

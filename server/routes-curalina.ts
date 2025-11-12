@@ -1569,10 +1569,10 @@ export function registerCuralinaRoutes(app: Express) {
             return {
               ...sp,
               name: fullProduct.name,
-              visualDescriptionFrontView: fullProduct.visualDescriptionFrontView,
-              visualDescriptionGemini: fullProduct.visualDescriptionGemini,
-              visualDescriptionOpenAI: fullProduct.visualDescriptionOpenAI,
-              visualDescription: fullProduct.visualDescription,
+              visualDescriptionFrontView: fullProduct.visualDescriptionFrontView || undefined,
+              visualDescriptionGemini: fullProduct.visualDescriptionGemini || undefined,
+              visualDescriptionOpenAI: fullProduct.visualDescriptionOpenAI || undefined,
+              visualDescription: fullProduct.visualDescription || undefined,
             };
           });
           
