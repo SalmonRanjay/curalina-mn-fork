@@ -499,9 +499,11 @@ export async function analyzeProductVisualsV2(
     console.error(`  ⚠️ OpenAI failed:`, openaiResult.reason);
   }
   
-  // Determine active descriptions (Gemini prioritized)
-  const activeDescription = gemini?.combinedDescription || openai?.combinedDescription || '';
+  // Determine active descriptions (Front-view prioritized for rendering accuracy)
+  // Prioritize front-view descriptions for AI rendering (more concise and accurate)
   const activeFrontView = gemini?.frontViewDescription || openai?.frontViewDescription || '';
+  // For backward compatibility, keep combined as fallback or when front-view unavailable
+  const activeDescription = activeFrontView || gemini?.combinedDescription || openai?.combinedDescription || '';
   
   // Log results
   console.log(`  ✅ Analysis complete:`);
