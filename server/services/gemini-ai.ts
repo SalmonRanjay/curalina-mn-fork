@@ -971,29 +971,45 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
 `;
     });
     
-    prompt += `🚫 CRITICAL CONSTRAINTS - ABSOLUTELY NO EXCEPTIONS:
-1. Include EXACTLY ${selectedProducts.length} products listed above - NO MORE, NO LESS
-2. DO NOT add any furniture, decor, or accessories not explicitly listed above
-3. DO NOT create additional chairs, dining chairs, accent chairs, armchairs, or seating beyond the list
-4. DO NOT add sofas, sectionals, couches, loveseats, or any large upholstered seating
-5. DO NOT create additional tables, coffee tables, side tables, console tables, or desks beyond the list
-6. DO NOT add extra lamps, floor lamps, table lamps, or lighting fixtures beyond the list
-7. DO NOT add plants, vases, artwork, or decorative items beyond the list
-8. DO NOT "fill in" empty spaces with extra furniture - use only what's specified
-9. Each listed product MUST be clearly recognizable and match its visual specifications
-10. If a space seems empty, use styling elements like lighting, shadows, and wall textures rather than adding furniture
+    prompt += `
+═══════════════════════════════════════════════════════════════════════════
+🚫 CRITICAL CONSTRAINTS - ABSOLUTELY NO EXCEPTIONS - READ CAREFULLY:
+═══════════════════════════════════════════════════════════════════════════
 
-⚠️ FAILURE CRITERIA: The render will be REJECTED if it contains ANY furniture or major decor items not in the above list of ${selectedProducts.length} products.
+⚠️ PRODUCT COUNT: This room contains EXACTLY ${selectedProducts.length} products - NOT ${selectedProducts.length + 1}, NOT ${selectedProducts.length + 2}, EXACTLY ${selectedProducts.length}.
 
-SPECIFICALLY PROHIBITED ITEMS (unless explicitly listed above):
-- Sofas, sectionals, couches, loveseats
-- Dining chairs, accent chairs, armchairs (unless listed)
-- Coffee tables, side tables, console tables (unless listed)
-- Bookcases, shelving units (unless listed)
-- Additional lighting fixtures (unless listed)
-- Rugs, carpets (unless listed)
-- Plants, planters (unless listed)
-- Wall art, mirrors (unless listed)\n`;
+⚠️ STRICT PRODUCT LIST ENFORCEMENT:
+You MUST include ONLY the ${selectedProducts.length} products explicitly listed above.
+You MUST NOT add, invent, hallucinate, or include ANY other furniture or decor items.
+
+⚠️ ABSOLUTELY FORBIDDEN TO ADD (even if the room type typically has these):
+❌ NO dining tables (even in a Dining Room)
+❌ NO dining chairs (even in a Dining Room)  
+❌ NO sofas or couches (even in a Living Room)
+❌ NO coffee tables (even in a Living Room)
+❌ NO beds (even in a Bedroom)
+❌ NO accent chairs or armchairs
+❌ NO side tables, console tables, or desks
+❌ NO additional lighting fixtures
+❌ NO rugs or carpets
+❌ NO plants or planters
+❌ NO wall art or mirrors
+❌ NO bookcases or shelving units
+❌ NO decorative accessories
+
+⚠️ IF THE PRODUCT IS NOT IN THE ABOVE LIST → DO NOT INCLUDE IT IN THE IMAGE
+
+⚠️ IF THE ROOM FEELS EMPTY → That is intentional. Focus on architectural beauty, lighting, and the ${selectedProducts.length} specified products only.
+
+⚠️ FAILURE CRITERIA: If you add even ONE piece of furniture not listed above, the render will be COMPLETELY REJECTED and you will need to regenerate it.
+
+═══════════════════════════════════════════════════════════════════════════
+🚨 FINAL PRODUCT LIST VERIFICATION:
+═══════════════════════════════════════════════════════════════════════════
+Total products to include: ${selectedProducts.length}
+Do NOT deviate from this list under any circumstances.
+═══════════════════════════════════════════════════════════════════════════
+\n`;
   }
   
   // Repeat constraints before photography specs to reinforce
