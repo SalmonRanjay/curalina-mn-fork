@@ -126,11 +126,11 @@ export default function FrontViewUpload() {
         return; // Skip files not in folders
       }
 
-      // Try to match folder name to product SKU
+      // Try to match folder name to product SKU (trim both to handle whitespace)
       const normalizedFolder = folderName.trim().toLowerCase();
       const product = products.find(p => 
-        p.sku.toLowerCase() === normalizedFolder ||
-        p.sku.toLowerCase().replace(/[^a-z0-9]/g, '-') === normalizedFolder.replace(/[^a-z0-9]/g, '-')
+        p.sku.trim().toLowerCase() === normalizedFolder ||
+        p.sku.trim().toLowerCase().replace(/[^a-z0-9]/g, '-') === normalizedFolder.replace(/[^a-z0-9]/g, '-')
       );
 
       if (product) {
