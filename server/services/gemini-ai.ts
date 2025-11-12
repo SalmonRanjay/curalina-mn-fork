@@ -335,11 +335,23 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       }
     }
     
-    // Filter by design style (flexible matching)
-    if (product.designStyle && product.designStyle.length > 0) {
-      const styleMatch = product.designStyle.some(ds =>
-        stylesMatch(quiz.style, ds)
-      );
+    // Filter by design style (flexible matching - check designStyle OR styleTags)
+    const hasDesignStyle = product.designStyle && product.designStyle.length > 0;
+    const hasStyleTags = product.styleTags && product.styleTags.length > 0;
+    
+    if (hasDesignStyle || hasStyleTags) {
+      let styleMatch = false;
+      
+      // Check designStyle first
+      if (hasDesignStyle) {
+        styleMatch = product.designStyle!.some(ds => stylesMatch(quiz.style, ds));
+      }
+      
+      // Fallback to styleTags if designStyle didn't match
+      if (!styleMatch && hasStyleTags) {
+        styleMatch = product.styleTags!.some(st => stylesMatch(quiz.style, st));
+      }
+      
       if (!styleMatch) return false;
     }
     
@@ -406,11 +418,21 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
         if (!roomMatch) return false;
       }
       
-      // Style still required
-      if (product.designStyle && product.designStyle.length > 0) {
-        const styleMatch = product.designStyle.some(ds =>
-          stylesMatch(quiz.style, ds)
-        );
+      // Style still required (check designStyle OR styleTags)
+      const hasDesignStyle = product.designStyle && product.designStyle.length > 0;
+      const hasStyleTags = product.styleTags && product.styleTags.length > 0;
+      
+      if (hasDesignStyle || hasStyleTags) {
+        let styleMatch = false;
+        
+        if (hasDesignStyle) {
+          styleMatch = product.designStyle!.some(ds => stylesMatch(quiz.style, ds));
+        }
+        
+        if (!styleMatch && hasStyleTags) {
+          styleMatch = product.styleTags!.some(st => stylesMatch(quiz.style, st));
+        }
+        
         if (!styleMatch) return false;
       }
       
@@ -455,11 +477,21 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       if (product.availability !== 'in_stock') return false;
       if (!canUseForAIRendering(product)) return false;
       
-      // Style required
-      if (product.designStyle && product.designStyle.length > 0) {
-        const styleMatch = product.designStyle.some(ds =>
-          stylesMatch(quiz.style, ds)
-        );
+      // Style required (check designStyle OR styleTags)
+      const hasDesignStyle = product.designStyle && product.designStyle.length > 0;
+      const hasStyleTags = product.styleTags && product.styleTags.length > 0;
+      
+      if (hasDesignStyle || hasStyleTags) {
+        let styleMatch = false;
+        
+        if (hasDesignStyle) {
+          styleMatch = product.designStyle!.some(ds => stylesMatch(quiz.style, ds));
+        }
+        
+        if (!styleMatch && hasStyleTags) {
+          styleMatch = product.styleTags!.some(st => stylesMatch(quiz.style, st));
+        }
+        
         if (!styleMatch) return false;
       }
       
