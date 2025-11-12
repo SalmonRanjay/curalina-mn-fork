@@ -79,30 +79,31 @@ async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; 
  * Get the structured analysis prompt for furniture (front-view focused)
  */
 function getStructuredAnalysisPrompt(isFrontView: boolean = false): string {
-  const charLimit = isFrontView ? '500' : '800';  // Reduced from 1000/2000 to be more concise
+  const charLimit = isFrontView ? '750' : '1500';  // Balanced limits: enough for data, but still concise
   
   return `You are an expert furniture designer analyzing this product image for AI-generated interior designs.
 
-**OUTPUT FORMAT - ULTRA-CONCISE STRUCTURED DATA:**
+**OUTPUT FORMAT - CONCISE STRUCTURED DATA:**
 
-Product Name: [Short descriptive name]
-Primary Material: [Material type, e.g., "Lacquered MDF"]
+Product Name: [Descriptive name]
+Primary Material: [Specific material, e.g., "Lacquered MDF"]
 Color & Finish: [Color with HEX, e.g., "White (#F8F8F8), gloss"]
-Form Factor: [Basic shape, e.g., "Round pedestal table"]
-Dimensions: [Key measurements, e.g., "H:21.5" W:18.5""]
-Key Geometry: [Main shape features, e.g., "Domed top, tapered base"]
-Distinctive Features: [1-2 unique elements max]
+Form Factor: [Core shape, e.g., "Round pedestal table"]
+Dimensions: [Key measurements, e.g., "H:21.5" W:18.5" D:16""]
+Key Geometry: [Essential features, e.g., "Domed top, tapered base"]
+Distinctive Features: [2-3 unique elements max]
+${!isFrontView ? 'View-Specific Details: [Features only visible from this angle]' : ''}
 
 **CRITICAL REQUIREMENTS:**
 - MAXIMUM ${charLimit} characters total
 - Use EXACT values: HEX colors, measurements
-- BE EXTREMELY CONCISE - essential details only
+- Be CONCISE but complete - include all essential details
 - NO descriptive prose, only technical facts
-- Focus on geometry and materials ONLY
+- Focus on geometry, materials, and measurements
 
 ${isFrontView ? 
-  '**FRONT VIEW ONLY:** Primary angle for AI rendering. Capture frontal geometry.' :
-  '**SKIP THIS - Use front view instead for rendering**'}`;
+  '**FRONT VIEW PRIORITY:** This is the primary angle for AI rendering. Capture complete frontal geometry.' :
+  '**ADDITIONAL ANGLE:** Note features not visible from front (back details, side profiles, hidden storage).'}`;
 }
 
 /**
@@ -129,8 +130,8 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
     
     const text = response.text?.trim() || '';
     
-    // Validate character limits - much stricter now
-    const charLimit = isFrontView ? 500 : 800;
+    // Validate character limits - balanced for completeness
+    const charLimit = isFrontView ? 750 : 1500;
     if (text.length > charLimit) {
       console.warn(`Description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
       return text.substring(0, charLimit);
@@ -144,23 +145,49 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
 }
 
 /**
- * Simplified synthesis - just returns the first (front-view) description
- * NO LONGER combines multiple angles - keeps them separate for clarity
+ * Intelligent synthesis - prioritizes front-view but preserves unique details from other angles
  */
 async function synthesizeAnalyses(analyses: string[]): Promise<string> {
   if (analyses.length === 0) return '';
+  if (analyses.length === 1) return analyses[0];
   
-  // Just return the first description (which should be the front-view)
-  // We're NOT combining multiple angles anymore for better accuracy
-  const primaryDescription = analyses[0];
-  
-  // Enforce stricter character limit
-  if (primaryDescription.length > 800) {
-    console.warn(`Description exceeds 800 character limit (${primaryDescription.length} chars). Truncating...`);
-    return primaryDescription.substring(0, 800);
+  // For now, create a simple combination that preserves multi-angle data
+  // Front-view should be first in the array
+  const synthesisPrompt = `Combine these ${analyses.length} furniture descriptions into ONE concise structured description:
+
+${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n')}
+
+**OUTPUT REQUIREMENTS:**
+1. Prioritize FRONT VIEW information when available
+2. Add unique details from other angles (back storage, hidden features)  
+3. Keep MAXIMUM 1500 characters
+4. Use the same structured format as inputs
+5. Focus on technical precision - exact colors, measurements
+
+Create a single structured description that captures the complete product.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: synthesisPrompt }]
+      }]
+    });
+    
+    const text = response.text?.trim() || analyses[0]; // Fallback to front-view
+    
+    // Enforce character limit
+    if (text.length > 1500) {
+      console.warn(`Combined description exceeds 1500 character limit (${text.length} chars). Truncating...`);
+      return text.substring(0, 1500);
+    }
+    
+    return text;
+  } catch (error) {
+    console.error('Error synthesizing descriptions:', error);
+    return analyses[0]; // Fallback to front-view
   }
-  
-  return primaryDescription;
 }
 
 /**
@@ -265,8 +292,8 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
     
     const text = response.choices[0].message.content?.trim() || '';
     
-    // Validate character limits - much stricter now
-    const charLimit = isFrontView ? 500 : 800;
+    // Validate character limits - balanced for completeness
+    const charLimit = isFrontView ? 750 : 1500;
     if (text.length > charLimit) {
       console.warn(`OpenAI description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
       return text.substring(0, charLimit);
@@ -280,33 +307,31 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
 }
 
 /**
- * Synthesize multiple analyses with OpenAI using structured format
+ * Intelligent synthesis with OpenAI - prioritizes front-view but preserves unique details
  */
 async function synthesizeAnalysesWithOpenAI(analyses: string[]): Promise<string> {
   if (analyses.length === 0) return '';
   if (analyses.length === 1) return analyses[0];
   
-  const synthesisPrompt = `Synthesize these ${analyses.length} structured furniture descriptions into ONE comprehensive structured description:
+  const synthesisPrompt = `Combine these ${analyses.length} furniture descriptions into ONE concise structured description:
 
-${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n---\n\n')}
+${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n')}
 
 **OUTPUT REQUIREMENTS:**
-1. Maintain the EXACT same structured format as the input descriptions
-2. Merge information from all views, resolving conflicts by using the most specific/detailed value
-3. Keep total response under 2000 characters
-4. Use the same field structure:
+1. Prioritize FRONT VIEW information (usually View 1) when available
+2. Add unique details from other angles (back storage, side profiles, hidden features)  
+3. Keep MAXIMUM 1500 characters
+4. Maintain the structured format:
    - Product Name:
    - Primary Material:
    - Color & Finish:
    - Form Factor:
    - Dimensions:
    - Key Geometry:
-   - Edge Profile:
    - Distinctive Features:
-   - Lighting & Texture Behavior:
-   - Multi-Angle Synthesis:
+5. Focus on technical precision - exact HEX colors, specific measurements
 
-Focus on technical precision and exact values over descriptive prose.`;
+Create a single structured description that captures the complete product.`;
 
   try {
     const response = await openaiClient.chat.completions.create({
@@ -320,18 +345,18 @@ Focus on technical precision and exact values over descriptive prose.`;
       max_completion_tokens: 2048,
     });
     
-    const text = response.choices[0].message.content?.trim() || analyses.join('\n\n');
+    const text = response.choices[0].message.content?.trim() || analyses[0]; // Fallback to front-view
     
     // Enforce character limit
-    if (text.length > 2000) {
-      console.warn(`OpenAI combined description exceeds 2000 character limit (${text.length} chars). Truncating...`);
-      return text.substring(0, 2000);
+    if (text.length > 1500) {
+      console.warn(`OpenAI combined description exceeds 1500 character limit (${text.length} chars). Truncating...`);
+      return text.substring(0, 1500);
     }
     
     return text;
   } catch (error) {
     console.error('Error synthesizing with OpenAI:', error);
-    return analyses.join('\n\n');
+    return analyses[0]; // Fallback to front-view
   }
 }
 
