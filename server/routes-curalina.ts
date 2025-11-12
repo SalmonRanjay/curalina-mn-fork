@@ -1564,40 +1564,26 @@ export function registerCuralinaRoutes(app: Express) {
             const fullProduct = allProducts.find(p => p.sku === sp.sku);
             if (!fullProduct) return sp;
             
-            // PRIORITY: Use Gemini Vision visual description if available (most detailed)
-            let visualDescription = fullProduct.visualDescription;
-            
-            // Fallback: Build description from text-based product data if no visualDescription
-            if (!visualDescription) {
-              const details: string[] = [];
-              if (fullProduct.description) {
-                details.push(fullProduct.description);
-              }
-              if (fullProduct.colors && fullProduct.colors.length > 0) {
-                details.push(`Available in ${fullProduct.colors.join(", ")}`);
-              }
-              if (fullProduct.materials && fullProduct.materials.length > 0) {
-                details.push(`Constructed from ${fullProduct.materials.join(", ")}`);
-              }
-              if (details.length > 0) {
-                visualDescription = details.join(". ");
-              }
-            }
-            
+            // Include ALL visual description fields for prioritization
+            // Priority system (in buildPromptFromQuiz): Front View → Gemini → OpenAI → legacy
             return {
               ...sp,
-              name: fullProduct.name, // Keep clean product name
-              visualDescription: visualDescription || undefined, // Add as separate field
+              name: fullProduct.name,
+              visualDescriptionFrontView: fullProduct.visualDescriptionFrontView,
+              visualDescriptionGemini: fullProduct.visualDescriptionGemini,
+              visualDescriptionOpenAI: fullProduct.visualDescriptionOpenAI,
+              visualDescription: fullProduct.visualDescription,
             };
           });
           
+          // Count products with visual descriptions (using priority system)
           const productsWithVisuals = enrichedProducts.filter((p: any) => {
-            const fullProduct = allProducts.find(fp => fp.sku === p.sku);
-            return fullProduct?.visualDescription;
+            return p.visualDescriptionFrontView || p.visualDescriptionGemini || 
+                   p.visualDescriptionOpenAI || p.visualDescription;
           }).length;
           
           if (productsWithVisuals > 0) {
-            console.log(`✨ Using visual descriptions for ${productsWithVisuals}/${selectedProducts.length} products`);
+            console.log(`✨ ${productsWithVisuals}/${selectedProducts.length} products have visual descriptions (prioritizing Front View → Gemini → OpenAI → Legacy)`);
           }
           
           // Build enhanced prompt with enriched products and image analysis
