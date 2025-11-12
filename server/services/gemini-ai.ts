@@ -260,18 +260,17 @@ function hasAIVisualDescription(product: Product): boolean {
 
 /**
  * Check if a product can be used for AI rendering
- * A product is usable ONLY if it has BOTH:
- * 1. Valid, working images
- * 2. AI-generated visual descriptions from those images
+ * A product is usable if it has valid, working images
+ * Visual descriptions are preferred but not required (allows essential furniture)
  * @param product - Product to validate
  * @returns true if product can be used for AI rendering
  */
 function canUseForAIRendering(product: Product): boolean {
-  // STRICT REQUIREMENTS:
+  // REQUIREMENTS:
   // 1. Product MUST have valid images (for compositing onto renders)
-  // 2. Product MUST have AI-generated visual descriptions (for accurate AI prompts)
-  // This ensures only products with working images AND quality AI analysis are used
-  return hasValidImages(product) && hasAIVisualDescription(product);
+  // 2. Visual descriptions are PREFERRED but not required
+  // This allows essential furniture (tables, chairs) even without AI analysis
+  return hasValidImages(product);
 }
 
 /**
@@ -283,8 +282,8 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
   const inStockCount = products.filter(p => p.availability === 'in_stock').length;
   const withValidImages = products.filter(p => p.availability === 'in_stock' && hasValidImages(p)).length;
   const withAIDescriptions = products.filter(p => p.availability === 'in_stock' && hasAIVisualDescription(p)).length;
-  const aiReady = products.filter(p => p.availability === 'in_stock' && canUseForAIRendering(p)).length;
-  console.log(`📊 Product Pool: ${products.length} total → ${inStockCount} in stock → ${withValidImages} with images → ${withAIDescriptions} with AI descriptions → ${aiReady} AI-ready`);
+  console.log(`📊 Product Pool: ${products.length} total → ${inStockCount} in stock → ${withValidImages} with valid images`);
+  console.log(`   📸 ${withAIDescriptions} have AI visual descriptions (preferred but not required)`);
   console.log(`⚠️ Budget NOT enforced during filtering - focusing on render quality`);
   
   // First pass: strict filtering
@@ -295,13 +294,44 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     // Filter by AI-ready products (REQUIRED - must have images AND visual descriptions)
     if (!canUseForAIRendering(product)) return false;
     
-    // Filter by room type
+    // Filter by room type (relaxed for essential furniture)
     if (product.roomType && product.roomType.length > 0) {
       const roomMatch = product.roomType.some(rt => 
         rt.toLowerCase().includes(quiz.roomType.toLowerCase()) ||
         quiz.roomType.toLowerCase().includes(rt.toLowerCase())
       );
       if (!roomMatch) return false;
+    } else {
+      // If no room type assigned, allow essential furniture based on name matching
+      const productName = product.name.toLowerCase();
+      const roomType = quiz.roomType.toLowerCase();
+      
+      // Special cases for furniture without room assignments
+      if (roomType === 'dining room' || roomType === 'dining') {
+        // Allow dining tables and chairs even without room type
+        const isDiningFurniture = productName.includes('dining') || 
+                                  (productName.includes('table') && !productName.includes('console') && !productName.includes('accent')) ||
+                                  (productName.includes('chair') && !productName.includes('accent') && !productName.includes('lounge'));
+        if (!isDiningFurniture) return false;
+      } else if (roomType === 'living room' || roomType === 'living') {
+        // Allow living room essentials
+        const isLivingFurniture = productName.includes('sofa') || 
+                                   productName.includes('couch') || 
+                                   productName.includes('coffee table') || 
+                                   productName.includes('ottoman') ||
+                                   productName.includes('accent');
+        if (!isLivingFurniture) return false;
+      } else if (roomType === 'bedroom') {
+        // Allow bedroom essentials
+        const isBedroomFurniture = productName.includes('bed') || 
+                                    productName.includes('nightstand') || 
+                                    productName.includes('dresser');
+        if (!isBedroomFurniture) return false;
+      }
+      // For other room types, exclude products without room assignment
+      else {
+        return false;
+      }
     }
     
     // Filter by design style (flexible matching)
