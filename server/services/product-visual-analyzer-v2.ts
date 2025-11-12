@@ -43,36 +43,72 @@ interface ProductAnalysisResult {
 }
 
 /**
+ * Validate if an image URL is accessible
+ */
+async function validateImageUrl(imageUrl: string): Promise<boolean> {
+  try {
+    let fullUrl = imageUrl;
+    if (imageUrl.startsWith('/')) {
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+      fullUrl = `${baseUrl}${imageUrl}`;
+    } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+      fullUrl = `${baseUrl}/${imageUrl}`;
+    }
+    
+    const response = await fetch(fullUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    const contentType = response.headers.get('content-type') || '';
+    
+    // Check if it's an image and accessible
+    return response.ok && contentType.startsWith('image/');
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
  * Download image from URL and convert to base64
  */
-async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {
-  // Handle relative URLs by prepending the base URL
-  let fullUrl = imageUrl;
-  if (imageUrl.startsWith('/')) {
-    // For relative URLs, prepend the base URL
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-    fullUrl = `${baseUrl}${imageUrl}`;
-  } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    // For S3 or other relative paths, assume they need the base URL
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-    fullUrl = `${baseUrl}/${imageUrl}`;
+async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    // Handle relative URLs by prepending the base URL
+    let fullUrl = imageUrl;
+    if (imageUrl.startsWith('/')) {
+      // For relative URLs, prepend the base URL
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+      fullUrl = `${baseUrl}${imageUrl}`;
+    } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      // For S3 or other relative paths, assume they need the base URL
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+      fullUrl = `${baseUrl}/${imageUrl}`;
+    }
+    
+    const response = await fetch(fullUrl, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) {
+      console.warn(`Failed to download image from ${fullUrl}: ${response.statusText}`);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      console.warn(`URL is not an image (got ${contentType}): ${fullUrl}`);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString('base64');
+    
+    let mimeType = contentType;
+    if (!mimeType.startsWith('image/')) {
+      mimeType = 'image/jpeg';
+    }
+    
+    return { data: base64, mimeType };
+  } catch (error) {
+    console.warn(`Error downloading image ${imageUrl}:`, error instanceof Error ? error.message : 'Unknown error');
+    return null;
   }
-  
-  const response = await fetch(fullUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download image from ${fullUrl}: ${response.statusText}`);
-  }
-  
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const base64 = buffer.toString('base64');
-  
-  let mimeType = response.headers.get('content-type') || 'image/jpeg';
-  if (!mimeType.startsWith('image/')) {
-    mimeType = 'image/jpeg';
-  }
-  
-  return { data: base64, mimeType };
 }
 
 /**
@@ -112,6 +148,13 @@ ${isFrontView ?
 async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFrontView: boolean = false): Promise<string> {
   try {
     const imageData = await downloadImageAsBase64(imageUrl);
+    
+    // Return empty string if image download failed
+    if (!imageData) {
+      console.warn(`  ⚠️ Gemini: Skipping ${imageName} - image not accessible`);
+      return '';
+    }
+    
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{
@@ -140,7 +183,8 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
     return text;
   } catch (error) {
     console.error(`Error analyzing ${imageName} with Gemini:`, error);
-    throw error;
+    // Return empty string instead of throwing - let analysis continue
+    return '';
   }
 }
 
@@ -268,6 +312,12 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
     // Download image as base64
     const imageData = await downloadImageAsBase64(imageUrl);
     
+    // Return empty string if image download failed
+    if (!imageData) {
+      console.warn(`  ⚠️ OpenAI: Skipping ${imageName} - image not accessible`);
+      return '';
+    }
+    
     const response = await openaiClient.chat.completions.create({
       model: "gpt-5",
       messages: [
@@ -302,7 +352,8 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
     return text;
   } catch (error) {
     console.error(`Error analyzing ${imageName} with OpenAI:`, error);
-    throw error;
+    // Return empty string instead of throwing - let analysis continue
+    return '';
   }
 }
 
