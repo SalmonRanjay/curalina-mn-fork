@@ -102,7 +102,7 @@ class VisualAnalysisJobQueue {
       
       // Process in batches with concurrent workers
       const batchSize = 20;
-      const workerCount = 5;
+      const workerCount = 10;
       
       for (let i = 0; i < pendingProducts.length; i += batchSize) {
         const batch = pendingProducts.slice(i, i + batchSize);
