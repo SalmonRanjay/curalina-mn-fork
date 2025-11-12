@@ -98,6 +98,7 @@ export interface ICuralinaStorage {
   createSelectionLedger(ledger: InsertSelectionLedger): Promise<SelectionLedger>;
   getSelectionLedgerByHash(hash: string): Promise<SelectionLedger | undefined>;
   getSelectionLedgerByRender(renderId: string): Promise<SelectionLedger | undefined>;
+  getAllLedgers(limit?: number): Promise<SelectionLedger[]>;
   updateSelectionLedgerDetails(id: string, details: {
     selectionRationale?: any;
     compositionOrder?: string[];
@@ -383,6 +384,14 @@ export class CuralinaStorage implements ICuralinaStorage {
       .where(eq(selectionLedger.renderId, renderId))
       .limit(1);
     return ledger;
+  }
+
+  async getAllLedgers(limit: number = 100): Promise<SelectionLedger[]> {
+    return db
+      .select()
+      .from(selectionLedger)
+      .orderBy(desc(selectionLedger.createdAt))
+      .limit(limit);
   }
 
   async updateSelectionLedgerDetails(id: string, details: {

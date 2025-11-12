@@ -1905,6 +1905,20 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Get selection ledger for a render (Task 7: Shop the Look composition order)
+  app.get('/api/render/:renderId/ledger', async (req, res) => {
+    try {
+      const ledger = await curalinaStorage.getSelectionLedgerByRender(req.params.renderId);
+      if (!ledger) {
+        return res.status(404).json({ error: "Selection ledger not found" });
+      }
+      res.json(ledger);
+    } catch (error) {
+      console.error("Error fetching selection ledger:", error);
+      res.status(500).json({ error: "Failed to fetch selection ledger" });
+    }
+  });
+
   app.get('/api/renders', async (req, res) => {
     try {
       const { sessionId } = req.query;
@@ -2090,6 +2104,19 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  // Admin ledger audit endpoint (Task 8: Full decision trail view)
+  app.get('/api/admin/ledgers', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const parsedLimit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const limit = Number.isNaN(parsedLimit) ? 100 : parsedLimit;
+      const ledgers = await curalinaStorage.getAllLedgers(limit);
+      res.json(ledgers);
+    } catch (error) {
+      console.error("Error fetching ledgers:", error);
+      res.status(500).json({ error: "Failed to fetch ledgers" });
     }
   });
 

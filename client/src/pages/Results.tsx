@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Render, Product, ProductMetadata } from "@shared/schema";
+import type { Render, Product, ProductMetadata, SelectionLedger } from "@shared/schema";
 
 /**
  * Helper function to reorder product images to prioritize Front View
@@ -83,8 +83,26 @@ export default function Results() {
     },
   });
 
-  // Build ordered products list based on render.productSkus with swaps applied
-  const products: Product[] = (render?.productSkus || []).map((sku) => {
+  // Fetch selection ledger for composition order (Task 7)
+  const { data: selectionLedger } = useQuery<SelectionLedger>({
+    queryKey: ["/api/render", render?.id, "ledger"],
+    queryFn: async () => {
+      if (!render?.id) throw new Error("No render ID");
+      const res = await fetch(`/api/render/${render.id}/ledger`);
+      if (!res.ok) {
+        // Ledger may not exist for older renders - gracefully fall back
+        if (res.status === 404) return null;
+        throw new Error("Failed to fetch selection ledger");
+      }
+      return res.json();
+    },
+    enabled: !!render?.id,
+  });
+
+  // Build ordered products list
+  // Priority: 1) Selection ledger composition order, 2) Fallback to render.productSkus
+  const productSkuOrder = selectionLedger?.compositionOrder || render?.productSkus || [];
+  const products: Product[] = productSkuOrder.map((sku) => {
     // If this SKU has been swapped, use the replacement product ID
     const targetId = swappedProducts[sku] || null;
     
