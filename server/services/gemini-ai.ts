@@ -895,6 +895,325 @@ function getBestVisualDescription(product: any): { description: string; source: 
 }
 
 /**
+ * Generate structured placement matrix with explicit spatial instructions
+ */
+function generatePlacementMatrix(
+  selectedProducts: Array<{ 
+    sku: string; 
+    name: string; 
+    placement: string; 
+    reasoning: string;
+    functionalCategory?: string;
+    priority?: number;
+  }>,
+  roomType: string,
+  roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
+  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
+): string {
+  const matrix: string[] = [];
+  
+  matrix.push(`\n\n═══════════════════════════════════════════════════════════════════════════`);
+  matrix.push(`📍 STRUCTURED PLACEMENT MATRIX - FOLLOW PRECISELY`);
+  matrix.push(`═══════════════════════════════════════════════════════════════════════════`);
+  matrix.push(``);
+  matrix.push(`This matrix provides EXPLICIT spatial instructions for each product.`);
+  matrix.push(`You MUST follow these placement rules to create a functional, well-composed room.`);
+  matrix.push(``);
+  
+  // Extract spatial constraints from room/floor plan analysis
+  const hasWindows = floorPlanAnalysis?.windowLocations && floorPlanAnalysis.windowLocations.length > 0;
+  const hasDoors = floorPlanAnalysis?.doorLocations && floorPlanAnalysis.doorLocations.length > 0;
+  const roomDimensions = floorPlanAnalysis?.roomDimensions || "standard room dimensions";
+  
+  // Add room spatial context
+  matrix.push(`🏠 ROOM SPATIAL CONTEXT:`);
+  matrix.push(`   Room Type: ${roomType}`);
+  matrix.push(`   Dimensions: ${roomDimensions}`);
+  if (hasWindows) {
+    matrix.push(`   Windows: ${floorPlanAnalysis.windowLocations.length} window(s) - ${floorPlanAnalysis.windowLocations.join(", ")}`);
+  }
+  if (hasDoors) {
+    matrix.push(`   Doors: ${floorPlanAnalysis.doorLocations.length} door(s)/opening(s) - ${floorPlanAnalysis.doorLocations.join(", ")}`);
+  }
+  matrix.push(``);
+  
+  // Group products by functional category and priority
+  const essentials = selectedProducts.filter(p => p.priority && p.priority <= 2);
+  const complementary = selectedProducts.filter(p => p.priority && p.priority > 2);
+  
+  // Generate placement instructions for essentials first
+  if (essentials.length > 0) {
+    matrix.push(`📌 ESSENTIAL ITEMS (Must-Place Priority):`);
+    matrix.push(`These items form the foundation of the room layout.`);
+    matrix.push(``);
+    
+    essentials.forEach((product, idx) => {
+      matrix.push(`${idx + 1}. ${product.name} [${product.functionalCategory?.toUpperCase() || 'ESSENTIAL'}]`);
+      matrix.push(`   ├─ Anchor Zone: ${getAnchorZone(product, roomType, hasWindows, hasDoors)}`);
+      matrix.push(`   ├─ Positioning: ${getPositioningRules(product, roomType)}`);
+      matrix.push(`   ├─ Clearance: ${getClearanceRules(product)}`);
+      matrix.push(`   ├─ Adjacency: ${getAdjacencyRules(product, selectedProducts, roomType)}`);
+      matrix.push(`   └─ Integration: ${product.reasoning}`);
+      matrix.push(``);
+    });
+  }
+  
+  // Generate placement instructions for complementary items
+  if (complementary.length > 0) {
+    matrix.push(`🎨 COMPLEMENTARY ITEMS (Fill/Support Priority):`);
+    matrix.push(`These items support and enhance the essential furniture.`);
+    matrix.push(``);
+    
+    complementary.forEach((product, idx) => {
+      matrix.push(`${essentials.length + idx + 1}. ${product.name} [${product.functionalCategory?.toUpperCase() || 'COMPLEMENTARY'}]`);
+      matrix.push(`   ├─ Relative To: ${getRelativePosition(product, essentials, roomType)}`);
+      matrix.push(`   ├─ Positioning: ${getPositioningRules(product, roomType)}`);
+      matrix.push(`   ├─ Clearance: ${getClearanceRules(product)}`);
+      matrix.push(`   └─ Integration: ${product.reasoning}`);
+      matrix.push(``);
+    });
+  }
+  
+  // Add composition rules
+  matrix.push(`⚖️ COMPOSITION RULES:`);
+  matrix.push(`   • Create clear traffic paths - maintain 36-48" walkways`);
+  matrix.push(`   • Group furniture to create functional zones (conversation, task, circulation)`);
+  matrix.push(`   • Balance visual weight across the room - avoid clustering all large items on one side`);
+  matrix.push(`   • Respect architectural features - don't block windows, doors, or built-ins`);
+  matrix.push(`   • Maintain appropriate scale relationships between items`);
+  matrix.push(`   • Every product in the matrix MUST appear exactly once in the final render`);
+  matrix.push(``);
+  matrix.push(`═══════════════════════════════════════════════════════════════════════════`);
+  
+  return matrix.join('\n');
+}
+
+/**
+ * Determine anchor zone based on functional category and room layout
+ */
+function getAnchorZone(
+  product: { name: string; functionalCategory?: string },
+  roomType: string,
+  hasWindows: boolean,
+  hasDoors: boolean
+): string {
+  const category = product.functionalCategory?.toLowerCase() || '';
+  const name = product.name.toLowerCase();
+  
+  // Sofas and primary seating
+  if (category.includes('seating') && (name.includes('sofa') || name.includes('sectional'))) {
+    if (hasWindows) {
+      return "Position facing windows to maximize natural light view, or along main wall as focal point";
+    }
+    return "Center along longest wall as focal point, facing room's primary view";
+  }
+  
+  // Coffee tables
+  if (category.includes('coffee') || name.includes('coffee table')) {
+    return "Center in seating zone, aligned with primary sofa";
+  }
+  
+  // Beds
+  if (category.includes('bed') || name.includes('bed')) {
+    if (hasWindows) {
+      return "Headboard against solid wall opposite or perpendicular to windows";
+    }
+    return "Headboard centered on longest wall, facing room entry if visible";
+  }
+  
+  // Dining tables
+  if (category.includes('dining') || name.includes('dining table')) {
+    return "Center of room or centered under ceiling feature/lighting, with adequate clearance on all sides";
+  }
+  
+  // Desks
+  if (category.includes('desk') || name.includes('desk')) {
+    if (hasWindows) {
+      return "Positioned to face or be perpendicular to window for natural task lighting";
+    }
+    return "Against wall or floating in room, ensuring adequate task lighting";
+  }
+  
+  return "Position based on room flow and functional relationships to other furniture";
+}
+
+/**
+ * Get specific positioning rules for product type
+ */
+function getPositioningRules(
+  product: { name: string; functionalCategory?: string },
+  roomType: string
+): string {
+  const category = product.functionalCategory?.toLowerCase() || '';
+  const name = product.name.toLowerCase();
+  
+  if (category.includes('seating') && (name.includes('sofa') || name.includes('sectional'))) {
+    return "Parallel or perpendicular to walls, NOT floating unless room size allows. Keep 12-18\" from wall.";
+  }
+  
+  if (category.includes('coffee')) {
+    return "18\" from sofa front edge, centered along sofa length";
+  }
+  
+  if (category.includes('accent_seating') || name.includes('chair')) {
+    return "Angled slightly toward conversation area or parallel to walls. Create groupings, not isolated placement.";
+  }
+  
+  if (category.includes('side') || category.includes('end')) {
+    return "Immediately adjacent to seating within arm's reach (6-12\" gap)";
+  }
+  
+  if (category.includes('lighting')) {
+    return "In corners, beside seating, or on side tables - distribute to eliminate shadows";
+  }
+  
+  if (category.includes('storage') || name.includes('cabinet') || name.includes('shelv')) {
+    return "Against walls to maximize floor space, flanking focal points when appropriate";
+  }
+  
+  if (category.includes('bed')) {
+    return "Centered on wall with symmetrical nightstand placement if space allows";
+  }
+  
+  return "Integrate naturally within room layout maintaining scale and proportion";
+}
+
+/**
+ * Get clearance requirements for safe and functional use
+ */
+function getClearanceRules(product: { name: string; functionalCategory?: string }): string {
+  const category = product.functionalCategory?.toLowerCase() || '';
+  const name = product.name.toLowerCase();
+  
+  if (category.includes('seating') || name.includes('sofa') || name.includes('chair')) {
+    return "Minimum 36\" clearance in front for traffic, 24\" on sides for access";
+  }
+  
+  if (category.includes('dining') || name.includes('dining')) {
+    return "36-48\" clearance around table for chair pull-out and circulation";
+  }
+  
+  if (category.includes('bed')) {
+    return "24-36\" on each side for making bed and movement, 36\" at foot";
+  }
+  
+  if (category.includes('desk')) {
+    return "36\" behind chair for pushing back, clear path to desk area";
+  }
+  
+  return "Maintain 24-36\" clearance for access and circulation";
+}
+
+/**
+ * Define adjacency relationships to other products
+ */
+function getAdjacencyRules(
+  product: { name: string; functionalCategory?: string },
+  allProducts: Array<{ name: string; functionalCategory?: string }>,
+  roomType: string
+): string {
+  const category = product.functionalCategory?.toLowerCase() || '';
+  const name = product.name.toLowerCase();
+  
+  // Find related products
+  const hasCoffeeTable = allProducts.some(p => p.name.toLowerCase().includes('coffee table'));
+  const hasSofa = allProducts.some(p => p.name.toLowerCase().includes('sofa') || p.name.toLowerCase().includes('sectional'));
+  const hasChairs = allProducts.some(p => p.name.toLowerCase().includes('chair') && !p.name.toLowerCase().includes('dining'));
+  const hasSideTables = allProducts.some(p => p.name.toLowerCase().includes('side') || p.name.toLowerCase().includes('end table'));
+  
+  if (category.includes('coffee')) {
+    if (hasSofa) {
+      return "MUST be positioned in front of sofa, aligned with sofa centerline";
+    }
+    return "Central to seating arrangement if present";
+  }
+  
+  if (category.includes('accent_seating')) {
+    if (hasSofa && hasCoffeeTable) {
+      return "Positioned to complete conversation zone around coffee table with sofa";
+    } else if (hasSofa) {
+      return "Angled toward sofa to create conversational grouping";
+    }
+    return "Create seating grouping with other chairs if multiple present";
+  }
+  
+  if (category.includes('side') || category.includes('end')) {
+    if (hasSofa || hasChairs) {
+      return "Immediately adjacent to seating (sofa arm or chair side) for functional reach";
+    }
+    return "Pair with seating or bed for functional surface access";
+  }
+  
+  if (category.includes('lighting')) {
+    if (hasSideTables) {
+      return "Place on side/end tables for task lighting at seating level";
+    } else if (hasChairs || hasSofa) {
+      return "Position beside seating or in room corners for ambient lighting";
+    }
+    return "Distribute evenly to eliminate dark zones";
+  }
+  
+  return "Coordinate with room layout and other furniture for cohesive design";
+}
+
+/**
+ * Get relative positioning for complementary items
+ */
+function getRelativePosition(
+  product: { name: string; functionalCategory?: string },
+  essentials: Array<{ name: string; functionalCategory?: string }>,
+  roomType: string
+): string {
+  const category = product.functionalCategory?.toLowerCase() || '';
+  const name = product.name.toLowerCase();
+  
+  // Find key essentials
+  const primarySeating = essentials.find(p => 
+    p.name.toLowerCase().includes('sofa') || p.name.toLowerCase().includes('sectional')
+  );
+  const coffeeTable = essentials.find(p => p.name.toLowerCase().includes('coffee table'));
+  const bed = essentials.find(p => p.name.toLowerCase().includes('bed'));
+  const diningTable = essentials.find(p => p.name.toLowerCase().includes('dining table'));
+  
+  if (category.includes('accent_seating')) {
+    if (primarySeating && coffeeTable) {
+      return `${primarySeating.name} and ${coffeeTable.name} - form conversation zone`;
+    } else if (primarySeating) {
+      return `${primarySeating.name} - create seating grouping`;
+    }
+    return "Essential seating items";
+  }
+  
+  if (category.includes('side') || category.includes('end')) {
+    if (primarySeating) {
+      return `${primarySeating.name} - position at sofa ends or beside chairs`;
+    } else if (bed) {
+      return `${bed.name} - function as nightstand`;
+    }
+    return "Primary furniture pieces";
+  }
+  
+  if (category.includes('lighting')) {
+    if (primarySeating) {
+      return `${primarySeating.name} - provide reading/task light`;
+    } else if (bed) {
+      return `${bed.name} - bedside lighting`;
+    }
+    return "Seating and task areas";
+  }
+  
+  if (category.includes('storage')) {
+    return "Walls and perimeter - flank focal points when appropriate";
+  }
+  
+  if (category.includes('decor')) {
+    return "Walls, surfaces, and vertical spaces - layer after furniture placement";
+  }
+  
+  return "Other furniture in room composition";
+}
+
+/**
  * Build a highly detailed professional prompt from quiz responses and selected products
  * Optimized for clean, beautiful, realistic interior design renders
  * @param quiz - Quiz response data
@@ -904,7 +1223,7 @@ function getBestVisualDescription(product: any): { description: string; source: 
  */
 export function buildPromptFromQuiz(
   quiz: QuizResponse, 
-  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }>,
+  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string; functionalCategory?: string; priority?: number }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
 ): { prompt: string; productMetadata: Record<string, { visualDescriptionSource: string }> } {
@@ -1092,13 +1411,12 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
 `;
       }
       
-      prompt += `   PLACEMENT REQUIREMENTS:
-   - Location: ${product.placement}
-   - Integration: ${product.reasoning}
-   - This product MUST be clearly visible and identifiable in the final render
-   
+      prompt += `   
 `;
     });
+    
+    // Add structured placement matrix BEFORE constraints
+    prompt += generatePlacementMatrix(selectedProducts, quiz.roomType, roomAnalysis, floorPlanAnalysis);
     
     prompt += `
 ═══════════════════════════════════════════════════════════════════════════
