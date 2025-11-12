@@ -467,6 +467,50 @@ function parseBudgetRange(budgetRange: string): number | null {
 }
 
 /**
+ * Get essential furniture categories for a room type
+ * Ensures product selection includes major furniture pieces
+ */
+function getRoomEssentialCategories(roomType: string): Array<{ category: string; description: string; priority: 'high' | 'medium' }> {
+  const room = roomType.toLowerCase();
+  
+  if (room.includes('living')) {
+    return [
+      { category: 'Seating', description: 'Sofa, sectional, or 2-3 chairs for primary seating', priority: 'high' },
+      { category: 'Tables', description: 'Coffee table or side tables', priority: 'high' },
+      { category: 'Lighting', description: 'Floor lamps or table lamps', priority: 'medium' },
+      { category: 'Storage/Decor', description: 'Cabinets, ottomans, or decorative items', priority: 'medium' }
+    ];
+  } else if (room.includes('dining')) {
+    return [
+      { category: 'Dining Table', description: 'Main dining table', priority: 'high' },
+      { category: 'Seating', description: 'Dining chairs (4-6)', priority: 'high' },
+      { category: 'Storage', description: 'Buffet, sideboard, or cabinet', priority: 'medium' },
+      { category: 'Lighting', description: 'Chandelier, pendant, or table lamps', priority: 'medium' }
+    ];
+  } else if (room.includes('bedroom')) {
+    return [
+      { category: 'Bed', description: 'Bed frame or platform bed', priority: 'high' },
+      { category: 'Storage', description: 'Dresser, nightstands, or wardrobe', priority: 'high' },
+      { category: 'Seating', description: 'Bench, chair, or reading nook', priority: 'medium' },
+      { category: 'Lighting', description: 'Table lamps or floor lamps', priority: 'medium' }
+    ];
+  } else if (room.includes('office') || room.includes('study')) {
+    return [
+      { category: 'Desk', description: 'Work desk or writing table', priority: 'high' },
+      { category: 'Seating', description: 'Office chair or task chair', priority: 'high' },
+      { category: 'Storage', description: 'Bookcase, filing cabinet, or shelving', priority: 'medium' },
+      { category: 'Lighting', description: 'Desk lamp or floor lamp', priority: 'medium' }
+    ];
+  } else {
+    // Default for other room types
+    return [
+      { category: 'Primary Furniture', description: 'Major functional pieces for this space', priority: 'high' },
+      { category: 'Supporting Items', description: 'Complementary furniture and decor', priority: 'medium' }
+    ];
+  }
+}
+
+/**
  * Use Gemini AI to select the best products for the room
  * Returns a curated list of products with placement suggestions
  */
@@ -505,6 +549,9 @@ export async function selectProductsWithAI(
     const budgetMax = parseBudgetRange(quiz.budgetRange);
     const budgetMaxFormatted = budgetMax ? `$${budgetMax.toLocaleString()}` : quiz.budgetRange;
 
+    // Define essential furniture categories by room type
+    const essentialCategories = getRoomEssentialCategories(quiz.roomType);
+    
     const prompt = `You are an expert interior designer selecting furniture for a ${quiz.roomType}.
 
 Room Requirements:
@@ -522,11 +569,15 @@ CRITICAL BUDGET CONSTRAINT:
 - If approaching the budget limit, choose fewer or less expensive items
 - Better to stay well under budget than to exceed it
 
+ESSENTIAL FURNITURE CATEGORIES FOR ${quiz.roomType.toUpperCase()}:
+${essentialCategories.map(cat => `- ${cat.category}: ${cat.description} (${cat.priority} priority)`).join('\n')}
+
 IMPORTANT SELECTION CRITERIA:
-1. PRIORITIZE products with high featureMatchScore (those matching the required key features)
-2. Select 5-8 products that work best together for this room
-3. Ensure the selection creates a cohesive, functional design
-4. **ENSURE TOTAL COST ≤ ${budgetMaxFormatted}** (check the sum of all prices!)
+1. FIRST: Select essential furniture from each high-priority category above (sofas, chairs, tables as applicable)
+2. SECOND: Add products with high featureMatchScore (those matching the required key features)
+3. Select 5-8 products total that work best together for this room
+4. Ensure the selection creates a cohesive, COMPLETE, functional design
+5. **ENSURE TOTAL COST ≤ ${budgetMaxFormatted}** (check the sum of all prices!)
 
 For each selected product, specify:
 1. SKU and name
