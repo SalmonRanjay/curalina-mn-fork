@@ -4,7 +4,7 @@
 Curalina AI is a full-stack AI-powered interior design platform that integrates hybrid AI-generated room rendering with an e-commerce marketplace for furniture. The platform provides a seamless interior design and shopping experience, from inspiration to purchase, leveraging multimodal AI for highly personalized and contextually appropriate visual experiences.
 
 Key capabilities include:
-- **Intelligent Image Analysis**: AI analysis of room photos, floor plans, vibe images, and product images (using Gemini Vision and OpenAI GPT-5 Vision) to extract spatial information, user preferences, and detailed visual product descriptions.
+- **Intelligent Image Analysis**: AI analysis of room photos, floor plans, vibe images, and product images (using Gemini Vision and OpenAI GPT-5 Vision) to extract spatial information, user preferences, and detailed visual product descriptions. Enhanced Front View detection automatically treats single-image products as Front View images, ensuring they receive the highest-priority AI analysis.
 - **AI-Powered Rendering**: Generates creative room designs from scratch (text-to-image) or redesigns existing spaces while preserving architectural features (image-to-image) using Gemini 2.5 Flash.
 - **Hybrid Image Compositing**: Aims for exact product matching by compositing real product images onto AI-generated rooms.
 - **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context and detailed product visual descriptions for more accurate and relevant designs. Visual descriptions are prioritized: Front View → Gemini Vision → OpenAI Vision → Legacy, ensuring the highest-quality product information is used.
