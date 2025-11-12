@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Render, Product } from "@shared/schema";
+import type { Render, Product, ProductMetadata } from "@shared/schema";
 
 /**
  * Helper function to reorder product images to prioritize Front View
@@ -359,15 +359,21 @@ export default function Results() {
                             <h3 className="font-semibold text-lg" data-testid={`text-product-name-${product.id}`}>
                               {product.name}
                             </h3>
-                            {render?.productMetadata && render.productMetadata[product.sku] && (
-                              <Badge 
-                                variant={getVisualDescriptionBadgeVariant(render.productMetadata[product.sku].visualDescriptionSource)}
-                                className="text-xs shrink-0"
-                                data-testid={`badge-visual-source-${product.id}`}
-                              >
-                                {render.productMetadata[product.sku].visualDescriptionSource}
-                              </Badge>
-                            )}
+                            {(() => {
+                              const metadata = render?.productMetadata as ProductMetadata | null | undefined;
+                              if (metadata && metadata[product.sku]) {
+                                return (
+                                  <Badge 
+                                    variant={getVisualDescriptionBadgeVariant(metadata[product.sku].visualDescriptionSource)}
+                                    className="text-xs shrink-0"
+                                    data-testid={`badge-visual-source-${product.id}`}
+                                  >
+                                    {metadata[product.sku].visualDescriptionSource}
+                                  </Badge>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           <p className="text-sm text-stone-600 dark:text-stone-400 mb-3 line-clamp-2">
                             {product.description}

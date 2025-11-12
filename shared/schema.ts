@@ -283,6 +283,12 @@ export const renderRelations = relations(renders, ({ one }) => ({
 }));
 
 export type Render = typeof renders.$inferSelect;
+
+// Type for productMetadata JSONB field structure
+export type ProductMetadata = Record<string, { 
+  visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'OpenAI Vision' | 'Legacy' | 'None' 
+}>;
+
 export const insertRenderSchema = createInsertSchema(renders).omit({
   id: true,
   createdAt: true,
