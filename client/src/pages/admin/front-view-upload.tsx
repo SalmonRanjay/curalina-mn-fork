@@ -126,12 +126,14 @@ export default function FrontViewUpload() {
         return; // Skip files not in folders
       }
 
-      // Try to match folder name to product SKU (trim both to handle whitespace)
-      const normalizedFolder = folderName.trim().toLowerCase();
-      const product = products.find(p => 
-        p.sku.trim().toLowerCase() === normalizedFolder ||
-        p.sku.trim().toLowerCase().replace(/[^a-z0-9]/g, '-') === normalizedFolder.replace(/[^a-z0-9]/g, '-')
-      );
+      // Try to match folder name to product SKU
+      // Clean folder name: remove leading/trailing spaces, underscores, and hyphens
+      const cleanFolder = folderName.replace(/^[\s_-]+|[\s_-]+$/g, '').trim().toLowerCase();
+      const product = products.find(p => {
+        const cleanSku = p.sku.trim().toLowerCase();
+        return cleanSku === cleanFolder || 
+               cleanSku.replace(/[^a-z0-9]/g, '-') === cleanFolder.replace(/[^a-z0-9]/g, '-');
+      });
 
       if (product) {
         // Check if product already has a front-view image
