@@ -832,11 +832,13 @@ WHAT YOU CAN CHANGE:
   // Visual descriptions come from Gemini Vision analysis or text-based generator
   // These detailed descriptions ensure AI generates furniture that closely matches real products
   if (selectedProducts && selectedProducts.length > 0) {
-    prompt += `\n\nCURATED FURNITURE & DÉCOR:
-The following specific pieces must be featured prominently in the design. Each product has detailed visual specifications to ensure accurate representation:\n\n`;
+    prompt += `\n\n⚠️ STRICT PRODUCT LIST - EXACTLY ${selectedProducts.length} ITEMS ⚠️
+    
+MANDATORY FURNITURE & DÉCOR (DO NOT ADD ANY OTHER ITEMS):
+You MUST include ONLY these ${selectedProducts.length} specific products. Each product has detailed visual specifications for accurate representation:\n\n`;
     
     selectedProducts.forEach((product, index) => {
-      prompt += `${index + 1}. ${product.name}\n`;
+      prompt += `${index + 1}. ${product.name} [REQUIRED]\n`;
       
       // Use visualDescription if available (from Gemini Vision or text generator)
       if (product.visualDescription && product.visualDescription.trim().length > 0) {
@@ -850,12 +852,20 @@ The following specific pieces must be featured prominently in the design. Each p
       prompt += `   PLACEMENT REQUIREMENTS:
    - Location: ${product.placement}
    - Integration: ${product.reasoning}
-   - Ensure this product is clearly visible and prominent in the final render
+   - This product MUST be clearly visible and identifiable in the final render
    
 `;
     });
     
-    prompt += `CRITICAL: Each product listed above must be rendered with photorealistic accuracy matching the visual specifications. The AI should generate furniture that closely resembles these exact products, using the detailed color, material, dimension, and style information provided.\n`;
+    prompt += `🚫 CRITICAL CONSTRAINTS - ABSOLUTELY NO EXCEPTIONS:
+1. Include EXACTLY ${selectedProducts.length} products listed above - NO MORE, NO LESS
+2. DO NOT add any furniture, decor, or accessories not explicitly listed above
+3. DO NOT create additional chairs, tables, lamps, plants, or any items beyond the list
+4. DO NOT "fill in" empty spaces with extra furniture - use only what's specified
+5. Each listed product MUST be clearly recognizable and match its visual specifications
+6. If a space seems empty, use styling elements like lighting and shadows rather than adding furniture
+
+⚠️ FAILURE CRITERIA: The render will be REJECTED if it contains ANY furniture or major decor items not in the above list of ${selectedProducts.length} products.\n`;
   }
   
   // Professional photography and rendering specifications
