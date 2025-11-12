@@ -46,9 +46,21 @@ interface ProductAnalysisResult {
  * Download image from URL and convert to base64
  */
 async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {
-  const response = await fetch(imageUrl);
+  // Handle relative URLs by prepending the base URL
+  let fullUrl = imageUrl;
+  if (imageUrl.startsWith('/')) {
+    // For relative URLs, prepend the base URL
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    fullUrl = `${baseUrl}${imageUrl}`;
+  } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    // For S3 or other relative paths, assume they need the base URL
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    fullUrl = `${baseUrl}/${imageUrl}`;
+  }
+  
+  const response = await fetch(fullUrl);
   if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.statusText}`);
+    throw new Error(`Failed to download image from ${fullUrl}: ${response.statusText}`);
   }
   
   const arrayBuffer = await response.arrayBuffer();
