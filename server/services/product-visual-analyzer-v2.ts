@@ -195,128 +195,49 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
   }
 }
 
-/**
- * Intelligent synthesis - prioritizes front-view but preserves unique details from other angles
- */
-async function synthesizeAnalyses(analyses: string[]): Promise<string> {
-  if (analyses.length === 0) return '';
-  if (analyses.length === 1) return analyses[0];
-  
-  // For now, create a simple combination that preserves multi-angle data
-  // Front-view should be first in the array
-  const synthesisPrompt = `Combine these ${analyses.length} furniture descriptions into ONE concise structured description:
-
-${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n')}
-
-**OUTPUT REQUIREMENTS:**
-1. Prioritize FRONT VIEW information when available
-2. Add unique details from other angles (back storage, hidden features)  
-3. Keep MAXIMUM 1500 characters
-4. Use the same structured format as inputs
-5. Focus on technical precision - exact colors, measurements
-
-Create a single structured description that captures the complete product.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{
-        role: 'user',
-        parts: [{ text: synthesisPrompt }]
-      }]
-    });
-    
-    const text = response.text?.trim() || analyses[0]; // Fallback to front-view
-    
-    // Enforce character limit
-    if (text.length > 1500) {
-      console.warn(`Combined description exceeds 1500 character limit (${text.length} chars). Truncating...`);
-      return text.substring(0, 1500);
-    }
-    
-    return text;
-  } catch (error) {
-    console.error('Error synthesizing descriptions:', error);
-    return analyses[0]; // Fallback to front-view
-  }
-}
 
 /**
- * Two-phase analysis with Gemini: Front-view first, then combined
+ * Single-image analysis with Gemini: Front-view preferred, fallback to first valid image
  */
 async function analyzeWithGemini(
   productName: string,
   imageUrls: string[]
 ): Promise<AnalysisResult> {
-  const { frontView, otherViews, allImages } = categorizeImages(imageUrls);
-  const validImages = allImages.filter(isValidImageUrl);
+  const { frontView } = categorizeImages(imageUrls);
+  const validImages = imageUrls.filter(isValidImageUrl);
   
-  let frontViewDescription = '';
-  let combinedDescription = '';
+  // Determine which image to analyze: front-view preferred, fallback to first valid
+  let imageToAnalyze: string | null = null;
+  let isFrontView = false;
   
-  let lastError: Error | null = null;
-  
-  // Phase 1: Analyze front-view if available
   if (frontView && isValidImageUrl(frontView)) {
+    imageToAnalyze = frontView;
+    isFrontView = true;
+  } else if (validImages.length > 0) {
+    imageToAnalyze = validImages[0];
+    isFrontView = false;
+    console.log(`  ⚠️ Gemini: No front-view found, using first valid image as fallback`);
+  }
+  
+  let description = '';
+  
+  if (imageToAnalyze) {
     try {
-      console.log(`  🎯 Gemini: Analyzing front-view image`);
-      frontViewDescription = await analyzeImageWithGemini(frontView, 'Front View', true); // true = isFrontView
+      const label = isFrontView ? 'Front View' : 'Product Image';
+      console.log(`  🎯 Gemini: Analyzing ${isFrontView ? 'front-view' : 'fallback'} image ONLY`);
+      description = await analyzeImageWithGemini(imageToAnalyze, label, isFrontView);
     } catch (error) {
-      console.error(`  ⚠️ Gemini: Front-view analysis failed`);
-      lastError = error as Error;
+      console.error(`  ⚠️ Gemini: Image analysis failed`);
+      throw error;
     }
+  } else {
+    console.log(`  ⚠️ Gemini: No valid images found - skipping analysis`);
   }
   
-  // Phase 2: Analyze all images for combined description
-  if (validImages.length > 0) {
-    const analyses: string[] = [];
-    
-    // Include front-view analysis if we have it
-    if (frontViewDescription) {
-      analyses.push(frontViewDescription);
-    }
-    
-    // Analyze other views (skip front-view if already analyzed)
-    const imagesToAnalyze = frontViewDescription 
-      ? validImages.filter(img => img !== frontView)
-      : validImages;
-    
-    for (let i = 0; i < Math.min(imagesToAnalyze.length, 3); i++) { // Limit to 3 additional images
-      try {
-        const analysis = await analyzeImageWithGemini(
-          imagesToAnalyze[i], 
-          `Image ${i + 1}`,
-          false // false = not front-view
-        );
-        if (analysis) analyses.push(analysis);
-      } catch (error) {
-        lastError = error as Error;
-        // Continue with other images - might be individual image issue
-      }
-      
-      // Small delay between images
-      if (i < imagesToAnalyze.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
-    
-    // If we got zero results but had errors, it's likely a provider-wide issue - propagate
-    if (analyses.length === 0 && lastError) {
-      throw lastError;
-    }
-    
-    // Synthesize all analyses
-    combinedDescription = await synthesizeAnalyses(analyses);
-  }
-  
-  // Use front-view as fallback for combined if no combined analysis
-  if (!combinedDescription && frontViewDescription) {
-    combinedDescription = frontViewDescription;
-  }
-  
+  // Use single description for both fields (no separate combined analysis)
   return {
-    frontViewDescription,
-    combinedDescription
+    frontViewDescription: isFrontView ? description : '',
+    combinedDescription: description
   };
 }
 
@@ -380,139 +301,49 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
   }
 }
 
-/**
- * Intelligent synthesis with OpenAI - prioritizes front-view but preserves unique details
- */
-async function synthesizeAnalysesWithOpenAI(analyses: string[]): Promise<string> {
-  if (analyses.length === 0) return '';
-  if (analyses.length === 1) return analyses[0];
-  
-  const synthesisPrompt = `Combine these ${analyses.length} furniture descriptions into ONE concise structured description:
-
-${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n')}
-
-**OUTPUT REQUIREMENTS:**
-1. Prioritize FRONT VIEW information (usually View 1) when available
-2. Add unique details from other angles (back storage, side profiles, hidden features)  
-3. Keep MAXIMUM 1500 characters
-4. Maintain the structured format:
-   - Product Name:
-   - Primary Material:
-   - Color & Finish:
-   - Form Factor:
-   - Dimensions:
-   - Key Geometry:
-   - Distinctive Features:
-5. Focus on technical precision - exact HEX colors, specific measurements
-
-Create a single structured description that captures the complete product.`;
-
-  try {
-    const response = await openaiClient.chat.completions.create({
-      model: "gpt-5",
-      messages: [
-        {
-          role: "user",
-          content: synthesisPrompt
-        }
-      ],
-      max_completion_tokens: 2048,
-    });
-    
-    const text = response.choices[0].message.content?.trim() || analyses[0]; // Fallback to front-view
-    
-    // Enforce character limit
-    if (text.length > 1500) {
-      console.warn(`OpenAI combined description exceeds 1500 character limit (${text.length} chars). Truncating...`);
-      return text.substring(0, 1500);
-    }
-    
-    return text;
-  } catch (error) {
-    console.error('Error synthesizing with OpenAI:', error);
-    return analyses[0]; // Fallback to front-view
-  }
-}
 
 /**
- * Two-phase analysis with OpenAI: Front-view first, then combined
+ * Single-image analysis with OpenAI: Front-view preferred, fallback to first valid image
  */
 async function analyzeWithOpenAI(
   productName: string,
   imageUrls: string[]
 ): Promise<AnalysisResult> {
-  const { frontView, otherViews, allImages } = categorizeImages(imageUrls);
-  const validImages = allImages.filter(isValidImageUrl);
+  const { frontView } = categorizeImages(imageUrls);
+  const validImages = imageUrls.filter(isValidImageUrl);
   
-  let frontViewDescription = '';
-  let combinedDescription = '';
-  let lastError: Error | null = null;
+  // Determine which image to analyze: front-view preferred, fallback to first valid
+  let imageToAnalyze: string | null = null;
+  let isFrontView = false;
   
-  // Phase 1: Analyze front-view if available
   if (frontView && isValidImageUrl(frontView)) {
+    imageToAnalyze = frontView;
+    isFrontView = true;
+  } else if (validImages.length > 0) {
+    imageToAnalyze = validImages[0];
+    isFrontView = false;
+    console.log(`  ⚠️ OpenAI: No front-view found, using first valid image as fallback`);
+  }
+  
+  let description = '';
+  
+  if (imageToAnalyze) {
     try {
-      console.log(`  🎯 OpenAI: Analyzing front-view image`);
-      frontViewDescription = await analyzeImageWithOpenAI(frontView, 'Front View', true);
+      const label = isFrontView ? 'Front View' : 'Product Image';
+      console.log(`  🎯 OpenAI: Analyzing ${isFrontView ? 'front-view' : 'fallback'} image ONLY`);
+      description = await analyzeImageWithOpenAI(imageToAnalyze, label, isFrontView);
     } catch (error) {
-      console.error(`  ⚠️ OpenAI: Front-view analysis failed`);
-      lastError = error as Error;
+      console.error(`  ⚠️ OpenAI: Image analysis failed`);
+      throw error;
     }
+  } else {
+    console.log(`  ⚠️ OpenAI: No valid images found - skipping analysis`);
   }
   
-  // Phase 2: Analyze all images for combined description
-  if (validImages.length > 0) {
-    const analyses: string[] = [];
-    
-    // Include front-view analysis if we have it
-    if (frontViewDescription) {
-      analyses.push(frontViewDescription);
-    }
-    
-    // Analyze other views (skip front-view if already analyzed)
-    const imagesToAnalyze = frontViewDescription 
-      ? validImages.filter(img => img !== frontView)
-      : validImages;
-    
-    for (let i = 0; i < Math.min(imagesToAnalyze.length, 3); i++) { // Limit to 3 additional images
-      try {
-        const analysis = await analyzeImageWithOpenAI(
-          imagesToAnalyze[i], 
-          `Image ${i + 1}`,
-          false // not front-view
-        );
-        if (analysis) analyses.push(analysis);
-      } catch (error) {
-        lastError = error as Error;
-        // Continue with other images - might be individual image issue
-      }
-      
-      // Small delay between images
-      if (i < imagesToAnalyze.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
-    }
-    
-    // If we got zero results but had errors, it's likely a provider-wide issue - propagate
-    if (analyses.length === 0 && lastError) {
-      throw lastError;
-    }
-    
-    // Synthesize all analyses using OpenAI
-    if (analyses.length > 1) {
-      combinedDescription = await synthesizeAnalysesWithOpenAI(analyses);
-    } else if (analyses.length === 1) {
-      combinedDescription = analyses[0];
-    }
-  }
-  
-  // Use front-view as fallback
-  if (!combinedDescription && frontViewDescription) {
-    combinedDescription = frontViewDescription;
-  }
-  
+  // Use single description for both fields (no separate combined analysis)
   return {
-    frontViewDescription,
-    combinedDescription
+    frontViewDescription: isFrontView ? description : '',
+    combinedDescription: description
   };
 }
 
@@ -546,31 +377,40 @@ export async function analyzeProductVisualsV2(
     };
   }
   
-  // Pre-validate images before sending to AI providers
-  console.log(`  🔍 Pre-validating ${productImages.length} image(s)...`);
-  const validationResults = await Promise.allSettled(
-    productImages.map(async (url, idx) => {
-      const isValid = await validateImageUrl(url);
-      return { url, idx, isValid };
-    })
-  );
+  // OPTIMIZATION: Identify which single image to analyze (front-view or first) BEFORE validation
+  const { frontView } = categorizeImages(productImages);
+  let validatedImage: string | null = null;
   
-  const validImages = validationResults
-    .filter((result): result is PromiseFulfilledResult<{ url: string; idx: number; isValid: boolean }> => 
-      result.status === 'fulfilled' && result.value.isValid
-    )
-    .map(result => result.value.url);
-  
-  const invalidImages = validationResults
-    .filter((result): result is PromiseFulfilledResult<{ url: string; idx: number; isValid: boolean }> => 
-      result.status === 'fulfilled' && !result.value.isValid
-    );
-  
-  if (invalidImages.length > 0) {
-    console.log(`  ⚠️ Skipping ${invalidImages.length} invalid/broken image(s)`);
+  // Try front-view first if available
+  if (frontView) {
+    console.log(`  🔍 Pre-validating front-view image...`);
+    const isValid = await validateImageUrl(frontView);
+    if (isValid) {
+      validatedImage = frontView;
+      console.log(`  ✅ Front-view image validated`);
+    } else {
+      console.log(`  ⚠️ Front-view failed validation, trying fallback...`);
+    }
   }
   
-  if (validImages.length === 0) {
+  // Fallback: Try other images if front-view failed or doesn't exist
+  if (!validatedImage && productImages.length > 0) {
+    console.log(`  🔍 Validating fallback images...`);
+    for (const imageUrl of productImages) {
+      // Skip front-view if we already tried it
+      if (imageUrl === frontView) continue;
+      
+      const isValid = await validateImageUrl(imageUrl);
+      if (isValid) {
+        validatedImage = imageUrl;
+        console.log(`  ✅ Found valid fallback image`);
+        break; // Stop at first valid image
+      }
+    }
+  }
+  
+  // If no valid images found at all, return error
+  if (!validatedImage) {
     console.log(`  ❌ All images failed validation - skipping AI analysis`);
     return {
       sku: product.sku,
@@ -585,10 +425,10 @@ export async function analyzeProductVisualsV2(
     };
   }
   
-  console.log(`  ✅ ${validImages.length} valid image(s) ready for analysis`);
+  console.log(`  ✅ Image validated and ready for analysis`);
   
-  // Use only valid images for analysis
-  const imagesToAnalyze = validImages;
+  // Use only the validated image for analysis
+  const imagesToAnalyze = [validatedImage];
   
   // Check cache if product has already been analyzed
   if (product.productId) {
