@@ -515,7 +515,7 @@ export default function MappingAnalysis() {
           <Card>
             <CardHeader>
               <CardTitle>Weak Filter Combinations</CardTitle>
-              <CardDescription>Combinations with insufficient products (<10)</CardDescription>
+              <CardDescription>Combinations with insufficient products (less than 10)</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
