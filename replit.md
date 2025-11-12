@@ -40,6 +40,16 @@ The platform provides a seamless interior design and shopping experience, from i
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 12, 2025)
+- **Front View Upload Tool**:
+  - New admin tool at `/admin/front-view-upload` for bulk uploading "Front View" images to products missing them
+  - Supports nested folder structures: Product Images → Category → SKU → Front View.jpg
+  - Uses `webkitdirectory` input attribute to accept entire folder hierarchies
+  - Auto-detects "Front View" files (case-insensitive) from SKU folders
+  - Comprehensive product type detection (24 furniture categories) for proper filename generation
+  - Smart duplicate detection - skips files already in S3
+  - Real-time progress tracking with status badges (pending, uploading, success, error, skipped)
+  - Leverages existing presigned URL upload system for fast direct-to-S3 uploads
+
 - **Visual Analysis Performance Optimization (20x Speed Improvement)**:
   - **Single-Image Analysis**: Modified analyzeWithGemini and analyzeWithOpenAI to analyze ONLY the front-view image (or first valid fallback) instead of all product images
   - **Intelligent Validation**: Pre-validation now identifies and validates only the single image to be analyzed (front-view preferred, fallback to first valid image)

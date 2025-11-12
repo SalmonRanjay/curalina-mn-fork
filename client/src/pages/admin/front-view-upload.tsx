@@ -78,13 +78,17 @@ export default function FrontViewUpload() {
     return lower.includes('front') && lower.includes('view');
   };
 
-  // Extract SKU/folder name from file path
+  // Extract SKU folder name from nested file path
+  // Expected structure: Product Images/Category/SKU/Front View.jpg
   const extractFolderName = (file: File): string => {
-    const path = (file as any).path || file.name;
+    // Use webkitRelativePath which contains the full folder hierarchy
+    const path = (file as any).webkitRelativePath || file.name;
     const parts = path.split('/');
-    // If file is in a folder, get the parent folder name
-    if (parts.length > 1) {
-      return parts[parts.length - 2]; // Parent folder
+    
+    // The SKU folder is the parent folder of the file
+    // e.g., "Product Images/Tables/ABC123/Front View.jpg" -> "ABC123"
+    if (parts.length >= 2) {
+      return parts[parts.length - 2]; // SKU folder (parent of file)
     }
     return '';
   };
@@ -180,6 +184,14 @@ export default function FrontViewUpload() {
     noClick: isLoadingProducts || isUploading,
     noKeyboard: isLoadingProducts || isUploading,
   });
+
+  // Override getInputProps to enable directory upload
+  const inputProps = getInputProps();
+  const directoryInputProps = {
+    ...inputProps,
+    webkitdirectory: "true",
+    directory: "true",
+  };
 
   const handleUpload = async () => {
     const pendingFiles = files.filter(f => f.status === "pending");
@@ -322,7 +334,10 @@ export default function FrontViewUpload() {
         <h1 className="text-3xl font-bold mb-2">Front View Upload Tool</h1>
         <p className="text-muted-foreground">
           Automatically upload "Front View" images for products missing them. 
-          Drag folders named with product SKUs containing "Front View.jpg" files.
+          Drag your "Product Images" folder or category folders containing SKU subfolders with "Front View.jpg" files.
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Expected structure: Product Images → Category → SKU → Front View.jpg
         </p>
       </div>
 
@@ -333,7 +348,7 @@ export default function FrontViewUpload() {
             <CardHeader>
               <CardTitle>Upload Front View Images</CardTitle>
               <CardDescription>
-                Drop folders containing products (SKU-named) with "Front View" images
+                Drop your entire "Product Images" folder or category subfolders. The tool will automatically find SKU folders and extract "Front View" images.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -346,7 +361,7 @@ export default function FrontViewUpload() {
                 `}
                 data-testid="dropzone-front-view"
               >
-                <input {...getInputProps()} />
+                <input {...directoryInputProps} />
                 <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 {isDragActive ? (
                   <p className="text-lg">Drop folders here...</p>
@@ -355,10 +370,10 @@ export default function FrontViewUpload() {
                 ) : (
                   <>
                     <p className="text-lg font-medium mb-2">
-                      Drag & drop product folders here
+                      Drag & drop your Product Images folder here
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Folders should be named with product SKUs and contain "Front View.jpg" files
+                      The tool will automatically find SKU folders and extract "Front View" images
                     </p>
                   </>
                 )}
