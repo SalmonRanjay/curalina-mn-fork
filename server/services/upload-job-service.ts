@@ -238,10 +238,10 @@ async function updateProductImages(productId: string, jobId: string): Promise<vo
       if (!product.visualDescription || !product.visualDescriptionGemini) {
         try {
           // Import configuration and check feature flag
-          const visualAnalysisConfig = (await import('../config/visual-analysis.js')).default;
+          const visualAnalysisConfig = (await import('../config/visual-analysis')).default;
           const servicePath = visualAnalysisConfig.useV2 
-            ? './visual-analysis-job-service-v2.js'
-            : './visual-analysis-job-service.js';
+            ? './visual-analysis-job-service-v2'
+            : './visual-analysis-job-service';
           
           const { createVisualAnalysisJob } = await import(servicePath);
           
