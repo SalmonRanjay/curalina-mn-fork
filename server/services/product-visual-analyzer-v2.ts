@@ -529,8 +529,9 @@ export async function analyzeProductVisualsV2(
 ): Promise<ProductAnalysisResult> {
   console.log(`\n🎨 V2 Analysis: ${product.name} (${product.sku})`);
   
-  // Check for valid images
-  if (!product.images || product.images.length === 0) {
+  // Check for valid images and safely extract them
+  const productImages = product.images || [];
+  if (productImages.length === 0) {
     console.log(`  ⚠️ No images to analyze`);
     return {
       sku: product.sku,
@@ -544,6 +545,50 @@ export async function analyzeProductVisualsV2(
       error: 'No images available'
     };
   }
+  
+  // Pre-validate images before sending to AI providers
+  console.log(`  🔍 Pre-validating ${productImages.length} image(s)...`);
+  const validationResults = await Promise.allSettled(
+    productImages.map(async (url, idx) => {
+      const isValid = await validateImageUrl(url);
+      return { url, idx, isValid };
+    })
+  );
+  
+  const validImages = validationResults
+    .filter((result): result is PromiseFulfilledResult<{ url: string; idx: number; isValid: boolean }> => 
+      result.status === 'fulfilled' && result.value.isValid
+    )
+    .map(result => result.value.url);
+  
+  const invalidImages = validationResults
+    .filter((result): result is PromiseFulfilledResult<{ url: string; idx: number; isValid: boolean }> => 
+      result.status === 'fulfilled' && !result.value.isValid
+    );
+  
+  if (invalidImages.length > 0) {
+    console.log(`  ⚠️ Skipping ${invalidImages.length} invalid/broken image(s)`);
+  }
+  
+  if (validImages.length === 0) {
+    console.log(`  ❌ All images failed validation - skipping AI analysis`);
+    return {
+      sku: product.sku,
+      productId: product.productId,
+      visualDescription: '',
+      visualDescriptionGemini: '',
+      visualDescriptionOpenAI: '',
+      visualDescriptionFrontView: '',
+      visualDescriptionFrontViewGemini: '',
+      visualDescriptionFrontViewOpenAI: '',
+      error: 'All images failed validation (broken or unsupported format)'
+    };
+  }
+  
+  console.log(`  ✅ ${validImages.length} valid image(s) ready for analysis`);
+  
+  // Use only valid images for analysis
+  const imagesToAnalyze = validImages;
   
   // Check cache if product has already been analyzed
   if (product.productId) {
@@ -565,8 +610,8 @@ export async function analyzeProductVisualsV2(
   
   // Run both providers in parallel with independent failure handling
   const [geminiResult, openaiResult] = await Promise.allSettled([
-    analyzeWithGemini(product.name, product.images),
-    analyzeWithOpenAI(product.name, product.images)
+    analyzeWithGemini(product.name, imagesToAnalyze),
+    analyzeWithOpenAI(product.name, imagesToAnalyze)
   ]);
   
   // Extract results or use empty values on failure
@@ -612,8 +657,8 @@ export async function analyzeProductVisualsV2(
   const hasValidResults = result.visualDescriptionGemini || result.visualDescriptionOpenAI ||
                          result.visualDescriptionFrontViewGemini || result.visualDescriptionFrontViewOpenAI;
   
-  if (product.productId && product.images && hasValidResults) {
-    markAsAnalyzed(product.productId, product.images, {
+  if (product.productId && imagesToAnalyze.length > 0 && hasValidResults) {
+    markAsAnalyzed(product.productId, imagesToAnalyze, {
       visualDescription: result.visualDescription,
       visualDescriptionGemini: result.visualDescriptionGemini,
       visualDescriptionOpenAI: result.visualDescriptionOpenAI,
