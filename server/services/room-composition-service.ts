@@ -415,3 +415,15 @@ export function validateComposition(
     issues
   };
 }
+
+/**
+ * Get room template for a room type
+ */
+export function getRoomTemplate(roomType: string): typeof ROOM_TEMPLATES[keyof typeof ROOM_TEMPLATES] | null {
+  return ROOM_TEMPLATES[roomType as keyof typeof ROOM_TEMPLATES] || null;
+}
+
+/**
+ * Detect functional category from product (exported for ledger system)
+ */
+export { detectFunctionalCategory };

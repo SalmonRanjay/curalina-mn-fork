@@ -98,6 +98,11 @@ export interface ICuralinaStorage {
   createSelectionLedger(ledger: InsertSelectionLedger): Promise<SelectionLedger>;
   getSelectionLedgerByHash(hash: string): Promise<SelectionLedger | undefined>;
   getSelectionLedgerByRender(renderId: string): Promise<SelectionLedger | undefined>;
+  updateSelectionLedgerDetails(id: string, details: {
+    selectionRationale?: any;
+    compositionOrder?: string[];
+    diversityScore?: number;
+  }): Promise<SelectionLedger>;
   lockSelectionLedger(id: string): Promise<SelectionLedger>;
   deleteSelectionLedger(id: string): Promise<void>;
   
@@ -377,6 +382,30 @@ export class CuralinaStorage implements ICuralinaStorage {
       .from(selectionLedger)
       .where(eq(selectionLedger.renderId, renderId))
       .limit(1);
+    return ledger;
+  }
+
+  async updateSelectionLedgerDetails(id: string, details: {
+    selectionRationale?: any;
+    compositionOrder?: string[];
+    diversityScore?: number;
+  }): Promise<SelectionLedger> {
+    const updateData: any = {};
+    if (details.selectionRationale !== undefined) {
+      updateData.selectionRationale = details.selectionRationale;
+    }
+    if (details.compositionOrder !== undefined) {
+      updateData.compositionOrder = details.compositionOrder;
+    }
+    if (details.diversityScore !== undefined) {
+      updateData.diversityScore = details.diversityScore;
+    }
+    
+    const [ledger] = await db
+      .update(selectionLedger)
+      .set(updateData)
+      .where(eq(selectionLedger.id, id))
+      .returning();
     return ledger;
   }
 

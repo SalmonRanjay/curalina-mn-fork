@@ -1550,8 +1550,8 @@ export function registerCuralinaRoutes(app: Express) {
         prompt: "Generating...",
       });
       
-      // Create initial ledger entry (will be populated during AI generation)
-      const candidateSnapshot = createCandidatePoolSnapshot(allProducts);
+      // Create initial ledger entry with candidate pool snapshot
+      const candidateSnapshot = createCandidatePoolSnapshot(candidatePool);
       const initialRationale = initializeSelectionRationale();
       
       await curalinaStorage.createSelectionLedger({
@@ -1562,6 +1562,8 @@ export function registerCuralinaRoutes(app: Express) {
         compositionOrder: [], // Will be populated after product selection
         lockedAt: null, // Will be locked after successful generation
       });
+      
+      console.log(`📝 Created ledger with ${candidateSnapshot.length} candidate products`);
 
       // Return immediately with status 'generating'
       res.json(render);
@@ -1664,6 +1666,103 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`✨ ${productsWithVisuals}/${selectedProducts.length} products have visual descriptions (prioritizing Front View → Gemini → OpenAI → Legacy)`);
           }
           
+          // Update selection ledger with composition order and category-level rationale
+          try {
+            const ledger = await curalinaStorage.getSelectionLedgerByRender(render.id);
+            if (ledger) {
+              const { recordSelection, recordExclusion, calculateDiversityScore, generateCompositionOrder } = await import('./services/selection-ledger-service');
+              const { detectFunctionalCategory, getRoomTemplate } = await import('./services/room-composition-service');
+              
+              // Initialize rationale structure
+              let rationale = initializeSelectionRationale();
+              const selectedSkus = new Set(selectedProducts.map(p => p.sku));
+              const filteredProducts = filterProductsByQuiz(allProducts, quiz);
+              
+              // Get room template for rules (may be null for unsupported room types)
+              const template = getRoomTemplate(quiz.roomType);
+              
+              // Safe defaults for when template is missing
+              const defaultRules = { min: 0, max: 10, priority: 99 };
+              
+              // Log warning if template is missing (helps identify misconfigurations)
+              if (!template) {
+                console.warn(`⚠️  No room template found for room type: "${quiz.roomType}" - using default rules for ledger rationale`);
+              }
+              
+              // Categorize and record selected products by functional category
+              for (const sp of selectedProducts) {
+                const fullProduct = allProducts.find(p => p.sku === sp.sku);
+                if (!fullProduct) continue;
+                
+                // Detect functional categories for this product
+                const functionalCategories = detectFunctionalCategory(fullProduct);
+                
+                // Record selection for each functional category this product belongs to
+                for (const category of functionalCategories) {
+                  // Safe template access with null guards
+                  const isEssential = template?.essentials?.[category as any] !== undefined;
+                  let rules = defaultRules;
+                  
+                  if (template) {
+                    if (isEssential && (template.essentials as any)[category]) {
+                      rules = (template.essentials as any)[category];
+                    } else if (template.complementary && (template.complementary as any)[category]) {
+                      rules = (template.complementary as any)[category];
+                    }
+                  }
+                  
+                  recordSelection(
+                    rationale,
+                    category,
+                    isEssential,
+                    fullProduct,
+                    sp.reasoning || (req.body.productSkus ? 'User-specified product' : 'AI-selected for composition'),
+                    rules
+                  );
+                }
+                
+                // If product has no functional category, add to complementary "uncategorized"
+                if (functionalCategories.length === 0) {
+                  recordSelection(
+                    rationale,
+                    'uncategorized',
+                    false,
+                    fullProduct,
+                    'No functional category detected',
+                    defaultRules
+                  );
+                }
+              }
+              
+              // Record exclusions (products in candidate pool but not selected)
+              for (const product of filteredProducts) {
+                if (!selectedSkus.has(product.sku)) {
+                  recordExclusion(rationale, product, 'Not selected by AI during composition');
+                }
+              }
+              
+              // Calculate diversity score using the proper function
+              const diversityScore = calculateDiversityScore(rationale);
+              rationale.diversityScore = diversityScore;
+              
+              // Generate composition order (essentials first, then complementary, then decor)
+              const compositionOrder = generateCompositionOrder(rationale);
+              
+              // Update ledger with complete details
+              await curalinaStorage.updateSelectionLedgerDetails(ledger.id, {
+                selectionRationale: rationale,
+                compositionOrder,
+                diversityScore
+              });
+              
+              const essentialCount = Object.keys(rationale.essentials).length;
+              const complementaryCount = Object.keys(rationale.complementary).length;
+              console.log(`📋 Updated ledger: ${selectedProducts.length} products in ${essentialCount} essential + ${complementaryCount} complementary categories, ${rationale.excluded.length} exclusions, diversity: ${diversityScore}`);
+            }
+          } catch (error) {
+            console.error("Error updating selection ledger (non-blocking):", error);
+          }
+          
           // Build enhanced prompt with enriched products and image analysis
           const { prompt, productMetadata } = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
           
@@ -1741,6 +1840,17 @@ export function registerCuralinaRoutes(app: Express) {
             prompt,
             status: 'completed',
           });
+          
+          // Lock selection ledger to prevent modifications
+          try {
+            const ledger = await curalinaStorage.getSelectionLedgerByRender(render.id);
+            if (ledger && !ledger.lockedAt) {
+              await curalinaStorage.lockSelectionLedger(ledger.id);
+              console.log(`🔒 Locked selection ledger for render ${render.id}`);
+            }
+          } catch (error) {
+            console.error("Error locking selection ledger (non-blocking):", error);
+          }
           
           console.log(`✅ Render ${render.id} completed with ${allProductSkus.length} products available in Shop the Look`);
         } catch (error) {
