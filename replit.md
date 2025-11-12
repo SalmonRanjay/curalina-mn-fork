@@ -39,6 +39,15 @@ The platform provides a seamless interior design and shopping experience, from i
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 12, 2025)
+- **AI Rendering Accuracy Improvements**:
+  - Added strict product count enforcement in Gemini prompts ("EXACTLY X products - NO MORE, NO LESS")
+  - Implemented explicit negative constraints to prevent extra furniture ("DO NOT add any items not listed")
+  - Added failure criteria that renders will be rejected if they contain unlisted items
+  - Updated visual descriptions to prioritize front-view (750 char limit) over combined (1500 char limit)
+  - Modified render service to use front-view descriptions by default for better accuracy
+  - Preserved multi-angle synthesis as fallback to avoid data loss
+
 ## Recent Changes (November 11, 2025)
 - **Visual Analysis Job System**: Implemented a robust job-based queue system for AI-powered visual product analysis
   - Database schema with `visualAnalysisJobs` and `visualAnalysisProducts` tables
