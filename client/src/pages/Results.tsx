@@ -5,6 +5,7 @@ import { getSessionId } from "@/lib/session";
 import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,17 @@ function prioritizeFrontViewImage(images: string[] | null): string[] {
   
   // Return original order if Front View is already first or not found
   return images;
+}
+
+/**
+ * Get visual description source badge styling based on priority
+ * Front View (highest) → Gemini Vision → OpenAI Vision → Legacy (lowest)
+ */
+function getVisualDescriptionBadgeVariant(source: string): "default" | "secondary" | "outline" {
+  if (source === "Front View") return "default"; // Highest quality
+  if (source === "Gemini Vision") return "secondary";
+  if (source === "OpenAI Vision") return "outline";
+  return "outline"; // Legacy or None
 }
 
 export default function Results() {
@@ -343,9 +355,20 @@ export default function Results() {
                           })()}
                         </div>
                         <div className="p-4">
-                          <h3 className="font-semibold text-lg mb-1" data-testid={`text-product-name-${product.id}`}>
-                            {product.name}
-                          </h3>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-semibold text-lg" data-testid={`text-product-name-${product.id}`}>
+                              {product.name}
+                            </h3>
+                            {render?.productMetadata && render.productMetadata[product.sku] && (
+                              <Badge 
+                                variant={getVisualDescriptionBadgeVariant(render.productMetadata[product.sku].visualDescriptionSource)}
+                                className="text-xs shrink-0"
+                                data-testid={`badge-visual-source-${product.id}`}
+                              >
+                                {render.productMetadata[product.sku].visualDescriptionSource}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-stone-600 dark:text-stone-400 mb-3 line-clamp-2">
                             {product.description}
                           </p>
