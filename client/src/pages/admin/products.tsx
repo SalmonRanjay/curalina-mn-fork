@@ -96,6 +96,20 @@ export default function AdminProducts() {
     },
   });
 
+  // Count products with Front View images
+  const frontViewProductCount = useMemo(() => {
+    if (!products) return 0;
+    return products.filter(product => {
+      if (!product.images || product.images.length === 0) return false;
+      return product.images.some(imageUrl => {
+        const lowerUrl = imageUrl.toLowerCase();
+        return lowerUrl.includes('front-view') || 
+               lowerUrl.includes('front_view') || 
+               lowerUrl.includes('frontview');
+      });
+    }).length;
+  }, [products]);
+
   const addForm = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
@@ -348,6 +362,27 @@ export default function AdminProducts() {
     onError: (error: Error) => {
       toast({
         title: "Failed to start visual analysis",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reanalyzeFrontViewsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/visual-analysis/reanalyze-front-views");
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Front View re-analysis started",
+        description: `Job started for ${data.totalProducts} products with Front View images`,
+      });
+      refetchAnalysisJobs();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to start Front View re-analysis",
         description: error.message,
         variant: "destructive",
       });
@@ -1112,6 +1147,19 @@ export default function AdminProducts() {
           >
             <Sparkles className="w-4 h-4 mr-2" />
             {startVisualAnalysisMutation.isPending ? "Starting..." : "Analyze Visuals"}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => reanalyzeFrontViewsMutation.mutate()}
+            disabled={reanalyzeFrontViewsMutation.isPending || frontViewProductCount === 0}
+            data-testid="button-reanalyze-front-views"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {reanalyzeFrontViewsMutation.isPending 
+              ? "Starting..." 
+              : `Re-analyze ${frontViewProductCount} Front View Products`
+            }
           </Button>
           
           <Button

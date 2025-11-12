@@ -1058,6 +1058,81 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Bulk re-analyze products with Front View images
+  app.post('/api/admin/visual-analysis/reanalyze-front-views', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('🔍 Finding products with Front View images for re-analysis...');
+      
+      // Get all products
+      const allProducts = await curalinaStorage.getAllProducts();
+      
+      // Filter products that have front-view images
+      const productsWithFrontView = allProducts.filter(product => {
+        if (!product.images || product.images.length === 0) return false;
+        
+        // Check if any image has "front-view" or "front_view" or "frontview" in the URL
+        return product.images.some(imageUrl => {
+          const lowerUrl = imageUrl.toLowerCase();
+          return lowerUrl.includes('front-view') || 
+                 lowerUrl.includes('front_view') || 
+                 lowerUrl.includes('frontview');
+        });
+      });
+      
+      console.log(`📊 Found ${productsWithFrontView.length} products with Front View images`);
+      
+      if (productsWithFrontView.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No products with Front View images found',
+          jobId: null,
+          totalProducts: 0
+        });
+      }
+      
+      // Extract product IDs
+      const productIds = productsWithFrontView.map(p => p.id);
+      
+      // Import configuration and create the job
+      const { visualAnalysisConfig } = await import('./config/visual-analysis.js');
+      const servicePath = visualAnalysisConfig.useV2 
+        ? './services/visual-analysis-job-service-v2.js'
+        : './services/visual-analysis-job-service.js';
+      
+      const { 
+        createVisualAnalysisJob, 
+        processVisualAnalysisJob 
+      } = await import(servicePath);
+      
+      // Create the job for all front-view products
+      const job = await createVisualAnalysisJob(
+        req.user?.id || null,
+        'manual',
+        undefined,
+        { productIds, onlyMissingDescriptions: false } // Re-analyze even if they have descriptions
+      );
+      
+      // Start processing in background (V2 auto-starts, but V1 needs manual trigger)
+      if (!visualAnalysisConfig.useV2) {
+        setTimeout(() => processVisualAnalysisJob(job.id), 1000);
+      }
+      
+      console.log(`✅ Created visual analysis job ${job.id} for ${productsWithFrontView.length} products with Front View images`);
+      
+      res.json({ 
+        success: true,
+        jobId: job.id,
+        totalProducts: productsWithFrontView.length,
+        message: `Visual analysis started for ${productsWithFrontView.length} products with Front View images`,
+        version: visualAnalysisConfig.useV2 ? 'v2' : 'v1'
+      });
+      
+    } catch (error) {
+      console.error("Error starting bulk Front View re-analysis:", error);
+      res.status(500).json({ error: "Failed to start bulk re-analysis" });
+    }
+  });
+
   // Generate text-based descriptions for products without visual analysis (Admin only)
   app.post('/api/admin/products/generate-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
