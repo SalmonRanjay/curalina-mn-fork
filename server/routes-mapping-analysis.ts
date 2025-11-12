@@ -36,6 +36,274 @@ const QUIZ_FEATURES = [
   "Open Layout"
 ];
 
+const QUIZ_COLOR_PALETTES = [
+  "Light Neutrals",
+  "Warm & Cozy",
+  "Deep & Moody",
+  "Natural Earth Tones",
+  "Cool Blues & Grays"
+];
+
+// Color palette to product color mapping
+const PALETTE_COLOR_MAPPING: Record<string, string[]> = {
+  "Light Neutrals": ["White", "Beige", "Cream", "Light Gray", "Ivory", "Off-White", "Natural"],
+  "Warm & Cozy": ["Brown", "Tan", "Caramel", "Rust", "Terracotta", "Warm Gray", "Ochre"],
+  "Deep & Moody": ["Black", "Charcoal", "Navy", "Dark Gray", "Deep Green", "Burgundy"],
+  "Natural Earth Tones": ["Brown", "Tan", "Green", "Olive", "Sage", "Clay", "Terracotta"],
+  "Cool Blues & Grays": ["Blue", "Gray", "Silver", "Light Blue", "Cool Gray", "Navy"]
+};
+
+// Functional categories for room composition (from room-composition-service)
+const FUNCTIONAL_CATEGORIES = {
+  primary_seating: ["Sofa", "Sectional"],
+  accent_seating: ["Accent Chair", "Armchair", "Lounge Chair"],
+  coffee_table: ["Coffee Table", "Ottoman"],
+  storage: ["Cabinet", "Dresser", "Bookcase", "Console", "Credenza"],
+  lighting: ["Floor Lamp", "Table Lamp", "Pendant"],
+  decor: ["Mirror", "Art", "Planter", "Vase", "Decorative Object"],
+  desk: ["Desk", "Writing Table"],
+  dining_table: ["Dining Table"],
+  dining_chair: ["Dining Chair"],
+  bed: ["Bed", "Platform Bed"],
+  nightstand: ["Nightstand", "Bedside Table"]
+};
+
+/**
+ * Analyze color palette coverage
+ */
+function analyzeColorPalettes(allProducts: any[]) {
+  const paletteData: Record<string, { productsCount: number; colors: Set<string> }> = {};
+  
+  // Initialize palette data
+  QUIZ_COLOR_PALETTES.forEach(palette => {
+    paletteData[palette] = { productsCount: 0, colors: new Set() };
+  });
+  
+  // Count products matching each palette
+  allProducts.forEach(product => {
+    if (!product.colors || product.colors.length === 0) return;
+    
+    QUIZ_COLOR_PALETTES.forEach(palette => {
+      const paletteColors = PALETTE_COLOR_MAPPING[palette];
+      const hasMatchingColor = product.colors.some((productColor: string) =>
+        paletteColors.some(paletteColor =>
+          productColor.toLowerCase().includes(paletteColor.toLowerCase()) ||
+          paletteColor.toLowerCase().includes(productColor.toLowerCase())
+        )
+      );
+      
+      if (hasMatchingColor) {
+        paletteData[palette].productsCount++;
+        product.colors.forEach((c: string) => paletteData[palette].colors.add(c));
+      }
+    });
+  });
+  
+  const paletteCoverage = Object.entries(paletteData).map(([palette, data]) => ({
+    palette,
+    productsCount: data.productsCount,
+    uniqueColors: data.colors.size,
+    coverage: Math.round((data.productsCount / allProducts.length) * 100)
+  })).sort((a, b) => b.productsCount - a.productsCount);
+  
+  const lowCoveragePalettes = paletteCoverage.filter(p => p.coverage < 20);
+  
+  return {
+    paletteCoverage,
+    lowCoveragePalettes,
+    recommendations: lowCoveragePalettes.map(p => 
+      `Low coverage for "${p.palette}" (${p.coverage}%) - need ${Math.max(0, Math.ceil(allProducts.length * 0.2) - p.productsCount)} more products`
+    )
+  };
+}
+
+/**
+ * Analyze room composition by functional categories
+ */
+function analyzeRoomComposition(allProducts: any[]) {
+  // Group products by functional category
+  const categoryData: Record<string, { count: number; products: any[] }> = {};
+  let uncategorized = 0;
+  
+  Object.keys(FUNCTIONAL_CATEGORIES).forEach(category => {
+    categoryData[category] = { count: 0, products: [] };
+  });
+  
+  allProducts.forEach(product => {
+    let categorized = false;
+    const productNameLower = product.name.toLowerCase();
+    const categoryName = product.category?.name?.toLowerCase() || '';
+    
+    Object.entries(FUNCTIONAL_CATEGORIES).forEach(([funcCategory, keywords]) => {
+      const matches = keywords.some(keyword =>
+        productNameLower.includes(keyword.toLowerCase()) ||
+        categoryName.includes(keyword.toLowerCase())
+      );
+      
+      if (matches) {
+        categoryData[funcCategory].count++;
+        categoryData[funcCategory].products.push({
+          id: product.id,
+          sku: product.sku,
+          name: product.name
+        });
+        categorized = true;
+      }
+    });
+    
+    if (!categorized) uncategorized++;
+  });
+  
+  // Room-specific composition needs
+  const roomCompositionNeeds = {
+    "Living Room": {
+      essential: [
+        { category: "primary_seating", min: 2, current: categoryData.primary_seating?.count || 0 },
+        { category: "coffee_table", min: 1, current: categoryData.coffee_table?.count || 0 }
+      ],
+      recommended: [
+        { category: "accent_seating", target: 5, current: categoryData.accent_seating?.count || 0 },
+        { category: "storage", target: 3, current: categoryData.storage?.count || 0 },
+        { category: "lighting", target: 5, current: categoryData.lighting?.count || 0 }
+      ]
+    },
+    "Bedroom": {
+      essential: [
+        { category: "bed", min: 1, current: categoryData.bed?.count || 0 },
+        { category: "nightstand", min: 2, current: categoryData.nightstand?.count || 0 }
+      ],
+      recommended: [
+        { category: "storage", target: 3, current: categoryData.storage?.count || 0 },
+        { category: "lighting", target: 3, current: categoryData.lighting?.count || 0 }
+      ]
+    },
+    "Dining Room": {
+      essential: [
+        { category: "dining_table", min: 1, current: categoryData.dining_table?.count || 0 },
+        { category: "dining_chair", min: 4, current: categoryData.dining_chair?.count || 0 }
+      ],
+      recommended: [
+        { category: "storage", target: 2, current: categoryData.storage?.count || 0 },
+        { category: "lighting", target: 2, current: categoryData.lighting?.count || 0 }
+      ]
+    },
+    "Office": {
+      essential: [
+        { category: "desk", min: 1, current: categoryData.desk?.count || 0 },
+        { category: "accent_seating", min: 1, current: categoryData.accent_seating?.count || 0 }
+      ],
+      recommended: [
+        { category: "storage", target: 3, current: categoryData.storage?.count || 0 },
+        { category: "lighting", target: 2, current: categoryData.lighting?.count || 0 }
+      ]
+    }
+  };
+  
+  // Generate deficits
+  const deficits: string[] = [];
+  Object.entries(roomCompositionNeeds).forEach(([roomType, needs]) => {
+    needs.essential.forEach(item => {
+      if (item.current < item.min) {
+        deficits.push(`${roomType} missing ${item.min - item.current} essential ${item.category} (has ${item.current}, needs ${item.min})`);
+      }
+    });
+    needs.recommended.forEach(item => {
+      if (item.current < item.target) {
+        deficits.push(`${roomType} needs ${item.target - item.current} more ${item.category} for optimal variety (has ${item.current}, target ${item.target})`);
+      }
+    });
+  });
+  
+  return {
+    categoryBreakdown: Object.entries(categoryData).map(([category, data]) => ({
+      category,
+      count: data.count,
+      percentage: Math.round((data.count / allProducts.length) * 100)
+    })).sort((a, b) => b.count - a.count),
+    roomCompositionNeeds,
+    uncategorized,
+    deficits
+  };
+}
+
+/**
+ * Analyze filter optimization - which combinations work best
+ */
+function analyzeFilterOptimization(allProducts: any[]) {
+  // Simulate filter combinations
+  const filterCombinations: any[] = [];
+  
+  QUIZ_ROOM_TYPES.forEach(roomType => {
+    QUIZ_STYLES.forEach(style => {
+      // Count products matching this combination
+      const matchingProducts = allProducts.filter(p =>
+        p.roomType?.some((rt: string) => rt.toLowerCase() === roomType.toLowerCase()) &&
+        p.designStyle?.some((ds: string) => ds.toLowerCase().includes(style.toLowerCase()))
+      );
+      
+      if (matchingProducts.length > 0) {
+        filterCombinations.push({
+          roomType,
+          style,
+          productCount: matchingProducts.length,
+          viable: matchingProducts.length >= 10 // Need at least 10 products
+        });
+      }
+    });
+  });
+  
+  // Sort by product count
+  filterCombinations.sort((a, b) => b.productCount - a.productCount);
+  
+  const bestCombinations = filterCombinations.filter(c => c.viable).slice(0, 10);
+  const weakCombinations = filterCombinations.filter(c => !c.viable);
+  
+  // Generate recommendations
+  const recommendations: string[] = [];
+  
+  // Identify room types with poor coverage across all styles
+  const roomTypeCounts: Record<string, number> = {};
+  QUIZ_ROOM_TYPES.forEach(roomType => {
+    const total = filterCombinations
+      .filter(c => c.roomType === roomType)
+      .reduce((sum, c) => sum + c.productCount, 0);
+    roomTypeCounts[roomType] = total;
+    
+    if (total < 50) {
+      recommendations.push(`${roomType} has poor overall coverage (${total} products) - needs more inventory across all styles`);
+    }
+  });
+  
+  // Identify styles with poor coverage
+  const styleCounts: Record<string, number> = {};
+  QUIZ_STYLES.forEach(style => {
+    const total = filterCombinations
+      .filter(c => c.style === style)
+      .reduce((sum, c) => sum + c.productCount, 0);
+    styleCounts[style] = total;
+    
+    if (total < 50) {
+      recommendations.push(`${style} style has poor coverage (${total} products) - needs more products across room types`);
+    }
+  });
+  
+  return {
+    bestCombinations,
+    weakCombinations: weakCombinations.slice(0, 10),
+    roomTypeCoverage: Object.entries(roomTypeCounts).map(([roomType, count]) => ({
+      roomType,
+      totalProducts: count,
+      viable: count >= 50
+    })).sort((a, b) => b.totalProducts - a.totalProducts),
+    styleCoverage: Object.entries(styleCounts).map(([style, count]) => ({
+      style,
+      totalProducts: count,
+      viable: count >= 50
+    })).sort((a, b) => b.totalProducts - a.totalProducts),
+    recommendations
+  };
+}
+
 /**
  * GET /api/admin/mapping-analysis
  * Returns comprehensive mapping analysis between quiz options and product database values
@@ -168,6 +436,29 @@ router.get("/mapping-analysis", async (req, res) => {
     const productsWithoutFeatures = totalProducts - productsWithFeatures;
     const productsWithoutColors = totalProducts - productsWithColors;
 
+    // Run new analyses
+    const colorPalettesAnalysis = analyzeColorPalettes(allProducts);
+    const compositionAnalysis = analyzeRoomComposition(allProducts);
+    const filterOptimization = analyzeFilterOptimization(allProducts);
+
+    // Generate actionable recommendations
+    const actionableRecommendations = {
+      acquisition: [
+        ...compositionAnalysis.deficits,
+        ...filterOptimization.recommendations
+      ].slice(0, 10),
+      dataQuality: [
+        productsWithoutRoomType > 0 ? `Fix room type for ${productsWithoutRoomType} products` : null,
+        productsWithoutStyle > 0 ? `Add design style to ${productsWithoutStyle} products` : null,
+        productsWithoutColors > 0 ? `Add color data to ${productsWithoutColors} products for better palette matching` : null,
+        compositionAnalysis.uncategorized > 0 ? `Categorize ${compositionAnalysis.uncategorized} products into functional categories` : null,
+        ...colorPalettesAnalysis.recommendations
+      ].filter(Boolean).slice(0, 10),
+      bestFilters: filterOptimization.bestCombinations.map(c => 
+        `${c.roomType} × ${c.style} (${c.productCount} products)`
+      ).slice(0, 5)
+    };
+
     const analysis = {
       roomTypes: {
         quizOptions: QUIZ_ROOM_TYPES,
@@ -192,6 +483,22 @@ router.get("/mapping-analysis", async (req, res) => {
         productValues: topColors,
         topColors: topColors
       },
+      colorPalettes: {
+        quizOptions: QUIZ_COLOR_PALETTES,
+        paletteCoverage: colorPalettesAnalysis.paletteCoverage,
+        lowCoveragePalettes: colorPalettesAnalysis.lowCoveragePalettes
+      },
+      composition: {
+        categoryBreakdown: compositionAnalysis.categoryBreakdown,
+        roomCompositionNeeds: compositionAnalysis.roomCompositionNeeds,
+        uncategorized: compositionAnalysis.uncategorized
+      },
+      filterOptimization: {
+        bestCombinations: filterOptimization.bestCombinations,
+        weakCombinations: filterOptimization.weakCombinations,
+        roomTypeCoverage: filterOptimization.roomTypeCoverage,
+        styleCoverage: filterOptimization.styleCoverage
+      },
       summary: {
         totalProducts,
         productsWithRoomType,
@@ -207,7 +514,8 @@ router.get("/mapping-analysis", async (req, res) => {
         productsWithoutColors,
         productsWithMismatchedRoomType: productsWithMismatchedRoomType.slice(0, 10),
         productsWithMismatchedStyle: productsWithMismatchedStyle.slice(0, 10)
-      }
+      },
+      recommendations: actionableRecommendations
     };
 
     res.json(analysis);
