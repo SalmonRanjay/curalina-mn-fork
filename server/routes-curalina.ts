@@ -1957,6 +1957,54 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Multi-angle analysis endpoint
+  app.post('/api/admin/products/:id/analyze-multi-angle', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const productId = req.params.id;
+      const multiAngleAnalyzer = await import('./services/multi-angle-analyzer');
+      
+      // Get product 
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Analyze this single product
+      const result = await multiAngleAnalyzer.analyzeProductFromAllAngles(product, curalinaStorage);
+      
+      res.json({
+        success: true,
+        product: result,
+        message: "Multi-angle analysis complete"
+      });
+    } catch (error) {
+      console.error("Error analyzing product:", error);
+      res.status(500).json({ error: "Failed to analyze product angles" });
+    }
+  });
+  
+  // Batch multi-angle analysis endpoint
+  app.post('/api/admin/products/analyze-batch', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { limit = 10 } = req.body;
+      const multiAngleAnalyzer = await import('./services/multi-angle-analyzer');
+      
+      // Run batch analysis
+      const results = await multiAngleAnalyzer.batchAnalyzeProducts(curalinaStorage, limit);
+      
+      res.json({
+        success: true,
+        analyzed: results.analyzed,
+        failed: results.failed,
+        skipped: results.skipped,
+        message: `Analyzed ${results.analyzed.length} products`
+      });
+    } catch (error) {
+      console.error("Error in batch analysis:", error);
+      res.status(500).json({ error: "Failed to run batch analysis" });
+    }
+  });
+
   // Background Upload Job endpoints
   // TRUE background upload - accepts files and processes them server-side
   app.post('/api/admin/upload-jobs/upload', isAuthenticated, isAdmin, upload.array('images', 200), async (req: any, res) => {

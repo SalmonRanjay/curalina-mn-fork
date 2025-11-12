@@ -416,22 +416,32 @@ export async function analyzeProductFromAllAngles(
 /**
  * Batch analyze products without front view images
  */
-export async function batchAnalyzeProductsWithoutFrontView(
+export async function batchAnalyzeProducts(
   storage: ICuralinaStorage,
   limit: number = 10
-): Promise<void> {
+): Promise<{
+  analyzed: Product[];
+  failed: Array<{ product: Product; error: string }>;
+  skipped: Product[];
+}> {
+  const results = {
+    analyzed: [] as Product[],
+    failed: [] as Array<{ product: Product; error: string }>,
+    skipped: [] as Product[]
+  };
+  
   try {
     // Get all products
     const allProducts = await storage.getProducts();
     
     // Filter products that need multi-angle analysis
-    const productsNeedingAnalysis = allProducts.filter(p => {
+    const productsNeedingAnalysis = allProducts.filter((p: Product) => {
       // Has images but no front view description
       const hasImages = p.images && p.images.length > 0;
       const hasFrontView = p.visualDescriptionFrontView || 
                           p.visualDescriptionFrontViewGemini || 
                           p.visualDescriptionFrontViewOpenAI;
-      const hasMultiAngleAnalysis = p.imageAnalyses && Object.keys(p.imageAnalyses).length > 0;
+      const hasMultiAngleAnalysis = p.imageAnalyses && Object.keys(p.imageAnalyses as object || {}).length > 0;
       
       return hasImages && !hasFrontView && !hasMultiAngleAnalysis;
     });
@@ -442,15 +452,46 @@ export async function batchAnalyzeProductsWithoutFrontView(
     console.log(`🎯 Analyzing first ${toAnalyze.length} products...`);
     
     for (const product of toAnalyze) {
-      await analyzeProductFromAllAngles(product, storage);
+      try {
+        const result = await analyzeProductFromAllAngles(product, storage);
+        if (result) {
+          // Get updated product with multi-angle data
+          const updatedProduct = await storage.getProduct(product.id);
+          if (updatedProduct) {
+            results.analyzed.push(updatedProduct);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to analyze product ${product.id}:`, error);
+        results.failed.push({
+          product,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
       // Small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
+    // Track skipped products (already have front view or no images)
+    const skippedProducts = allProducts.filter((p: Product) => {
+      const hasImages = p.images && p.images.length > 0;
+      const hasFrontView = p.visualDescriptionFrontView || 
+                          p.visualDescriptionFrontViewGemini || 
+                          p.visualDescriptionFrontViewOpenAI;
+      return !hasImages || hasFrontView;
+    }).slice(0, Math.max(0, limit - toAnalyze.length));
+    
+    results.skipped = skippedProducts;
+    
     console.log(`\n✅ Batch analysis complete!`);
+    console.log(`   - Analyzed: ${results.analyzed.length}`);
+    console.log(`   - Failed: ${results.failed.length}`);
+    console.log(`   - Skipped: ${results.skipped.length}`);
+    
+    return results;
     
   } catch (error) {
     console.error('Batch analysis error:', error);
     throw error;
   }
-}
+}// Export functions

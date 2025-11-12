@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle, Scan, ScanText } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -71,6 +71,8 @@ export default function AdminProducts() {
   const [analysisFilter, setAnalysisFilter] = useState<string>("all");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [analyzeAllProducts, setAnalyzeAllProducts] = useState(false);
+  const [analyzingProductId, setAnalyzingProductId] = useState<string | null>(null);
+  const [batchAnalyzing, setBatchAnalyzing] = useState(false);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -280,6 +282,52 @@ export default function AdminProducts() {
         variant: "destructive",
       });
       setDeleteProduct(null);
+    },
+  });
+
+  // Multi-angle analysis mutation for single product
+  const multiAngleAnalysisMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      return apiRequest(`/api/admin/products/${productId}/analyze-multi-angle`, "POST");
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Multi-angle analysis complete",
+        description: `Successfully analyzed product from multiple angles`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setAnalyzingProductId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Analysis failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setAnalyzingProductId(null);
+    },
+  });
+
+  // Batch multi-angle analysis mutation
+  const batchMultiAngleMutation = useMutation({
+    mutationFn: async (limit: number = 10) => {
+      return apiRequest(`/api/admin/products/analyze-batch`, "POST", { limit });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Batch analysis complete",
+        description: `Analyzed ${data.analyzed.length} products`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setBatchAnalyzing(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Batch analysis failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setBatchAnalyzing(false);
     },
   });
 
@@ -1185,6 +1233,19 @@ export default function AdminProducts() {
           
           <Button
             variant="outline"
+            onClick={() => {
+              setBatchAnalyzing(true);
+              batchMultiAngleMutation.mutate(10);
+            }}
+            disabled={batchAnalyzing}
+            data-testid="button-batch-multi-angle"
+          >
+            <Scan className="w-4 h-4 mr-2" />
+            {batchAnalyzing ? "Analyzing..." : "Multi-Angle Analysis (10)"}
+          </Button>
+          
+          <Button
+            variant="outline"
             onClick={() => generateDescriptionsMutation.mutate()}
             disabled={generateDescriptionsMutation.isPending}
             data-testid="button-generate-descriptions"
@@ -1608,6 +1669,27 @@ export default function AdminProducts() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
+                        {/* Multi-angle analysis button */}
+                        {product.images && product.images.length > 0 && 
+                         !(product as any).synthesizedFrontView && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setAnalyzingProductId(product.id);
+                              multiAngleAnalysisMutation.mutate(product.id);
+                            }}
+                            disabled={analyzingProductId === product.id}
+                            data-testid={`button-multi-angle-${product.id}`}
+                            title="Analyze from multiple angles"
+                          >
+                            {analyzingProductId === product.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ScanText className="w-4 h-4 text-blue-600" />
+                            )}
+                          </Button>
+                        )}
                         <Input
                           type="file"
                           accept="image/*"
