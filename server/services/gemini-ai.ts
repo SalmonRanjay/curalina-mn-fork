@@ -570,7 +570,7 @@ function getRoomEssentialCategories(roomType: string): Array<{ category: string;
 export async function selectProductsWithAI(
   products: Product[],
   quiz: QuizResponse
-): Promise<Array<{ sku: string; name: string; placement: string; reasoning: string }>> {
+): Promise<Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }>> {
   try {
     // Prepare product data for AI with visual descriptions and feature matching scores
     const productList = products.map(p => {
@@ -689,9 +689,23 @@ Return a JSON array with this structure:
     const selectedProducts = JSON.parse(response.text || "[]");
     console.log(`AI selected ${selectedProducts.length} products for ${quiz.roomType}`);
     
+    // Enrich selected products with visual descriptions
+    const enrichedProducts = selectedProducts.map((sp: any) => {
+      const fullProduct = products.find(p => p.sku === sp.sku);
+      if (fullProduct) {
+        const visualDescInfo = getBestVisualDescription(fullProduct);
+        return {
+          ...sp,
+          visualDescription: visualDescInfo.description,
+          visualDescriptionSource: visualDescInfo.source
+        };
+      }
+      return sp;
+    });
+    
     // Validate and adjust for budget constraint
     const budgetValidatedProducts = validateAndAdjustForBudget(
-      selectedProducts,
+      enrichedProducts,
       products,
       budgetMax,
       quiz
@@ -719,11 +733,11 @@ Return a JSON array with this structure:
  * @returns Adjusted product selection that stays within budget
  */
 function validateAndAdjustForBudget(
-  selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }>,
+  selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }>,
   allProducts: Product[],
   budgetMax: number | null,
   quiz: QuizResponse
-): Array<{ sku: string; name: string; placement: string; reasoning: string }> {
+): Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }> {
   // If no budget limit, return as-is
   if (!budgetMax) {
     console.log("💰 No budget limit set, proceeding with all selected products");
