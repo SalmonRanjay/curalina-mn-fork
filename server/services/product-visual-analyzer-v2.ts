@@ -144,56 +144,23 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
 }
 
 /**
- * Synthesize multiple image analyses into one structured description
+ * Simplified synthesis - just returns the first (front-view) description
+ * NO LONGER combines multiple angles - keeps them separate for clarity
  */
 async function synthesizeAnalyses(analyses: string[]): Promise<string> {
   if (analyses.length === 0) return '';
-  if (analyses.length === 1) return analyses[0];
   
-  const synthesisPrompt = `Synthesize these ${analyses.length} structured furniture descriptions from different angles into ONE comprehensive structured description:
-
-${analyses.map((desc, i) => `**VIEW ${i + 1}:**\n${desc}`).join('\n\n---\n\n')}
-
-**OUTPUT REQUIREMENTS:**
-1. Maintain the EXACT same structured format as the input descriptions
-2. Merge information from all views, resolving conflicts by using the most specific/detailed value
-3. Keep total response under 2000 characters
-4. Use the same field structure:
-   - Product Name:
-   - Primary Material:
-   - Color & Finish:
-   - Form Factor:
-   - Dimensions:
-   - Key Geometry:
-   - Edge Profile:
-   - Distinctive Features:
-   - Lighting & Texture Behavior:
-   - Multi-Angle Synthesis:
-
-Focus on technical precision and exact values over descriptive prose.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{
-        role: 'user',
-        parts: [{ text: synthesisPrompt }]
-      }]
-    });
-    
-    const text = response.text?.trim() || analyses.join('\n\n');
-    
-    // Enforce character limit for combined descriptions
-    if (text.length > 2000) {
-      console.warn(`Combined description exceeds 2000 character limit (${text.length} chars). Truncating...`);
-      return text.substring(0, 2000);
-    }
-    
-    return text;
-  } catch (error) {
-    console.error('Error synthesizing descriptions:', error);
-    return analyses.join('\n\n');
+  // Just return the first description (which should be the front-view)
+  // We're NOT combining multiple angles anymore for better accuracy
+  const primaryDescription = analyses[0];
+  
+  // Enforce stricter character limit
+  if (primaryDescription.length > 800) {
+    console.warn(`Description exceeds 800 character limit (${primaryDescription.length} chars). Truncating...`);
+    return primaryDescription.substring(0, 800);
   }
+  
+  return primaryDescription;
 }
 
 /**
