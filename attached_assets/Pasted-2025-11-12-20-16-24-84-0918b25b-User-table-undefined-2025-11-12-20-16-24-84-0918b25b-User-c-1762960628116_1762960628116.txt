@@ -1,0 +1,133 @@
+2025-11-12 20:16:24.84
+0918b25b
+User
+table: undefined,
+2025-11-12 20:16:24.84
+0918b25b
+User
+column: undefined,
+2025-11-12 20:16:24.84
+0918b25b
+User
+dataType: undefined,
+2025-11-12 20:16:24.84
+0918b25b
+User
+constraint: undefined,
+2025-11-12 20:16:24.84
+0918b25b
+User
+file: 'parse_relation.c',
+2025-11-12 20:16:24.84
+0918b25b
+User
+line: '3722',
+2025-11-12 20:16:24.84
+0918b25b
+User
+routine: 'errorMissingColumn'
+2025-11-12 20:16:24.84
+0918b25b
+User
+}
+2025-11-12 20:16:26.51
+0918b25b
+User
+Error fetching products: error: column "image_analyses" does not exist
+2025-11-12 20:16:26.51
+0918b25b
+User
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-11-12 20:16:26.51
+0918b25b
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-12 20:16:26.51
+0918b25b
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-11-12 20:16:26.51
+0918b25b
+User
+at async CuralinaStorage.getAllProducts (file:///home/runner/workspace/dist/index.js:1352:25)
+2025-11-12 20:16:26.51
+0918b25b
+User
+at async file:///home/runner/workspace/dist/index.js:4713:25 {
+2025-11-12 20:16:26.51
+0918b25b
+User
+length: 115,
+2025-11-12 20:16:26.51
+0918b25b
+User
+severity: 'ERROR',
+2025-11-12 20:16:26.51
+0918b25b
+User
+code: '42703',
+2025-11-12 20:16:26.51
+0918b25b
+User
+detail: undefined,
+2025-11-12 20:16:26.51
+0918b25b
+User
+hint: undefined,
+2025-11-12 20:16:26.51
+0918b25b
+User
+position: '533',
+2025-11-12 20:16:26.51
+0918b25b
+User
+internalPosition: undefined,
+2025-11-12 20:16:26.51
+0918b25b
+User
+internalQuery: undefined,
+2025-11-12 20:16:26.51
+0918b25b
+User
+where: undefined,
+2025-11-12 20:16:26.51
+0918b25b
+User
+column: undefined,
+2025-11-12 20:16:26.51
+0918b25b
+User
+file: 'parse_relation.c',
+2025-11-12 20:16:26.51
+0918b25b
+User
+routine: 'errorMissingColumn'
+2025-11-12 20:16:26.51
+0918b25b
+User
+}
+2025-11-12 20:16:26.62
+0918b25b
+User
+Error fetching active visual analysis jobs: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/runner/workspace/dist/services/visual-analysis-job-service-v2' imported from /home/runner/workspace/dist/index.js
+
+2025-11-12 20:16:26.62
+0918b25b
+User
+at moduleResolve (node:internal/modules/esm/resolve:952:10)
+2025-11-12 20:16:26.62
+0918b25b
+User
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2025-11-12 20:16:26.62
+0918b25b
+User
+at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+2025-11-12 20:16:26.62
+0918b25b
+User
+at ModuleLoader.import (node:internal/modules/esm/loader:539:34)
+2025-11-12 20:16:26.62
+0918b25b
+User
+at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
