@@ -204,6 +204,10 @@ export const products = pgTable("products", {
   visualDescriptionFrontView: text("visual_description_front_view"), // Active front-view description
   visualDescriptionFrontViewGemini: text("visual_description_front_view_gemini"), // Gemini front-view analysis
   visualDescriptionFrontViewOpenAI: text("visual_description_front_view_openai"), // OpenAI front-view analysis
+  // Multi-angle analysis fields
+  imageAnalyses: jsonb("image_analyses"), // { [imageUrl]: { angle, confidence, description, features } }
+  synthesizedFrontView: text("synthesized_front_view"), // AI-generated front view from multi-angle synthesis
+  completeProductDescription: text("complete_product_description"), // Comprehensive description from all angles
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
