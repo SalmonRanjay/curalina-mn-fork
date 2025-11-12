@@ -331,7 +331,7 @@ export function generateCompositionInstructions(
   const template = ROOM_TEMPLATES[roomType as keyof typeof ROOM_TEMPLATES];
   if (template) {
     for (const [category, products] of Object.entries(composition)) {
-      if (template.essentials[category]) {
+      if ((template.essentials as any)[category]) {
         const names = products.map(p => `${p.name} (${p.sku})`).join(', ');
         instructions.push(`- ${category} (essential): ${names}`);
       }
@@ -339,7 +339,7 @@ export function generateCompositionInstructions(
     
     // Then complementary items
     for (const [category, products] of Object.entries(composition)) {
-      if (template.complementary?.[category]) {
+      if ((template.complementary as any)?.[category]) {
         const names = products.map(p => `${p.name} (${p.sku})`).join(', ');
         instructions.push(`- ${category}: ${names}`);
       }

@@ -1,5 +1,6 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import type { QuizResponse, Product } from "@shared/schema";
+import { selectProductsWithComposition, generateCompositionInstructions, validateComposition } from './room-composition-service';
 
 // Initialize Gemini client with AI Integrations credentials
 // This is using Replit's AI Integrations service, which provides Gemini-compatible API access
@@ -703,9 +704,50 @@ Return a JSON array with this structure:
       return sp;
     });
     
+    // Apply room composition rules to ensure proper product mix and no duplicates
+    console.log(`🏠 Applying room composition rules for ${quiz.roomType}...`);
+    const compositionResult = await selectProductsWithComposition(
+      quiz.roomType,
+      products, // Pass all available products for better selection
+      quiz,
+      15 // Max products
+    );
+    
+    // Log composition warnings if any
+    if (compositionResult.warnings.length > 0) {
+      console.warn('⚠️ Room composition warnings:');
+      compositionResult.warnings.forEach(w => console.warn(`  - ${w}`));
+    }
+    
+    if (compositionResult.missingEssentials.length > 0) {
+      console.error('❌ Missing essential items:');
+      compositionResult.missingEssentials.forEach(e => console.error(`  - ${e}`));
+    }
+    
+    // Map composition products back to our format with visual descriptions
+    const compositionProducts = compositionResult.selectedProducts.map(p => {
+      const visualDescInfo = getBestVisualDescription(p);
+      const aiSelected = enrichedProducts.find(ep => ep.sku === p.sku);
+      
+      return {
+        sku: p.sku,
+        name: p.name,
+        placement: aiSelected?.placement || "strategically placed in the room",
+        reasoning: aiSelected?.reasoning || `Selected as essential item for ${quiz.roomType}`,
+        visualDescription: visualDescInfo.description,
+        visualDescriptionSource: visualDescInfo.source
+      };
+    });
+    
+    // Log composition breakdown
+    console.log(`✅ Room composition complete:`);
+    for (const [category, products] of Object.entries(compositionResult.composition)) {
+      console.log(`  ${category}: ${products.length} items`);
+    }
+    
     // Validate and adjust for budget constraint
     const budgetValidatedProducts = validateAndAdjustForBudget(
-      enrichedProducts,
+      compositionProducts,
       products,
       budgetMax,
       quiz
