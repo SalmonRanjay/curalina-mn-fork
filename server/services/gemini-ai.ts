@@ -618,8 +618,15 @@ Room Requirements:
 - Budget: ${quiz.budgetRange}
 - User Preferences: ${quiz.preferences?.join(", ") || "None"}
 
-Available Products (each includes featureMatchScore showing % match with required features):
+Available Products (each includes visualDescription showing EXACT appearance):
 ${JSON.stringify(productList, null, 2)}
+
+🎯 CRITICAL VISUAL MATCHING INSTRUCTIONS:
+Each product includes a "visualDescription" field that describes its EXACT appearance from AI image analysis.
+- Products with detailed visual descriptions MUST be rendered exactly as described
+- The visualDescription is the authoritative source for product appearance
+- Pay special attention to colors, materials, shapes, and distinctive features mentioned
+- If visualDescription says "No visual description available", use the name and materials to approximate
 
 CRITICAL BUDGET CONSTRAINT:
 ⚠️ The TOTAL COMBINED COST of all selected products MUST NOT EXCEED ${budgetMaxFormatted}
