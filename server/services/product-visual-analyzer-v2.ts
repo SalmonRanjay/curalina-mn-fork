@@ -146,12 +146,19 @@ ${isFrontView ?
  * Analyze a single image using Gemini
  */
 async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFrontView: boolean = false): Promise<string> {
+  // Pre-validate image URL to avoid wasting API calls on broken images
+  const isValid = await validateImageUrl(imageUrl);
+  if (!isValid) {
+    console.warn(`  ⚠️ Gemini: Skipping ${imageName} - image URL not accessible`);
+    return '';
+  }
+  
   try {
     const imageData = await downloadImageAsBase64(imageUrl);
     
-    // Return empty string if image download failed
+    // Return empty string if image download failed (shouldn't happen after validation, but defensive)
     if (!imageData) {
-      console.warn(`  ⚠️ Gemini: Skipping ${imageName} - image not accessible`);
+      console.warn(`  ⚠️ Gemini: Skipping ${imageName} - image download failed`);
       return '';
     }
     
@@ -182,9 +189,9 @@ async function analyzeImageWithGemini(imageUrl: string, imageName: string, isFro
     
     return text;
   } catch (error) {
+    // Re-throw AI provider errors (auth, rate limits, etc) - these are real problems
     console.error(`Error analyzing ${imageName} with Gemini:`, error);
-    // Return empty string instead of throwing - let analysis continue
-    return '';
+    throw error;
   }
 }
 
@@ -308,13 +315,20 @@ async function analyzeWithGemini(
  * Analyze a single image using OpenAI with structured format
  */
 async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFrontView: boolean = false): Promise<string> {
+  // Pre-validate image URL to avoid wasting API calls on broken images
+  const isValid = await validateImageUrl(imageUrl);
+  if (!isValid) {
+    console.warn(`  ⚠️ OpenAI: Skipping ${imageName} - image URL not accessible`);
+    return '';
+  }
+  
   try {
     // Download image as base64
     const imageData = await downloadImageAsBase64(imageUrl);
     
-    // Return empty string if image download failed
+    // Return empty string if image download failed (shouldn't happen after validation, but defensive)
     if (!imageData) {
-      console.warn(`  ⚠️ OpenAI: Skipping ${imageName} - image not accessible`);
+      console.warn(`  ⚠️ OpenAI: Skipping ${imageName} - image download failed`);
       return '';
     }
     
@@ -351,9 +365,9 @@ async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFro
     
     return text;
   } catch (error) {
+    // Re-throw AI provider errors (auth, rate limits, etc) - these are real problems
     console.error(`Error analyzing ${imageName} with OpenAI:`, error);
-    // Return empty string instead of throwing - let analysis continue
-    return '';
+    throw error;
   }
 }
 
@@ -576,8 +590,12 @@ export async function analyzeProductVisualsV2(
     visualDescriptionFrontViewOpenAI: openai?.frontViewDescription || ''
   };
   
-  // Mark as analyzed in cache for future skipping
-  if (product.productId && product.images) {
+  // Only mark as analyzed if we got meaningful results from at least one provider
+  // Don't cache empty results from failed analysis
+  const hasValidResults = result.visualDescriptionGemini || result.visualDescriptionOpenAI ||
+                         result.visualDescriptionFrontViewGemini || result.visualDescriptionFrontViewOpenAI;
+  
+  if (product.productId && product.images && hasValidResults) {
     markAsAnalyzed(product.productId, product.images, {
       visualDescription: result.visualDescription,
       visualDescriptionGemini: result.visualDescriptionGemini,
@@ -586,6 +604,8 @@ export async function analyzeProductVisualsV2(
       visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
       visualDescriptionFrontViewOpenAI: result.visualDescriptionFrontViewOpenAI
     });
+  } else if (product.productId && !hasValidResults) {
+    console.warn(`  ⚠️ Not caching - no valid analysis results obtained`);
   }
   
   return result;
