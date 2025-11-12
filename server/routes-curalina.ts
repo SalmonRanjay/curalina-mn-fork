@@ -1058,40 +1058,67 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Bulk re-analyze products with Front View images
+  // Bulk re-analyze products that need Front View analysis
+  // Targets: 1) Products with Front View images, 2) Single-image products, 3) Missing Front View data
   app.post('/api/admin/visual-analysis/reanalyze-front-views', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('🔍 Finding products with Front View images for re-analysis...');
+      console.log('🔍 Finding products that need Front View analysis...');
       
       // Get all products
       const allProducts = await curalinaStorage.getAllProducts();
       
-      // Filter products that have front-view images
-      const productsWithFrontView = allProducts.filter(product => {
+      // Filter products that need Front View analysis
+      const productsNeedingFrontView = allProducts.filter(product => {
         if (!product.images || product.images.length === 0) return false;
         
-        // Check if any image has "front-view" or "front_view" or "frontview" in the URL
-        return product.images.some(imageUrl => {
+        // Case 1: Has a named Front View image
+        const hasNamedFrontView = product.images.some(imageUrl => {
           const lowerUrl = imageUrl.toLowerCase();
           return lowerUrl.includes('front-view') || 
                  lowerUrl.includes('front_view') || 
                  lowerUrl.includes('frontview');
         });
+        
+        // Case 2: Has exactly one image (should be treated as Front View)
+        const hasSingleImage = product.images.length === 1;
+        
+        // Case 3: Missing Front View analysis data
+        const missingFrontViewData = !product.visualDescriptionFrontView || 
+                                      product.visualDescriptionFrontView.trim().length === 0;
+        
+        // Include if: (has named front view OR single image) AND missing data
+        // OR just has single image (needs re-analysis with new logic)
+        return (hasNamedFrontView || hasSingleImage) && (missingFrontViewData || hasSingleImage);
       });
       
-      console.log(`📊 Found ${productsWithFrontView.length} products with Front View images`);
+      console.log(`📊 Found ${productsNeedingFrontView.length} products needing Front View analysis`);
       
-      if (productsWithFrontView.length === 0) {
+      // Log breakdown
+      const withNamedFrontView = productsNeedingFrontView.filter(p => 
+        p.images?.some(url => url.toLowerCase().includes('front'))
+      ).length;
+      const withSingleImage = productsNeedingFrontView.filter(p => 
+        p.images?.length === 1
+      ).length;
+      const missingData = productsNeedingFrontView.filter(p => 
+        !p.visualDescriptionFrontView || p.visualDescriptionFrontView.trim().length === 0
+      ).length;
+      
+      console.log(`  - ${withNamedFrontView} with named Front View images`);
+      console.log(`  - ${withSingleImage} with single images (auto Front View)`);
+      console.log(`  - ${missingData} missing Front View analysis data`);
+      
+      if (productsNeedingFrontView.length === 0) {
         return res.json({
           success: true,
-          message: 'No products with Front View images found',
+          message: 'No products need Front View analysis',
           jobId: null,
           totalProducts: 0
         });
       }
       
       // Extract product IDs
-      const productIds = productsWithFrontView.map(p => p.id);
+      const productIds = productsNeedingFrontView.map(p => p.id);
       
       // Import configuration and create the job
       const { visualAnalysisConfig } = await import('./config/visual-analysis.js');
@@ -1117,13 +1144,18 @@ export function registerCuralinaRoutes(app: Express) {
         setTimeout(() => processVisualAnalysisJob(job.id), 1000);
       }
       
-      console.log(`✅ Created visual analysis job ${job.id} for ${productsWithFrontView.length} products with Front View images`);
+      console.log(`✅ Created visual analysis job ${job.id} for ${productsNeedingFrontView.length} products needing Front View analysis`);
       
       res.json({ 
         success: true,
         jobId: job.id,
-        totalProducts: productsWithFrontView.length,
-        message: `Visual analysis started for ${productsWithFrontView.length} products with Front View images`,
+        totalProducts: productsNeedingFrontView.length,
+        breakdown: {
+          namedFrontView: withNamedFrontView,
+          singleImage: withSingleImage,
+          missingData: missingData
+        },
+        message: `Visual analysis started for ${productsNeedingFrontView.length} products (${withNamedFrontView} named Front View, ${withSingleImage} single-image, ${missingData} missing data)`,
         version: visualAnalysisConfig.useV2 ? 'v2' : 'v1'
       });
       
