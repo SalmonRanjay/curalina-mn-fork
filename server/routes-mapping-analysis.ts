@@ -217,4 +217,121 @@ router.get("/mapping-analysis", async (req, res) => {
   }
 });
 
+
+/**
+ * POST /api/admin/mapping-analysis/normalize-room-types
+ * Normalizes room type capitalization to match quiz options
+ */
+router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
+  try {
+    const allProducts = await db.select().from(products);
+    
+    // Mapping of variations to standardized values
+    const roomTypeMapping: Record<string, string> = {
+      'living room': 'Living Room',
+      'bedroom': 'Bedroom',
+      'dining room': 'Dining Room',
+      'home office': 'Office',
+      'office': 'Office',
+      'kitchen': 'Kitchen',
+      'entry': 'Entryway',
+      'entryway': 'Entryway',
+      'nursery': 'Nursery',
+      'outdoor': 'Outdoor'
+    };
+
+    let updatedCount = 0;
+
+    for (const product of allProducts) {
+      if (product.roomType && product.roomType.length > 0) {
+        const normalizedRoomTypes = product.roomType.map(rt => {
+          const normalized = roomTypeMapping[rt.toLowerCase()];
+          return normalized || rt;
+        });
+
+        // Check if any changes were made
+        const hasChanges = normalizedRoomTypes.some((nrt, idx) => 
+          nrt !== product.roomType![idx]
+        );
+
+        if (hasChanges) {
+          await db.update(products)
+            .set({ roomType: normalizedRoomTypes })
+            .where(sql`id = ${product.id}`);
+          updatedCount++;
+        }
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      updatedCount,
+      message: `Normalized room types for ${updatedCount} products` 
+    });
+  } catch (error: any) {
+    console.error("Error normalizing room types:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/mapping-analysis/normalize-design-styles
+ * Maps product design styles to quiz options
+ */
+router.post("/mapping-analysis/normalize-design-styles", async (req, res) => {
+  try {
+    const allProducts = await db.select().from(products);
+    
+    // Mapping of product styles to quiz options
+    const styleMapping: Record<string, string[]> = {
+      'organic modern': ['Organic Modern'],
+      'modern farmhouse': ['Modern', 'Traditional'],
+      'mid-century scandi': ['Midcentury', 'Scandinavian'],
+      'contemporary lux': ['Modern'],
+      'warm transitional': ['Traditional'],
+      'artful eclectic': ['Bohemian']
+    };
+
+    let updatedCount = 0;
+
+    for (const product of allProducts) {
+      if (product.designStyle && product.designStyle.length > 0) {
+        const expandedStyles = new Set<string>();
+        
+        product.designStyle.forEach(ds => {
+          const dsLower = ds.toLowerCase();
+          const mappedStyles = styleMapping[dsLower];
+          
+          if (mappedStyles) {
+            mappedStyles.forEach(s => expandedStyles.add(s));
+          } else {
+            // Keep original if no mapping found
+            expandedStyles.add(ds);
+          }
+        });
+
+        const newStyles = Array.from(expandedStyles);
+        
+        // Check if changes were made
+        if (newStyles.length !== product.designStyle.length || 
+            !newStyles.every(s => product.designStyle!.includes(s))) {
+          await db.update(products)
+            .set({ styleTags: newStyles })
+            .where(sql`id = ${product.id}`);
+          updatedCount++;
+        }
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      updatedCount,
+      message: `Added style tags for ${updatedCount} products (check styleTags field)` 
+    });
+  } catch (error: any) {
+    console.error("Error normalizing design styles:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

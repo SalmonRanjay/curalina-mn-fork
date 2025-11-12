@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface MappingAnalysis {
   roomTypes: {
@@ -48,8 +51,52 @@ interface MappingAnalysis {
 }
 
 export default function MappingAnalysis() {
-  const { data: analysis, isLoading } = useQuery<MappingAnalysis>({
+  const { toast } = useToast();
+  
+  const { data: analysis, isLoading, refetch } = useQuery<MappingAnalysis>({
     queryKey: ["/api/admin/mapping-analysis"],
+  });
+
+  const normalizeRoomTypesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/mapping-analysis/normalize-room-types");
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Room types normalized",
+        description: `Updated ${data.updatedCount} products`,
+      });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Normalization failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const normalizeStylesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/mapping-analysis/normalize-design-styles");
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Design styles normalized",
+        description: `Added style tags to ${data.updatedCount} products`,
+      });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Normalization failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -77,11 +124,35 @@ export default function MappingAnalysis() {
 
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Quiz-to-Product Mapping Analysis</h1>
-        <p className="text-muted-foreground">
-          Analyze how quiz questions map to product database values and identify gaps
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Quiz-to-Product Mapping Analysis</h1>
+          <p className="text-muted-foreground">
+            Analyze how quiz questions map to product database values and identify gaps
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => normalizeRoomTypesMutation.mutate()}
+            disabled={normalizeRoomTypesMutation.isPending}
+            variant="outline"
+            size="sm"
+            data-testid="button-normalize-room-types"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${normalizeRoomTypesMutation.isPending ? 'animate-spin' : ''}`} />
+            Fix Room Types
+          </Button>
+          <Button
+            onClick={() => normalizeStylesMutation.mutate()}
+            disabled={normalizeStylesMutation.isPending}
+            variant="outline"
+            size="sm"
+            data-testid="button-normalize-styles"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${normalizeStylesMutation.isPending ? 'animate-spin' : ''}`} />
+            Map Styles
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
