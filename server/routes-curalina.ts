@@ -1510,11 +1510,57 @@ export function registerCuralinaRoutes(app: Express) {
         return res.status(404).json({ error: "Quiz response not found" });
       }
 
+      // Idempotency check: generate hash from quiz-specific candidate pool
+      const { generateSelectionHash, createCandidatePoolSnapshot, initializeSelectionRationale } = await import('./services/selection-ledger-service');
+      const { filterProductsByQuiz } = await import('./services/gemini-ai');
+      
+      // Get all products and filter to quiz-specific candidate pool (for deterministic hash)
+      const allProducts = await curalinaStorage.getAllProducts();
+      const candidatePool = filterProductsByQuiz(allProducts, quiz);
+      console.log(`📊 Candidate pool: ${candidatePool.length} products match quiz criteria`);
+      
+      // Generate hash from quiz + filtered candidate pool (not full catalog)
+      const selectionHash = generateSelectionHash(quiz, candidatePool);
+      
+      // Check if we already have a ledger with this hash (idempotency)
+      const existingLedger = await curalinaStorage.getSelectionLedgerByHash(selectionHash);
+      if (existingLedger) {
+        console.log(`♻️  Idempotency: Found existing ledger for hash ${selectionHash.substring(0, 8)}...`);
+        const existingRender = await curalinaStorage.getRender(existingLedger.renderId);
+        
+        if (existingRender) {
+          // Happy path: ledger and render both exist
+          console.log(`♻️  Returning existing render ${existingRender.id} (status: ${existingRender.status})`);
+          return res.json(existingRender);
+        } else {
+          // Orphaned ledger: render was deleted but ledger remains
+          console.warn(`⚠️  Orphaned ledger detected (render ${existingLedger.renderId} missing) - deleting orphaned ledger`);
+          await curalinaStorage.deleteSelectionLedger(existingLedger.id);
+          console.log(`🗑️  Deleted orphaned ledger ${existingLedger.id} - will create fresh render`);
+          // Continue to create new render with same hash
+        }
+      }
+      
+      console.log(`✨ New selection hash: ${selectionHash.substring(0, 8)}... - creating fresh render`);
+
       // Create render record with status 'generating' (placeholder prompt)
       const render = await curalinaStorage.createRender({
         ...renderData,
         sessionId: quiz.sessionId,
         prompt: "Generating...",
+      });
+      
+      // Create initial ledger entry (will be populated during AI generation)
+      const candidateSnapshot = createCandidatePoolSnapshot(allProducts);
+      const initialRationale = initializeSelectionRationale();
+      
+      await curalinaStorage.createSelectionLedger({
+        renderId: render.id,
+        selectionHash,
+        candidatePoolSnapshot: candidateSnapshot as any,
+        selectionRationale: initialRationale as any,
+        compositionOrder: [], // Will be populated after product selection
+        lockedAt: null, // Will be locked after successful generation
       });
 
       // Return immediately with status 'generating'

@@ -299,6 +299,64 @@ export const insertRenderSchema = createInsertSchema(renders).omit({
 });
 export type InsertRender = z.infer<typeof insertRenderSchema>;
 
+// Selection Ledger - Complete audit trail of product selection decisions
+export const selectionLedger = pgTable("selection_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  renderId: varchar("render_id").notNull().references(() => renders.id).unique(),
+  selectionHash: varchar("selection_hash", { length: 64 }).notNull().unique(), // SHA-256 hash for idempotency
+  candidatePoolSnapshot: jsonb("candidate_pool_snapshot").notNull(), // All products available before filtering: [{ sku, name, category, ... }]
+  selectionRationale: jsonb("selection_rationale").notNull(), // Decision trail: { essentials: {...}, complementary: {...}, excluded: [...] }
+  compositionOrder: text("composition_order").array().notNull(), // Ordered list of SKUs in composition priority
+  lockedAt: timestamp("locked_at"), // When selection was finalized (null = still selecting)
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const selectionLedgerRelations = relations(selectionLedger, ({ one }) => ({
+  render: one(renders, {
+    fields: [selectionLedger.renderId],
+    references: [renders.id],
+  }),
+}));
+
+export type SelectionLedger = typeof selectionLedger.$inferSelect;
+
+// Type for candidate pool snapshot structure
+export type CandidatePoolSnapshot = Array<{
+  sku: string;
+  name: string;
+  category: string;
+  price: number;
+  inStock: boolean;
+  hasValidImage: boolean;
+  hasVisualDescription: boolean;
+}>;
+
+// Type for selection rationale structure
+export type SelectionRationale = {
+  essentials: Record<string, {
+    category: string; // e.g., 'primary_seating'
+    selectedProducts: Array<{ sku: string; name: string; reason: string }>;
+    rulesApplied: { min: number; max: number; priority: number };
+  }>;
+  complementary: Record<string, {
+    category: string;
+    selectedProducts: Array<{ sku: string; name: string; reason: string }>;
+    rulesApplied: { min: number; max: number; priority: number };
+  }>;
+  excluded: Array<{
+    sku: string;
+    name: string;
+    reason: string; // Why this product wasn't selected
+  }>;
+  diversityScore: number; // How well products are distributed across categories
+};
+
+export const insertSelectionLedgerSchema = createInsertSchema(selectionLedger).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSelectionLedger = z.infer<typeof insertSelectionLedgerSchema>;
+
 // Cart Items - Shopping cart
 export const cartItems = pgTable("cart_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -4,6 +4,7 @@ import {
   products,
   quizResponses,
   renders,
+  selectionLedger,
   cartItems,
   orders,
   orderItems,
@@ -26,6 +27,8 @@ import {
   type InsertQuizResponse,
   type Render,
   type InsertRender,
+  type SelectionLedger,
+  type InsertSelectionLedger,
   type CartItem,
   type InsertCartItem,
   type Order,
@@ -90,6 +93,13 @@ export interface ICuralinaStorage {
   getRender(id: string): Promise<Render | undefined>;
   getLatestRenderBySession(sessionId: string): Promise<Render | undefined>;
   getRendersBySession(sessionId: string): Promise<Render[]>;
+  
+  // Selection Ledger operations
+  createSelectionLedger(ledger: InsertSelectionLedger): Promise<SelectionLedger>;
+  getSelectionLedgerByHash(hash: string): Promise<SelectionLedger | undefined>;
+  getSelectionLedgerByRender(renderId: string): Promise<SelectionLedger | undefined>;
+  lockSelectionLedger(id: string): Promise<SelectionLedger>;
+  deleteSelectionLedger(id: string): Promise<void>;
   
   // Cart operations
   getCartBySession(sessionId: string): Promise<Array<CartItem & { product: Product }>>;
@@ -344,6 +354,43 @@ export class CuralinaStorage implements ICuralinaStorage {
       .from(renders)
       .where(eq(renders.sessionId, sessionId))
       .orderBy(desc(renders.createdAt));
+  }
+
+  // Selection Ledger operations
+  async createSelectionLedger(ledgerData: InsertSelectionLedger): Promise<SelectionLedger> {
+    const [ledger] = await db.insert(selectionLedger).values(ledgerData).returning();
+    return ledger;
+  }
+
+  async getSelectionLedgerByHash(hash: string): Promise<SelectionLedger | undefined> {
+    const [ledger] = await db
+      .select()
+      .from(selectionLedger)
+      .where(eq(selectionLedger.selectionHash, hash))
+      .limit(1);
+    return ledger;
+  }
+
+  async getSelectionLedgerByRender(renderId: string): Promise<SelectionLedger | undefined> {
+    const [ledger] = await db
+      .select()
+      .from(selectionLedger)
+      .where(eq(selectionLedger.renderId, renderId))
+      .limit(1);
+    return ledger;
+  }
+
+  async lockSelectionLedger(id: string): Promise<SelectionLedger> {
+    const [ledger] = await db
+      .update(selectionLedger)
+      .set({ lockedAt: new Date() })
+      .where(eq(selectionLedger.id, id))
+      .returning();
+    return ledger;
+  }
+
+  async deleteSelectionLedger(id: string): Promise<void> {
+    await db.delete(selectionLedger).where(eq(selectionLedger.id, id));
   }
 
   // Cart operations
