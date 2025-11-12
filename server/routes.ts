@@ -332,6 +332,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { registerCuralinaRoutes } = await import("./routes-curalina");
   registerCuralinaRoutes(app);
 
+  // Mapping analysis routes
+  const mappingAnalysisRoutes = await import("./routes-mapping-analysis");
+  app.use("/api/admin", isAuthenticated, isAdmin, mappingAnalysisRoutes.default);
+
   const httpServer = createServer(app);
   return httpServer;
 }

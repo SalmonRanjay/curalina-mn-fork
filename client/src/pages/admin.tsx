@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Package, Store, Tag, ShoppingCart, Image as ImageIcon, FileText, BarChart3, Users, BookOpen, Search, DollarSign, TrendingUp, ShoppingBag, Upload, Database } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Store, Tag, ShoppingCart, Image as ImageIcon, FileText, BarChart3, Users, BookOpen, Search, DollarSign, TrendingUp, ShoppingBag, Upload, Database, GitCompare } from "lucide-react";
 import type { Category, Supplier, Product, Order, Render, QuizResponse, User } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -20,6 +20,7 @@ import BulkUploadPage from "@/pages/admin/bulk-upload";
 import CSVImportPage from "@/pages/admin/csv-import";
 import FrontViewUpload from "@/pages/admin/front-view-upload";
 import S3SyncPage from "@/pages/admin/s3-sync";
+import MappingAnalysis from "@/pages/admin/mapping-analysis";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("analytics");
@@ -50,6 +51,7 @@ export default function AdminDashboard() {
     { id: "bulk-upload", label: "Bulk Upload", icon: Upload },
     { id: "front-view-upload", label: "Front View Upload", icon: ImageIcon },
     { id: "s3-sync", label: "S3 Sync", icon: Database },
+    { id: "mapping-analysis", label: "Quiz Mapping", icon: GitCompare },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
     { id: "suppliers", label: "Suppliers", icon: Store },
@@ -95,6 +97,7 @@ export default function AdminDashboard() {
           {activeSection === "bulk-upload" && <BulkUploadPage />}
           {activeSection === "front-view-upload" && <FrontViewUpload />}
           {activeSection === "s3-sync" && <S3SyncPage />}
+          {activeSection === "mapping-analysis" && <MappingAnalysis />}
           {activeSection === "orders" && <OrdersSection />}
           {activeSection === "users" && <UsersSection />}
           {activeSection === "suppliers" && <SuppliersSection />}
