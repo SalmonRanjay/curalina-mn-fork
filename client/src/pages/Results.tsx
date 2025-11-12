@@ -11,6 +11,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Render, Product } from "@shared/schema";
 
+type ProductMetadata = Record<string, { visualDescriptionSource: string }>;
+
 /**
  * Helper function to reorder product images to prioritize Front View
  * Front View images should be displayed first in the Shop the Look carousel
@@ -359,15 +361,21 @@ export default function Results() {
                             <h3 className="font-semibold text-lg" data-testid={`text-product-name-${product.id}`}>
                               {product.name}
                             </h3>
-                            {render?.productMetadata && render.productMetadata[product.sku] && (
-                              <Badge 
-                                variant={getVisualDescriptionBadgeVariant(render.productMetadata[product.sku].visualDescriptionSource)}
-                                className="text-xs shrink-0"
-                                data-testid={`badge-visual-source-${product.id}`}
-                              >
-                                {render.productMetadata[product.sku].visualDescriptionSource}
-                              </Badge>
-                            )}
+                            {(() => {
+                              const metadata = render?.productMetadata as ProductMetadata | null | undefined;
+                              const productMeta = metadata?.[product.sku];
+                              const source = productMeta?.visualDescriptionSource;
+                              
+                              return source && source !== 'None' ? (
+                                <Badge 
+                                  variant={getVisualDescriptionBadgeVariant(source)}
+                                  className="text-xs shrink-0"
+                                  data-testid={`badge-visual-source-${product.id}`}
+                                >
+                                  {source}
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
                           <p className="text-sm text-stone-600 dark:text-stone-400 mb-3 line-clamp-2">
                             {product.description}
