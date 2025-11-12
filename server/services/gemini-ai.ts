@@ -572,7 +572,7 @@ export async function selectProductsWithAI(
   quiz: QuizResponse
 ): Promise<Array<{ sku: string; name: string; placement: string; reasoning: string }>> {
   try {
-    // Prepare product data for AI with feature matching scores
+    // Prepare product data for AI with visual descriptions and feature matching scores
     const productList = products.map(p => {
       // Calculate feature match score
       let featureMatchScore = 0;
@@ -587,10 +587,15 @@ export async function selectProductsWithAI(
         featureMatchScore = matchingFeatures.length / quiz.keyFeatures.length;
       }
       
+      // Get the best available visual description for accurate rendering
+      const visualDescInfo = getBestVisualDescription(p);
+      
       return {
         sku: p.sku,
         name: p.name,
         description: p.description || "",
+        visualDescription: visualDescInfo.description || "No visual description available - use product name and materials to approximate appearance",
+        visualDescriptionSource: visualDescInfo.source,
         price: p.price,
         features: p.keyFeatures || [],
         materials: p.materials || [],
