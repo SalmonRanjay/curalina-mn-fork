@@ -1,6 +1,6 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import type { QuizResponse, Product } from "@shared/schema";
-import { selectProductsWithComposition, generateCompositionInstructions, validateComposition } from './room-composition-service';
+import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate } from './room-composition-service';
 
 // Initialize Gemini client with AI Integrations credentials
 // This is using Replit's AI Integrations service, which provides Gemini-compatible API access
@@ -727,7 +727,7 @@ Return a JSON array with this structure:
     // Map composition products back to our format with visual descriptions
     const compositionProducts = compositionResult.selectedProducts.map(p => {
       const visualDescInfo = getBestVisualDescription(p);
-      const aiSelected = enrichedProducts.find(ep => ep.sku === p.sku);
+      const aiSelected = enrichedProducts.find((ep: any) => ep.sku === p.sku);
       
       return {
         sku: p.sku,
@@ -895,6 +895,108 @@ function getBestVisualDescription(product: any): { description: string; source: 
 }
 
 /**
+ * Attach placement metadata (functional category, priority) from ledger or detection
+ */
+export function attachPlacementMetadata(
+  selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string; [key: string]: any }>,
+  ledgerEntry: { compositionOrder?: string[]; selectionRationale?: any } | null,
+  roomType: string,
+  allProducts: any[]
+): Array<{ sku: string; name: string; placement: string; reasoning: string; functionalCategory?: string; priority?: number; [key: string]: any }> {
+  
+  // Extract ledger metadata if available
+  const ledgerMetadata: Record<string, { category: string; priority: number }> = {};
+  
+  if (ledgerEntry?.selectionRationale) {
+    const rationale = ledgerEntry.selectionRationale;
+    let currentPriority = 1;
+    
+    // Process essentials
+    if (rationale.essentials) {
+      for (const [category, data] of Object.entries(rationale.essentials as Record<string, any>)) {
+        if (data.selectedProducts && Array.isArray(data.selectedProducts)) {
+          for (const sku of data.selectedProducts) {
+            ledgerMetadata[sku] = { category, priority: currentPriority };
+            currentPriority++;
+          }
+        }
+      }
+    }
+    
+    // Process complementary
+    if (rationale.complementary) {
+      for (const [category, data] of Object.entries(rationale.complementary as Record<string, any>)) {
+        if (data.selectedProducts && Array.isArray(data.selectedProducts)) {
+          for (const sku of data.selectedProducts) {
+            ledgerMetadata[sku] = { category, priority: currentPriority };
+            currentPriority++;
+          }
+        }
+      }
+    }
+  }
+  
+  // Enrich products with metadata
+  return selectedProducts.map((product, index) => {
+    // Try ledger first
+    if (ledgerMetadata[product.sku]) {
+      return {
+        ...product,
+        functionalCategory: ledgerMetadata[product.sku].category,
+        priority: ledgerMetadata[product.sku].priority
+      };
+    }
+    
+    // Fallback: detect category
+    const fullProduct = allProducts.find((p: any) => p.sku === product.sku);
+    if (fullProduct) {
+      const categories = detectFunctionalCategory(fullProduct);
+      const category = categories[0] || 'decor';
+      
+      // Determine priority based on category
+      const template = getRoomTemplate(roomType);
+      let priority = 7; // Default decor priority
+      
+      if (template) {
+        // Check essentials
+        if ((template.essentials as any)[category]) {
+          priority = (template.essentials as any)[category].priority;
+        } else if (template.complementary && (template.complementary as any)[category]) {
+          priority = (template.complementary as any)[category].priority;
+        }
+      }
+      
+      console.log(`   ⚠️ No ledger data for ${product.sku}, detected as ${category} with priority ${priority}`);
+      
+      return {
+        ...product,
+        functionalCategory: category,
+        priority
+      };
+    }
+    
+    // Last resort: use composition order from ledger if available
+    if (ledgerEntry?.compositionOrder) {
+      const orderIndex = ledgerEntry.compositionOrder.indexOf(product.sku);
+      if (orderIndex >= 0) {
+        return {
+          ...product,
+          functionalCategory: 'decor',
+          priority: orderIndex + 1
+        };
+      }
+    }
+    
+    // Final fallback: use array position
+    return {
+      ...product,
+      functionalCategory: 'decor',
+      priority: index + 1
+    };
+  });
+}
+
+/**
  * Generate structured placement matrix with explicit spatial instructions
  */
 function generatePlacementMatrix(
@@ -921,18 +1023,18 @@ function generatePlacementMatrix(
   matrix.push(``);
   
   // Extract spatial constraints from room/floor plan analysis
-  const hasWindows = floorPlanAnalysis?.windowLocations && floorPlanAnalysis.windowLocations.length > 0;
-  const hasDoors = floorPlanAnalysis?.doorLocations && floorPlanAnalysis.doorLocations.length > 0;
+  const hasWindows = Boolean(floorPlanAnalysis?.windowLocations && floorPlanAnalysis.windowLocations.length > 0);
+  const hasDoors = Boolean(floorPlanAnalysis?.doorLocations && floorPlanAnalysis.doorLocations.length > 0);
   const roomDimensions = floorPlanAnalysis?.roomDimensions || "standard room dimensions";
   
   // Add room spatial context
   matrix.push(`🏠 ROOM SPATIAL CONTEXT:`);
   matrix.push(`   Room Type: ${roomType}`);
   matrix.push(`   Dimensions: ${roomDimensions}`);
-  if (hasWindows) {
+  if (hasWindows && floorPlanAnalysis) {
     matrix.push(`   Windows: ${floorPlanAnalysis.windowLocations.length} window(s) - ${floorPlanAnalysis.windowLocations.join(", ")}`);
   }
-  if (hasDoors) {
+  if (hasDoors && floorPlanAnalysis) {
     matrix.push(`   Doors: ${floorPlanAnalysis.doorLocations.length} door(s)/opening(s) - ${floorPlanAnalysis.doorLocations.join(", ")}`);
   }
   matrix.push(``);

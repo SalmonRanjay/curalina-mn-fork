@@ -1763,8 +1763,18 @@ export function registerCuralinaRoutes(app: Express) {
             console.error("Error updating selection ledger (non-blocking):", error);
           }
           
+          // Attach placement metadata from ledger before building prompt
+          const { attachPlacementMetadata } = await import('./services/gemini-ai');
+          const ledgerData = await curalinaStorage.getSelectionLedgerByRender(render.id) || null;
+          const productsWithPlacement = attachPlacementMetadata(
+            enrichedProducts,
+            ledgerData,
+            quiz.roomType,
+            allProducts
+          );
+          
           // Build enhanced prompt with enriched products and image analysis
-          const { prompt, productMetadata } = buildPromptFromQuiz(quiz, enrichedProducts, roomAnalysis, floorPlanAnalysis);
+          const { prompt, productMetadata } = buildPromptFromQuiz(quiz, productsWithPlacement, roomAnalysis, floorPlanAnalysis);
           
           // Log what image analysis was used
           const analysisTypes = [];
