@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSessionId } from "@/lib/session";
@@ -112,20 +112,71 @@ export default function Results() {
   // Build ordered products list
   // Priority: 1) Selection ledger composition order, 2) Fallback to render.productSkus
   const productSkuOrder = selectionLedger?.compositionOrder || render?.productSkus || [];
-  const products: Product[] = productSkuOrder.map((sku) => {
-    // If this SKU has been swapped, use the replacement product ID
-    const targetId = swappedProducts[sku] || null;
-    
-    if (targetId) {
-      // Find the swapped product by ID
-      const swappedProduct = allProducts?.find(p => p.id === targetId);
-      if (swappedProduct) return swappedProduct;
-    }
-    
-    // Otherwise, find the original product by SKU
-    const originalProduct = allProducts?.find(p => p.sku === sku);
-    return originalProduct;
-  }).filter(Boolean) as Product[];
+  const products: Product[] = useMemo(() => {
+    return productSkuOrder.map((sku) => {
+      // If this SKU has been swapped, use the replacement product ID
+      const targetId = swappedProducts[sku] || null;
+      
+      if (targetId) {
+        // Find the swapped product by ID
+        const swappedProduct = allProducts?.find(p => p.id === targetId);
+        if (swappedProduct) return swappedProduct;
+        // If swapped product not found, fall through to create placeholder
+      }
+      
+      // Otherwise, find the original product by SKU
+      const originalProduct = allProducts?.find(p => p.sku === sku);
+      
+      // If product not found, create a placeholder
+      if (!originalProduct) {
+        return {
+          id: `placeholder-${sku}`,
+          sku: sku,
+          name: "Product Unavailable",
+          description: "This product is no longer available",
+          price: "0",
+          images: null,
+          categoryId: "unknown",
+          supplierId: "unknown",
+          tradePrice: null,
+          discount: "0",
+          roomType: null,
+          designStyle: null,
+          styleTags: null,
+          keyFeatures: null,
+          storageSolutions: null,
+          colors: null,
+          materials: null,
+          dimensions: null,
+          weight: null,
+          seating: null,
+          assembly: null,
+          inventory: null,
+          leadTime: null,
+          availability: "out_of_stock",
+          shipping: null,
+          asset3dUrl: null,
+          visualDescription: null,
+          visualDescriptionGemini: null,
+          visualDescriptionFrontView: null,
+          visualDescriptionFrontViewGemini: null,
+          imageAnalyses: null,
+          synthesizedFrontView: null,
+          completeProductDescription: null,
+          tags: null,
+          sourceFile: null,
+          seoMeta: null,
+          slug: `unavailable-${sku}`,
+          createdAt: null,
+          updatedAt: null,
+          imageHealth: "healthy",
+          lastValidatedAt: null,
+        } as unknown as Product;
+      }
+      
+      return originalProduct;
+    });
+  }, [productSkuOrder, allProducts, swappedProducts]);
 
   // Fetch alternative products for swap
   const { data: alternatives } = useQuery<Product[]>({
@@ -136,7 +187,7 @@ export default function Results() {
       if (!res.ok) throw new Error("Failed to fetch alternatives");
       return res.json();
     },
-    enabled: !!swapProductId,
+    enabled: !!swapProductId && !swapProductId.startsWith('placeholder-'),
   });
 
   // Add to cart mutation
@@ -177,10 +228,10 @@ export default function Results() {
 
   if (renderLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg text-stone-700 dark:text-stone-300">Loading your design...</p>
+          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-foreground" style={{ fontSize: 'var(--font-size-lg)' }}>Loading your design...</p>
         </div>
       </div>
     );
@@ -188,10 +239,10 @@ export default function Results() {
 
   if (renderError || !render) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <Card className="p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold mb-4">No Design Found</h2>
-          <p className="text-stone-600 dark:text-stone-400 mb-6">
+          <h2 className="font-bold mb-4" style={{ fontSize: 'var(--font-size-2xl)' }}>No Design Found</h2>
+          <p className="text-muted-foreground mb-6" style={{ fontSize: 'var(--font-size-base)' }}>
             We couldn't find your design. Please start a new quiz.
           </p>
           <Button onClick={() => setLocation("/quiz")} data-testid="button-start-quiz">
@@ -204,13 +255,13 @@ export default function Results() {
 
   if (render.status === 'generating') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold mb-2" data-testid="text-generating">
+          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <h2 className="font-bold mb-2" style={{ fontSize: 'var(--font-size-2xl)' }} data-testid="text-generating">
             Generating Your Design...
           </h2>
-          <p className="text-stone-600 dark:text-stone-400">
+          <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-base)' }}>
             Our AI is creating your personalized interior design
           </p>
         </div>
@@ -220,12 +271,12 @@ export default function Results() {
 
   if (render.status === 'failed') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <Card className="p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
+          <h2 className="font-bold text-destructive mb-4" style={{ fontSize: 'var(--font-size-2xl)' }}>
             Generation Failed
           </h2>
-          <p className="text-stone-600 dark:text-stone-400 mb-6">
+          <p className="text-muted-foreground mb-6" style={{ fontSize: 'var(--font-size-base)' }}>
             {render.errorMessage || "Something went wrong while generating your design."}
           </p>
           <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz">
@@ -237,7 +288,7 @@ export default function Results() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="flex justify-between items-start mb-12">
@@ -246,10 +297,10 @@ export default function Results() {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1"
           >
-            <h1 className="text-4xl font-bold mb-4" data-testid="heading-results">
+            <h1 className="font-bold mb-4" style={{ fontSize: 'var(--font-size-4xl)' }} data-testid="heading-results">
               Your AI-Generated Design
             </h1>
-            <p className="text-lg text-stone-600 dark:text-stone-400">
+            <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-lg)' }}>
               Personalized just for you
             </p>
           </motion.div>
@@ -289,7 +340,7 @@ export default function Results() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute top-6 right-6 bg-white/90 dark:bg-black/90 backdrop-blur"
+                  className="absolute top-6 right-6 bg-card/90 backdrop-blur"
                   onClick={() => setShowFullImage(true)}
                   data-testid="button-expand-image"
                 >
@@ -307,7 +358,7 @@ export default function Results() {
               className="flex-1 lg:max-w-md"
             >
               <Card className="p-6 h-full lg:max-h-[800px] flex flex-col">
-                <h2 className="text-2xl font-bold mb-4" data-testid="heading-shop-look">
+                <h2 className="font-bold mb-4" style={{ fontSize: 'var(--font-size-2xl)' }} data-testid="heading-shop-look">
                   Shop the Look
                 </h2>
                 <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4">
@@ -319,7 +370,7 @@ export default function Results() {
                       transition={{ delay: 0.5 + index * 0.1 }}
                     >
                       <Card className="overflow-hidden hover-elevate" data-testid={`card-product-${product.id}`}>
-                        <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
+                        <div className="aspect-square relative bg-muted group">
                           {(() => {
                             // Prioritize Front View image to show first
                             const prioritizedImages = prioritizeFrontViewImage(product.images);
@@ -367,8 +418,8 @@ export default function Results() {
                                           key={idx}
                                           className={`w-1.5 h-1.5 rounded-full transition-all ${
                                             idx === (currentImageIndex[product.id] || 0)
-                                              ? 'bg-white w-4'
-                                              : 'bg-white/50'
+                                              ? 'bg-accent-foreground w-4'
+                                              : 'bg-accent-foreground/50'
                                           }`}
                                         />
                                       ))}
@@ -377,7 +428,7 @@ export default function Results() {
                                 )}
                               </>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-stone-400">
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                 No image
                               </div>
                             );
@@ -385,7 +436,7 @@ export default function Results() {
                         </div>
                         <div className="p-4">
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <h3 className="font-semibold text-lg" data-testid={`text-product-name-${product.id}`}>
+                            <h3 className="font-semibold" style={{ fontSize: 'var(--font-size-lg)' }} data-testid={`text-product-name-${product.id}`}>
                               {product.name}
                             </h3>
                             {(() => {
@@ -395,7 +446,8 @@ export default function Results() {
                                 return (
                                   <Badge 
                                     variant={getVisualDescriptionBadgeVariant(normalizedSource)}
-                                    className="text-xs shrink-0"
+                                    className="shrink-0"
+                                    style={{ fontSize: 'var(--font-size-xs)' }}
                                     data-testid={`badge-visual-source-${product.id}`}
                                   >
                                     {normalizedSource}
@@ -405,22 +457,26 @@ export default function Results() {
                               return null;
                             })()}
                           </div>
-                          <p className="text-sm text-stone-600 dark:text-stone-400 mb-3 line-clamp-2">
+                          <p className="text-muted-foreground mb-3 line-clamp-2" style={{ fontSize: 'var(--font-size-sm)' }}>
                             {product.description}
                           </p>
                           <div className="flex items-center justify-between mb-3">
                             <div>
-                              {product.discount && Number(product.discount) > 0 ? (
+                              {product.id.startsWith('placeholder-') ? (
+                                <span className="font-bold text-muted-foreground" style={{ fontSize: 'var(--font-size-xl)' }} data-testid={`text-price-${product.id}`}>
+                                  —
+                                </span>
+                              ) : product.discount && Number(product.discount) > 0 ? (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                                  <span className="font-bold text-accent" style={{ fontSize: 'var(--font-size-xl)' }}>
                                     ${(Number(product.price) * (1 - Number(product.discount) / 100)).toFixed(2)}
                                   </span>
-                                  <span className="text-sm text-stone-500 line-through">
+                                  <span className="text-muted-foreground line-through" style={{ fontSize: 'var(--font-size-sm)' }}>
                                     ${product.price}
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-xl font-bold" data-testid={`text-price-${product.id}`}>
+                                <span className="font-bold" style={{ fontSize: 'var(--font-size-xl)' }} data-testid={`text-price-${product.id}`}>
                                   ${product.price}
                                 </span>
                               )}
@@ -428,22 +484,24 @@ export default function Results() {
                             <Button 
                               size="icon" 
                               onClick={() => addToCartMutation.mutate(product.id)}
-                              disabled={addToCartMutation.isPending}
+                              disabled={addToCartMutation.isPending || product.id.startsWith('placeholder-')}
                               data-testid={`button-add-to-cart-${product.id}`}
                             >
                               <ShoppingCart className="w-4 h-4" />
                             </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => setSwapProductId(product.id)}
-                            data-testid={`button-swap-${product.id}`}
-                          >
-                            <RefreshCw className="w-3 h-3 mr-2" />
-                            Swap Product
-                          </Button>
+                          {!product.id.startsWith('placeholder-') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => setSwapProductId(product.id)}
+                              data-testid={`button-swap-${product.id}`}
+                            >
+                              <RefreshCw className="w-3 h-3 mr-2" />
+                              Swap Product
+                            </Button>
+                          )}
                         </div>
                       </Card>
                     </motion.div>
@@ -457,8 +515,8 @@ export default function Results() {
         {/* Actions */}
         <div className="flex flex-col items-center gap-4">
           {Object.keys(swappedProducts).length > 0 && (
-            <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <p className="text-sm text-stone-700 dark:text-stone-300">
+            <div className="flex items-center gap-4 p-4 bg-accent/10 rounded-lg">
+              <p className="text-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
                 You've swapped {Object.keys(swappedProducts).length} product(s). 
               </p>
               <Button
@@ -533,7 +591,7 @@ export default function Results() {
       {/* Swap Product Modal */}
       {swapProductId && (
         <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-foreground/80 z-50 flex items-center justify-center p-4"
           onClick={() => setSwapProductId(null)}
         >
           <motion.div
@@ -541,10 +599,10 @@ export default function Results() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-stone-900 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto"
+            className="bg-background rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto"
           >
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" data-testid="heading-swap-modal">
+              <h2 className="font-bold" style={{ fontSize: 'var(--font-size-2xl)' }} data-testid="heading-swap-modal">
                 Swap Product
               </h2>
               <Button
@@ -596,7 +654,7 @@ export default function Results() {
                     }}
                     data-testid={`card-alternative-${alt.id}`}
                   >
-                    <div className="aspect-square relative bg-stone-100 dark:bg-stone-800 group">
+                    <div className="aspect-square relative bg-muted group">
                       {alt.images && alt.images.length > 0 ? (
                         <>
                           <img
@@ -638,8 +696,8 @@ export default function Results() {
                                     key={idx}
                                     className={`w-1.5 h-1.5 rounded-full transition-all ${
                                       idx === (currentImageIndex[alt.id] || 0)
-                                        ? 'bg-white w-4'
-                                        : 'bg-white/50'
+                                        ? 'bg-accent-foreground w-4'
+                                        : 'bg-accent-foreground/50'
                                     }`}
                                   />
                                 ))}
@@ -648,17 +706,17 @@ export default function Results() {
                           )}
                         </>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-stone-400">
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           No image
                         </div>
                       )}
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold mb-1">{alt.name}</h3>
-                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-2 line-clamp-2">
+                      <h3 className="font-semibold mb-1" style={{ fontSize: 'var(--font-size-base)' }}>{alt.name}</h3>
+                      <p className="text-muted-foreground mb-2 line-clamp-2" style={{ fontSize: 'var(--font-size-sm)' }}>
                         {alt.description}
                       </p>
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                      <div className="font-bold text-accent" style={{ fontSize: 'var(--font-size-lg)' }}>
                         ${alt.price}
                       </div>
                     </div>
@@ -666,7 +724,7 @@ export default function Results() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-stone-500">
+              <div className="text-center py-12 text-muted-foreground" style={{ fontSize: 'var(--font-size-base)' }}>
                 No alternative products available
               </div>
             )}
@@ -677,7 +735,7 @@ export default function Results() {
       {/* Full Image Modal */}
       {showFullImage && (
         <div
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-foreground/80 z-50 flex items-center justify-center p-4"
           onClick={() => setShowFullImage(false)}
         >
           <Button
