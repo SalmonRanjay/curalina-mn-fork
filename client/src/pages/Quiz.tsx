@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuiz } from "@/contexts/QuizContext";
 import Dropzone from "react-dropzone";
 import colorPalette from "@assets/image001_1762335467188.png";
+import RoomTypeStep from "@/components/quiz/RoomTypeStep";
 
 const TOTAL_STEPS = 7;
 
@@ -345,45 +346,11 @@ export default function Quiz() {
   };
 
   const renderStep1 = () => {
-    const rooms = ["Living Room", "Dining Room", "Home Office", "Bedroom"];
-    
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
-            Your style story begins here...
-          </h2>
-          <p className="text-xl font-semibold">Which room do you dream of transforming first?</p>
-          <p className="text-stone-600 dark:text-stone-400">
-            You can always explore other rooms later—let's just start with the one that matters most
-          </p>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 gap-4 md:gap-6 max-w-3xl mx-auto mt-12"
-        >
-          {rooms.map((room) => (
-            <motion.div key={room} variants={itemVariants}>
-              <Card
-                className={`p-8 text-center cursor-pointer transition-all hover-elevate ${
-                  quizData.roomType === room ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
-                }`}
-                onClick={() => updateQuizData("roomType", room)}
-                data-testid={`room-${room.toLowerCase().replace(" ", "-")}`}
-              >
-                <p className="font-semibold text-lg uppercase">{room}</p>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        <p className="text-center text-stone-600 dark:text-stone-400 mt-8">
-          Start with the space that matters most
-        </p>
-      </div>
+      <RoomTypeStep 
+        value={quizData.roomType} 
+        onChange={(value) => updateQuizData("roomType", value)} 
+      />
     );
   };
 
