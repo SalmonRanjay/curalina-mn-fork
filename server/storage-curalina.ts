@@ -94,6 +94,7 @@ export interface ICuralinaStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
+  setProductImageHealthStatus(id: string, status: 'healthy' | 'repairing' | 'removed', metadata?: any): Promise<Product>;
   
   // Quiz operations
   createQuizResponse(quiz: InsertQuizResponse): Promise<QuizResponse>;
@@ -348,6 +349,50 @@ export class CuralinaStorage implements ICuralinaStorage {
       .set(productData)
       .where(eq(products.id, id))
       .returning();
+    return product;
+  }
+
+  async setProductImageHealthStatus(
+    id: string,
+    status: 'healthy' | 'repairing' | 'removed',
+    metadata?: any
+  ): Promise<Product> {
+    // First, get the current product to preserve existing imageAnalyses
+    const [existingProduct] = await db.select().from(products).where(eq(products.id, id));
+    
+    if (!existingProduct) {
+      throw new Error("Product not found");
+    }
+
+    const updateData: any = {
+      imageHealth: status,
+      lastValidatedAt: new Date(),
+    };
+
+    // Merge metadata with existing imageAnalyses to preserve audit trail
+    if (metadata) {
+      const existingAnalyses = existingProduct.imageAnalyses || {};
+      // Create health history array if it doesn't exist
+      const healthHistory = (existingAnalyses as any).healthHistory || [];
+      healthHistory.push({
+        status,
+        timestamp: new Date().toISOString(),
+        ...metadata
+      });
+      
+      updateData.imageAnalyses = {
+        ...existingAnalyses,
+        healthHistory,
+        lastHealthAction: metadata
+      };
+    }
+
+    const [product] = await db
+      .update(products)
+      .set(updateData)
+      .where(eq(products.id, id))
+      .returning();
+    
     return product;
   }
 

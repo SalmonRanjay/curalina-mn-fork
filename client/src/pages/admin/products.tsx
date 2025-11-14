@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle, Scan, ScanText } from "lucide-react";
+import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle, Scan, ScanText, Wrench, CircleX } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,7 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [deleteProduct, setDeleteProduct] = useState<{ id: string; name: string } | null>(null);
+  const [removeImagesProduct, setRemoveImagesProduct] = useState<{ id: string; name: string } | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: { current: number; total: number } }>({});
   
@@ -69,6 +70,7 @@ export default function AdminProducts() {
   const [imageFilter, setImageFilter] = useState<string>("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
   const [analysisFilter, setAnalysisFilter] = useState<string>("all");
+  const [imageHealthFilter, setImageHealthFilter] = useState<string>("all");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [analyzeAllProducts, setAnalyzeAllProducts] = useState(false);
   const [analyzingProductId, setAnalyzingProductId] = useState<string | null>(null);
@@ -581,6 +583,47 @@ export default function AdminProducts() {
     return suppliers?.find((s) => s.id === supplierId)?.name || "Unknown";
   };
 
+  // Image health mutations
+  const repairImagesMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      return apiRequest(`/api/admin/products/${productId}/image-health/repair`, "PATCH");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Image Repair Started",
+        description: "Product images marked for revalidation",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Repair failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeImagesMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      return apiRequest(`/api/admin/products/${productId}/image-health/remove`, "PATCH");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Images Removed",
+        description: "Product images marked as removed",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Remove failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const getImageUrl = (images: string[] | null) => {
     if (!images || images.length === 0) return null;
     const firstImage = images[0];
@@ -643,9 +686,14 @@ export default function AdminProducts() {
         if (hasAIAnalysis(product)) return false;
       }
       
+      // Image health filter
+      if (imageHealthFilter !== "all" && product.imageHealth !== imageHealthFilter) {
+        return false;
+      }
+      
       return true;
     });
-  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter, analysisFilter]);
+  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter, analysisFilter, imageHealthFilter]);
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -654,9 +702,10 @@ export default function AdminProducts() {
     setImageFilter("all");
     setAvailabilityFilter("all");
     setAnalysisFilter("all");
+    setImageHealthFilter("all");
   };
 
-  const hasActiveFilters = searchQuery || categoryFilter !== "all" || supplierFilter !== "all" || imageFilter !== "all" || availabilityFilter !== "all" || analysisFilter !== "all";
+  const hasActiveFilters = searchQuery || categoryFilter !== "all" || supplierFilter !== "all" || imageFilter !== "all" || availabilityFilter !== "all" || analysisFilter !== "all" || imageHealthFilter !== "all";
 
   const ProductFormFields = ({ form }: { form: any }) => (
     <>
@@ -1387,6 +1436,21 @@ export default function AdminProducts() {
             </Select>
           </div>
 
+          <div>
+            <Label htmlFor="image-health-filter" className="text-sm mb-2 block">Image Health</Label>
+            <Select value={imageHealthFilter} onValueChange={setImageHealthFilter}>
+              <SelectTrigger id="image-health-filter" data-testid="select-image-health-filter">
+                <SelectValue placeholder="All Health Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Health Status</SelectItem>
+                <SelectItem value="healthy">Healthy</SelectItem>
+                <SelectItem value="repairing">Repairing</SelectItem>
+                <SelectItem value="removed">Removed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* AI Analysis Filter */}
           <div>
             <Label htmlFor="analysis-filter" className="text-sm mb-2 block">AI Analysis</Label>
@@ -1414,7 +1478,8 @@ export default function AdminProducts() {
                 supplierFilter !== "all" && "Supplier",
                 imageFilter !== "all" && "Images",
                 availabilityFilter !== "all" && "Status",
-                analysisFilter !== "all" && "Analysis"
+                analysisFilter !== "all" && "Analysis",
+                imageHealthFilter !== "all" && "Health"
               ].filter(Boolean).length} filter(s) active
             </Badge>
           )}
@@ -1589,13 +1654,14 @@ export default function AdminProducts() {
                   <TableHead>Supplier</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Availability</TableHead>
+                  <TableHead>Health</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-stone-500">
+                    <TableCell colSpan={9} className="text-center py-12 text-stone-500">
                       {hasActiveFilters ? "No products match your filters" : "No products found"}
                     </TableCell>
                   </TableRow>
@@ -1652,6 +1718,26 @@ export default function AdminProducts() {
                       </span>
                     </TableCell>
                     <TableCell>
+                      <Badge
+                        variant={
+                          product.imageHealth === "healthy"
+                            ? "default"
+                            : product.imageHealth === "repairing"
+                            ? "secondary"
+                            : "destructive"
+                        }
+                        data-testid={`badge-health-${product.id}`}
+                      >
+                        {product.imageHealth === "healthy" ? (
+                          <><CheckCircle2 className="h-3 w-3 mr-1" /> Healthy</>
+                        ) : product.imageHealth === "repairing" ? (
+                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Repairing</>
+                        ) : (
+                          <><XCircle className="h-3 w-3 mr-1" /> Removed</>
+                        )}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -1689,6 +1775,35 @@ export default function AdminProducts() {
                               <ScanText className="w-4 h-4 text-blue-600" />
                             )}
                           </Button>
+                        )}
+                        {/* Image health actions */}
+                        {product.imageHealth !== "healthy" && (
+                          <>
+                            {product.imageHealth === "removed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => repairImagesMutation.mutate(product.id)}
+                                disabled={repairImagesMutation.isPending}
+                                data-testid={`button-repair-images-${product.id}`}
+                                title="Repair images - mark for revalidation"
+                              >
+                                <Wrench className="w-4 h-4 text-amber-600" />
+                              </Button>
+                            )}
+                            {product.imageHealth === "repairing" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setRemoveImagesProduct({ id: product.id, name: product.name })}
+                                disabled={removeImagesMutation.isPending}
+                                data-testid={`button-remove-images-${product.id}`}
+                                title="Remove images - mark as removed"
+                              >
+                                <CircleX className="w-4 h-4 text-red-600" />
+                              </Button>
+                            )}
+                          </>
                         )}
                         <Input
                           type="file"
@@ -1775,6 +1890,33 @@ export default function AdminProducts() {
               className="bg-red-600 hover:bg-red-700"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Images Confirmation Dialog */}
+      <AlertDialog open={!!removeImagesProduct} onOpenChange={(open) => !open && setRemoveImagesProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Product Images</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark images as removed for "{removeImagesProduct?.name}"? Image URLs will be preserved but marked as inaccessible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-remove-images">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (removeImagesProduct) {
+                  removeImagesMutation.mutate(removeImagesProduct.id);
+                  setRemoveImagesProduct(null);
+                }
+              }}
+              data-testid="button-confirm-remove-images"
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {removeImagesMutation.isPending ? "Removing..." : "Remove Images"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

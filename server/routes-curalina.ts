@@ -183,6 +183,44 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Image health management routes
+  app.patch('/api/admin/products/:id/image-health/repair', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const product = await curalinaStorage.setProductImageHealthStatus(
+        req.params.id,
+        'repairing',
+        {
+          repairedAt: new Date(),
+          repairedBy: req.user?.id,
+          action: 'manual_repair'
+        }
+      );
+      res.json(product);
+    } catch (error) {
+      console.error("Error repairing product images:", error);
+      res.status(500).json({ error: "Failed to repair product images" });
+    }
+  });
+
+  app.patch('/api/admin/products/:id/image-health/remove', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const product = await curalinaStorage.setProductImageHealthStatus(
+        req.params.id,
+        'removed',
+        {
+          removedAt: new Date(),
+          removedBy: req.user?.id,
+          reason: req.body.reason || 'manual_removal',
+          action: 'manual_remove'
+        }
+      );
+      res.json(product);
+    } catch (error) {
+      console.error("Error removing product images:", error);
+      res.status(500).json({ error: "Failed to remove product images" });
+    }
+  });
+
   // Generate presigned URL for direct browser-to-S3 upload (FAST - no server relay)
   app.post('/api/admin/products/:id/presigned-upload-url', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
