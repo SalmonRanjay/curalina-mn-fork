@@ -86,6 +86,8 @@ export default {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
+        inter: ["Inter", "sans-serif"],
+        cormorant: ["Cormorant Garamond", "serif"],
       },
       keyframes: {
         "accordion-down": {

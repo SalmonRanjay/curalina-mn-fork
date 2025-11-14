@@ -8,15 +8,16 @@
 - **Subheader**: "Your style journey is just beginning — more styles, rooms, and edits are on the way"
 
 ## Typography
-- **Primary Font**: Inter (all UI, body text)
-- **Headlines**: Clean, editorial style - medium weight, generous spacing
+- **Display Font**: Cormorant Garamond (quiz questions, hero headlines, major headings)
+- **Body Font**: Inter (all UI, body text, labels, buttons)
 - **Hierarchy**:
-  - Hero Headlines: text-4xl md:text-5xl lg:text-6xl, font-medium
-  - Section Headers: text-2xl md:text-3xl, font-medium
-  - Quiz Questions: text-2xl md:text-3xl, font-semibold
-  - Body: text-base md:text-lg
-  - UI Labels: text-sm, font-medium
-  - Helper Text: text-sm, opacity-70
+  - Quiz Questions: text-3xl md:text-4xl lg:text-5xl, font-cormorant, font-medium
+  - Hero Headlines: text-4xl md:text-5xl lg:text-6xl, font-cormorant, font-medium
+  - Section Headers: text-2xl md:text-3xl, font-cormorant, font-medium
+  - Subheadings: text-lg md:text-xl, font-inter, font-normal
+  - Body: text-base md:text-lg, font-inter
+  - UI Labels: text-sm, font-inter, font-medium
+  - Helper Text: text-sm, font-inter, opacity-70
 
 ## Color Palette
 ### Primary Colors
@@ -91,6 +92,16 @@ Four columns:
 - **STAY CONNECTED**: Email signup with "Sign up for promotions, decorating tips and more from our team."
 
 ## Quiz Design (7 Steps)
+
+### Quiz Design System
+- **Container**: max-w-6xl centered with px-6 md:px-12 lg:px-16 padding
+- **Grid System**: 12-column grid for layout control
+- **Spacing**: Consistent vertical spacing between sections (space-y-8 or space-y-12)
+- **Quiz Card Selections**: 
+  - Hover state: subtle elevation and border color change
+  - Selected state: border-2 border-primary with checkmark icon
+  - Transition: all 200ms ease-in-out
+- **Progress Bar**: Subtle linear progress at top (--quiz-progress CSS variable)
 
 ### Global Quiz Elements
 - **Progress Indicator**: "Step X of 7" centered at top
