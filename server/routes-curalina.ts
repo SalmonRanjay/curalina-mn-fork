@@ -2,6 +2,7 @@ import type { Express } from "express";
 import multer from "multer";
 import { curalinaStorage } from "./storage-curalina";
 import { ObjectStorageService } from "./objectStorage";
+import { ImageHealthWorker } from "./services/image-health-worker";
 import { db, pool } from "./db";
 import { sql, and } from "drizzle-orm";
 import {
@@ -30,6 +31,9 @@ import type { PlacementInstruction } from "./services/room-composition-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
+
+// Export image health worker for use in scheduled jobs
+export const imageHealthWorker = new ImageHealthWorker(curalinaStorage);
 
 // Helper to parse object storage paths
 function parseObjectPath(path: string): { bucketName: string; objectName: string } {
@@ -218,6 +222,27 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error removing product images:", error);
       res.status(500).json({ error: "Failed to remove product images" });
+    }
+  });
+
+  // Image health validation worker routes
+  app.post('/api/admin/image-health/validate', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = await imageHealthWorker.runValidation();
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error running image validation:", error);
+      res.status(500).json({ error: error.message || "Failed to run validation" });
+    }
+  });
+
+  app.get('/api/admin/image-health/status', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const stats = imageHealthWorker.getStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting worker status:", error);
+      res.status(500).json({ error: "Failed to get worker status" });
     }
   });
 

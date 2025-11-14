@@ -80,5 +80,35 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start image health validation worker (runs every 6 hours)
+    const IMAGE_HEALTH_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    
+    // Import worker asynchronously to avoid circular dependencies
+    import("./routes-curalina").then(({ imageHealthWorker }) => {
+      log(`[ImageHealthWorker] Starting scheduled validation (every 6 hours)`);
+      
+      // Run initial validation after 1 minute (give server time to fully start)
+      setTimeout(async () => {
+        try {
+          log(`[ImageHealthWorker] Running initial validation`);
+          const result = await imageHealthWorker.runValidation();
+          log(`[ImageHealthWorker] Initial validation complete: ${result.processed} processed, ${result.updated} updated`);
+        } catch (error: any) {
+          log(`[ImageHealthWorker] Initial validation failed: ${error.message}`);
+        }
+      }, 60 * 1000);
+      
+      // Schedule recurring validation
+      setInterval(async () => {
+        try {
+          log(`[ImageHealthWorker] Running scheduled validation`);
+          const result = await imageHealthWorker.runValidation();
+          log(`[ImageHealthWorker] Scheduled validation complete: ${result.processed} processed, ${result.updated} updated`);
+        } catch (error: any) {
+          log(`[ImageHealthWorker] Scheduled validation failed: ${error.message}`);
+        }
+      }, IMAGE_HEALTH_CHECK_INTERVAL);
+    });
   });
 })();
