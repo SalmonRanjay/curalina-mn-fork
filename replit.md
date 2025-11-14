@@ -37,6 +37,12 @@ Preferred communication style: Simple, everyday language.
 3. **Enhanced Product Filtering**: Improved filterProductsByQuiz to check both `designStyle` column AND `styleTags` array for style matching, with 5-level sequential fallback system for better product coverage.
 4. **Added Multi-Provider AI Image Generation**: Implemented support for both Gemini 2.5 Flash and OpenAI DALL-E 3 image generation engines, enabling side-by-side quality comparisons. Both providers use identical quiz data, product selections, and Gemini Vision descriptions to ensure fair comparison. API route accepts optional `aiProvider` parameter ('gemini' or 'openai', defaults to 'gemini').
 
+**Living Room Training Data Import**
+1. **Design Examples**: Imported 6 professionally curated Living Room packages covering diverse room sizes (11.5x10 to 17.5x14.5 feet) and styles (contemporary, modern, executive, compact, multi-purpose). Each example includes room dimensions, style tags, design reasoning, and principles.
+2. **Product Packages**: Created 6 product package records documenting proven furniture combinations with 12 existing products from the database (Kent Sofa, Rialto Sofa, Mitchell Sofa, Melle Sofa, Colome Floor Lamp, Fordham Floor Lamp, Chameau Side Table, Dusk Accent Table, Bridger Pillow, Raffael Bar Cabinet, Ferris Dining Chair, Sierra Tapestry).
+3. **Placement Guidelines**: Established 8 spatial relationship rules for Living Rooms covering sofa positioning (12-18" wall clearance), coffee table distance (14-18" from sofa), side table height matching, floor lamp placement (max 1 per room), sectional usage in compact spaces, storage integration, multi-purpose zoning, and furniture scale appropriateness.
+4. **Coverage**: Successfully matched 12 of 27 products from PDF to existing database. Training data now available for AI prompt generation to improve furniture placement accuracy and design quality.
+
 ## System Architecture
 
 ### Frontend Architecture
