@@ -41,36 +41,49 @@ const styles = [
 
 export default function StylesCarousel() {
   return (
-    <section id="styles" className="bg-[#FAF9F7] py-16 md:py-24 scroll-mt-20" data-testid="section-styles-carousel">
-      <div className="max-w-[1120px] mx-auto px-6 md:px-12 lg:px-16">
+    <section id="styles" className="bg-background section-padding scroll-mt-20" data-testid="section-styles-carousel">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
         {/* Section Title */}
-        <h2 className="text-3xl md:text-4xl font-cormorant font-medium text-center text-stone-900 mb-12" data-testid="heading-find-your-look">
-          Find your look
-        </h2>
+        <div className="text-center mb-12 md:mb-16 stack-tight flex flex-col items-center">
+          <h2 className="font-serif font-medium text-foreground" 
+              style={{ fontSize: 'var(--font-size-3xl)' }}
+              data-testid="heading-find-your-look">
+            Find your look
+          </h2>
+          <p className="text-muted-foreground max-w-2xl" 
+             style={{ fontSize: 'var(--font-size-base)' }}>
+            Explore our curated design styles — each one crafted to help you express your unique taste
+          </p>
+        </div>
 
         {/* Horizontal Scroll Container */}
-        <div className="overflow-x-auto pb-4" data-testid="carousel-styles">
-          <div className="flex gap-6 min-w-max">
+        <div className="overflow-x-auto pb-6 -mx-6 px-6" data-testid="carousel-styles">
+          <div className="flex gap-6 lg:gap-8 min-w-max">
             {styles.map((style) => (
               <Link key={style.id} href={`/quiz?style=${encodeURIComponent(style.id)}`}>
                 <Card 
-                  className="w-72 overflow-hidden hover-elevate active-elevate-2 cursor-pointer transition-all border border-stone-200 group"
+                  className="w-80 overflow-hidden hover-elevate active-elevate-2 cursor-pointer transition-all border-card-border group"
                   data-testid={`card-style-${style.id.toLowerCase().replace(/ /g, "-")}`}
                 >
                   <div className="relative overflow-hidden">
                     <img 
                       src={style.image} 
                       alt={style.name} 
-                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-56 object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                       data-testid={`img-style-${style.id.toLowerCase().replace(/ /g, "-")}`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <p className="text-white text-sm font-medium">Explore this style →</p>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-inter font-semibold text-stone-900 mb-1" data-testid={`heading-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
+                  <div className="p-5 stack-tight flex flex-col">
+                    <h3 className="font-semibold text-card-foreground" 
+                        style={{ fontSize: 'var(--font-size-lg)' }}
+                        data-testid={`heading-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
                       {style.name}
                     </h3>
-                    <p className="text-sm text-stone-600" data-testid={`text-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
+                    <p className="text-sm text-muted-foreground leading-relaxed" data-testid={`text-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
                       {style.tagline}
                     </p>
                   </div>

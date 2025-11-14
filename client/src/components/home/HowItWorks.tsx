@@ -22,32 +22,36 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-white py-16 md:py-24 scroll-mt-20" data-testid="section-how-it-works">
-      <div className="max-w-[1120px] mx-auto px-6 md:px-12 lg:px-16">
+    <section id="how-it-works" className="surface-soft section-padding scroll-mt-20" data-testid="section-how-it-works">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
         {/* Section Title */}
-        <h2 className="text-3xl md:text-4xl font-cormorant font-medium text-center text-stone-900 mb-12" data-testid="heading-how-it-works">
+        <h2 className="font-serif font-medium text-center text-foreground mb-12 md:mb-16" 
+            style={{ fontSize: 'var(--font-size-3xl)' }}
+            data-testid="heading-how-it-works">
           How it works
         </h2>
 
         {/* Steps Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-10">
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
               <Card 
                 key={index} 
-                className="p-8 text-center hover-elevate transition-all border border-stone-200"
+                className="p-8 text-center hover-elevate transition-all border-card-border stack-base flex flex-col items-center"
                 data-testid={`card-step-${index + 1}`}
               >
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-[#D9F2E5] rounded-full flex items-center justify-center">
-                    <Icon className="w-8 h-8 text-[#24A8AE]" data-testid={`icon-step-${index + 1}`} />
-                  </div>
+                <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center mb-4">
+                  <Icon className="w-8 h-8 text-accent" data-testid={`icon-step-${index + 1}`} />
                 </div>
-                <h3 className="text-xl font-inter font-semibold text-stone-900 mb-3" data-testid={`heading-step-${index + 1}`}>
+                <h3 className="font-semibold text-card-foreground mb-2" 
+                    style={{ fontSize: 'var(--font-size-xl)' }}
+                    data-testid={`heading-step-${index + 1}`}>
                   {step.title}
                 </h3>
-                <p className="text-sm md:text-base text-stone-600" data-testid={`text-step-${index + 1}`}>
+                <p className="text-muted-foreground leading-relaxed" 
+                   style={{ fontSize: 'var(--font-size-base)' }}
+                   data-testid={`text-step-${index + 1}`}>
                   {step.description}
                 </p>
               </Card>
@@ -59,7 +63,7 @@ export default function HowItWorks() {
         <div className="text-center">
           <Link href="/about">
             <span 
-              className="text-sm font-inter font-medium text-[#24A8AE] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
               data-testid="link-learn-more-process"
             >
               Learn more about our process →
