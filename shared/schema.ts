@@ -210,6 +210,11 @@ export const products = pgTable("products", {
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
   slug: varchar("slug").notNull().unique(),
+  
+  // Image health validation
+  imageHealth: varchar("image_health", { length: 20 }).notNull().default("healthy"), // 'healthy', 'repairing', 'removed'
+  lastValidatedAt: timestamp("last_validated_at"), // Last time images were validated
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -354,6 +359,83 @@ export const insertSelectionLedgerSchema = createInsertSchema(selectionLedger).o
   createdAt: true,
 });
 export type InsertSelectionLedger = z.infer<typeof insertSelectionLedgerSchema>;
+
+// Render Products - Product snapshots at render time for analytics and auditing
+export const renderProducts = pgTable("render_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  renderId: varchar("render_id").notNull().references(() => renders.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  sku: varchar("sku").notNull(), // Snapshot of SKU at render time
+  name: text("name").notNull(), // Snapshot of product name
+  supplierName: text("supplier_name"), // Snapshot of supplier name (text, not FK)
+  categoryName: text("category_name"), // Snapshot of category name (text, not FK)
+  roomType: text("room_type").array(), // Snapshot of applicable room types
+  designStyle: text("design_style").array(), // Snapshot of design styles
+  styleTags: text("style_tags").array(), // Snapshot of style tags
+  priceAtRender: decimal("price_at_render", { precision: 10, scale: 2 }).notNull(), // Price snapshot
+  availability: varchar("availability", { length: 20 }).notNull(), // Availability at render time
+  imageHealth: varchar("image_health", { length: 20 }).notNull(), // Image health at render time
+  visualDescriptionSource: varchar("visual_description_source", { length: 50 }), // 'Front View' | 'Gemini Vision' | 'Legacy' | 'None'
+  dimensions: jsonb("dimensions"), // Snapshot of product dimensions
+  placementData: jsonb("placement_data"), // Spatial placement in render: { position, orientation, zone, confidence }
+  primaryImageUrl: text("primary_image_url"), // Primary image at render time
+  metadata: jsonb("metadata"), // Additional snapshot data for future evolution
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("render_product_unique").on(table.renderId, table.productId),
+  index("idx_render_products_render").on(table.renderId),
+  index("idx_render_products_product").on(table.productId),
+  index("idx_render_products_sku").on(table.sku),
+]);
+
+export const renderProductRelations = relations(renderProducts, ({ one }) => ({
+  render: one(renders, {
+    fields: [renderProducts.renderId],
+    references: [renders.id],
+  }),
+  product: one(products, {
+    fields: [renderProducts.productId],
+    references: [products.id],
+  }),
+}));
+
+export type RenderProduct = typeof renderProducts.$inferSelect;
+export const insertRenderProductSchema = createInsertSchema(renderProducts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRenderProduct = z.infer<typeof insertRenderProductSchema>;
+
+// Render Events - Append-only audit log for render lifecycle
+export const renderEvents = pgTable("render_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  renderId: varchar("render_id").notNull().references(() => renders.id),
+  eventType: varchar("event_type", { length: 50 }).notNull(), // 'created', 'generating', 'completed', 'failed', 'swapped', 'archived'
+  occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+  actorUserId: varchar("actor_user_id").references(() => users.id), // Nullable for system events
+  metadata: jsonb("metadata"), // Event-specific data (error details, swap info, etc.)
+}, (table) => [
+  index("idx_render_events_render_time").on(table.renderId, table.occurredAt.desc()),
+  index("idx_render_events_type").on(table.eventType),
+]);
+
+export const renderEventRelations = relations(renderEvents, ({ one }) => ({
+  render: one(renders, {
+    fields: [renderEvents.renderId],
+    references: [renders.id],
+  }),
+  actor: one(users, {
+    fields: [renderEvents.actorUserId],
+    references: [users.id],
+  }),
+}));
+
+export type RenderEvent = typeof renderEvents.$inferSelect;
+export const insertRenderEventSchema = createInsertSchema(renderEvents).omit({
+  id: true,
+  occurredAt: true,
+});
+export type InsertRenderEvent = z.infer<typeof insertRenderEventSchema>;
 
 // Cart Items - Shopping cart
 export const cartItems = pgTable("cart_items", {
@@ -782,3 +864,101 @@ export const productFunctionalCategories = pgTable("product_functional_categorie
 }, (table) => [
   unique("product_functional_unique").on(table.productId, table.functionalCategoryId),
 ]);
+
+export type ProductFunctionalCategory = typeof productFunctionalCategories.$inferSelect;
+export const insertProductFunctionalCategorySchema = createInsertSchema(productFunctionalCategories).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertProductFunctionalCategory = z.infer<typeof insertProductFunctionalCategorySchema>;
+
+// ===== DOCUMENTATION SYSTEM SCHEMA =====
+
+// Documentation Sections - Client-facing markdown documentation
+export const documentationSections = pgTable("documentation_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: varchar("slug").notNull(), // URL-friendly identifier
+  content: text("content").notNull(), // Markdown content
+  tags: text("tags").array(), // Searchable tags
+  version: integer("version").notNull().default(1), // Version number
+  publishedVersion: integer("published_version"), // Latest published version
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // 'draft', 'published', 'archived'
+  versionNotes: jsonb("version_notes"), // Change history: { [version]: { author, timestamp, changes } }
+  sortOrder: integer("sort_order").notNull().default(0), // Display order
+  parentSectionId: varchar("parent_section_id").references((): any => documentationSections.id), // For hierarchical docs
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("slug_version_unique").on(table.slug, table.version),
+  index("idx_docs_status").on(table.status),
+  index("idx_docs_slug").on(table.slug),
+]);
+
+export const documentationSectionRelations = relations(documentationSections, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [documentationSections.createdBy],
+    references: [users.id],
+  }),
+  updater: one(users, {
+    fields: [documentationSections.updatedBy],
+    references: [users.id],
+  }),
+  comments: many(documentationComments),
+}));
+
+export type DocumentationSection = typeof documentationSections.$inferSelect;
+export const insertDocumentationSectionSchema = createInsertSchema(documentationSections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDocumentationSection = z.infer<typeof insertDocumentationSectionSchema>;
+
+// Documentation Comments - Threaded comments on documentation sections
+export const documentationComments = pgTable("documentation_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sectionId: varchar("section_id").notNull().references(() => documentationSections.id),
+  threadRootId: varchar("thread_root_id").references((): any => documentationComments.id), // Self-reference for threading
+  parentCommentId: varchar("parent_comment_id").references((): any => documentationComments.id), // Parent comment for nesting
+  userId: varchar("user_id").notNull().references(() => users.id),
+  commentText: text("comment_text").notNull(),
+  anchorType: varchar("anchor_type", { length: 20 }).notNull().default("section"), // 'heading', 'paragraph', 'custom', 'section'
+  anchorValue: text("anchor_value"), // Heading slug, element ID, or custom anchor
+  anchorOffset: integer("anchor_offset"), // Position offset for drift detection
+  resolvedAt: timestamp("resolved_at"), // When comment was resolved
+  resolvedBy: varchar("resolved_by").references(() => users.id), // Who resolved it
+  isInternal: boolean("is_internal").notNull().default(false), // Internal admin comment vs client comment
+  metadata: jsonb("metadata"), // Additional comment data
+  editedAt: timestamp("edited_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_comments_section").on(table.sectionId),
+  index("idx_comments_thread").on(table.threadRootId),
+  index("idx_comments_parent").on(table.parentCommentId),
+  index("idx_comments_anchor").on(table.anchorValue),
+]);
+
+export const documentationCommentRelations = relations(documentationComments, ({ one }) => ({
+  section: one(documentationSections, {
+    fields: [documentationComments.sectionId],
+    references: [documentationSections.id],
+  }),
+  user: one(users, {
+    fields: [documentationComments.userId],
+    references: [users.id],
+  }),
+  resolver: one(users, {
+    fields: [documentationComments.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
+export type DocumentationComment = typeof documentationComments.$inferSelect;
+export const insertDocumentationCommentSchema = createInsertSchema(documentationComments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDocumentationComment = z.infer<typeof insertDocumentationCommentSchema>;
