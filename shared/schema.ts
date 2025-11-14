@@ -241,12 +241,14 @@ export const quizResponses = pgTable("quiz_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
   roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
-  style: text("style").notNull(), // 'Midcentury Scandi', etc.
-  colorPalettes: text("color_palettes").array(), // ['Light Neutrals', 'Warm & Cozy']
+  styles: text("styles").array().notNull(), // ['Organic Modern', 'Midcentury Scandi'] - max 2
+  colorPalettes: text("color_palettes").array(), // ['Light Neutrals', 'Warm & Cozy'] - max 2
   keyFeatures: text("key_features").array(), // ['Comfortable Seat', 'Storage']
   budgetRange: text("budget_range").notNull(), // '$2K-$5K', etc.
   vibeImages: text("vibe_images").array(), // User-uploaded reference images
+  vibeBoardUrl: text("vibe_board_url"), // Pinterest board URL
   preferences: text("preferences").array(), // Design preference bullets
+  roomPhoto: text("room_photo"), // User's room photo
   floorplanUrl: text("floorplan_url"), // Uploaded floorplan image
   // Rich visual preferences from vibe image analysis
   vibeColorPalette: text("vibe_color_palette").array(), // AI-extracted color palette from vibe images

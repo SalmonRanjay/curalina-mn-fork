@@ -144,7 +144,9 @@ export default function Quiz() {
     keyFeatures: [] as string[],
     budgetRange: "",
     vibeImages: [] as string[],
+    vibeBoardUrl: "",
     preferences: "",
+    roomPhoto: "",
     floorplanUrl: "",
   });
 
@@ -161,12 +163,14 @@ export default function Quiz() {
       const submitData = {
         sessionId,
         roomType: data.roomType,
-        style: data.styles[0] || "", // Convert array to single string
+        styles: data.styles, // Now supports array of 1-2 styles
         colorPalettes: data.colorPalettes,
         keyFeatures: data.keyFeatures,
         budgetRange: data.budgetRange,
         vibeImages: data.vibeImages,
+        vibeBoardUrl: data.vibeBoardUrl || null,
         preferences: data.preferences ? [data.preferences] : [], // Convert string to array
+        roomPhoto: data.roomPhoto || null,
         floorplanUrl: data.floorplanUrl || null,
       };
 
