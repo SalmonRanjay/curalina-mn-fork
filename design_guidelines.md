@@ -21,10 +21,13 @@
 
 ## Color Palette
 ### Primary Colors
-- **Background**: Clean white (#FFFFFF)
+- **Background**: #FAF9F7 (warm off-white)
+- **Surface**: #FFFFFF (white cards)
+- **Brand Teal**: #24A8AE
+- **Mint Selection**: #D9F2E5
 - **Text Primary**: Deep charcoal (#1A1A1A)
 - **Text Secondary**: Medium gray (#6B7280)
-- **Accent**: Soft green for selections and CTAs
+- **Neutral Dark**: #F3F0EB (CTA bands)
 
 ### Color Schemes (Updated per PDF Note)
 1. **Warm Neutrals**
@@ -38,58 +41,80 @@
 
 ## Layout System
 - **Spacing**: Generous white space throughout
-- **Containers**: max-w-7xl with px-6 md:px-12 lg:px-16
+- **Containers**: max-w-[1120px] (12-column grid) with px-6 md:px-12 lg:px-16
 - **Quiz Container**: max-w-5xl centered
 - **Section Padding**: py-16 md:py-24
+- **Grid System**: 12-column layout with responsive breakpoints
 
 ## Navigation
-**Header Links** (horizontal layout):
-- GET STARTED
-- HOW WE WORK  
-- EXPLORE STYLES
-- PRICING
-- THE CURALINA EDIT
+**Sticky Header** (background: #FAF9F7):
+- Left: Logo/wordmark
+- Center: "How It Works", "Style Quiz", "Pricing", "The Edit"
+- Right: "Sign In" (text) + "Start the Quiz" (primary button)
+- On scroll: add subtle shadow
 
 ## Homepage Sections
 
-### 1. Hero Section
-- Full-width clean background
-- Centered content
-- Headline: "Design the space where you'll feel most at home"
-- Subheadline: "Discover your signature space in just 7 questions"
-- Tagline: "Crafted for real life, elevated for everyday."
-- CTA Button: "START THE QUIZ"
-- Helper text: "Takes 2 minutes, No wrong answers"
+### 1. Hero Section (Above the Fold)
+- Background: #FAF9F7
+- Two-column layout (left: content, right: hero image)
+- **Left Column**:
+  - Pill label: "INTERIOR DESIGN, MADE PERSONAL"
+  - H1: "Design the space where you'll feel most at home"
+  - Subtext: "Discover your signature style in just 7 questions — then get a shoppable design tailored to your room, budget, and lifestyle."
+  - Primary button: "Take the Style Quiz"
+  - Secondary ghost button: "Browse Design Styles"
+- **Right Column**:
+  - Large hero interior image
+  - Floating card (bottom-left overlay): mini result preview with thumbnail, "Organic Modern Living Room · Curated for you", link: "See an example design"
 
-### 2. Style Showcase
-- Feature "Organic Modern" style with sample image
-- Clean, minimal presentation
+### 2. How It Works (3-Step Section)
+- Background: #FFFFFF
+- Centered title: "How it works"
+- Three cards (horizontal on desktop):
+  1. **Tell us about your space** - Icon: room outline - "Choose your room, styles and colour palette in just a few clicks."
+  2. **We design it for you** - Icon: magic wand/sparkle - "Our designers curate furniture and decor tailored to your answers."
+  3. **Shop your room** - Icon: shopping bag - "View your rendered room and instantly shop every piece."
+- Bottom link: "Learn more about our process →"
 
-### 3. How We Work
-- Section title: "HOW WE WORK"
-- Three steps:
-  1. **(1) TELL US ABOUT YOUR DREAM SPACE** - Choose your room type, mood, style and budget.
-  2. **(2) LET US DESIGN IT IN MINUTES** - Our personalized system will provide a design with curated furniture and decor selections to reflect you
-  3. **(3) RECEIVE YOUR FULL DESIGNER LOOK** - From concept to cart — every item is ready for you to own, styled for every corner of your space.
+### 3. Preview the Styles (Carousel)
+- Background: #FAF9F7
+- Title: "Find your look"
+- Horizontal scroll carousel with style cards:
+  - Organic Modern, Modern Farmhouse, Midcentury Scandi, Warm Transitional, Contemporary Luxe, Artful Eclectic
+  - Each card: image thumbnail, style name, one-liner description
+  - Hover: slight zoom + gradient overlay
 
-### 4. Features Grid
-- **Curalina Rewards** - LEARN MORE
-- **Handpicked by Interior Designers**
-- **Subscription Program** - LEARN MORE
+### 4. Value Proposition
+- Background: #FFFFFF
+- Split layout (left: text, right: visual)
+- **Left**: 
+  - Title: "Designed by humans, powered by smart tools"
+  - Bullets: "Every room is handpicked by professional interior designers", "Hundreds of premium brands", "Shoppable designs"
+- **Right**: Before/after room visual
 
-### 5. Partner Section
-- "Partner with Curalina"
-- "Join our curated network of brands shaping Canada's design future."
-- "Showcase your products where design meets demand."
-- "Partner with us to place your collection in beautifully styled spaces nationwide."
+### 5. Testimonials
+- Background: #FFFFFF
+- Title: "Loved by people who care how their home feels"
+- 3 testimonial cards: quote, name, room type
+- White cards with soft borders
 
-### 6. Footer
-Four columns:
-- **OUR COMPANY**: About us, Social Responsibility, Press Inquiries, Partner with Us, Contact Us
-- **CUSTOMER CARE**: Order Status, Furniture Protection Plans, Returns & Exchanges, Delivery & Shipping
-- **RESOURCES**: Take the Quiz, Before & Afters, Pricing & Subscriptions, FAQ
-- **PROUDLY CANADIAN**: "Curated for Canadians. Designed for real life."
-- **STAY CONNECTED**: Email signup with "Sign up for promotions, decorating tips and more from our team."
+### 6. Bottom CTA Band
+- Background: #F3F0EB
+- Centered content:
+  - H2: "Your dream room is 7 questions away"
+  - Helper: "It takes about 3 minutes. There are no wrong answers."
+  - Primary button: "Start the Quiz"
+  - Link: "See an example room first →"
+
+### 7. Footer
+- Background: #FAF9F7
+- Left: logo + tagline
+- Link columns:
+  - **Company**: About, Contact, Press, Partner with Us
+  - **Help**: FAQ, Shipping, Returns
+  - **Resources**: Style Quiz, The Edit, Before & After
+- Bottom: copyright, terms, privacy
 
 ## Quiz Design (7 Steps)
 

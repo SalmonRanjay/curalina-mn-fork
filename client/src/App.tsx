@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { QuizProvider } from "@/contexts/QuizContext";
 import NotFound from "@/pages/not-found";
+import Home from "@/pages/Home";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -43,7 +44,7 @@ function Router() {
   // Public routes (accessible without authentication)
   const publicRoutes = (
     <Switch>
-      <Route path="/" component={Landing} />
+      <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/styles" component={Styles} />
@@ -74,7 +75,7 @@ function Router() {
     return (
       <Switch>
         {/* Public routes (accessible to logged-in users) */}
-        <Route path="/" component={Landing} />
+        <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/styles" component={Styles} />
@@ -115,7 +116,7 @@ function Router() {
   // Regular user routes (no admin access)
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/styles" component={Styles} />
