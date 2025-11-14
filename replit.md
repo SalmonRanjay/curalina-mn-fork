@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### November 14, 2025
-**Render Analytics & Documentation Infrastructure**
+**Render Analytics & Documentation Infrastructure - COMPLETED**
 1. **Backend Routes - Render Analytics**:
    - GET /api/admin/renders/analytics: List all renders with quiz context, product counts, placement scores, event counts, selection summaries (filterable by status/roomType/style, with limit)
    - GET /api/admin/renders/analytics/:id: Detailed render analytics for single render with full quiz snapshot and aggregate statistics
@@ -41,10 +41,19 @@ Preferred communication style: Simple, everyday language.
    - PUT /api/admin/documentation/comments/:id/resolve: Mark comment as resolved
    - DELETE /api/admin/documentation/comments/:id: Delete comment
    - Implementation: Full authentication/authorization guards, input validation with Zod, uses curalinaStorage interface
-3. **Technical Decisions**:
+3. **Render Ingestion Pipeline - Production Ready**:
+   - **Staged Lifecycle Events**: Events persisted immediately at each transition (submitted, processing, completed, failed) to prevent data loss on crash
+   - **Atomic Snapshots**: Complete immutable event snapshots + product snapshots written transactionally to render_products and render_events tables
+   - **Performance Optimized**: O(1) lookups using indexed Maps for suppliers/categories/products (no O(N²) array scans)
+   - **SKU Coverage Validation**: Throws error if any product SKU not found in catalog, ensuring 1:1 analytics coverage
+   - **Metadata Enrichment**: Product snapshots include quiz context (roomType, style, budget), ledger snapshot (selectionHash, compositionOrder), visual description source badges
+   - **Idempotency**: Ingestion can rerun safely with delete-then-insert transaction pattern
+   - **Complete Timelines**: All lifecycle phases captured even if async worker crashes before completion
+4. **Technical Decisions**:
    - Query building: Handles 0, 1, or multiple filter conditions correctly using native PostgreSQL parameter placeholders
    - Limit validation: Returns 400 error if limit < 1 or not an integer
    - SQL injection protection: All parameters properly escaped via pool.query() parameterization
+   - Event persistence: Immediate persistence at each lifecycle transition prevents data loss, atomic snapshot replacement ensures analytics consistency
    - No Drizzle expression helpers needed: Direct SQL queries work reliably across all filter combinations
 
 **Zone-Based Placement System Implementation**

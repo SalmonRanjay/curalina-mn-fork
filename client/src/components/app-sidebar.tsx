@@ -8,6 +8,13 @@ import {
   FileText,
   Settings,
   LogOut,
+  Upload,
+  FileDown,
+  Eye,
+  Cloud,
+  Database,
+  BookOpen,
+  ChevronDown,
 } from "lucide-react";
 
 import {
@@ -21,21 +28,24 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-const menuItems = [
+const managementItems = [
   {
     title: "Dashboard",
     url: "/admin",
     icon: LayoutDashboard,
-  },
-  {
-    title: "Products",
-    url: "/admin/products",
-    icon: Package,
   },
   {
     title: "Suppliers",
@@ -66,6 +76,42 @@ const menuItems = [
     title: "Settings",
     url: "/admin/settings",
     icon: Settings,
+  },
+];
+
+const productSubItems = [
+  {
+    title: "CSV Import",
+    url: "/admin/products/csv-import",
+    icon: FileDown,
+  },
+  {
+    title: "Bulk Upload",
+    url: "/admin/products/bulk-upload",
+    icon: Upload,
+  },
+  {
+    title: "Front View Upload",
+    url: "/admin/products/front-view-upload",
+    icon: Eye,
+  },
+  {
+    title: "S3 Sync",
+    url: "/admin/products/s3-sync",
+    icon: Cloud,
+  },
+];
+
+const intelligenceItems = [
+  {
+    title: "Renders Storage",
+    url: "/admin/renders-storage",
+    icon: Database,
+  },
+  {
+    title: "Curalina Documentation",
+    url: "/admin/documentation",
+    icon: BookOpen,
   },
 ];
 
@@ -101,10 +147,66 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {managementItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <a href={item.url} data-testid={`link-sidebar-${item.title.toLowerCase()}`}>
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              
+              {/* Products collapsible group */}
+              <Collapsible asChild defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-sidebar-products">
+                      <Package className="h-5 w-5" />
+                      <span>Products</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild>
+                          <a href="/admin/products" data-testid="link-sidebar-all-products">
+                            <Package className="h-4 w-4" />
+                            <span>All Products</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      {productSubItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton asChild>
+                            <a href={item.url} data-testid={`link-sidebar-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </a>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Intelligence Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="uppercase text-xs tracking-wide">
+            Intelligence
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {intelligenceItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url} data-testid={`link-sidebar-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
                     </a>
