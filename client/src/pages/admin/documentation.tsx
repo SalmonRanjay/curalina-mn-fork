@@ -27,7 +27,12 @@ import {
   Archive,
   CheckCircle,
   Loader2,
+  MessageCircle,
+  Reply,
+  Check,
+  Send,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface DocumentationSection {
   id: string;
@@ -48,11 +53,34 @@ interface DocumentationSection {
   updaterName?: string | null;
 }
 
+interface DocumentationComment {
+  id: string;
+  sectionId: string;
+  threadRootId: string | null;
+  parentCommentId: string | null;
+  userId: string;
+  commentText: string;
+  anchorType: string;
+  anchorValue: string | null;
+  anchorOffset: number | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  isInternal: boolean;
+  metadata: any;
+  editedAt: string | null;
+  createdAt: string;
+  userName?: string;
+  resolverName?: string;
+}
+
 export default function Documentation() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSection, setSelectedSection] = useState<DocumentationSection | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [replyToCommentId, setReplyToCommentId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
 
   // Fetch all documentation sections
   const { data: sections, isLoading } = useQuery<DocumentationSection[]>({
@@ -92,6 +120,103 @@ export default function Documentation() {
       toast({
         title: "Success",
         description: "Documentation section published successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fetch comments for selected section
+  const { data: comments, refetch: refetchComments } = useQuery<DocumentationComment[]>({
+    queryKey: ["/api/admin/documentation/comments", selectedSection?.id],
+    queryFn: async () => {
+      if (!selectedSection) return [];
+      const response = await fetch(`/api/admin/documentation/comments?sectionId=${selectedSection.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch comments");
+      return response.json();
+    },
+    enabled: !!selectedSection,
+    refetchInterval: 15000, // Poll every 15 seconds for real-time updates
+  });
+
+  // Create comment mutation
+  const createCommentMutation = useMutation({
+    mutationFn: async (data: { commentText: string; anchorType?: string; anchorValue?: string; isInternal?: boolean }) => {
+      if (!selectedSection) throw new Error("No section selected");
+      const response = await apiRequest("POST", "/api/admin/documentation/comments", {
+        sectionId: selectedSection.id,
+        commentText: data.commentText,
+        anchorType: data.anchorType || "section",
+        anchorValue: data.anchorValue || null,
+        isInternal: data.isInternal || false,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchComments();
+      setNewCommentText("");
+      toast({
+        title: "Success",
+        description: "Comment added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reply to comment mutation
+  const replyCommentMutation = useMutation({
+    mutationFn: async (data: { parentCommentId: string; commentText: string; isInternal?: boolean }) => {
+      if (!selectedSection) throw new Error("No section selected");
+      const response = await apiRequest("POST", "/api/admin/documentation/comments", {
+        sectionId: selectedSection.id,
+        parentCommentId: data.parentCommentId,
+        commentText: data.commentText,
+        isInternal: data.isInternal || false,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchComments();
+      setReplyToCommentId(null);
+      setReplyText("");
+      toast({
+        title: "Success",
+        description: "Reply added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Resolve comment mutation
+  const resolveCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const response = await apiRequest("PUT", `/api/admin/documentation/comments/${commentId}/resolve`);
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchComments();
+      toast({
+        title: "Success",
+        description: "Comment resolved",
       });
     },
     onError: (error: Error) => {
@@ -354,9 +479,13 @@ export default function Documentation() {
           </DialogHeader>
 
           <Tabs defaultValue="preview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="preview" data-testid="tab-preview">Preview</TabsTrigger>
               <TabsTrigger value="metadata" data-testid="tab-metadata">Metadata</TabsTrigger>
+              <TabsTrigger value="comments" data-testid="tab-comments">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Comments ({comments?.length || 0})
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="preview">
@@ -415,6 +544,182 @@ export default function Documentation() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="comments" className="space-y-4">
+              {/* New Comment Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Add Comment</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    placeholder="Write your comment..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    data-testid="textarea-new-comment"
+                  />
+                  <div className="flex items-center justify-between gap-4">
+                    <Badge variant="outline" className="text-xs">
+                      Section-level comment
+                    </Badge>
+                    <Button
+                      onClick={() => createCommentMutation.mutate({ commentText: newCommentText })}
+                      disabled={!newCommentText.trim() || createCommentMutation.isPending}
+                      data-testid="button-add-comment"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Add Comment
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Comments List */}
+              <ScrollArea className="h-[50vh]">
+                {comments && comments.length > 0 ? (
+                  <div className="space-y-4">
+                    {comments
+                      .filter((c) => !c.parentCommentId) // Root comments only
+                      .map((comment) => (
+                        <Card key={comment.id} className={comment.resolvedAt ? "opacity-60" : ""} data-testid={`card-comment-${comment.id}`}>
+                          <CardContent className="p-4 space-y-3">
+                            {/* Comment Header */}
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-sm" data-testid={`text-comment-author-${comment.id}`}>
+                                    {comment.userName || "Unknown"}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground" data-testid={`text-comment-time-${comment.id}`}>
+                                    {new Date(comment.createdAt).toLocaleString()}
+                                  </span>
+                                  {comment.isInternal && (
+                                    <Badge variant="secondary" className="text-xs" data-testid={`badge-internal-${comment.id}`}>
+                                      Internal
+                                    </Badge>
+                                  )}
+                                  {comment.resolvedAt && (
+                                    <Badge variant="default" className="text-xs" data-testid={`badge-resolved-${comment.id}`}>
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Resolved
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm mt-2" data-testid={`text-comment-text-${comment.id}`}>
+                                  {comment.commentText}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Comment Actions */}
+                            <div className="flex items-center gap-2">
+                              {!comment.resolvedAt && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setReplyToCommentId(comment.id)}
+                                    data-testid={`button-reply-${comment.id}`}
+                                  >
+                                    <Reply className="h-3 w-3 mr-1" />
+                                    Reply
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => resolveCommentMutation.mutate(comment.id)}
+                                    disabled={resolveCommentMutation.isPending}
+                                    data-testid={`button-resolve-${comment.id}`}
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Resolve
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Reply Form */}
+                            {replyToCommentId === comment.id && (
+                              <div className="mt-3 space-y-2 pl-6 border-l-2">
+                                <Textarea
+                                  placeholder="Write your reply..."
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  className="text-sm"
+                                  data-testid={`textarea-reply-${comment.id}`}
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      replyCommentMutation.mutate({
+                                        parentCommentId: comment.id,
+                                        commentText: replyText,
+                                      })
+                                    }
+                                    disabled={!replyText.trim() || replyCommentMutation.isPending}
+                                    data-testid={`button-send-reply-${comment.id}`}
+                                  >
+                                    <Send className="h-3 w-3 mr-1" />
+                                    Send
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setReplyToCommentId(null);
+                                      setReplyText("");
+                                    }}
+                                    data-testid={`button-cancel-reply-${comment.id}`}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Nested Replies */}
+                            {comments.filter((c) => c.parentCommentId === comment.id).length > 0 && (
+                              <div className="mt-3 space-y-3 pl-6 border-l-2">
+                                {comments
+                                  .filter((c) => c.parentCommentId === comment.id)
+                                  .map((reply) => (
+                                    <div key={reply.id} className="space-y-2" data-testid={`card-reply-${reply.id}`}>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-medium text-sm" data-testid={`text-reply-author-${reply.id}`}>
+                                          {reply.userName || "Unknown"}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground" data-testid={`text-reply-time-${reply.id}`}>
+                                          {new Date(reply.createdAt).toLocaleString()}
+                                        </span>
+                                        {reply.isInternal && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            Internal
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-sm" data-testid={`text-reply-text-${reply.id}`}>
+                                        {reply.commentText}
+                                      </p>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No comments yet</h3>
+                    <p className="text-muted-foreground">
+                      Be the first to add a comment to this documentation section
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
             </TabsContent>
           </Tabs>
         </DialogContent>
