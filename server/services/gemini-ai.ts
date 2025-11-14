@@ -2,14 +2,9 @@ import { GoogleGenAI, Modality, Type } from "@google/genai";
 import type { QuizResponse, Product } from "@shared/schema";
 import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate } from './room-composition-service';
 
-// Initialize Gemini client with AI Integrations credentials
-// This is using Replit's AI Integrations service, which provides Gemini-compatible API access
+// Initialize Gemini client with user's API key
 const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
-  httpOptions: {
-    apiVersion: "",
-    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
-  },
+  apiKey: process.env.GEMINI_API_KEY!,
 });
 
 // Enhanced style descriptions for professional renders
