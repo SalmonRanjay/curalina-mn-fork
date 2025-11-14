@@ -1,7 +1,7 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import OpenAI from "openai";
 import type { QuizResponse, Product } from "@shared/schema";
-import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate } from './room-composition-service';
+import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate, type PlacementInstruction } from './room-composition-service';
 
 // Initialize Gemini client with user's API key
 const ai = new GoogleGenAI({
@@ -621,12 +621,15 @@ function getRoomEssentialCategories(roomType: string): Array<{ category: string;
 
 /**
  * Use Gemini AI to select the best products for the room
- * Returns a curated list of products with placement suggestions
+ * Returns a curated list of products with placement suggestions and zone-based placements
  */
 export async function selectProductsWithAI(
   products: Product[],
   quiz: QuizResponse
-): Promise<Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }>> {
+): Promise<{
+  products: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string }>;
+  placements: PlacementInstruction[];
+}> {
   try {
     // Prepare product data for AI with visual descriptions and feature matching scores
     const productList = products.map(p => {
@@ -808,16 +811,23 @@ Return a JSON array with this structure:
       quiz
     );
     
-    return budgetValidatedProducts;
+    // Return both products and placements
+    return {
+      products: budgetValidatedProducts,
+      placements: compositionResult.placements || []
+    };
   } catch (error) {
     console.error("AI product selection error:", error);
     // Fallback: select first 5 products
-    return products.slice(0, 5).map(p => ({
-      sku: p.sku,
-      name: p.name,
-      placement: "in the room",
-      reasoning: "Selected based on filters"
-    }));
+    return {
+      products: products.slice(0, 5).map(p => ({
+        sku: p.sku,
+        name: p.name,
+        placement: "in the room",
+        reasoning: "Selected based on filters"
+      })),
+      placements: []
+    };
   }
 }
 
@@ -1052,6 +1062,82 @@ export function attachPlacementMetadata(
 }
 
 /**
+ * Generate zone-based placement matrix from PlacementInstruction data
+ */
+function generateZoneBasedPlacementMatrix(
+  selectedProducts: Array<{ sku: string; name: string }>,
+  placements: PlacementInstruction[],
+  matrixHeader: string[]
+): string {
+  const matrix = [...matrixHeader];
+  
+  matrix.push(`📍 ZONE-BASED PLACEMENT INSTRUCTIONS:`);
+  matrix.push(`Each product has been assigned to a specific room zone with precise spatial constraints.`);
+  matrix.push(`Follow these instructions EXACTLY to achieve professional interior design composition.`);
+  matrix.push(``);
+  
+  // Group placements by zone for organized presentation
+  const placementsByZone: Record<string, PlacementInstruction[]> = {};
+  placements.forEach(p => {
+    if (!placementsByZone[p.zoneId]) {
+      placementsByZone[p.zoneId] = [];
+    }
+    placementsByZone[p.zoneId].push(p);
+  });
+  
+  // Generate instructions for each zone
+  Object.entries(placementsByZone).forEach(([zoneId, zonePlacements]) => {
+    matrix.push(`\n🏷️  ZONE: ${zoneId.toUpperCase().replace(/_/g, ' ')}`);
+    matrix.push(`${'─'.repeat(75)}`);
+    
+    zonePlacements.forEach((placement, idx) => {
+      const product = selectedProducts.find(p => p.sku === placement.productId);
+      if (!product) return;
+      
+      matrix.push(`${idx + 1}. ${product.name} [SKU: ${placement.productId}]`);
+      matrix.push(`   ├─ Position: x=${(placement.position.x * 100).toFixed(0)}% y=${(placement.position.y * 100).toFixed(0)}% (room normalized coordinates)`);
+      matrix.push(`   ├─ Anchor: ${placement.anchorPoint} - ${getAnchorDescription(placement.anchorPoint)}`);
+      matrix.push(`   ├─ Orientation: ${placement.orientation}° rotation`);
+      matrix.push(`   ├─ Clearance: Front ${(placement.spacing.front * 100).toFixed(0)}%, Sides ${(placement.spacing.sides * 100).toFixed(0)}%, Back ${(placement.spacing.back * 100).toFixed(0)}%`);
+      
+      if (placement.supportSurface) {
+        const supportProduct = selectedProducts.find(p => p.sku === placement.supportSurface);
+        matrix.push(`   ├─ Placed On: ${supportProduct?.name || placement.supportSurface} (must be on surface)`);
+      }
+      
+      matrix.push(`   └─ Confidence: ${(placement.confidence * 100).toFixed(0)}% placement quality`);
+      matrix.push(``);
+    });
+  });
+  
+  // Add zone-based composition rules
+  matrix.push(`⚖️ ZONE-BASED COMPOSITION RULES:`);
+  matrix.push(`   • Respect zone boundaries - products assigned to a zone should stay within that zone`);
+  matrix.push(`   • Maintain clearance values for safe circulation and functionality`);
+  matrix.push(`   • Follow orientation angles for proper furniture arrangement`);
+  matrix.push(`   • Anchor points indicate how furniture relates to room architecture (walls/corners/center)`);
+  matrix.push(`   • Products with low confidence (<50%) may need adjustment based on visual balance`);
+  matrix.push(`   • Table lamps MUST be placed on their designated support surfaces`);
+  matrix.push(`   • Maximum 1 floor lamp per room for balanced lighting`);
+  matrix.push(`   • Every product listed MUST appear exactly once in the final render`);
+  matrix.push(``);
+  matrix.push(`═══════════════════════════════════════════════════════════════════════════`);
+  
+  return matrix.join('\n');
+}
+
+function getAnchorDescription(anchorPoint: 'center' | 'wall' | 'corner'): string {
+  switch (anchorPoint) {
+    case 'center':
+      return 'floating/centered in room, not against walls';
+    case 'wall':
+      return 'positioned against or parallel to wall surface';
+    case 'corner':
+      return 'tucked into room corner or angled placement';
+  }
+}
+
+/**
  * Generate structured placement matrix with explicit spatial instructions
  */
 function generatePlacementMatrix(
@@ -1065,7 +1151,8 @@ function generatePlacementMatrix(
   }>,
   roomType: string,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
-  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
+  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>,
+  placements?: PlacementInstruction[]
 ): string {
   const matrix: string[] = [];
   
@@ -1094,6 +1181,18 @@ function generatePlacementMatrix(
   }
   matrix.push(``);
   
+  // Use zone-based placements if available and valid
+  if (placements && placements.length > 0) {
+    const zonedMatrix = generateZoneBasedPlacementMatrix(selectedProducts, placements, matrix);
+    // Verify zone-based matrix generated successfully (has actual placement content)
+    if (zonedMatrix && zonedMatrix.includes('ZONE:')) {
+      return zonedMatrix;
+    }
+    // Fall back to legacy if zone generation failed
+    console.warn('Zone-based placement matrix generation failed, falling back to legacy matrix');
+  }
+  
+  // Otherwise fall back to legacy placement logic
   // Group products by functional category and priority
   const essentials = selectedProducts.filter(p => p.priority && p.priority <= 2);
   const complementary = selectedProducts.filter(p => p.priority && p.priority > 2);
@@ -1377,12 +1476,14 @@ function getRelativePosition(
  * @param selectedProducts - AI-selected products with placement
  * @param roomAnalysis - Optional analysis of the current room from Gemini Vision
  * @param floorPlanAnalysis - Optional analysis of the floor plan from Gemini Vision
+ * @param placements - Optional zone-based placement instructions for products
  */
 export function buildPromptFromQuiz(
   quiz: QuizResponse, 
   selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string; functionalCategory?: string; priority?: number }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
-  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
+  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>,
+  placements?: PlacementInstruction[]
 ): { prompt: string; productMetadata: Record<string, { visualDescriptionSource: string }> } {
   const roomDesc = roomTypeDescriptions[quiz.roomType.toLowerCase()] || quiz.roomType;
   const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
@@ -1573,7 +1674,7 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
     });
     
     // Add structured placement matrix BEFORE constraints
-    prompt += generatePlacementMatrix(selectedProducts, quiz.roomType, roomAnalysis, floorPlanAnalysis);
+    prompt += generatePlacementMatrix(selectedProducts, quiz.roomType, roomAnalysis, floorPlanAnalysis, placements);
     
     prompt += `
 ═══════════════════════════════════════════════════════════════════════════

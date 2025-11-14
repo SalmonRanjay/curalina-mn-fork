@@ -20,6 +20,7 @@ import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
 import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
+import type { PlacementInstruction } from "./services/room-composition-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
@@ -1584,6 +1585,7 @@ export function registerCuralinaRoutes(app: Express) {
           // Step 2: Check if specific products were requested (for regeneration with swaps)
           const { filterProductsByQuiz, selectProductsWithAI, buildPromptFromQuiz, analyzeRoomImage, analyzeFloorPlan } = await import('./services/gemini-ai');
           let selectedProducts: Array<{ sku: string; name: string; placement: string; reasoning: string }> = [];
+          let placements: PlacementInstruction[] = [];
           
           if (req.body.productSkus && req.body.productSkus.length > 0) {
             // Use specific product SKUs (from swap/regeneration)
@@ -1603,8 +1605,10 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`Filtered to ${filteredProducts.length} matching products`);
             
             if (filteredProducts.length > 0) {
-              selectedProducts = await selectProductsWithAI(filteredProducts, quiz);
-              console.log(`AI selected ${selectedProducts.length} products for the room`);
+              const selectionResult = await selectProductsWithAI(filteredProducts, quiz);
+              selectedProducts = selectionResult.products;
+              placements = selectionResult.placements;
+              console.log(`AI selected ${selectedProducts.length} products with ${placements.length} zone-based placements`);
             } else {
               console.warn("No matching products found, generating room without specific products");
             }
@@ -1778,7 +1782,7 @@ export function registerCuralinaRoutes(app: Express) {
           );
           
           // Build enhanced prompt with enriched products and image analysis
-          const { prompt, productMetadata } = buildPromptFromQuiz(quiz, productsWithPlacement, roomAnalysis, floorPlanAnalysis);
+          const { prompt, productMetadata } = buildPromptFromQuiz(quiz, productsWithPlacement, roomAnalysis, floorPlanAnalysis, placements);
           
           // Log what image analysis was used
           const analysisTypes = [];

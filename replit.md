@@ -21,6 +21,16 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### November 14, 2025
+**Zone-Based Placement System Implementation**
+1. **Zone Configuration System**: Created ROOM_ZONES configurations for each room type (Living Room, Bedroom, Dining Room, Home Office) with detailed ZoneBlueprint definitions including bounds, allowed categories, capacity limits, clearances, and orientation preferences.
+2. **Product Zone Assignment**: Implemented assignItemsToZones() function that:
+   - Assigns products to appropriate zones based on functional categories
+   - Enforces interior design rules (max 1 floor lamp per room, table lamps only on surfaces)
+   - Calculates normalized positions (0-1 room coordinates), orientations, and spacing
+   - Scores placement confidence based on zone fitness
+3. **Structured Placement Matrix**: Created generateZoneBasedPlacementMatrix() to convert PlacementInstruction data into explicit spatial instructions for AI prompts, grouped by zone with position coordinates, anchor points, orientations, and clearance values.
+4. **End-to-End Data Flow**: Integrated zone-based placements through the entire pipeline from selectProductsWithComposition → selectProductsWithAI → routes → buildPromptFromQuiz → generatePlacementMatrix → final AI prompt, with graceful fallback to legacy placement logic when placements unavailable.
+
 **Critical Bug Fixes - Product Selection & AI Authentication**
 1. **Fixed Product Image Validation**: Updated `hasValidImages()` to accept local asset paths (`/images/`, `/assets/`) in addition to external URLs and object storage paths. This resolved the issue where sofas and other essential furniture with local image paths were being excluded from the candidate pool.
 2. **Fixed Gemini API Authentication**: Switched from Replit AI Integrations (which was returning 401 errors) to direct Google Gemini API using user's own `GEMINI_API_KEY`. This enables reliable AI-powered room rendering.

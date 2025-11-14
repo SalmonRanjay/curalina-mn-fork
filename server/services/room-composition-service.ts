@@ -15,7 +15,7 @@ interface ZoneBlueprint {
   heightTier: 'floor' | 'surface' | 'wall';
 }
 
-interface PlacementInstruction {
+export interface PlacementInstruction {
   productId: string;
   zoneId: string;
   position: { x: number; y: number };
@@ -38,7 +38,8 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       maxItems: 4,
       orientation: 'focal',
       clearance: 0.08,
-      adjacentZones: ['focal_wall', 'circulation_path']
+      adjacentZones: ['focal_wall', 'circulation_path'],
+      heightTier: 'floor'
     },
     {
       id: 'focal_wall',
@@ -95,7 +96,8 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       maxItems: 3,
       orientation: 'wall',
       clearance: 0.08,
-      adjacentZones: ['bedside_left', 'bedside_right']
+      adjacentZones: ['bedside_left', 'bedside_right'],
+      heightTier: 'floor'
     },
     {
       id: 'bedside_left',
@@ -152,7 +154,8 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       maxItems: 9, // Table + 8 chairs
       orientation: 'center',
       clearance: 0.1, // Extra clearance for chairs
-      adjacentZones: ['buffet_wall']
+      adjacentZones: ['buffet_wall'],
+      heightTier: 'floor'
     },
     {
       id: 'buffet_wall',
@@ -187,7 +190,8 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       maxItems: 2,
       orientation: 'wall',
       clearance: 0.08,
-      adjacentZones: ['storage_zone']
+      adjacentZones: ['storage_zone'],
+      heightTier: 'floor'
     },
     {
       id: 'storage_zone',
