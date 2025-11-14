@@ -1,0 +1,117 @@
+ALSO DESIGN A BEAUTIFUL HOME PAGE FOR THIS EXPERIENCE
+
+Create a homepage design that sits in front of the 7-step quiz and sells the experience.
+
+Use the SAME design system and tokens defined above:
+- Background: #FAF9F7
+- Surfaces: white cards with soft shadows
+- Brand teal: #24A8AE
+- Mint selection: #D9F2E5
+- Serif display (Cormorant Garamond) + Inter for body
+- 12-column, 1120px max-width centered grid, generous whitespace
+
+HOMEPAGE SECTIONS & CONTENT:
+
+1) Sticky Header
+- Left: logo/wordmark.
+- Center nav links: “How It Works”, “Style Quiz”, “Pricing”, “The Edit”.
+- Right: “Sign In” (text) and a primary button “Start the Quiz”.
+- Background: #FAF9F7 with a subtle bottom border. On scroll, add a light shadow.
+
+2) Hero Section (Above the Fold)
+- Two-column layout.
+- LEFT:
+  - Small pill label: “INTERIOR DESIGN, MADE PERSONAL”.
+  - H1: “Design the space where you’ll feel most at home”.
+  - Subtext: one paragraph explaining the quiz:
+    “Discover your signature style in just 7 questions — then get a shoppable design tailored to your room, budget, and lifestyle.”
+  - Primary button: “Take the Style Quiz”.
+  - Secondary ghost button: “Browse Design Styles”.
+- RIGHT:
+  - Large hero interior image (beautiful living room).
+  - Overlapping floating card at the bottom-left of the image showing a mini mock of the result:
+    - Thumbnail render.
+    - Text: “Organic Modern Living Room · Curated for you”.
+    - Small link: “See an example design”.
+
+3) “How It Works” 3-Step Section
+- Background: #FFFFFF.
+- Centered section title: “How it works”.
+- Three cards horizontally (on desktop):
+  1) “Tell us about your space”
+     - Icon: simple outline of a room.
+     - Copy: “Choose your room, styles and colour palette in just a few clicks.”
+  2) “We design it for you”
+     - Icon: magic wand / sparkle.
+     - Copy: “Our designers curate furniture and decor tailored to your answers.”
+  3) “Shop your room”
+     - Icon: shopping bag.
+     - Copy: “View your rendered room and instantly shop every piece.”
+- Add a subtle text link under the cards: “Learn more about our process →”.
+
+4) “Preview the Styles” Carousel
+- Background returns to #FAF9F7.
+- Title: “Find your look”.
+- Horizontal scroll or carousel of style cards:
+  - Organic Modern
+  - Modern Farmhouse
+  - Midcentury Scandi
+  - Warm Transitional
+  - Contemporary Luxe
+  - Artful Eclectic (if included in the quiz)
+- Each card:
+  - Image thumbnail representing the style.
+  - Style name and a short one-liner (e.g., “Soft, calm, natural” for Organic Modern).
+  - Hover effect: slight zoom and gradient overlay.
+- Clicking a style either:
+  - Opens a “Design Styles” page, or
+  - Pre-selects that style when the quiz begins (implementation choice).
+
+5) Value Proposition / “Why it’s different”
+- Split layout (left text, right visual).
+- Left:
+  - Title: “Designed by humans, powered by smart tools”.
+  - 3 bullet points such as:
+    - “Every room is handpicked by professional interior designers.”
+    - “Hundreds of premium brands — your design isn’t limited to one store.”
+    - “You get shoppable designs — what you see is exactly what you can get.”
+- Right:
+  - Mock “before/after” card of a room (empty vs fully styled), maybe as a simple static layout or a slider UI concept.
+
+6) Testimonials / Social Proof
+- Background: #FFFFFF.
+- Title: “Loved by people who care how their home feels”.
+- 3 testimonial cards:
+  - Quote.
+  - Name.
+  - Room type (e.g., “1-bedroom condo living room”).
+- Keep cards simple: white surface, soft border, small shadow.
+
+7) Bottom CTA Band
+- Full-width band with slightly darker neutral: #F3F0EB.
+- Centered content:
+  - H2: “Your dream room is 7 questions away”.
+  - Helper text: “It takes about 3 minutes. There are no wrong answers.”
+  - Primary button: “Start the Quiz”.
+  - Small text link below: “See an example room first →”.
+
+8) Footer
+- Background: #FAF9F7 or #FFFFFF.
+- Left: logo + one-line tagline.
+- 2–3 link columns:
+  - Company: About, Contact, Press, Partner with Us
+  - Help: FAQ, Shipping, Returns
+  - Resources: Style Quiz, The Edit, Before & After
+- Bottom line: copyright, terms, privacy.
+
+INTERACTION & RESPONSIVENESS:
+- Make the homepage fully responsive using the same grid system.
+- On mobile, collapse the header nav into a hamburger menu.
+- Stack hero columns (image below the text).
+- Convert 3-column layouts into stacked cards on mobile/tablet.
+- Maintain button hierarchy: primary teal CTA stands out clearly, ghost buttons are secondary.
+
+Your output should be:
+- Either Figma-ready frame descriptions and/or
+- Production-ready front-end layout (e.g., React + Tailwind or HTML/CSS)
+that matches this structure and the quiz design system defined above.

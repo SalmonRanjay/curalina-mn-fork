@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { getOrCreateSessionId } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
+import { useQuiz } from "@/contexts/QuizContext";
 import Dropzone from "react-dropzone";
 import colorPalette from "@assets/image001_1762335467188.png";
 
@@ -132,25 +133,13 @@ const KEY_FEATURES_BY_ROOM: Record<string, Array<{label: string, subtitle?: stri
 };
 
 export default function Quiz() {
-  const [currentStep, setCurrentStep] = useState(1);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  // Use QuizContext for state management
+  const { currentStep, quizData, updateQuizData, nextStep, previousStep, canProceed, getStepContext } = useQuiz();
 
-  // Quiz data state
-  const [quizData, setQuizData] = useState({
-    roomType: "",
-    styles: [] as string[],
-    colorPalettes: [] as string[],
-    keyFeatures: [] as string[],
-    budgetRange: "",
-    vibeImages: [] as string[],
-    vibeBoardUrl: "",
-    preferences: "",
-    roomPhoto: "",
-    floorplanUrl: "",
-  });
-
-  // UI state
+  // UI state (local to this component)
   const [expandedStyles, setExpandedStyles] = useState<string[]>([]);
   const [uploadingVibe, setUploadingVibe] = useState(false);
   const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
@@ -219,9 +208,6 @@ export default function Quiz() {
     },
   });
 
-  const updateQuizData = (field: string, value: any) => {
-    setQuizData(prev => ({ ...prev, [field]: value }));
-  };
 
   const toggleStyle = (style: string) => {
     const currentStyles = quizData.styles;
@@ -319,22 +305,18 @@ export default function Quiz() {
     }
   };
 
-  const canContinue = () => {
-    switch (currentStep) {
-      case 1: return !!quizData.roomType;
-      case 2: return quizData.styles.length > 0;
-      case 3: return quizData.colorPalettes.length > 0;
-      case 4: return quizData.keyFeatures.length > 0;
-      case 5: return !!quizData.budgetRange;
-      case 6: return true; // Optional - vibe images
-      case 7: return true; // Optional - floorplan
-      default: return false;
-    }
-  };
-
   const handleNext = () => {
+    if (!canProceed) {
+      toast({
+        title: "Please complete this step",
+        description: "Fill out all required fields before continuing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (currentStep < TOTAL_STEPS) {
-      setCurrentStep(prev => prev + 1);
+      nextStep();
     } else {
       submitQuizMutation.mutate(quizData);
     }
@@ -342,7 +324,7 @@ export default function Quiz() {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
+      previousStep();
     }
   };
 
@@ -903,10 +885,17 @@ export default function Quiz() {
             size="lg"
             onClick={handleBack}
             disabled={currentStep === 1}
-            className="uppercase font-semibold"
+            className="uppercase font-semibold flex items-center gap-2"
             data-testid="button-back"
           >
-            Back
+            {currentStep > 1 ? (
+              <>
+                <ChevronLeft className="w-4 h-4" />
+                <span>Previous: {getStepContext(currentStep).previous}</span>
+              </>
+            ) : (
+              <span>Back</span>
+            )}
           </Button>
 
           <p className="text-sm font-semibold text-stone-600 dark:text-stone-400 uppercase" data-testid="text-step-counter">
@@ -916,14 +905,19 @@ export default function Quiz() {
           <Button
             size="lg"
             onClick={handleNext}
-            disabled={!canContinue() || submitQuizMutation.isPending}
-            className="bg-stone-200 hover:bg-teal-500 hover:text-white text-stone-700 uppercase font-semibold transition-all"
+            disabled={!canProceed || submitQuizMutation.isPending}
+            className="bg-stone-200 hover:bg-teal-500 hover:text-white text-stone-700 uppercase font-semibold transition-all flex items-center gap-2"
             data-testid="button-next"
           >
-            {currentStep === TOTAL_STEPS ? (
-              submitQuizMutation.isPending ? "Submitting..." : "Next"
+            {submitQuizMutation.isPending ? (
+              <span>Submitting...</span>
+            ) : currentStep === TOTAL_STEPS ? (
+              <span>Submit Quiz</span>
             ) : (
-              "Next"
+              <>
+                <span>Next: {getStepContext(currentStep).next}</span>
+                <ChevronRight className="w-4 h-4" />
+              </>
             )}
           </Button>
         </div>
