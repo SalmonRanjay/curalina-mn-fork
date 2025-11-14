@@ -1556,6 +1556,11 @@ export function registerCuralinaRoutes(app: Express) {
         prompt: "Generating...",
       });
       
+      // Immediately persist 'submitted' lifecycle event
+      const { buildRenderEvent } = await import('./services/render-ingestion');
+      const submittedEvent = buildRenderEvent(render.id, 'submitted', 'User submitted render request', req.user?.id);
+      await curalinaStorage.createRenderEvent(submittedEvent);
+      
       // Create initial ledger entry with candidate pool snapshot
       const candidateSnapshot = createCandidatePoolSnapshot(candidatePool);
       const initialRationale = initializeSelectionRationale();
@@ -1576,6 +1581,17 @@ export function registerCuralinaRoutes(app: Express) {
 
       // Start async AI generation process
       (async () => {
+        const { buildRenderEvent } = await import('./services/render-ingestion');
+        const lifecycleEvents: any[] = [];
+        
+        // Include submitted event in snapshot (already persisted)
+        lifecycleEvents.push(submittedEvent);
+        
+        // Immediately persist 'processing' event
+        const processingEvent = buildRenderEvent(render.id, 'processing', 'AI generation started');
+        await curalinaStorage.createRenderEvent(processingEvent);
+        lifecycleEvents.push(processingEvent);
+        
         try {
           console.log(`🎨 Starting AI render for ${quiz.roomType} in ${quiz.style} style`);
           
@@ -1858,6 +1874,35 @@ export function registerCuralinaRoutes(app: Express) {
             status: 'completed',
           });
           
+          // Immediately persist 'completed' event
+          const completedEvent = buildRenderEvent(
+            render.id,
+            'completed',
+            `Render completed with ${allProductSkus.length} products`
+          );
+          await curalinaStorage.createRenderEvent(completedEvent);
+          lifecycleEvents.push(completedEvent);
+          
+          // Ingest render snapshot (products + immutable event snapshot) atomically into analytics tables
+          try {
+            const { ingestRenderSnapshot } = await import('./services/render-ingestion');
+            // Deep copy events array for immutable snapshot
+            const eventSnapshot = JSON.parse(JSON.stringify(lifecycleEvents));
+            await ingestRenderSnapshot({
+              render,
+              productsWithPlacement,
+              allProducts,
+              ledgerData: ledgerData || null,
+              quizContext: {
+                roomType: quiz.roomType,
+                style: quiz.style,
+                budget: quiz.budget
+              }
+            }, eventSnapshot);
+          } catch (error) {
+            console.error("❌ Render snapshot ingestion failed (non-blocking):", error);
+          }
+          
           // Lock selection ledger to prevent modifications
           try {
             const ledger = await curalinaStorage.getSelectionLedgerByRender(render.id);
@@ -1878,6 +1923,23 @@ export function registerCuralinaRoutes(app: Express) {
             status: 'failed',
             errorMessage: error instanceof Error ? error.message : 'Unknown error',
           });
+          
+          // Immediately persist 'failed' event
+          const failedEvent = buildRenderEvent(
+            render.id,
+            'failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+          await curalinaStorage.createRenderEvent(failedEvent);
+          lifecycleEvents.push(failedEvent);
+          
+          // Ingest empty products + event snapshot atomically
+          try {
+            const eventSnapshot = JSON.parse(JSON.stringify(lifecycleEvents));
+            await curalinaStorage.ingestRenderSnapshot(render.id, [], eventSnapshot);
+          } catch (eventError) {
+            console.error("Error ingesting failed render (non-blocking):", eventError);
+          }
         }
       })();
       

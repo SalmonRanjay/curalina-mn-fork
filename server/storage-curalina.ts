@@ -207,6 +207,8 @@ export interface ICuralinaStorage {
   createRenderProducts(products: InsertRenderProduct[]): Promise<RenderProduct[]>;
   getRenderProductsByRender(renderId: string): Promise<RenderProduct[]>;
   getRenderProduct(id: string): Promise<RenderProduct | undefined>;
+  deleteRenderProductsByRender(renderId: string): Promise<void>;
+  ingestRenderSnapshot(renderId: string, productsData: InsertRenderProduct[], events: InsertRenderEvent[]): Promise<void>;
   
   // Render Events operations
   createRenderEvent(event: InsertRenderEvent): Promise<RenderEvent>;
@@ -951,6 +953,29 @@ export class CuralinaStorage implements ICuralinaStorage {
   async getRenderProduct(id: string): Promise<RenderProduct | undefined> {
     const [product] = await db.select().from(renderProducts).where(eq(renderProducts.id, id));
     return product;
+  }
+
+  async deleteRenderProductsByRender(renderId: string): Promise<void> {
+    await db.delete(renderProducts).where(eq(renderProducts.renderId, renderId));
+  }
+
+  async ingestRenderSnapshot(
+    renderId: string,
+    productsData: InsertRenderProduct[],
+    eventsData: InsertRenderEvent[]
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(renderProducts).where(eq(renderProducts.renderId, renderId));
+      await tx.delete(renderEvents).where(eq(renderEvents.renderId, renderId));
+      
+      if (productsData.length > 0) {
+        await tx.insert(renderProducts).values(productsData);
+      }
+      
+      if (eventsData.length > 0) {
+        await tx.insert(renderEvents).values(eventsData);
+      }
+    });
   }
   
   // Render Events operations

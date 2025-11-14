@@ -21,6 +21,32 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### November 14, 2025
+**Render Analytics & Documentation Infrastructure**
+1. **Backend Routes - Render Analytics**:
+   - GET /api/admin/renders/analytics: List all renders with quiz context, product counts, placement scores, event counts, selection summaries (filterable by status/roomType/style, with limit)
+   - GET /api/admin/renders/analytics/:id: Detailed render analytics for single render with full quiz snapshot and aggregate statistics
+   - GET /api/admin/renders/:id/products: List all products in a render with snapshot data (supplier/category names, visual descriptions, placements)
+   - GET /api/admin/renders/:id/events: Timeline of all render lifecycle events (submitted, processing, completed, failed) with timestamps
+   - Implementation: Uses Neon pool.query() for parameterized SQL with PostgreSQL placeholders ($1, $2) to query database views safely
+2. **Backend Routes - Documentation System**:
+   - GET /api/admin/documentation/sections: List all documentation sections with comment counts, author info, version numbers
+   - POST /api/admin/documentation/sections: Create new documentation section (title, slug, content, category, tags)
+   - GET /api/admin/documentation/sections/:id: Get single section with content and metadata
+   - PUT /api/admin/documentation/sections/:id: Update section (increments version, updates updatedAt)
+   - DELETE /api/admin/documentation/sections/:id: Soft delete section
+   - POST /api/admin/documentation/sections/:id/publish: Publish section (sets isPublished=true)
+   - GET /api/admin/documentation/comments: List all comments for a section
+   - POST /api/admin/documentation/comments: Create comment thread (anchor-based positioning)
+   - PUT /api/admin/documentation/comments/:id: Update comment content
+   - PUT /api/admin/documentation/comments/:id/resolve: Mark comment as resolved
+   - DELETE /api/admin/documentation/comments/:id: Delete comment
+   - Implementation: Full authentication/authorization guards, input validation with Zod, uses curalinaStorage interface
+3. **Technical Decisions**:
+   - Query building: Handles 0, 1, or multiple filter conditions correctly using native PostgreSQL parameter placeholders
+   - Limit validation: Returns 400 error if limit < 1 or not an integer
+   - SQL injection protection: All parameters properly escaped via pool.query() parameterization
+   - No Drizzle expression helpers needed: Direct SQL queries work reliably across all filter combinations
+
 **Zone-Based Placement System Implementation**
 1. **Zone Configuration System**: Created ROOM_ZONES configurations for each room type (Living Room, Bedroom, Dining Room, Home Office) with detailed ZoneBlueprint definitions including bounds, allowed categories, capacity limits, clearances, and orientation preferences.
 2. **Product Zone Assignment**: Implemented assignItemsToZones() function that:
