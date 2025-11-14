@@ -2,6 +2,8 @@ import type { Express } from "express";
 import multer from "multer";
 import { curalinaStorage } from "./storage-curalina";
 import { ObjectStorageService } from "./objectStorage";
+import { db, pool } from "./db";
+import { sql, and } from "drizzle-orm";
 import {
   insertQuizResponseSchema,
   insertRenderSchema,
@@ -14,6 +16,10 @@ import {
   insertProductPackageSchema,
   insertPlacementGuidelineSchema,
   insertDesignRuleSchema,
+  insertRenderProductSchema,
+  insertRenderEventSchema,
+  insertDocumentationSectionSchema,
+  insertDocumentationCommentSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
@@ -1945,6 +1951,107 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Render Analytics endpoints (Admin only)
+  app.get('/api/admin/renders/analytics', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { status, roomType, style, limit } = req.query;
+      
+      // Validate limit parameter
+      let validLimit: number | null = null;
+      if (limit) {
+        const parsedLimit = parseInt(limit as string, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({ error: "Invalid limit parameter. Must be an integer >= 1." });
+        }
+        validLimit = parsedLimit;
+      }
+      
+      // Build WHERE clause parts
+      const whereParts: string[] = [];
+      const params: any[] = [];
+      
+      if (status) {
+        params.push(status);
+        whereParts.push(`render_status = $${params.length}`);
+      }
+      
+      if (roomType) {
+        params.push(roomType);
+        whereParts.push(`room_type = $${params.length}`);
+      }
+      
+      if (style) {
+        params.push(style);
+        whereParts.push(`design_style = $${params.length}`);
+      }
+      
+      // Build full query
+      let queryText = 'SELECT * FROM render_analytics_v';
+      
+      if (whereParts.length > 0) {
+        queryText += ` WHERE ${whereParts.join(' AND ')}`;
+      }
+      
+      queryText += ' ORDER BY render_created_at DESC';
+      
+      if (validLimit) {
+        params.push(validLimit);
+        queryText += ` LIMIT $${params.length}`;
+      }
+      
+      // Execute using Neon pool for parameterized queries
+      const result = await pool.query(queryText, params);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching render analytics:", error);
+      res.status(500).json({ error: "Failed to fetch render analytics" });
+    }
+  });
+
+  app.get('/api/admin/renders/analytics/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const queryText = 'SELECT * FROM render_analytics_v WHERE render_id = $1';
+      const result = await pool.query(queryText, [req.params.id]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Render not found" });
+      }
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error fetching render analytics:", error);
+      res.status(500).json({ error: "Failed to fetch render analytics" });
+    }
+  });
+
+  app.get('/api/admin/renders/:id/products', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const products = await curalinaStorage.getRenderProductsByRender(req.params.id);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching render products:", error);
+      res.status(500).json({ error: "Failed to fetch render products" });
+    }
+  });
+
+  app.get('/api/admin/renders/:id/events', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { eventType } = req.query;
+      
+      let events;
+      if (eventType) {
+        events = await curalinaStorage.getRenderEventsByType(req.params.id, eventType as string);
+      } else {
+        events = await curalinaStorage.getRenderEventsByRender(req.params.id);
+      }
+      
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching render events:", error);
+      res.status(500).json({ error: "Failed to fetch render events" });
+    }
+  });
+
   // Cart endpoints
   app.get('/api/cart/:sessionId', async (req, res) => {
     try {
@@ -2455,6 +2562,224 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching upload job status:", error);
       res.status(500).json({ error: "Failed to fetch upload job status" });
+    }
+  });
+
+  // Documentation System endpoints
+  // Documentation Sections - Admin and client access
+  app.get('/api/documentation/sections', isAuthenticated, async (req: any, res) => {
+    try {
+      const { status, slug } = req.query;
+      const filters: any = {};
+      
+      // Non-admin users only see published sections
+      if (req.user?.role !== 'admin') {
+        filters.status = 'published';
+      } else if (status) {
+        filters.status = status as string;
+      }
+      
+      if (slug) {
+        filters.slug = slug as string;
+      }
+      
+      const sections = await curalinaStorage.getAllDocumentationSections(filters);
+      res.json(sections);
+    } catch (error) {
+      console.error("Error fetching documentation sections:", error);
+      res.status(500).json({ error: "Failed to fetch documentation sections" });
+    }
+  });
+
+  app.get('/api/documentation/sections/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const section = await curalinaStorage.getDocumentationSection(req.params.id);
+      
+      if (!section) {
+        return res.status(404).json({ error: "Section not found" });
+      }
+      
+      // Non-admin users can only see published sections
+      if (req.user?.role !== 'admin' && section.status !== 'published') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      res.json(section);
+    } catch (error) {
+      console.error("Error fetching documentation section:", error);
+      res.status(500).json({ error: "Failed to fetch documentation section" });
+    }
+  });
+
+  app.get('/api/documentation/sections/slug/:slug', isAuthenticated, async (req: any, res) => {
+    try {
+      const version = req.query.version ? parseInt(req.query.version as string) : undefined;
+      const section = await curalinaStorage.getDocumentationSectionBySlug(req.params.slug, version);
+      
+      if (!section) {
+        return res.status(404).json({ error: "Section not found" });
+      }
+      
+      // Non-admin users can only see published sections
+      if (req.user?.role !== 'admin' && section.status !== 'published') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      res.json(section);
+    } catch (error) {
+      console.error("Error fetching documentation section by slug:", error);
+      res.status(500).json({ error: "Failed to fetch documentation section" });
+    }
+  });
+
+  app.post('/api/admin/documentation/sections', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertDocumentationSectionSchema.parse({
+        ...req.body,
+        createdBy: req.user.id,
+        updatedBy: req.user.id,
+      });
+      
+      const section = await curalinaStorage.createDocumentationSection(validatedData);
+      res.json(section);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid section data", details: error.errors });
+      }
+      console.error("Error creating documentation section:", error);
+      res.status(500).json({ error: "Failed to create documentation section" });
+    }
+  });
+
+  app.patch('/api/admin/documentation/sections/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const updateData = {
+        ...req.body,
+        updatedBy: req.user.id,
+      };
+      
+      const section = await curalinaStorage.updateDocumentationSection(req.params.id, updateData);
+      res.json(section);
+    } catch (error) {
+      console.error("Error updating documentation section:", error);
+      res.status(500).json({ error: "Failed to update documentation section" });
+    }
+  });
+
+  app.delete('/api/admin/documentation/sections/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await curalinaStorage.deleteDocumentationSection(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting documentation section:", error);
+      res.status(500).json({ error: "Failed to delete documentation section" });
+    }
+  });
+
+  app.post('/api/admin/documentation/sections/:id/publish', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const section = await curalinaStorage.publishDocumentationSection(req.params.id);
+      res.json(section);
+    } catch (error) {
+      console.error("Error publishing documentation section:", error);
+      res.status(500).json({ error: "Failed to publish documentation section" });
+    }
+  });
+
+  // Documentation Comments - Admin and client access
+  app.get('/api/documentation/sections/:sectionId/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const { resolved, isInternal } = req.query;
+      const filters: any = {};
+      
+      if (resolved !== undefined) {
+        filters.resolved = resolved === 'true';
+      }
+      
+      // Non-admin users can't see internal comments
+      if (req.user?.role !== 'admin') {
+        filters.isInternal = false;
+      } else if (isInternal !== undefined) {
+        filters.isInternal = isInternal === 'true';
+      }
+      
+      const comments = await curalinaStorage.getCommentsBySection(req.params.sectionId, filters);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  app.post('/api/documentation/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertDocumentationCommentSchema.parse({
+        ...req.body,
+        userId: req.user.id,
+        // Only admins can create internal comments
+        isInternal: req.user.role === 'admin' ? req.body.isInternal : false,
+      });
+      
+      const comment = await curalinaStorage.createComment(validatedData);
+      res.json(comment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid comment data", details: error.errors });
+      }
+      console.error("Error creating comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.patch('/api/documentation/comments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const comment = await curalinaStorage.getComment(req.params.id);
+      
+      if (!comment) {
+        return res.status(404).json({ error: "Comment not found" });
+      }
+      
+      // Users can only edit their own comments, unless admin
+      if (comment.userId !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const updated = await curalinaStorage.updateComment(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      res.status(500).json({ error: "Failed to update comment" });
+    }
+  });
+
+  app.delete('/api/documentation/comments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const comment = await curalinaStorage.getComment(req.params.id);
+      
+      if (!comment) {
+        return res.status(404).json({ error: "Comment not found" });
+      }
+      
+      // Users can only delete their own comments, unless admin
+      if (comment.userId !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await curalinaStorage.deleteComment(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  app.post('/api/documentation/comments/:id/resolve', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const comment = await curalinaStorage.resolveComment(req.params.id, req.user.id);
+      res.json(comment);
+    } catch (error) {
+      console.error("Error resolving comment:", error);
+      res.status(500).json({ error: "Failed to resolve comment" });
     }
   });
 }
