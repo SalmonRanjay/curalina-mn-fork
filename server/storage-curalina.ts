@@ -17,6 +17,10 @@ import {
   uploadJobFiles,
   visualAnalysisJobs,
   visualAnalysisProducts,
+  renderProducts,
+  renderEvents,
+  documentationSections,
+  documentationComments,
   type Category,
   type InsertCategory,
   type Supplier,
@@ -52,9 +56,17 @@ import {
   type InsertVisualAnalysisJob,
   type VisualAnalysisProduct,
   type InsertVisualAnalysisProduct,
+  type RenderProduct,
+  type InsertRenderProduct,
+  type RenderEvent,
+  type InsertRenderEvent,
+  type DocumentationSection,
+  type InsertDocumentationSection,
+  type DocumentationComment,
+  type InsertDocumentationComment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, isNull, isNotNull } from "drizzle-orm";
 
 export interface ICuralinaStorage {
   // Category operations
@@ -189,6 +201,34 @@ export interface ICuralinaStorage {
   updateVisualAnalysisProduct(id: string, data: Partial<InsertVisualAnalysisProduct>): Promise<VisualAnalysisProduct>;
   deleteVisualAnalysisProduct(id: string): Promise<void>;
   upsertVisualAnalysisProducts(products: InsertVisualAnalysisProduct[]): Promise<void>;
+  
+  // Render Products operations
+  createRenderProduct(product: InsertRenderProduct): Promise<RenderProduct>;
+  createRenderProducts(products: InsertRenderProduct[]): Promise<RenderProduct[]>;
+  getRenderProductsByRender(renderId: string): Promise<RenderProduct[]>;
+  getRenderProduct(id: string): Promise<RenderProduct | undefined>;
+  
+  // Render Events operations
+  createRenderEvent(event: InsertRenderEvent): Promise<RenderEvent>;
+  getRenderEventsByRender(renderId: string): Promise<RenderEvent[]>;
+  getRenderEventsByType(renderId: string, eventType: string): Promise<RenderEvent[]>;
+  
+  // Documentation Sections operations
+  getAllDocumentationSections(filters?: { status?: string; slug?: string }): Promise<DocumentationSection[]>;
+  getDocumentationSection(id: string): Promise<DocumentationSection | undefined>;
+  getDocumentationSectionBySlug(slug: string, version?: number): Promise<DocumentationSection | undefined>;
+  createDocumentationSection(section: InsertDocumentationSection): Promise<DocumentationSection>;
+  updateDocumentationSection(id: string, section: Partial<InsertDocumentationSection>): Promise<DocumentationSection>;
+  deleteDocumentationSection(id: string): Promise<void>;
+  publishDocumentationSection(id: string): Promise<DocumentationSection>;
+  
+  // Documentation Comments operations
+  getCommentsBySection(sectionId: string, filters?: { resolved?: boolean; isInternal?: boolean }): Promise<DocumentationComment[]>;
+  getComment(id: string): Promise<DocumentationComment | undefined>;
+  createComment(comment: InsertDocumentationComment): Promise<DocumentationComment>;
+  updateComment(id: string, comment: Partial<InsertDocumentationComment>): Promise<DocumentationComment>;
+  deleteComment(id: string): Promise<void>;
+  resolveComment(id: string, userId: string): Promise<DocumentationComment>;
 }
 
 export class CuralinaStorage implements ICuralinaStorage {
@@ -891,6 +931,175 @@ export class CuralinaStorage implements ICuralinaStorage {
           });
       }
     });
+  }
+  
+  // Render Products operations
+  async createRenderProduct(productData: InsertRenderProduct): Promise<RenderProduct> {
+    const [product] = await db.insert(renderProducts).values(productData).returning();
+    return product;
+  }
+
+  async createRenderProducts(productsData: InsertRenderProduct[]): Promise<RenderProduct[]> {
+    if (productsData.length === 0) return [];
+    return db.insert(renderProducts).values(productsData).returning();
+  }
+
+  async getRenderProductsByRender(renderId: string): Promise<RenderProduct[]> {
+    return db.select().from(renderProducts).where(eq(renderProducts.renderId, renderId));
+  }
+
+  async getRenderProduct(id: string): Promise<RenderProduct | undefined> {
+    const [product] = await db.select().from(renderProducts).where(eq(renderProducts.id, id));
+    return product;
+  }
+  
+  // Render Events operations
+  async createRenderEvent(eventData: InsertRenderEvent): Promise<RenderEvent> {
+    const [event] = await db.insert(renderEvents).values(eventData).returning();
+    return event;
+  }
+
+  async getRenderEventsByRender(renderId: string): Promise<RenderEvent[]> {
+    return db.select().from(renderEvents).where(eq(renderEvents.renderId, renderId)).orderBy(desc(renderEvents.occurredAt));
+  }
+
+  async getRenderEventsByType(renderId: string, eventType: string): Promise<RenderEvent[]> {
+    return db
+      .select()
+      .from(renderEvents)
+      .where(and(eq(renderEvents.renderId, renderId), eq(renderEvents.eventType, eventType)))
+      .orderBy(desc(renderEvents.occurredAt));
+  }
+  
+  // Documentation Sections operations
+  async getAllDocumentationSections(filters?: { status?: string; slug?: string }): Promise<DocumentationSection[]> {
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(documentationSections.status, filters.status));
+    }
+    if (filters?.slug) {
+      conditions.push(eq(documentationSections.slug, filters.slug));
+    }
+    
+    if (conditions.length === 0) {
+      return db.select().from(documentationSections).orderBy(documentationSections.sortOrder);
+    }
+    
+    return db.select().from(documentationSections).where(and(...conditions)).orderBy(documentationSections.sortOrder);
+  }
+
+  async getDocumentationSection(id: string): Promise<DocumentationSection | undefined> {
+    const [section] = await db.select().from(documentationSections).where(eq(documentationSections.id, id));
+    return section;
+  }
+
+  async getDocumentationSectionBySlug(slug: string, version?: number): Promise<DocumentationSection | undefined> {
+    const conditions = [eq(documentationSections.slug, slug)];
+    if (version !== undefined) {
+      conditions.push(eq(documentationSections.version, version));
+    }
+    
+    const [section] = await db
+      .select()
+      .from(documentationSections)
+      .where(and(...conditions))
+      .orderBy(desc(documentationSections.version))
+      .limit(1);
+    return section;
+  }
+
+  async createDocumentationSection(sectionData: InsertDocumentationSection): Promise<DocumentationSection> {
+    const [section] = await db.insert(documentationSections).values(sectionData).returning();
+    return section;
+  }
+
+  async updateDocumentationSection(id: string, sectionData: Partial<InsertDocumentationSection>): Promise<DocumentationSection> {
+    const [section] = await db
+      .update(documentationSections)
+      .set({ ...sectionData, updatedAt: new Date() })
+      .where(eq(documentationSections.id, id))
+      .returning();
+    return section;
+  }
+
+  async deleteDocumentationSection(id: string): Promise<void> {
+    await db.delete(documentationSections).where(eq(documentationSections.id, id));
+  }
+
+  async publishDocumentationSection(id: string): Promise<DocumentationSection> {
+    const section = await this.getDocumentationSection(id);
+    if (!section) {
+      throw new Error('Section not found');
+    }
+    
+    const [updated] = await db
+      .update(documentationSections)
+      .set({
+        status: 'published',
+        publishedVersion: section.version,
+        updatedAt: new Date(),
+      })
+      .where(eq(documentationSections.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Documentation Comments operations
+  async getCommentsBySection(sectionId: string, filters?: { resolved?: boolean; isInternal?: boolean }): Promise<DocumentationComment[]> {
+    const conditions = [eq(documentationComments.sectionId, sectionId)];
+    
+    if (filters?.resolved !== undefined) {
+      if (filters.resolved) {
+        conditions.push(isNotNull(documentationComments.resolvedAt));
+      } else {
+        conditions.push(isNull(documentationComments.resolvedAt));
+      }
+    }
+    
+    if (filters?.isInternal !== undefined) {
+      conditions.push(eq(documentationComments.isInternal, filters.isInternal));
+    }
+    
+    return db
+      .select()
+      .from(documentationComments)
+      .where(and(...conditions))
+      .orderBy(desc(documentationComments.createdAt));
+  }
+
+  async getComment(id: string): Promise<DocumentationComment | undefined> {
+    const [comment] = await db.select().from(documentationComments).where(eq(documentationComments.id, id));
+    return comment;
+  }
+
+  async createComment(commentData: InsertDocumentationComment): Promise<DocumentationComment> {
+    const [comment] = await db.insert(documentationComments).values(commentData).returning();
+    return comment;
+  }
+
+  async updateComment(id: string, commentData: Partial<InsertDocumentationComment>): Promise<DocumentationComment> {
+    const [comment] = await db
+      .update(documentationComments)
+      .set({ ...commentData, editedAt: new Date() })
+      .where(eq(documentationComments.id, id))
+      .returning();
+    return comment;
+  }
+
+  async deleteComment(id: string): Promise<void> {
+    await db.delete(documentationComments).where(eq(documentationComments.id, id));
+  }
+
+  async resolveComment(id: string, userId: string): Promise<DocumentationComment> {
+    const [comment] = await db
+      .update(documentationComments)
+      .set({
+        resolvedAt: new Date(),
+        resolvedBy: userId,
+      })
+      .where(eq(documentationComments.id, id))
+      .returning();
+    return comment;
   }
 }
 
