@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSessionId } from "@/lib/session";
@@ -6,9 +6,7 @@ import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight, Sparkles, AlertCircle } from "lucide-react";
+import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } from "@shared/schema";
@@ -39,13 +37,22 @@ function prioritizeFrontViewImage(images: string[] | null): string[] {
 }
 
 /**
+ * Normalize visual description source labels to remove any legacy OpenAI references
+ * Maps "OpenAI Vision" → "Legacy" for backwards compatibility
+ */
+function normalizeVisualDescriptionSource(source: string): string {
+  // Map any legacy OpenAI Vision labels to Legacy
+  if (source === "OpenAI Vision") return "Legacy";
+  return source;
+}
+
+/**
  * Get visual description source badge styling based on priority
- * Front View (highest) → Gemini Vision → OpenAI Vision → Legacy (lowest)
+ * Front View (highest) → Gemini Vision → Legacy (lowest)
  */
 function getVisualDescriptionBadgeVariant(source: string): "default" | "secondary" | "outline" {
   if (source === "Front View") return "default"; // Highest quality
   if (source === "Gemini Vision") return "secondary";
-  if (source === "OpenAI Vision") return "outline";
   return "outline"; // Legacy or None
 }
 
@@ -58,13 +65,6 @@ export default function Results() {
   const [swappedProducts, setSwappedProducts] = useState<Record<string, string>>({});
   // Track current image index for each product
   const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
-  // Comparison state: store OpenAI render separately
-  const [openaiRender, setOpenaiRender] = useState<Render | null>(null);
-  const [comparisonMode, setComparisonMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("gemini");
-  // Store polling interval ref for proper cleanup
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isMountedRef = useRef(true);
   const { toast } = useToast();
 
   // Fetch latest Gemini render for this session (default)
@@ -82,17 +82,6 @@ export default function Results() {
     },
   });
 
-  // Fetch quiz response to check for floor plan
-  const { data: quizResponse } = useQuery<QuizResponse>({
-    queryKey: ["/api/quiz", render?.quizResponseId],
-    queryFn: async () => {
-      if (!render?.quizResponseId) throw new Error("No quiz ID");
-      const res = await fetch(`/api/quiz/${render.quizResponseId}`);
-      if (!res.ok) throw new Error("Failed to fetch quiz");
-      return res.json();
-    },
-    enabled: !!render?.quizResponseId,
-  });
 
   // Fetch all products
   const { data: allProducts, isLoading: productsLoading } = useQuery<Product[]>({
@@ -175,168 +164,12 @@ export default function Results() {
     },
   });
 
-  // OpenAI comparison mutation
-  const openaiMutation = useMutation({
-    mutationFn: async () => {
-      if (!render) throw new Error("No render available");
-      
-      const response = await fetch("/api/render", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quizResponseId: render.quizResponseId,
-          sessionId,
-          productSkus: render.productSkus,
-          aiProvider: 'openai',
-        }),
-      });
-      
-      if (!response.ok) throw new Error("Failed to generate OpenAI render");
-      return response.json();
-    },
-    onSuccess: (data: Render) => {
-      // Guard: exit if component unmounted before mutation resolved
-      if (!isMountedRef.current) return;
-      
-      setOpenaiRender(data);
-      setComparisonMode(true);
-      toast({
-        title: "OpenAI render requested",
-        description: "Generating comparison render with DALL-E 3...",
-      });
-      
-      // Clear any existing polling interval
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-      
-      // Poll for OpenAI render completion with proper cleanup
-      let pollAttempts = 0;
-      const maxAttempts = 150; // 5 minutes max (150 * 2s)
-      
-      pollingIntervalRef.current = setInterval(async () => {
-        // Guard: exit early if component is unmounted
-        if (!isMountedRef.current) {
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          return;
-        }
-        
-        pollAttempts++;
-        
-        // Safety: stop polling after max attempts
-        if (pollAttempts > maxAttempts) {
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          if (isMountedRef.current) {
-            toast({
-              title: "Polling timeout",
-              description: "Stopped checking for render completion",
-              variant: "destructive",
-            });
-          }
-          return;
-        }
-        
-        try {
-          const res = await fetch(`/api/render/${data.id}`);
-          
-          if (!isMountedRef.current) return; // Exit if unmounted during fetch
-          
-          if (!res.ok) {
-            // Stop polling on error responses
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            if (isMountedRef.current) {
-              toast({
-                title: "Error checking render status",
-                description: "Failed to fetch render status",
-                variant: "destructive",
-              });
-            }
-            return;
-          }
-          
-          const updated = await res.json();
-          
-          if (!isMountedRef.current) return; // Exit if unmounted during JSON parse
-          
-          setOpenaiRender(updated);
-          
-          if (updated.status === 'completed') {
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            if (isMountedRef.current) {
-              toast({
-                title: "Comparison ready",
-                description: "OpenAI render completed. Switch between tabs to compare!",
-              });
-            }
-          } else if (updated.status === 'failed') {
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            if (isMountedRef.current) {
-              toast({
-                title: "OpenAI render failed",
-                description: updated.errorMessage || "Failed to generate comparison",
-                variant: "destructive",
-              });
-            }
-          }
-        } catch (error) {
-          // Stop polling on network errors
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          if (isMountedRef.current) {
-            toast({
-              title: "Network error",
-              description: "Lost connection while checking render status",
-              variant: "destructive",
-            });
-          }
-        }
-      }, 2000);
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to request OpenAI render",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Redirect if no session
   useEffect(() => {
     if (!sessionId) {
       setLocation("/");
     }
   }, [sessionId, setLocation]);
-
-  // Track component mount status and cleanup polling on unmount
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    return () => {
-      isMountedRef.current = false;
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, []);
 
   if (!sessionId) {
     return null;
@@ -403,10 +236,6 @@ export default function Results() {
     );
   }
 
-  // Helper to get current active render based on tab selection
-  const currentRender = comparisonMode && activeTab === 'openai' ? openaiRender : render;
-  const hasFloorPlan = quizResponse?.floorplanUrl && quizResponse.floorplanUrl.trim() !== '';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -429,33 +258,6 @@ export default function Results() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-3"
           >
-            {!comparisonMode && !openaiMutation.isPending && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (hasFloorPlan) {
-                    const confirmed = window.confirm(
-                      "WARNING: OpenAI DALL-E 3 only supports text-to-image generation (not floor plan remixing).\n\n" +
-                      "The comparison render will be created from scratch based on your quiz preferences, " +
-                      "without using your uploaded floor plan.\n\n" +
-                      "Continue anyway?"
-                    );
-                    if (!confirmed) return;
-                  }
-                  openaiMutation.mutate();
-                }}
-                data-testid="button-compare-openai"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Compare with OpenAI
-              </Button>
-            )}
-            {openaiMutation.isPending && (
-              <div className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
-                <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                Requesting OpenAI...
-              </div>
-            )}
             <Button
               variant="outline"
               onClick={() => setLocation("/cart")}
@@ -467,146 +269,8 @@ export default function Results() {
           </motion.div>
         </div>
 
-        {/* Comparison Mode: Side-by-side on desktop, Tabs on mobile */}
-        {comparisonMode && openaiRender ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
-          >
-            {/* Mobile: Tabs */}
-            <div className="lg:hidden">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="gemini" data-testid="tab-gemini">
-                    Gemini 2.5 Flash
-                  </TabsTrigger>
-                  <TabsTrigger value="openai" data-testid="tab-openai">
-                    OpenAI DALL-E 3
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="gemini">
-                  <Card className="p-4 relative">
-                    {render.status === 'generating' ? (
-                      <div className="aspect-video flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                          <p className="text-sm text-stone-600 dark:text-stone-400">Generating Gemini render...</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={render.imageUrl ?? ''}
-                        alt="Gemini Generated Design"
-                        className="w-full h-auto rounded-lg cursor-pointer"
-                        onClick={() => setShowFullImage(true)}
-                        data-testid="img-render-gemini"
-                      />
-                    )}
-                    <Badge className="absolute top-6 left-6 bg-white/90 dark:bg-black/90 backdrop-blur">
-                      Gemini
-                    </Badge>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="openai">
-                  <Card className="p-4 relative">
-                    {openaiRender.status === 'generating' ? (
-                      <div className="aspect-video flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                          <p className="text-sm text-stone-600 dark:text-stone-400">Generating OpenAI render...</p>
-                        </div>
-                      </div>
-                    ) : openaiRender.status === 'failed' ? (
-                      <div className="aspect-video flex items-center justify-center">
-                        <Alert variant="destructive">
-                          <AlertCircle className="w-4 h-4" />
-                          <AlertDescription>
-                            {openaiRender.errorMessage || "OpenAI render failed"}
-                          </AlertDescription>
-                        </Alert>
-                      </div>
-                    ) : (
-                      <img
-                        src={openaiRender.imageUrl ?? ''}
-                        alt="OpenAI Generated Design"
-                        className="w-full h-auto rounded-lg cursor-pointer"
-                        onClick={() => setShowFullImage(true)}
-                        data-testid="img-render-openai"
-                      />
-                    )}
-                    <Badge variant="secondary" className="absolute top-6 left-6 bg-white/90 dark:bg-black/90 backdrop-blur">
-                      OpenAI
-                    </Badge>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Desktop: Side by side */}
-            <div className="hidden lg:grid lg:grid-cols-2 gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge>Gemini 2.5 Flash</Badge>
-                  {hasFloorPlan && <Badge variant="outline">Floor plan support ✓</Badge>}
-                </div>
-                <Card className="p-4">
-                  {render.status === 'generating' ? (
-                    <div className="aspect-video flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-sm text-stone-600 dark:text-stone-400">Generating...</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <img
-                      src={render.imageUrl ?? ''}
-                      alt="Gemini Generated Design"
-                      className="w-full h-auto rounded-lg cursor-pointer"
-                      onClick={() => setShowFullImage(true)}
-                      data-testid="img-render-gemini"
-                    />
-                  )}
-                </Card>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant="secondary">OpenAI DALL-E 3</Badge>
-                  <Badge variant="outline">Text-to-image only</Badge>
-                </div>
-                <Card className="p-4">
-                  {openaiRender.status === 'generating' ? (
-                    <div className="aspect-video flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-sm text-stone-600 dark:text-stone-400">Generating...</p>
-                      </div>
-                    </div>
-                  ) : openaiRender.status === 'failed' ? (
-                    <div className="aspect-video flex items-center justify-center p-6">
-                      <Alert variant="destructive">
-                        <AlertCircle className="w-4 h-4" />
-                        <AlertDescription>
-                          {openaiRender.errorMessage || "OpenAI render failed"}
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-                  ) : (
-                    <img
-                      src={openaiRender.imageUrl ?? ''}
-                      alt="OpenAI Generated Design"
-                      className="w-full h-auto rounded-lg cursor-pointer"
-                      onClick={() => setShowFullImage(true)}
-                      data-testid="img-render-openai"
-                    />
-                  )}
-                </Card>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          /* Single Render Mode: Default Gemini view */
-          <div className="flex flex-col lg:flex-row gap-6 mb-12">
+        {/* AI Render and Products */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-12">
             {/* AI Render Image */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -727,13 +391,14 @@ export default function Results() {
                             {(() => {
                               const metadata = render?.productMetadata as ProductMetadata | null | undefined;
                               if (metadata && metadata[product.sku]) {
+                                const normalizedSource = normalizeVisualDescriptionSource(metadata[product.sku].visualDescriptionSource);
                                 return (
                                   <Badge 
-                                    variant={getVisualDescriptionBadgeVariant(metadata[product.sku].visualDescriptionSource)}
+                                    variant={getVisualDescriptionBadgeVariant(normalizedSource)}
                                     className="text-xs shrink-0"
                                     data-testid={`badge-visual-source-${product.id}`}
                                   >
-                                    {metadata[product.sku].visualDescriptionSource}
+                                    {normalizedSource}
                                   </Badge>
                                 );
                               }
@@ -787,8 +452,7 @@ export default function Results() {
               </Card>
             </motion.div>
           )}
-          </div>
-        )}
+        </div>
 
         {/* Actions */}
         <div className="flex flex-col items-center gap-4">

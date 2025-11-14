@@ -936,24 +936,22 @@ export function registerCuralinaRoutes(app: Express) {
           
           const results = await batchAnalyzeProducts(productsToAnalyze);
           
-          // Update products with BOTH Gemini and OpenAI visual descriptions
+          // Update products with Gemini visual descriptions
           let updated = 0;
           let failed = 0;
           
           for (const result of results) {
-            if ((result.visualDescriptionGemini || result.visualDescriptionOpenAI) && !result.error) {
+            if (result.visualDescriptionGemini && !result.error) {
               try {
                 const product = allProducts.find(p => p.sku === result.sku);
                 if (product) {
                   await curalinaStorage.updateProduct(product.id, {
                     visualDescription: result.visualDescription,
-                    visualDescriptionGemini: result.visualDescriptionGemini,
-                    visualDescriptionOpenAI: result.visualDescriptionOpenAI
+                    visualDescriptionGemini: result.visualDescriptionGemini
                   });
                   updated++;
-                  console.log(`✅ Updated ${result.sku} with dual AI descriptions`);
+                  console.log(`✅ Updated ${result.sku} with Gemini AI description`);
                   console.log(`   Gemini: ${result.visualDescriptionGemini?.length || 0} chars`);
-                  console.log(`   OpenAI: ${result.visualDescriptionOpenAI?.length || 0} chars`);
                 }
               } catch (error) {
                 console.error(`Failed to update ${result.sku}:`, error);
@@ -964,8 +962,8 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          console.log(`\n📊 Dual AI Batch Analysis Complete:`);
-          console.log(`  ✅ Updated with dual descriptions: ${updated}`);
+          console.log(`\n📊 Gemini AI Batch Analysis Complete:`);
+          console.log(`  ✅ Updated with descriptions: ${updated}`);
           console.log(`  ❌ Failed: ${failed}`);
         } catch (error) {
           console.error('Batch analysis error:', error);
@@ -1498,10 +1496,7 @@ export function registerCuralinaRoutes(app: Express) {
   // Render endpoints
   app.post('/api/render', async (req, res) => {
     try {
-      // Extract AI provider preference before Zod validation (not stored in DB)
-      const aiProvider = req.body.aiProvider || 'gemini'; // 'gemini' or 'openai'
-      
-      // Validate render data (excluding aiProvider which is ephemeral)
+      // Validate render data
       const renderData = insertRenderSchema.parse({
         quizResponseId: req.body.quizResponseId,
         sessionId: req.body.sessionId,
@@ -1524,9 +1519,8 @@ export function registerCuralinaRoutes(app: Express) {
       const candidatePool = filterProductsByQuiz(allProducts, quiz);
       console.log(`📊 Candidate pool: ${candidatePool.length} products match quiz criteria`);
       
-      // Generate hash from quiz + filtered candidate pool + AI provider (not full catalog)
-      const selectionHash = generateSelectionHash(quiz, candidatePool, aiProvider);
-      console.log(`🎨 Using ${aiProvider.toUpperCase()} provider for render generation`);
+      // Generate hash from quiz + filtered candidate pool (not full catalog)
+      const selectionHash = generateSelectionHash(quiz, candidatePool);
       
       // Check if we already have a ledger with this hash (idempotency)
       const existingLedger = await curalinaStorage.getSelectionLedgerByHash(selectionHash);
@@ -1654,25 +1648,23 @@ export function registerCuralinaRoutes(app: Express) {
             if (!fullProduct) return sp;
             
             // Include ALL visual description fields for prioritization
-            // Priority system (in buildPromptFromQuiz): Front View → Gemini → OpenAI → legacy
+            // Priority system (in buildPromptFromQuiz): Front View → Gemini → legacy
             return {
               ...sp,
               name: fullProduct.name,
               visualDescriptionFrontView: fullProduct.visualDescriptionFrontView || undefined,
               visualDescriptionGemini: fullProduct.visualDescriptionGemini || undefined,
-              visualDescriptionOpenAI: fullProduct.visualDescriptionOpenAI || undefined,
               visualDescription: fullProduct.visualDescription || undefined,
             };
           });
           
           // Count products with visual descriptions (using priority system)
           const productsWithVisuals = enrichedProducts.filter((p: any) => {
-            return p.visualDescriptionFrontView || p.visualDescriptionGemini || 
-                   p.visualDescriptionOpenAI || p.visualDescription;
+            return p.visualDescriptionFrontView || p.visualDescriptionGemini || p.visualDescription;
           }).length;
           
           if (productsWithVisuals > 0) {
-            console.log(`✨ ${productsWithVisuals}/${selectedProducts.length} products have visual descriptions (prioritizing Front View → Gemini → OpenAI → Legacy)`);
+            console.log(`✨ ${productsWithVisuals}/${selectedProducts.length} products have visual descriptions (prioritizing Front View → Gemini → Legacy)`);
           }
           
           // Update selection ledger with composition order and category-level rationale
@@ -1796,22 +1788,12 @@ export function registerCuralinaRoutes(app: Express) {
           // Generate AI image with detailed product descriptions embedded in prompt
           // Products include rich Gemini Vision analysis (300-400 word descriptions)
           // AI generates furniture matching real products based on these visual specifications
-          let imageDataUrl: string;
-          
-          if (aiProvider === 'openai') {
-            console.log(`🤖 Using OpenAI DALL-E 3 for image generation`);
-            console.log(`🎨 Note: DALL-E 3 only supports text-to-image (uploaded floor plan not used for structure)`);
-            const { generateInteriorImageWithOpenAI } = await import('./services/gemini-ai');
-            imageDataUrl = await generateInteriorImageWithOpenAI(prompt);
+          if (floorplanUrl) {
+            console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo`);
           } else {
-            // Default to Gemini
-            if (floorplanUrl) {
-              console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo`);
-            } else {
-              console.log(`🎨 Using Gemini text-to-image mode (no space photo uploaded)`);
-            }
-            imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
+            console.log(`🎨 Using Gemini text-to-image mode (no space photo uploaded)`);
           }
+          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
           console.log(`✅ AI-generated room rendering complete`);
           
           // Extract base64 data from data URL (format: data:image/png;base64,...)

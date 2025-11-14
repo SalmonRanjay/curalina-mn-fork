@@ -197,13 +197,11 @@ export const products = pgTable("products", {
   // Media & metadata
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
-  visualDescription: text("visual_description"), // Active visual description (selected from Gemini or OpenAI)
+  visualDescription: text("visual_description"), // Active visual description from Gemini
   visualDescriptionGemini: text("visual_description_gemini"), // Gemini Vision analysis
-  visualDescriptionOpenAI: text("visual_description_openai"), // OpenAI GPT-4 Vision analysis
   // Front-view specific descriptions (for prioritized analysis)
   visualDescriptionFrontView: text("visual_description_front_view"), // Active front-view description
   visualDescriptionFrontViewGemini: text("visual_description_front_view_gemini"), // Gemini front-view analysis
-  visualDescriptionFrontViewOpenAI: text("visual_description_front_view_openai"), // OpenAI front-view analysis
   // Multi-angle analysis fields
   imageAnalyses: jsonb("image_analyses"), // { [imageUrl]: { angle, confidence, description, features } }
   synthesizedFrontView: text("synthesized_front_view"), // AI-generated front view from multi-angle synthesis

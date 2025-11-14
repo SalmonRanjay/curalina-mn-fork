@@ -4,13 +4,13 @@
 Curalina AI is a full-stack AI-powered interior design platform that integrates hybrid AI-generated room rendering with an e-commerce marketplace for furniture. The platform provides a seamless interior design and shopping experience, from inspiration to purchase, leveraging multimodal AI for highly personalized and contextually appropriate visual experiences.
 
 Key capabilities include:
-- **Intelligent Image Analysis**: AI analysis of room photos, floor plans, vibe images, and product images (using Gemini Vision and OpenAI GPT-5 Vision) to extract spatial information, user preferences, and detailed visual product descriptions. Enhanced Front View detection automatically treats single-image products as Front View images, ensuring they receive the highest-priority AI analysis.
+- **Intelligent Image Analysis**: AI analysis of room photos, floor plans, vibe images, and product images using Gemini Vision to extract spatial information, user preferences, and detailed visual product descriptions. Enhanced Front View detection automatically treats single-image products as Front View images, ensuring they receive the highest-priority AI analysis.
 - **AI-Powered Rendering**: Generates creative room designs from scratch (text-to-image) or redesigns existing spaces while preserving architectural features (image-to-image) using Gemini 2.5 Flash.
 - **Structured Placement Matrix**: AI prompts include explicit spatial instructions for each product with anchor zones, positioning rules, clearance requirements, and adjacency relationships. Uses functional categories and priority hierarchies from the selection ledger to ensure proper furniture placement (essentials → complementary → decor).
 - **Hybrid Image Compositing**: Aims for exact product matching by compositing real product images onto AI-generated rooms.
-- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context, detailed product visual descriptions, and structured placement instructions for more accurate and functional room layouts. Visual descriptions are prioritized: Front View → Gemini Vision → OpenAI Vision → Legacy, ensuring the highest-quality product information is used.
+- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context, detailed product visual descriptions from Gemini Vision, and structured placement instructions for more accurate and functional room layouts.
 - **Smart Product Selection**: Filters and prioritizes products based on image quality, visibility in renders, and user preferences, with a focus on displaying "Front View" images.
-- **Data Quality Transparency**: Shop the Look product cards display visual description source badges (Front View, Gemini Vision, OpenAI Vision, or Legacy) to show users which AI analysis method was used for each product recommendation, providing insight into recommendation quality and data provenance.
+- **Data Quality Transparency**: Shop the Look product cards display visual description source badges (Front View or Gemini Vision) to show users which AI analysis method was used for each product recommendation, providing insight into recommendation quality and data provenance.
 - **Complete E-commerce Journey**: Features a 7-step design quiz, AI-powered product selection, shopping cart, and Stripe checkout integration.
 - **Training Data System**: Admin-managed data for continuously improving AI performance.
 - **Quiz Mapping Analysis**: Dashboard for analyzing how quiz questions map to product recommendations, identifying data quality gaps and normalization opportunities.
@@ -35,7 +35,6 @@ Preferred communication style: Simple, everyday language.
 1. **Fixed Product Image Validation**: Updated `hasValidImages()` to accept local asset paths (`/images/`, `/assets/`) in addition to external URLs and object storage paths. This resolved the issue where sofas and other essential furniture with local image paths were being excluded from the candidate pool.
 2. **Fixed Gemini API Authentication**: Switched from Replit AI Integrations (which was returning 401 errors) to direct Google Gemini API using user's own `GEMINI_API_KEY`. This enables reliable AI-powered room rendering.
 3. **Enhanced Product Filtering**: Improved filterProductsByQuiz to check both `designStyle` column AND `styleTags` array for style matching, with 5-level sequential fallback system for better product coverage.
-4. **Added Multi-Provider AI Image Generation**: Implemented support for both Gemini 2.5 Flash and OpenAI DALL-E 3 image generation engines, enabling side-by-side quality comparisons. Both providers use identical quiz data, product selections, and Gemini Vision descriptions to ensure fair comparison. API route accepts optional `aiProvider` parameter ('gemini' or 'openai', defaults to 'gemini').
 
 **Living Room Training Data Import**
 1. **Design Examples**: Imported 6 professionally curated Living Room packages covering diverse room sizes (11.5x10 to 17.5x14.5 feet) and styles (contemporary, modern, executive, compact, multi-purpose). Each example includes room dimensions, style tags, design reasoning, and principles.
@@ -80,7 +79,6 @@ Preferred communication style: Simple, everyday language.
     - Stability AI SDXL (for structure-preserving image-to-image room rendering)
     - Google Gemini 2.5 Flash (for text-to-image generation, AI image matching)
     - Google Gemini Vision (for multi-modal image analysis of rooms, floor plans, and products)
-    - OpenAI GPT-5 Vision (for parallel product image analysis)
 - **Image Processing**:
     - Sharp (image compositing, resizing)
 - **Payment Processing**:

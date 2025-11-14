@@ -3,12 +3,11 @@ import type { Product, QuizResponse, CandidatePoolSnapshot, SelectionRationale }
 
 /**
  * Generate deterministic hash for idempotency check
- * Hash inputs: quiz responses + candidate product pool + AI provider + timestamp seed
+ * Hash inputs: quiz responses + candidate product pool + timestamp seed
  */
 export function generateSelectionHash(
   quizResponse: QuizResponse,
-  candidatePool: Product[],
-  aiProvider: string = 'gemini'
+  candidatePool: Product[]
 ): string {
   // Create deterministic input by sorting products by SKU
   const sortedSkus = candidatePool
@@ -23,7 +22,6 @@ export function generateSelectionHash(
     (quizResponse.colorPalettes || []).sort().join(','),
     (quizResponse.keyFeatures || []).sort().join(','),
     quizResponse.budgetRange,
-    aiProvider, // Include AI provider in hash to generate separate renders
   ].join('|');
   
   // Create hash input
@@ -50,7 +48,7 @@ export function createCandidatePoolSnapshot(products: Product[]): CandidatePoolS
     hasVisualDescription: !!(
       p.synthesizedFrontView || 
       p.visualDescriptionGemini || 
-      p.visualDescriptionOpenAI
+      p.visualDescription
     ),
   }));
 }
