@@ -1497,6 +1497,10 @@ export function registerCuralinaRoutes(app: Express) {
   // Render endpoints
   app.post('/api/render', async (req, res) => {
     try {
+      // Extract AI provider preference before Zod validation (not stored in DB)
+      const aiProvider = req.body.aiProvider || 'gemini'; // 'gemini' or 'openai'
+      
+      // Validate render data (excluding aiProvider which is ephemeral)
       const renderData = insertRenderSchema.parse({
         quizResponseId: req.body.quizResponseId,
         sessionId: req.body.sessionId,
@@ -1787,12 +1791,22 @@ export function registerCuralinaRoutes(app: Express) {
           // Generate AI image with detailed product descriptions embedded in prompt
           // Products include rich Gemini Vision analysis (300-400 word descriptions)
           // AI generates furniture matching real products based on these visual specifications
-          if (floorplanUrl) {
-            console.log(`🖼️ Using image-to-image mode with uploaded space photo`);
+          let imageDataUrl: string;
+          
+          if (aiProvider === 'openai') {
+            console.log(`🤖 Using OpenAI DALL-E 3 for image generation`);
+            console.log(`🎨 Note: DALL-E 3 only supports text-to-image (uploaded floor plan not used for structure)`);
+            const { generateInteriorImageWithOpenAI } = await import('./services/gemini-ai');
+            imageDataUrl = await generateInteriorImageWithOpenAI(prompt);
           } else {
-            console.log(`🎨 Using text-to-image mode (no space photo uploaded)`);
+            // Default to Gemini
+            if (floorplanUrl) {
+              console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo`);
+            } else {
+              console.log(`🎨 Using Gemini text-to-image mode (no space photo uploaded)`);
+            }
+            imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
           }
-          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
           console.log(`✅ AI-generated room rendering complete`);
           
           // Extract base64 data from data URL (format: data:image/png;base64,...)

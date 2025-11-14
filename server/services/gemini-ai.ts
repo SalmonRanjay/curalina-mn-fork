@@ -1,4 +1,5 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
+import OpenAI from "openai";
 import type { QuizResponse, Product } from "@shared/schema";
 import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate } from './room-composition-service';
 
@@ -6,6 +7,20 @@ import { selectProductsWithComposition, generateCompositionInstructions, validat
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY!,
 });
+
+// Lazy initialization of OpenAI client to avoid crashes when key is not set
+let openaiClient: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY environment variable not set");
+    }
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY!,
+    });
+  }
+  return openaiClient;
+}
 
 // Enhanced style descriptions for professional renders
 const styleDescriptions: Record<string, string> = {
@@ -2217,6 +2232,54 @@ Generate a photorealistic redesign that preserves the room's architecture while 
   } catch (error) {
     console.error("AI generation error:", error);
     throw new Error(`Failed to generate interior design: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+}
+
+/**
+ * Generate interior design image using OpenAI DALL-E 3
+ * Note: DALL-E 3 only supports text-to-image, not image-to-image editing
+ * 
+ * @param prompt - Detailed description of the desired design style and furniture
+ * @returns Base64 data URL (data:image/png;base64,...)
+ */
+export async function generateInteriorImageWithOpenAI(
+  prompt: string
+): Promise<string> {
+  try {
+    console.log("Using OpenAI DALL-E 3 for text-to-image generation");
+    
+    // Get OpenAI client (lazy initialization)
+    const openai = getOpenAIClient();
+    
+    // DALL-E 3 has a 4000 character limit, so we need to ensure prompt fits
+    const truncatedPrompt = prompt.length > 3900 
+      ? prompt.substring(0, 3900) + "... Generate photorealistic interior design."
+      : prompt;
+    
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: truncatedPrompt,
+      n: 1,
+      size: "1792x1024", // Landscape format for room designs
+      quality: "hd",
+      response_format: "b64_json",
+    });
+
+    if (!response.data || response.data.length === 0) {
+      throw new Error("No image data in OpenAI response");
+    }
+
+    const imageData = response.data[0]?.b64_json;
+    
+    if (!imageData) {
+      throw new Error("No base64 image data in OpenAI response");
+    }
+
+    console.log("✅ Successfully generated interior design with OpenAI DALL-E 3");
+    return `data:image/png;base64,${imageData}`;
+  } catch (error) {
+    console.error("OpenAI DALL-E generation error:", error);
+    throw new Error(`Failed to generate interior design with OpenAI: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 }
 
