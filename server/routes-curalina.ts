@@ -1524,8 +1524,9 @@ export function registerCuralinaRoutes(app: Express) {
       const candidatePool = filterProductsByQuiz(allProducts, quiz);
       console.log(`📊 Candidate pool: ${candidatePool.length} products match quiz criteria`);
       
-      // Generate hash from quiz + filtered candidate pool (not full catalog)
-      const selectionHash = generateSelectionHash(quiz, candidatePool);
+      // Generate hash from quiz + filtered candidate pool + AI provider (not full catalog)
+      const selectionHash = generateSelectionHash(quiz, candidatePool, aiProvider);
+      console.log(`🎨 Using ${aiProvider.toUpperCase()} provider for render generation`);
       
       // Check if we already have a ledger with this hash (idempotency)
       const existingLedger = await curalinaStorage.getSelectionLedgerByHash(selectionHash);
