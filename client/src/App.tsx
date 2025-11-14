@@ -32,6 +32,7 @@ import AdminContent from "@/pages/admin/content";
 import AdminBulkUpload from "@/pages/admin/bulk-upload";
 import AdminCsvImport from "@/pages/admin/csv-import";
 import AdminRendersStorage from "@/pages/admin/renders-storage";
+import AdminDocumentation from "@/pages/admin/documentation";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 
@@ -99,6 +100,7 @@ function Router() {
         <Route path="/admin/bulk-upload" component={AdminBulkUpload} />
         <Route path="/admin/csv-import" component={AdminCsvImport} />
         <Route path="/admin/renders-storage" component={AdminRendersStorage} />
+        <Route path="/admin/documentation" component={AdminDocumentation} />
 
         {/* User portal routes (admins can access these too) */}
         <Route path="/portal" component={PortalDashboard} />
