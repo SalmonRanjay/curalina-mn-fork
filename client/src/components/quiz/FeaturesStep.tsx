@@ -27,10 +27,10 @@ export default function FeaturesStep({ value, onChange }: FeaturesStepProps) {
 
   return (
     <div>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-4" data-testid="heading-features">
+      <h2 className="font-semibold mb-4" style={{ fontSize: 'var(--font-size-3xl)' }} data-testid="heading-features">
         What features are important to you?
       </h2>
-      <p className="text-stone-600 dark:text-stone-400 mb-8">
+      <p className="text-muted-foreground mb-8">
         Select all that apply
       </p>
 
@@ -44,23 +44,23 @@ export default function FeaturesStep({ value, onChange }: FeaturesStepProps) {
               onClick={() => toggleFeature(feature.id)}
               className={`flex items-start p-5 rounded-lg border-2 text-left transition-all hover-elevate active-elevate-2 ${
                 isSelected
-                  ? "border-green-300 bg-green-50 dark:bg-green-950"
-                  : "border-stone-200 dark:border-stone-700 hover:border-green-200"
+                  ? "border-accent bg-accent/10"
+                  : "border-border hover:border-accent"
               }`}
               data-testid={`feature-option-${feature.id}`}
             >
               <div className={`flex-shrink-0 w-6 h-6 rounded border-2 mr-4 flex items-center justify-center ${
                 isSelected
-                  ? "bg-green-400 border-green-400"
-                  : "border-stone-300 dark:border-stone-600"
+                  ? "bg-accent border-accent"
+                  : "border-border"
               }`}>
-                {isSelected && <Check className="w-4 h-4 text-white" />}
+                {isSelected && <Check className="w-4 h-4 text-accent-foreground" />}
               </div>
               <div className="flex-1">
-                <span className={`block font-semibold mb-1 ${isSelected ? "text-green-700 dark:text-green-400" : ""}`}>
+                <span className="block font-semibold mb-1">
                   {feature.label}
                 </span>
-                <span className="text-sm text-stone-600 dark:text-stone-400">
+                <span className="text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
                   {feature.description}
                 </span>
               </div>

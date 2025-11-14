@@ -72,9 +72,9 @@ export default function StylesCarousel() {
                       className="w-full h-56 object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                       data-testid={`img-style-${style.id.toLowerCase().replace(/ /g, "-")}`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <p className="text-white text-sm font-medium">Explore this style →</p>
+                      <p className="text-background font-medium" style={{ fontSize: 'var(--font-size-sm)' }}>Explore this style →</p>
                     </div>
                   </div>
                   <div className="p-5 stack-tight flex flex-col">
@@ -83,7 +83,7 @@ export default function StylesCarousel() {
                         data-testid={`heading-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
                       {style.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed" data-testid={`text-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
+                    <p className="text-muted-foreground leading-relaxed" style={{ fontSize: 'var(--font-size-sm)' }} data-testid={`text-style-${style.id.toLowerCase().replace(/ /g, "-")}`}>
                       {style.tagline}
                     </p>
                   </div>

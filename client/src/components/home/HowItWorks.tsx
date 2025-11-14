@@ -63,7 +63,8 @@ export default function HowItWorks() {
         <div className="text-center">
           <Link href="/about">
             <span 
-              className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="font-medium text-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
+              style={{ fontSize: 'var(--font-size-sm)' }}
               data-testid="link-learn-more-process"
             >
               Learn more about our process →

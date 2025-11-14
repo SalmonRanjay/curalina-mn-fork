@@ -13,10 +13,10 @@ const budgets = [
 export default function BudgetStep({ value, onChange }: BudgetStepProps) {
   return (
     <div>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-4" data-testid="heading-budget">
+      <h2 className="font-semibold mb-4" style={{ fontSize: 'var(--font-size-3xl)' }} data-testid="heading-budget">
         What's your budget range?
       </h2>
-      <p className="text-stone-600 dark:text-stone-400 mb-8">
+      <p className="text-muted-foreground mb-8">
         This helps us recommend the right pieces for you
       </p>
 
@@ -30,32 +30,32 @@ export default function BudgetStep({ value, onChange }: BudgetStepProps) {
               onClick={() => onChange(budget.id)}
               className={`w-full flex items-center justify-between p-6 rounded-lg border-2 text-left transition-all hover-elevate active-elevate-2 ${
                 isSelected
-                  ? "border-green-300 bg-green-50 dark:bg-green-950"
-                  : "border-stone-200 dark:border-stone-700 hover:border-green-200"
+                  ? "border-accent bg-accent/10"
+                  : "border-border hover:border-accent"
               }`}
               data-testid={`budget-option-${budget.id}`}
             >
               <div className="flex-1">
                 <div className="flex items-baseline gap-3 mb-2">
-                  <span className={`text-xl font-semibold ${isSelected ? "text-green-700 dark:text-green-400" : ""}`}>
+                  <span className="font-semibold" style={{ fontSize: 'var(--font-size-xl)' }}>
                     {budget.label}
                   </span>
-                  <span className="text-sm font-medium text-stone-500 dark:text-stone-400">
+                  <span className="font-medium text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
                     {budget.range}
                   </span>
                 </div>
-                <p className="text-sm text-stone-600 dark:text-stone-400">
+                <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
                   {budget.description}
                 </p>
               </div>
               <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 ml-4 ${
                 isSelected
-                  ? "bg-green-400 border-green-400"
-                  : "border-stone-300 dark:border-stone-600"
+                  ? "bg-accent border-accent"
+                  : "border-border"
               }`}>
                 {isSelected && (
                   <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full" />
+                    <div className="w-2 h-2 bg-accent-foreground rounded-full" />
                   </div>
                 )}
               </div>

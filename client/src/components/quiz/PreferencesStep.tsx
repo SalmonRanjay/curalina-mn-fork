@@ -39,10 +39,10 @@ export default function PreferencesStep({ value, onChange }: PreferencesStepProp
 
   return (
     <div>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-4" data-testid="heading-preferences">
+      <h2 className="font-semibold mb-4" style={{ fontSize: 'var(--font-size-3xl)' }} data-testid="heading-preferences">
         Tell us about your vision
       </h2>
-      <p className="text-stone-600 dark:text-stone-400 mb-8">
+      <p className="text-muted-foreground mb-8">
         Share any specific ideas, colors, or feelings you want in your space
       </p>
 
@@ -51,11 +51,12 @@ export default function PreferencesStep({ value, onChange }: PreferencesStepProp
         onChange={handleChange}
         placeholder={displayedPlaceholder}
         rows={8}
-        className="text-base resize-none"
+        className="resize-none"
+        style={{ fontSize: 'var(--font-size-base)' }}
         data-testid="input-preferences"
       />
 
-      <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">
+      <p className="mt-4 text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
         {text.length} characters
       </p>
     </div>

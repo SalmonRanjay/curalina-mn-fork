@@ -15,7 +15,7 @@ export default function HeroSection() {
           <div className="stack-roomy flex flex-col" data-testid="hero-content">
             {/* Pill Label */}
             <div className="inline-block mb-1">
-              <Badge variant="secondary" className="px-4 py-2 text-xs font-semibold uppercase tracking-wider bg-accent/20 text-accent-foreground border-none">
+              <Badge variant="secondary" className="px-4 py-2 font-semibold uppercase tracking-wider bg-accent/20 text-accent-foreground border-none" style={{ fontSize: 'var(--font-size-xs)' }}>
                 <Sparkles className="w-3 h-3 mr-1.5 inline" />
                 Interior Design, Made Personal
               </Badge>
@@ -60,7 +60,7 @@ export default function HeroSection() {
             </div>
 
             {/* Helper Text */}
-            <p className="text-sm text-muted-foreground italic" data-testid="text-helper">
+            <p className="text-muted-foreground italic" style={{ fontSize: 'var(--font-size-sm)' }} data-testid="text-helper">
               Takes about 3 minutes. No wrong answers.
             </p>
           </div>
@@ -76,7 +76,7 @@ export default function HeroSection() {
               />
               
               {/* Dark gradient overlay for better contrast */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/40 via-foreground/10 to-transparent pointer-events-none" />
               
               {/* Floating Result Card */}
               <Card className="absolute bottom-6 left-6 right-6 md:right-auto md:w-80 surface-elevated backdrop-blur-md p-5 border-card-border hover-elevate" data-testid="card-floating-preview">
@@ -93,12 +93,13 @@ export default function HeroSection() {
                        data-testid="text-preview-title">
                       Organic Modern Living Room
                     </p>
-                    <p className="text-sm text-muted-foreground mb-2" data-testid="text-preview-subtitle">
+                    <p className="text-muted-foreground mb-2" style={{ fontSize: 'var(--font-size-sm)' }} data-testid="text-preview-subtitle">
                       Curated for you
                     </p>
                     <Link href="/results">
                       <span 
-                        className="text-sm text-primary hover:underline font-medium cursor-pointer inline-flex items-center gap-1"
+                        className="text-accent hover:underline font-medium cursor-pointer inline-flex items-center gap-1"
+                        style={{ fontSize: 'var(--font-size-sm)' }}
                         data-testid="link-see-example"
                       >
                         See an example design 

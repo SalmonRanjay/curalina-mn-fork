@@ -41,10 +41,10 @@ export default function RoomTypeStep({ value, onChange }: RoomTypeStepProps) {
   return (
     <div className="space-y-8">
       <div className="text-center max-w-3xl mx-auto">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-cormorant font-medium mb-4" data-testid="heading-room-type">
+        <h2 className="font-cormorant font-medium mb-4" style={{ fontSize: 'var(--font-size-4xl)' }} data-testid="heading-room-type">
           Which room do you dream of transforming first?
         </h2>
-        <p className="text-base md:text-lg text-stone-600 dark:text-stone-400">
+        <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-base)' }}>
           You can always explore other rooms later—let's just start with the one that matters most
         </p>
       </div>
@@ -69,20 +69,20 @@ export default function RoomTypeStep({ value, onChange }: RoomTypeStepProps) {
                 onKeyDown={(e) => handleKeyDown(e, room.id)}
                 className={`relative flex flex-col items-center justify-center p-8 md:p-12 cursor-pointer transition-all hover-elevate active-elevate-2 ${
                   isSelected
-                    ? "border-2 border-teal-500 bg-teal-50 dark:bg-teal-950/20"
-                    : "border border-stone-200 dark:border-stone-700"
+                    ? "border-2 border-accent bg-accent/10"
+                    : "border-2 border-border"
                 }`}
                 aria-label={`Select ${room.label}`}
                 aria-pressed={isSelected}
                 data-testid={testId}
               >
                 {isSelected && (
-                  <div className="absolute top-3 right-3 w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center" data-testid={`check-${room.id.toLowerCase().replace(/ /g, '-')}`}>
-                    <Check className="w-4 h-4 text-white" />
+                  <div className="absolute top-3 right-3 w-6 h-6 bg-accent rounded-full flex items-center justify-center" data-testid={`check-${room.id.toLowerCase().replace(/ /g, '-')}`}>
+                    <Check className="w-4 h-4 text-accent-foreground" />
                   </div>
                 )}
-                <Icon className={`w-16 h-16 md:w-20 md:h-20 mb-4 ${isSelected ? "text-teal-500" : "text-stone-400"}`} />
-                <span className={`text-sm md:text-base font-inter font-semibold tracking-wider ${isSelected ? "text-teal-700 dark:text-teal-400" : "text-stone-700 dark:text-stone-300"}`}>
+                <Icon className="w-16 h-16 md:w-20 md:h-20 mb-4 text-muted-foreground" />
+                <span className="font-inter font-semibold tracking-wider text-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
                   {room.label}
                 </span>
               </Card>

@@ -68,10 +68,10 @@ export default function VibeUploadStep({ value, onChange }: VibeUploadStepProps)
 
   return (
     <div>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-4" data-testid="heading-vibe">
+      <h2 className="font-semibold mb-4" style={{ fontSize: 'var(--font-size-3xl)' }} data-testid="heading-vibe">
         Share your inspiration
       </h2>
-      <p className="text-stone-600 dark:text-stone-400 mb-8">
+      <p className="text-muted-foreground mb-8">
         Upload images that capture the vibe you're going for (3-5 images recommended)
       </p>
 
@@ -82,8 +82,8 @@ export default function VibeUploadStep({ value, onChange }: VibeUploadStepProps)
         onDragLeave={() => setIsDragging(false)}
         className={`border-2 border-dashed rounded-lg p-12 text-center transition-all cursor-pointer hover-elevate ${
           isDragging
-            ? "border-green-400 bg-green-50 dark:bg-green-950"
-            : "border-stone-300 dark:border-stone-600"
+            ? "border-accent bg-accent/10"
+            : "border-border"
         }`}
         data-testid="upload-zone-vibe"
       >
@@ -96,9 +96,9 @@ export default function VibeUploadStep({ value, onChange }: VibeUploadStepProps)
           id="vibe-upload"
         />
         <label htmlFor="vibe-upload" className="cursor-pointer">
-          <Upload className="w-12 h-12 mx-auto mb-4 text-stone-400" />
-          <p className="text-lg font-medium mb-2">Drop images here or click to upload</p>
-          <p className="text-sm text-stone-500 dark:text-stone-400">
+          <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="font-medium mb-2" style={{ fontSize: 'var(--font-size-lg)' }}>Drop images here or click to upload</p>
+          <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
             PNG, JPG up to 10MB each
           </p>
         </label>
@@ -116,7 +116,7 @@ export default function VibeUploadStep({ value, onChange }: VibeUploadStepProps)
               />
               <button
                 onClick={() => removeImage(index)}
-                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 data-testid={`button-remove-vibe-${index}`}
               >
                 <X className="w-4 h-4" />
@@ -127,9 +127,9 @@ export default function VibeUploadStep({ value, onChange }: VibeUploadStepProps)
       )}
 
       {uploadMutation.isPending && (
-        <div className="mt-4 flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
+        <div className="mt-4 flex items-center justify-center gap-2 text-accent">
           <ImageIcon className="w-5 h-5 animate-pulse" />
-          <span className="text-sm">Uploading...</span>
+          <span style={{ fontSize: 'var(--font-size-sm)' }}>Uploading...</span>
         </div>
       )}
     </div>

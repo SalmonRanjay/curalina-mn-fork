@@ -358,15 +358,18 @@ export default function Quiz() {
     const styles = ["Organic Modern", "Modern Farmhouse", "Midcentury Scandi", "Contemporary Luxe", "Warm Transitional"];
 
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <p className="text-sm text-stone-600 dark:text-stone-400">
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
+          <p className="text-muted-foreground font-medium" 
+             style={{ fontSize: 'var(--font-size-sm)' }}>
             Everyone has their own sense of style | Learn More About Our Design Styles
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
+          <h2 className="font-serif font-medium text-foreground" 
+              style={{ fontSize: 'var(--font-size-3xl)' }}>
             Which style feels most like home?
           </h2>
-          <p className="text-lg text-stone-600 dark:text-stone-400">
+          <p className="text-muted-foreground max-w-2xl" 
+             style={{ fontSize: 'var(--font-size-lg)' }}>
             Choose up to 2 styles. Trust your instincts — There are no wrong answers.
           </p>
         </div>
@@ -375,7 +378,7 @@ export default function Quiz() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="space-y-6"
+          className="stack-base flex flex-col"
         >
           {styles.map((styleName) => {
             const styleData = STYLES_DATA[styleName as keyof typeof STYLES_DATA];
@@ -385,35 +388,39 @@ export default function Quiz() {
             return (
               <motion.div key={styleName} variants={itemVariants}>
                 <Card
-                  className={`p-6 transition-all ${
-                    isSelected ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
+                  className={`p-6 transition-all border-card-border hover-elevate ${
+                    isSelected ? "bg-accent/10 border-accent" : ""
                   }`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-6 h-6 border-2 rounded flex items-center justify-center cursor-pointer ${
-                          isSelected ? "bg-green-400 border-green-400" : "border-stone-300"
+                        className={`w-6 h-6 border-2 rounded flex items-center justify-center cursor-pointer transition-all ${
+                          isSelected ? "bg-accent border-accent" : "border-border hover:border-accent/50"
                         }`}
                         onClick={() => toggleStyle(styleName)}
                         data-testid={`style-${styleName.toLowerCase().replace(" ", "-")}`}
                       >
-                        {isSelected && <Check className="w-4 h-4 text-white" />}
+                        {isSelected && <Check className="w-4 h-4 text-accent-foreground" />}
                       </div>
-                      <h3 className="text-xl font-bold uppercase">{styleName}</h3>
+                      <h3 className="font-semibold text-card-foreground uppercase" 
+                          style={{ fontSize: 'var(--font-size-xl)' }}>
+                        {styleName}
+                      </h3>
                     </div>
                   </div>
 
                   {/* Renders */}
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     {styleData.renders.map((url, idx) => (
-                      <div key={idx} className="space-y-1">
+                      <div key={idx} className="stack-tight flex flex-col">
                         <img
                           src={url}
                           alt={`${styleName} render ${idx + 1}`}
                           className="w-full h-32 object-cover rounded-md"
                         />
-                        <p className="text-xs text-center text-stone-600 dark:text-stone-400 uppercase">
+                        <p className="text-center text-muted-foreground uppercase font-medium" 
+                           style={{ fontSize: 'var(--font-size-xs)' }}>
                           {["Living", "Dining", "Bedroom"][idx]} Render
                         </p>
                       </div>
@@ -429,7 +436,7 @@ export default function Quiz() {
                           : [...prev, styleName]
                       )
                     }
-                    className="flex items-center gap-2 text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition-colors"
+                    className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
                     data-testid={`key-characteristics-${styleName.toLowerCase().replace(" ", "-")}`}
                   >
                     <ChevronDown
@@ -446,28 +453,40 @@ export default function Quiz() {
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="mt-4 space-y-4 overflow-hidden"
+                        className="mt-4 stack-base flex flex-col overflow-hidden"
                       >
-                        <div>
-                          <h4 className="font-semibold mb-1">Mood Words</h4>
-                          <p className="text-sm text-stone-600 dark:text-stone-400">{styleData.moodWords}</p>
+                        <div className="stack-tight flex flex-col">
+                          <h4 className="font-semibold text-card-foreground">Mood Words</h4>
+                          <p className="text-muted-foreground leading-relaxed" 
+                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                            {styleData.moodWords}
+                          </p>
                         </div>
-                        <div>
-                          <h4 className="font-semibold mb-1">Textures</h4>
-                          <p className="text-sm text-stone-600 dark:text-stone-400">{styleData.textures}</p>
+                        <div className="stack-tight flex flex-col">
+                          <h4 className="font-semibold text-card-foreground">Textures</h4>
+                          <p className="text-muted-foreground leading-relaxed" 
+                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                            {styleData.textures}
+                          </p>
                         </div>
-                        <div>
-                          <h4 className="font-semibold mb-1">Furniture</h4>
-                          <p className="text-sm text-stone-600 dark:text-stone-400">{styleData.furniture}</p>
+                        <div className="stack-tight flex flex-col">
+                          <h4 className="font-semibold text-card-foreground">Furniture</h4>
+                          <p className="text-muted-foreground leading-relaxed" 
+                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                            {styleData.furniture}
+                          </p>
                         </div>
-                        <div>
-                          <h4 className="font-semibold mb-2">Color Palette</h4>
+                        <div className="stack-tight flex flex-col">
+                          <h4 className="font-semibold text-card-foreground mb-2">Color Palette</h4>
                           <img 
                             src={colorPalette} 
                             alt="Color palette inspiration" 
                             className="w-full max-w-md mb-2 rounded-md"
                           />
-                          <p className="text-sm text-stone-600 dark:text-stone-400">{styleData.colorPalette}</p>
+                          <p className="text-muted-foreground leading-relaxed" 
+                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                            {styleData.colorPalette}
+                          </p>
                         </div>
                       </motion.div>
                     )}
@@ -494,15 +513,18 @@ export default function Quiz() {
     ];
     
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <p className="text-sm text-stone-600 dark:text-stone-400">
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
+          <p className="text-muted-foreground font-medium" 
+             style={{ fontSize: 'var(--font-size-sm)' }}>
             Everyone has their own sense of style | Learn More About Our Design Styles
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
+          <h2 className="font-serif font-medium text-foreground" 
+              style={{ fontSize: 'var(--font-size-3xl)' }}>
             Which colour palette feels most like you?
           </h2>
-          <p className="text-lg text-stone-600 dark:text-stone-400">
+          <p className="text-muted-foreground max-w-2xl" 
+             style={{ fontSize: 'var(--font-size-lg)' }}>
             Choose up to 2 styles. Trust your instincts — There are no wrong answers.
           </p>
         </div>
@@ -511,7 +533,7 @@ export default function Quiz() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto mt-12"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto"
         >
           {palettes.map((palette) => {
             const isSelected = quizData.colorPalettes.includes(palette);
@@ -519,13 +541,16 @@ export default function Quiz() {
             return (
               <motion.div key={palette} variants={itemVariants}>
                 <Card
-                  className={`p-6 text-center cursor-pointer transition-all hover-elevate ${
-                    isSelected ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
+                  className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
+                    isSelected ? "bg-accent/10 border-accent" : ""
                   }`}
                   onClick={() => toggleColorPalette(palette)}
                   data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
-                  <p className="font-semibold text-sm uppercase">{palette}</p>
+                  <p className="font-semibold uppercase text-card-foreground" 
+                     style={{ fontSize: 'var(--font-size-sm)' }}>
+                    {palette}
+                  </p>
                 </Card>
               </motion.div>
             );
@@ -541,18 +566,24 @@ export default function Quiz() {
     const seatingCounts = [4, 6, 8, 10, 12];
 
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <p className="text-sm text-stone-600 dark:text-stone-400">
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
+          <p className="text-muted-foreground font-medium" 
+             style={{ fontSize: 'var(--font-size-sm)' }}>
             Everyone has their own sense of style | Learn More About Our Design Styles
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold uppercase tracking-tight">
+          <h2 className="font-serif font-medium text-foreground" 
+              style={{ fontSize: 'var(--font-size-3xl)' }}>
             Functional Features
           </h2>
-          <p className="text-lg text-stone-600 dark:text-stone-400">
+          <p className="text-muted-foreground max-w-2xl" 
+             style={{ fontSize: 'var(--font-size-lg)' }}>
             A room should look stunning and live smart. Let's design for how you live, not just how it looks.
           </p>
-          <p className="text-sm text-stone-600 dark:text-stone-400 mt-4">Select all that apply</p>
+          <p className="text-muted-foreground font-medium" 
+             style={{ fontSize: 'var(--font-size-sm)' }}>
+            Select all that apply
+          </p>
         </div>
 
         <motion.div
@@ -567,15 +598,18 @@ export default function Quiz() {
             return (
               <motion.div key={idx} variants={itemVariants}>
                 <Card
-                  className={`p-6 cursor-pointer hover-elevate transition-all ${
-                    isSelected ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
+                  className={`p-6 cursor-pointer hover-elevate active-elevate-2 transition-all border-card-border ${
+                    isSelected ? "bg-accent/10 border-accent" : ""
                   }`}
                   onClick={() => toggleKeyFeature(feature.label)}
                   data-testid={`feature-${feature.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
-                  <p className="font-semibold">{feature.label}</p>
+                  <p className="font-semibold text-card-foreground">{feature.label}</p>
                   {feature.subtitle && (
-                    <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">{feature.subtitle}</p>
+                    <p className="text-muted-foreground mt-1" 
+                       style={{ fontSize: 'var(--font-size-sm)' }}>
+                      {feature.subtitle}
+                    </p>
                   )}
                 </Card>
               </motion.div>
@@ -585,8 +619,8 @@ export default function Quiz() {
 
         {/* Special Dining Room Seating Selector */}
         {isDiningRoom && (
-          <div className="max-w-3xl mx-auto mt-12 space-y-4">
-            <p className="text-center font-semibold">Seating (Please select number of people to be seated)</p>
+          <div className="max-w-3xl mx-auto stack-base flex flex-col items-center">
+            <p className="text-center font-semibold text-foreground">Seating (Please select number of people to be seated)</p>
             <div className="flex justify-center gap-4 flex-wrap">
               {seatingCounts.map((count) => {
                 const seatingLabel = `Seating for ${count}`;
@@ -596,9 +630,9 @@ export default function Quiz() {
                   <Button
                     key={count}
                     variant={isSelected ? "default" : "outline"}
-                    className={`w-16 h-16 text-lg font-semibold ${
-                      isSelected ? "bg-green-400 hover:bg-green-500 text-white" : ""
-                    }`}
+                    size="lg"
+                    className="w-16 h-16 font-semibold"
+                    style={{ fontSize: 'var(--font-size-lg)' }}
                     onClick={() => toggleKeyFeature(seatingLabel)}
                     data-testid={`seating-${count}`}
                   >
@@ -624,12 +658,19 @@ export default function Quiz() {
     ];
 
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold uppercase">Dream Big, Spend Smart</h2>
-          <div className="space-y-2">
-            <p className="text-xl font-semibold">Set Your Budget</p>
-            <p className="text-lg text-stone-600 dark:text-stone-400">
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
+          <h2 className="font-serif font-medium text-foreground" 
+              style={{ fontSize: 'var(--font-size-3xl)' }}>
+            Dream Big, Spend Smart
+          </h2>
+          <div className="stack-tight flex flex-col items-center">
+            <p className="font-semibold text-foreground" 
+               style={{ fontSize: 'var(--font-size-xl)' }}>
+              Set Your Budget
+            </p>
+            <p className="text-muted-foreground max-w-2xl" 
+               style={{ fontSize: 'var(--font-size-lg)' }}>
               Choose a budget range that feels comfortable — enough to elevate your space without stretching your limits
             </p>
           </div>
@@ -644,13 +685,16 @@ export default function Quiz() {
           {budgetRanges.map((budget) => (
             <motion.div key={budget} variants={itemVariants}>
               <Card
-                className={`p-8 text-center cursor-pointer hover-elevate transition-all ${
-                  quizData.budgetRange === budget ? "bg-green-100 dark:bg-green-900/30 border-green-400" : ""
+                className={`p-8 text-center cursor-pointer hover-elevate active-elevate-2 transition-all border-card-border ${
+                  quizData.budgetRange === budget ? "bg-accent/10 border-accent" : ""
                 }`}
                 onClick={() => updateQuizData("budgetRange", budget)}
                 data-testid={`budget-${budget.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
               >
-                <p className="font-semibold text-lg">{budget}</p>
+                <p className="font-semibold text-card-foreground" 
+                   style={{ fontSize: 'var(--font-size-lg)' }}>
+                  {budget}
+                </p>
               </Card>
             </motion.div>
           ))}
@@ -661,12 +705,19 @@ export default function Quiz() {
 
   const renderStep6 = () => {
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold uppercase">You Bring the Vibe and We'll Bring the Design</h2>
-          <div className="space-y-2">
-            <p className="text-xl font-semibold">Vibe Check</p>
-            <p className="text-lg text-stone-600 dark:text-stone-400">
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
+          <h2 className="font-serif font-medium text-foreground" 
+              style={{ fontSize: 'var(--font-size-3xl)' }}>
+            You Bring the Vibe and We'll Bring the Design
+          </h2>
+          <div className="stack-tight flex flex-col items-center">
+            <p className="font-semibold text-foreground" 
+               style={{ fontSize: 'var(--font-size-xl)' }}>
+              Vibe Check
+            </p>
+            <p className="text-muted-foreground max-w-2xl" 
+               style={{ fontSize: 'var(--font-size-lg)' }}>
               Upload photos from Pinterest<br />
               Generate your room design based on a Pinterest board or images
             </p>
@@ -683,12 +734,13 @@ export default function Quiz() {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all ${
-                  isDragActive ? "border-green-400 bg-green-50 dark:bg-green-900/20" : "border-stone-300 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                  isDragActive ? "border-accent bg-accent/5" : "border-border hover:border-accent/50 hover:bg-accent/5"
                 }`}
                 data-testid="vibe-upload-area"
               >
                 <input {...getInputProps()} />
-                <p className="text-lg font-semibold mb-2">
+                <p className="font-semibold mb-2 text-foreground" 
+                   style={{ fontSize: 'var(--font-size-lg)' }}>
                   {uploadingVibe ? "Uploading..." : isDragActive ? "Drop files here" : "Drag and drop or add photos"}
                 </p>
                 <Button
@@ -711,7 +763,7 @@ export default function Quiz() {
                   <img src={url} alt={`Vibe ${idx + 1}`} className="w-full h-32 object-cover rounded-md" />
                   <button
                     onClick={() => updateQuizData("vibeImages", quizData.vibeImages.filter((_, i) => i !== idx))}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover-elevate"
                     data-testid={`remove-vibe-${idx}`}
                   >
                     <X className="w-4 h-4" />
@@ -727,23 +779,30 @@ export default function Quiz() {
 
   const renderStep7 = () => {
     return (
-      <div className="space-y-8">
-        <div className="text-center space-y-4">
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
           <motion.h2
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", bounce: 0.5 }}
-            className="text-3xl md:text-4xl font-bold uppercase"
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: 'var(--font-size-3xl)' }}
           >
             You Made It to the Final Step
           </motion.h2>
-          <p className="text-sm text-stone-600 dark:text-stone-400">Uploading a photo is optional</p>
+          <p className="text-muted-foreground font-medium" 
+             style={{ fontSize: 'var(--font-size-sm)' }}>
+            Uploading a photo is optional
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Photo Upload */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">Upload a photo of your space</h3>
+          <div className="stack-base flex flex-col">
+            <h3 className="font-semibold text-center text-foreground" 
+                style={{ fontSize: 'var(--font-size-lg)' }}>
+              Upload a photo of your space
+            </h3>
             <Dropzone
               onDrop={(files) => handleFileUpload(files, "floorplan")}
               accept={{ "image/*": [".png", ".jpg", ".jpeg"] }}
@@ -754,13 +813,13 @@ export default function Quiz() {
                   {...getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
                     isDragActive || quizData.floorplanUrl
-                      ? "border-green-400 bg-green-50 dark:bg-green-900/20"
-                      : "border-stone-300 hover:border-green-400"
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-accent/50"
                   }`}
                   data-testid="photo-upload-area"
                 >
                   <input {...getInputProps()} />
-                  <p className="font-semibold mb-4">{uploadingFloorplan ? "Uploading..." : "Add Photo"}</p>
+                  <p className="font-semibold mb-4 text-foreground">{uploadingFloorplan ? "Uploading..." : "Add Photo"}</p>
                   <Button type="button" variant="ghost" size="sm" data-testid="button-see-photo-example">
                     See Example
                   </Button>
@@ -770,8 +829,11 @@ export default function Quiz() {
           </div>
 
           {/* Floorplan Upload */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">Upload your floorplan</h3>
+          <div className="stack-base flex flex-col">
+            <h3 className="font-semibold text-center text-foreground" 
+                style={{ fontSize: 'var(--font-size-lg)' }}>
+              Upload your floorplan
+            </h3>
             <Dropzone
               onDrop={(files) => handleFileUpload(files, "floorplan")}
               accept={{ "image/*": [".png", ".jpg", ".jpeg", ".pdf"] }}
@@ -782,13 +844,13 @@ export default function Quiz() {
                   {...getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
                     isDragActive || quizData.floorplanUrl
-                      ? "border-green-400 bg-green-50 dark:bg-green-900/20"
-                      : "border-stone-300 hover:border-green-400"
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-accent/50"
                   }`}
                   data-testid="floorplan-upload-area"
                 >
                   <input {...getInputProps()} />
-                  <p className="font-semibold mb-4">{uploadingFloorplan ? "Uploading..." : "Add Plan"}</p>
+                  <p className="font-semibold mb-4 text-foreground">{uploadingFloorplan ? "Uploading..." : "Add Plan"}</p>
                   <Button type="button" variant="ghost" size="sm" data-testid="button-see-plan-example">
                     See Example
                   </Button>
@@ -815,15 +877,17 @@ export default function Quiz() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-stone-950 py-8 md:py-16 px-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-background section-padding">
+      <div className="max-w-6xl mx-auto px-6">
         {/* Progress Indicator - 7 dots */}
-        <div className="flex items-center justify-center gap-2 mb-8" data-testid="quiz-progress">
+        <div className="flex items-center justify-center gap-3 mb-10" data-testid="quiz-progress">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
-              className={`h-2 w-2 rounded-full transition-all duration-300 ${
-                i + 1 <= currentStep ? "bg-green-400" : "bg-stone-200 dark:bg-stone-700"
+              className={`h-2.5 rounded-full transition-all duration-300 ${
+                i + 1 <= currentStep 
+                  ? "bg-accent w-8" 
+                  : "bg-muted-foreground/30 w-2.5"
               }`}
               data-testid={`progress-dot-${i + 1}`}
             />
@@ -831,7 +895,7 @@ export default function Quiz() {
         </div>
 
         {/* Quiz Content */}
-        <div className="bg-stone-50 dark:bg-stone-900 rounded-lg p-8 md:p-12 mb-8">
+        <div className="surface-soft rounded-lg p-8 md:p-12 mb-10" style={{ boxShadow: 'var(--shadow-sm)' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -846,7 +910,7 @@ export default function Quiz() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
+        <div className="flex items-center justify-between max-w-4xl mx-auto flex-wrap gap-4">
           <Button
             variant="ghost"
             size="lg"
@@ -858,14 +922,17 @@ export default function Quiz() {
             {currentStep > 1 ? (
               <>
                 <ChevronLeft className="w-4 h-4" />
-                <span>Previous: {getStepContext(currentStep).previous}</span>
+                <span className="hidden sm:inline">Previous: {getStepContext(currentStep).previous}</span>
+                <span className="sm:hidden">Back</span>
               </>
             ) : (
               <span>Back</span>
             )}
           </Button>
 
-          <p className="text-sm font-semibold text-stone-600 dark:text-stone-400 uppercase" data-testid="text-step-counter">
+          <p className="font-semibold text-muted-foreground uppercase order-first sm:order-none w-full sm:w-auto text-center" 
+             style={{ fontSize: 'var(--font-size-sm)' }}
+             data-testid="text-step-counter">
             Step {currentStep} of {TOTAL_STEPS}
           </p>
 
@@ -873,7 +940,7 @@ export default function Quiz() {
             size="lg"
             onClick={handleNext}
             disabled={!canProceed || submitQuizMutation.isPending}
-            className="bg-stone-200 hover:bg-teal-500 hover:text-white text-stone-700 uppercase font-semibold transition-all flex items-center gap-2"
+            className="uppercase font-semibold transition-all flex items-center gap-2"
             data-testid="button-next"
           >
             {submitQuizMutation.isPending ? (
@@ -882,7 +949,8 @@ export default function Quiz() {
               <span>Submit Quiz</span>
             ) : (
               <>
-                <span>Next: {getStepContext(currentStep).next}</span>
+                <span className="hidden sm:inline">Next: {getStepContext(currentStep).next}</span>
+                <span className="sm:hidden">Next</span>
                 <ChevronRight className="w-4 h-4" />
               </>
             )}

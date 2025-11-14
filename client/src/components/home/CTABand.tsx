@@ -27,7 +27,8 @@ export default function CTABand() {
           </Link>
           <Link href="/results">
             <span 
-              className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors cursor-pointer"
+              className="font-medium text-foreground/70 hover:text-accent transition-colors cursor-pointer"
+              style={{ fontSize: 'var(--font-size-sm)' }}
               data-testid="link-see-example-cta"
             >
               See an example room first →

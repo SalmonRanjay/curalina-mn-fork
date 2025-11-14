@@ -48,14 +48,15 @@ export default function Header() {
                 <a 
                   key={link.href} 
                   href={link.href}
-                  className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors cursor-pointer" 
+                  className="font-medium text-foreground/80 hover:text-accent transition-colors cursor-pointer"
+                  style={{ fontSize: 'var(--font-size-sm)' }}
                   data-testid={`link-${link.label.toLowerCase().replace(/ /g, "-")}`}
                 >
                   {link.label}
                 </a>
               ) : (
                 <Link key={link.href} href={link.href}>
-                  <span className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors cursor-pointer" data-testid={`link-${link.label.toLowerCase().replace(/ /g, "-")}`}>
+                  <span className="font-medium text-foreground/80 hover:text-accent transition-colors cursor-pointer" style={{ fontSize: 'var(--font-size-sm)' }} data-testid={`link-${link.label.toLowerCase().replace(/ /g, "-")}`}>
                     {link.label}
                   </span>
                 </Link>
@@ -66,7 +67,7 @@ export default function Header() {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             <Link href="/login">
-              <span className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors cursor-pointer" data-testid="link-sign-in">
+              <span className="font-medium text-foreground/80 hover:text-accent transition-colors cursor-pointer" style={{ fontSize: 'var(--font-size-sm)' }} data-testid="link-sign-in">
                 Sign In
               </span>
             </Link>
@@ -100,7 +101,8 @@ export default function Header() {
                   <a 
                     key={link.href}
                     href={link.href}
-                    className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors cursor-pointer block"
+                    className="font-medium text-foreground/80 hover:text-accent transition-colors cursor-pointer block"
+                    style={{ fontSize: 'var(--font-size-sm)' }}
                     onClick={() => setIsMobileMenuOpen(false)}
                     data-testid={`link-mobile-${link.label.toLowerCase().replace(/ /g, "-")}`}
                   >
@@ -109,7 +111,8 @@ export default function Header() {
                 ) : (
                   <Link key={link.href} href={link.href}>
                     <span 
-                      className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors cursor-pointer block"
+                      className="font-medium text-foreground/80 hover:text-accent transition-colors cursor-pointer block"
+                      style={{ fontSize: 'var(--font-size-sm)' }}
                       onClick={() => setIsMobileMenuOpen(false)}
                       data-testid={`link-mobile-${link.label.toLowerCase().replace(/ /g, "-")}`}
                     >
@@ -119,7 +122,7 @@ export default function Header() {
                 )
               )}
               <Link href="/login">
-                <span className="text-sm font-medium text-foreground/80 hover:text-primary cursor-pointer block" data-testid="link-mobile-sign-in">
+                <span className="font-medium text-foreground/80 hover:text-accent cursor-pointer block" style={{ fontSize: 'var(--font-size-sm)' }} data-testid="link-mobile-sign-in">
                   Sign In
                 </span>
               </Link>

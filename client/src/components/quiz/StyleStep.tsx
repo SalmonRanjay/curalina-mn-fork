@@ -17,10 +17,10 @@ const styles = [
 export default function StyleStep({ value, onChange }: StyleStepProps) {
   return (
     <div>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-4" data-testid="heading-style">
+      <h2 className="font-semibold mb-4" style={{ fontSize: 'var(--font-size-3xl)' }} data-testid="heading-style">
         What's your design style?
       </h2>
-      <p className="text-stone-600 dark:text-stone-400 mb-8">
+      <p className="text-muted-foreground mb-8">
         Choose the aesthetic that resonates with you
       </p>
 
@@ -34,15 +34,15 @@ export default function StyleStep({ value, onChange }: StyleStepProps) {
               onClick={() => onChange(style.id)}
               className={`flex flex-col items-start p-6 rounded-lg border-2 text-left transition-all hover-elevate active-elevate-2 ${
                 isSelected
-                  ? "border-green-300 bg-green-50 dark:bg-green-950"
-                  : "border-stone-200 dark:border-stone-700 hover:border-green-200"
+                  ? "border-accent bg-accent/10"
+                  : "border-border hover:border-accent"
               }`}
               data-testid={`style-option-${style.id}`}
             >
-              <span className={`text-lg font-semibold mb-1 ${isSelected ? "text-green-700 dark:text-green-400" : ""}`}>
+              <span className="font-semibold mb-1" style={{ fontSize: 'var(--font-size-lg)' }}>
                 {style.label}
               </span>
-              <span className="text-sm text-stone-600 dark:text-stone-400">
+              <span className="text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
                 {style.description}
               </span>
             </button>

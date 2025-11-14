@@ -48,7 +48,7 @@ export default function Testimonials() {
                 <p className="font-semibold text-card-foreground" data-testid={`name-${index + 1}`}>
                   {testimonial.name}
                 </p>
-                <p className="text-sm text-muted-foreground" data-testid={`room-${index + 1}`}>
+                <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }} data-testid={`room-${index + 1}`}>
                   {testimonial.room}
                 </p>
               </div>
