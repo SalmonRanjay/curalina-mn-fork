@@ -1,0 +1,36 @@
+ Floor plan analysis complete: Unknown dimensions
+✨ 2/5 products have visual descriptions (prioritizing Front View → Gemini → OpenAI → Legacy)
+📊 Product Pool: 543 total → 541 in stock → 401 with valid images
+   📸 246 have AI visual descriptions (preferred but not required)
+⚠️ Budget NOT enforced during filtering - focusing on render quality
+📋 Updated ledger: 5 products in 0 essential + 4 complementary categories, 26 exclusions, diversity: 20
+   ⚠️ No ledger data for 105658-007, detected as accent_seating with priority 3
+   ⚠️ No ledger data for 224742-004, detected as lighting with priority 6
+   ⚠️ No ledger data for 235066-001, detected as lighting with priority 6
+   ⚠️ No ledger data for 228939-003, detected as lighting with priority 6
+   ⚠️ No ledger data for 236828-001, detected as bed with priority 7
+   ⚠️ No visual description available for: Elyse Bench - AI will approximate based on name and style
+   ⚠️ No visual description available for: Kelita Table Lamp - AI will approximate based on name and style
+   ⚠️ No visual description available for: Ozer Table Lamp - AI will approximate based on name and style
+   📸 Using None description for: Cuit Table Lamp
+   📸 Using None description for: Tapered Forged Floor Lamp
+📝 Generated prompt with floor plan analysis
+🖼️ Using image-to-image mode with uploaded space photo
+Fetching room image from: https://3193113e-1de4-4de4-890b-7834758581fe-00-29vc51uosd79x.kirk.replit.dev/public-objects/floorplans/1763081020139-t81ffk-Diinnn.webp
+Using Gemini for structure-preserving image-to-image editing with MIME type: image/webp
+AI generation error: ApiError: {"fault":{"faultstring":"ApiKey not approved","detail":{"errorcode":"oauth.v2.ApiKeyNotApproved"}}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:764:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:487:9)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async generateInteriorImage (/home/runner/workspace/server/services/gemini-ai.ts:2207:22)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:1795:32) {
+  status: 401
+}
+AI generation error: Error: Failed to generate interior design: {"fault":{"faultstring":"ApiKey not approved","detail":{"errorcode":"oauth.v2.ApiKeyNotApproved"}}}
+    at generateInteriorImage (/home/runner/workspace/server/services/gemini-ai.ts:2233:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:1795:32)
+12:43:45 AM [express] GET /api/render/latest 200 in 63ms :: {"id":"5d0783a6-2cf4-4000-9d63-a7e805315a…
+12:43:45 AM [express] GET /api/render/5d0783a6-2cf4-4000-9d63-a7e805315ab6/ledger 200 in 86ms :: {"id…
+12:43:46 AM [express] GET /api/products 304 in 602ms :: [{"id":"805da30f-a6c4-4c76-8a48-16b39695638b"…

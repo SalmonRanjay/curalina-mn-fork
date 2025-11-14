@@ -357,21 +357,12 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     
     // Budget NOT enforced - focusing on quality renders
     
-    // STRICT: Require at least one key feature match if features are specified
-    if (quiz.keyFeatures && quiz.keyFeatures.length > 0) {
-      if (!product.keyFeatures || product.keyFeatures.length === 0) {
-        return false; // No features, can't match
-      }
-      
-      const featureMatch = quiz.keyFeatures.some(qf =>
-        product.keyFeatures!.some(pf =>
-          pf.toLowerCase().includes(qf.toLowerCase()) ||
-          qf.toLowerCase().includes(pf.toLowerCase())
-        )
-      );
-      
-      if (!featureMatch) return false;
-    }
+    // NOTE: Key features are NOT enforced as hard filters
+    // Rationale:
+    // 1. Essential furniture (sofas, tables) often lack feature metadata
+    // 2. Room composition service ensures proper category mix (essentials + complementary)
+    // 3. AI selection uses featureMatchScore to prioritize matching products
+    // This approach balances user preferences with data quality limitations
     
     return true;
   });

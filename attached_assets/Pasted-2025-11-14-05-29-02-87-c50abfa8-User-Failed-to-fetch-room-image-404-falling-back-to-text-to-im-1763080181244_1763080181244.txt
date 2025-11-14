@@ -1,0 +1,68 @@
+2025-11-14 05:29:02.87
+c50abfa8
+User
+Failed to fetch room image (404), falling back to text-to-image
+2025-11-14 05:29:03.47
+c50abfa8
+User
+AI generation error: ApiError: {"fault":{"faultstring":"ApiKey not approved","detail":{"errorcode":"oauth.v2.ApiKeyNotApproved"}}}
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at throwErrorIfNotOK (file:///home/runner/workspace/node_modules/@google/genai/dist/node/index.mjs:11103:30)
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at async file:///home/runner/workspace/node_modules/@google/genai/dist/node/index.mjs:10880:13
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at async Models.generateContent (file:///home/runner/workspace/node_modules/@google/genai/dist/node/index.mjs:12137:24)
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at async generateInteriorImage (file:///home/runner/workspace/dist/index.js:3755:25)
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at async file:///home/runner/workspace/dist/index.js:6879:32 {
+2025-11-14 05:29:03.47
+c50abfa8
+User
+status: 401
+2025-11-14 05:29:03.47
+c50abfa8
+User
+}
+2025-11-14 05:29:03.47
+c50abfa8
+User
+AI generation error: Error: Failed to generate interior design: {"fault":{"faultstring":"ApiKey not approved","detail":{"errorcode":"oauth.v2.ApiKeyNotApproved"}}}
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at generateInteriorImage (file:///home/runner/workspace/dist/index.js:3825:11)
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-14 05:29:03.47
+c50abfa8
+User
+at async file:///home/runner/workspace/dist/index.js:6879:32
+2025-11-14 05:29:05.17
+c50abfa8
+User
+12:29:05 AM [express] GET /api/render/latest 200 in 218ms :: {"id":"024c62c9-cd48-4749-982a-9638e821c…
+2025-11-14 05:29:06.16
+c50abfa8
+User
+12:29:06 AM [express] GET /api/products 200 in 540ms :: [{"id":"805da30f-a6c4-4c76-8a48-16b39695638b"…
+2025-11-14 05:29:08.15
+c50abfa8
+User
+12:29:08 AM [express] GET /api/render/024c62c9-cd48-4749-982a-9638e821c1f1/led
