@@ -1,128 +1,52 @@
 # Curalina AI - Interior Design Platform
 
 ## Overview
-Curalina AI is a full-stack AI-powered interior design platform that integrates hybrid AI-generated room rendering with an e-commerce marketplace for furniture. The platform provides a seamless interior design and shopping experience, from inspiration to purchase, leveraging multimodal AI for highly personalized and contextually appropriate visual experiences.
-
-Key capabilities include:
-- **Intelligent Image Analysis**: AI analysis of room photos, floor plans, vibe images, and product images using Gemini Vision to extract spatial information, user preferences, and detailed visual product descriptions. Enhanced Front View detection automatically treats single-image products as Front View images, ensuring they receive the highest-priority AI analysis.
-- **AI-Powered Rendering**: Generates creative room designs from scratch (text-to-image) or redesigns existing spaces while preserving architectural features (image-to-image) using Gemini 2.5 Flash.
-- **Structured Placement Matrix**: AI prompts include explicit spatial instructions for each product with anchor zones, positioning rules, clearance requirements, and adjacency relationships. Uses functional categories and priority hierarchies from the selection ledger to ensure proper furniture placement (essentials → complementary → decor).
-- **Hybrid Image Compositing**: Aims for exact product matching by compositing real product images onto AI-generated rooms.
-- **Context-Aware Design Generation**: AI prompts are enhanced with analyzed room context, detailed product visual descriptions from Gemini Vision, and structured placement instructions for more accurate and functional room layouts.
-- **Smart Product Selection**: Filters and prioritizes products based on image quality, visibility in renders, and user preferences, with a focus on displaying "Front View" images.
-- **Data Quality Transparency**: Shop the Look product cards display visual description source badges (Front View or Gemini Vision) to show users which AI analysis method was used for each product recommendation, providing insight into recommendation quality and data provenance.
-- **Complete E-commerce Journey**: Features a 7-step design quiz, AI-powered product selection, shopping cart, and Stripe checkout integration.
-- **Training Data System**: Admin-managed data for continuously improving AI performance.
-- **Quiz Mapping Analysis**: Dashboard for analyzing how quiz questions map to product recommendations, identifying data quality gaps and normalization opportunities.
+Curalina AI is an AI-powered interior design platform offering hybrid AI-generated room rendering and an e-commerce marketplace for furniture. It aims to provide a seamless design and shopping experience, from inspiration to purchase, using multimodal AI for personalized visual designs. Key capabilities include intelligent image analysis, AI-powered rendering (text-to-image and image-to-image), structured product placement, hybrid image compositing, and context-aware design generation. The platform also features smart product selection, data quality transparency for recommendations, a complete e-commerce journey with a design quiz and checkout, and a training data system for continuous AI improvement.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-
-### November 14, 2025
-**Render Analytics & Documentation Infrastructure - Tasks 1-10 COMPLETED**
-1. **Backend Routes - Render Analytics**:
-   - GET /api/admin/renders/analytics: List all renders with quiz context, product counts, placement scores, event counts, selection summaries (filterable by status/roomType/style, with limit)
-   - GET /api/admin/renders/analytics/:id: Detailed render analytics for single render with full quiz snapshot and aggregate statistics
-   - GET /api/admin/renders/:id/products: List all products in a render with snapshot data (supplier/category names, visual descriptions, placements)
-   - GET /api/admin/renders/:id/events: Timeline of all render lifecycle events (submitted, processing, completed, failed) with timestamps
-   - Implementation: Uses Neon pool.query() for parameterized SQL with PostgreSQL placeholders ($1, $2) to query database views safely
-2. **Backend Routes - Documentation System**:
-   - GET /api/admin/documentation/sections: List all documentation sections with comment counts, author info, version numbers
-   - POST /api/admin/documentation/sections: Create new documentation section (title, slug, content, category, tags)
-   - GET /api/admin/documentation/sections/:id: Get single section with content and metadata
-   - PUT /api/admin/documentation/sections/:id: Update section (increments version, updates updatedAt)
-   - DELETE /api/admin/documentation/sections/:id: Soft delete section
-   - POST /api/admin/documentation/sections/:id/publish: Publish section (sets isPublished=true)
-   - GET /api/admin/documentation/comments: List all comments for a section
-   - POST /api/admin/documentation/comments: Create comment thread (anchor-based positioning)
-   - PUT /api/admin/documentation/comments/:id: Update comment content
-   - PUT /api/admin/documentation/comments/:id/resolve: Mark comment as resolved
-   - DELETE /api/admin/documentation/comments/:id: Delete comment
-   - Implementation: Full authentication/authorization guards, input validation with Zod, uses curalinaStorage interface
-3. **Render Ingestion Pipeline - Production Ready**:
-   - **Staged Lifecycle Events**: Events persisted immediately at each transition (submitted, processing, completed, failed) to prevent data loss on crash
-   - **Atomic Snapshots**: Complete immutable event snapshots + product snapshots written transactionally to render_products and render_events tables
-   - **Performance Optimized**: O(1) lookups using indexed Maps for suppliers/categories/products (no O(N²) array scans)
-   - **SKU Coverage Validation**: Throws error if any product SKU not found in catalog, ensuring 1:1 analytics coverage
-   - **Metadata Enrichment**: Product snapshots include quiz context (roomType, style, budget), ledger snapshot (selectionHash, compositionOrder), visual description source badges
-   - **Idempotency**: Ingestion can rerun safely with delete-then-insert transaction pattern
-   - **Complete Timelines**: All lifecycle phases captured even if async worker crashes before completion
-4. **Technical Decisions**:
-   - Query building: Handles 0, 1, or multiple filter conditions correctly using native PostgreSQL parameter placeholders
-   - Limit validation: Returns 400 error if limit < 1 or not an integer
-   - SQL injection protection: All parameters properly escaped via pool.query() parameterization
-   - Event persistence: Immediate persistence at each lifecycle transition prevents data loss, atomic snapshot replacement ensures analytics consistency
-   - No Drizzle expression helpers needed: Direct SQL queries work reliably across all filter combinations
-5. **Frontend - Renders Storage Analytics Page** (Task 10):
-   - Full-featured analytics dashboard at /admin/renders-storage with filters (status, room type, style, limit)
-   - Renders list table with status badges, product counts, event counts, submission/completion times
-   - Click-to-expand detail dialog with 3 tabs: Overview (quiz snapshot + statistics), Products (full product list with snapshots), Events (timeline visualization)
-   - All queries use authenticated fetch with credentials: "include" for session-based access control
-   - Real-time filtering, loading states, empty states, responsive layouts
-   - All interactive elements have data-testid attributes for testing coverage
-
-**Zone-Based Placement System Implementation**
-1. **Zone Configuration System**: Created ROOM_ZONES configurations for each room type (Living Room, Bedroom, Dining Room, Home Office) with detailed ZoneBlueprint definitions including bounds, allowed categories, capacity limits, clearances, and orientation preferences.
-2. **Product Zone Assignment**: Implemented assignItemsToZones() function that:
-   - Assigns products to appropriate zones based on functional categories
-   - Enforces interior design rules (max 1 floor lamp per room, table lamps only on surfaces)
-   - Calculates normalized positions (0-1 room coordinates), orientations, and spacing
-   - Scores placement confidence based on zone fitness
-3. **Structured Placement Matrix**: Created generateZoneBasedPlacementMatrix() to convert PlacementInstruction data into explicit spatial instructions for AI prompts, grouped by zone with position coordinates, anchor points, orientations, and clearance values.
-4. **End-to-End Data Flow**: Integrated zone-based placements through the entire pipeline from selectProductsWithComposition → selectProductsWithAI → routes → buildPromptFromQuiz → generatePlacementMatrix → final AI prompt, with graceful fallback to legacy placement logic when placements unavailable.
-
-**Critical Bug Fixes - Product Selection & AI Authentication**
-1. **Fixed Product Image Validation**: Updated `hasValidImages()` to accept local asset paths (`/images/`, `/assets/`) in addition to external URLs and object storage paths. This resolved the issue where sofas and other essential furniture with local image paths were being excluded from the candidate pool.
-2. **Fixed Gemini API Authentication**: Switched from Replit AI Integrations (which was returning 401 errors) to direct Google Gemini API using user's own `GEMINI_API_KEY`. This enables reliable AI-powered room rendering.
-3. **Enhanced Product Filtering**: Improved filterProductsByQuiz to check both `designStyle` column AND `styleTags` array for style matching, with 5-level sequential fallback system for better product coverage.
-
-**Living Room Training Data Import**
-1. **Design Examples**: Imported 6 professionally curated Living Room packages covering diverse room sizes (11.5x10 to 17.5x14.5 feet) and styles (contemporary, modern, executive, compact, multi-purpose). Each example includes room dimensions, style tags, design reasoning, and principles.
-2. **Product Packages**: Created 6 product package records documenting proven furniture combinations with 12 existing products from the database (Kent Sofa, Rialto Sofa, Mitchell Sofa, Melle Sofa, Colome Floor Lamp, Fordham Floor Lamp, Chameau Side Table, Dusk Accent Table, Bridger Pillow, Raffael Bar Cabinet, Ferris Dining Chair, Sierra Tapestry).
-3. **Placement Guidelines**: Established 8 spatial relationship rules for Living Rooms covering sofa positioning (12-18" wall clearance), coffee table distance (14-18" from sofa), side table height matching, floor lamp placement (max 1 per room), sectional usage in compact spaces, storage integration, multi-purpose zoning, and furniture scale appropriateness.
-4. **Coverage**: Successfully matched 12 of 27 products from PDF to existing database. Training data now available for AI prompt generation to improve furniture placement accuracy and design quality.
-
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework & Build System**: React 18 with TypeScript, Vite.
+- **Framework & Build System**: React 18 with TypeScript and Vite.
 - **UI Component Strategy**: shadcn/ui (Radix UI primitives), Tailwind CSS for styling, React Dropzone and Uppy for file uploads.
 - **Design System**: Inter font, light green selection highlights, neutral backgrounds, animated transitions.
 - **State Management**: React Query for server state, Local Storage for anonymous session IDs.
-- **Routing**: Wouter for client-side routing across key user flows.
+- **Routing**: Wouter for client-side routing.
 
 ### Backend Architecture
 - **Server Framework**: Express.js with TypeScript.
 - **API Structure**: Dedicated routes for file uploads, product management, quiz submission, AI rendering, cart, and order processing.
 - **Validation & Error Handling**: Zod for schema validation.
-- **Data Access Layer**: `ICuralinaStorage` interface implemented using Drizzle ORM for type-safe operations with PostgreSQL.
+- **Data Access Layer**: `ICuralinaStorage` interface using Drizzle ORM with PostgreSQL.
 - **Authentication System**: Passport.js Local Strategy (email/password), session-based with PostgreSQL store, bcrypt for password hashing, HttpOnly/Secure cookies. Replit OIDC for external authentication.
-- **Access Control**: Role-based access for Admin, Regular User, and Anonymous states.
-- **Image Processing Pipeline**: Sharp library for basic image compositing. Roadmap includes background removal integration, scene-aware positioning, and realistic shadows.
-- **Direct Browser-to-S3 Upload Optimization**: Uses a 3-step presigned URL flow to enable direct, secure, and faster browser-to-S3 uploads, bypassing server memory bottlenecks and including duplicate detection.
+- **Access Control**: Role-based access (Admin, Regular User, Anonymous).
+- **Image Processing Pipeline**: Sharp library for basic image compositing, with future plans for advanced features.
+- **Direct Browser-to-S3 Upload Optimization**: Uses a presigned URL flow for direct, secure, and faster browser-to-S3 uploads, including duplicate detection.
+- **Render Ingestion Pipeline**: Production-ready pipeline with staged lifecycle events, atomic snapshots, performance optimization, SKU coverage validation, metadata enrichment, and idempotency for robust render data processing.
+- **Zone-Based Placement System**: Configurable room zones with `ROOM_ZONES` definitions, `assignItemsToZones()` for product-to-zone assignment based on functional categories and design rules, and `generateZoneBasedPlacementMatrix()` to create explicit spatial instructions for AI prompts.
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM.
-- **Curalina AI Schema Design**: Includes tables for categories, suppliers, products (with multiple visual description fields for AI analysis), quiz responses, renders, cart items, orders, order items, and AI training data (design examples, product packages, placement guidelines, design rules).
-- **Object Storage**: Google Cloud Storage for user uploads (floorplans, vibe images, AI renders), AWS S3 for product images.
+- **Curalina AI Schema Design**: Includes tables for categories, suppliers, products (with multiple visual description fields for AI analysis), quiz responses, renders, cart items, orders, order items, and AI training data.
+- **Object Storage**: Google Cloud Storage for user uploads, AWS S3 for product images.
 
 ## External Dependencies
 
 - **Authentication Services**:
-    - Replit OIDC provider (Google, GitHub login)
+    - Replit OIDC provider
 - **Database**:
     - Neon serverless PostgreSQL
 - **Object Storage**:
     - Google Cloud Storage
     - AWS S3
 - **AI/ML**:
-    - Stability AI SDXL (for structure-preserving image-to-image room rendering)
+    - Stability AI SDXL (for structure-preserving image-to-image rendering)
     - Google Gemini 2.5 Flash (for text-to-image generation, AI image matching)
-    - Google Gemini Vision (for multi-modal image analysis of rooms, floor plans, and products)
+    - Google Gemini Vision (for multi-modal image analysis)
 - **Image Processing**:
-    - Sharp (image compositing, resizing)
+    - Sharp
 - **Payment Processing**:
     - Stripe
 - **UI Libraries**:
