@@ -352,14 +352,21 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     if (hasDesignStyle || hasStyleTags) {
       let styleMatch = false;
       
-      // Check designStyle first
-      if (hasDesignStyle) {
-        styleMatch = product.designStyle!.some(ds => stylesMatch(quiz.style, ds));
-      }
-      
-      // Fallback to styleTags if designStyle didn't match
-      if (!styleMatch && hasStyleTags) {
-        styleMatch = product.styleTags!.some(st => stylesMatch(quiz.style, st));
+      // Check if any of the quiz styles match (quiz.styles is now an array)
+      if (quiz.styles && quiz.styles.length > 0) {
+        // Check designStyle first
+        if (hasDesignStyle) {
+          styleMatch = quiz.styles.some(quizStyle => 
+            product.designStyle!.some(ds => stylesMatch(quizStyle, ds))
+          );
+        }
+        
+        // Fallback to styleTags if designStyle didn't match
+        if (!styleMatch && hasStyleTags) {
+          styleMatch = quiz.styles.some(quizStyle =>
+            product.styleTags!.some(st => stylesMatch(quizStyle, st))
+          );
+        }
       }
       
       if (!styleMatch) return false;
@@ -428,12 +435,18 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       if (hasDesignStyle || hasStyleTags) {
         let styleMatch = false;
         
-        if (hasDesignStyle) {
-          styleMatch = product.designStyle!.some(ds => stylesMatch(quiz.style, ds));
-        }
-        
-        if (!styleMatch && hasStyleTags) {
-          styleMatch = product.styleTags!.some(st => stylesMatch(quiz.style, st));
+        if (quiz.styles && quiz.styles.length > 0) {
+          if (hasDesignStyle) {
+            styleMatch = quiz.styles.some(quizStyle => 
+              product.designStyle!.some(ds => stylesMatch(quizStyle, ds))
+            );
+          }
+          
+          if (!styleMatch && hasStyleTags) {
+            styleMatch = quiz.styles.some(quizStyle =>
+              product.styleTags!.some(st => stylesMatch(quizStyle, st))
+            );
+          }
         }
         
         if (!styleMatch) return false;
@@ -491,12 +504,18 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
       if (hasDesignStyle || hasStyleTags) {
         let styleMatch = false;
         
-        if (hasDesignStyle) {
-          styleMatch = product.designStyle!.some(ds => stylesMatch(quiz.style, ds));
-        }
-        
-        if (!styleMatch && hasStyleTags) {
-          styleMatch = product.styleTags!.some(st => stylesMatch(quiz.style, st));
+        if (quiz.styles && quiz.styles.length > 0) {
+          if (hasDesignStyle) {
+            styleMatch = quiz.styles.some(quizStyle => 
+              product.designStyle!.some(ds => stylesMatch(quizStyle, ds))
+            );
+          }
+          
+          if (!styleMatch && hasStyleTags) {
+            styleMatch = quiz.styles.some(quizStyle =>
+              product.styleTags!.some(st => stylesMatch(quizStyle, st))
+            );
+          }
         }
         
         if (!styleMatch) return false;
@@ -672,7 +691,7 @@ export async function selectProductsWithAI(
     const prompt = `You are an expert interior designer selecting furniture for a ${quiz.roomType}.
 
 Room Requirements:
-- Style: ${quiz.style}
+- Style: ${quiz.styles?.join(" + ") || "Not specified"}
 - Key Features REQUIRED: ${quiz.keyFeatures?.join(", ") || "None specified"}
 - Budget: ${quiz.budgetRange}
 - User Preferences: ${quiz.preferences?.join(", ") || "None"}
@@ -708,7 +727,7 @@ For each selected product, specify:
 2. Specific placement in the room (e.g., "against the north wall", "center of the room", "near the window")
 3. Reasoning explaining:
    - How it matches the required key features
-   - Why it fits the ${quiz.style} style
+   - Why it fits the ${quiz.styles?.join(" + ") || "desired"} style
    - How it contributes to the overall design
 
 Return a JSON array with this structure:
@@ -1486,7 +1505,9 @@ export function buildPromptFromQuiz(
   placements?: PlacementInstruction[]
 ): { prompt: string; productMetadata: Record<string, { visualDescriptionSource: string }> } {
   const roomDesc = roomTypeDescriptions[quiz.roomType.toLowerCase()] || quiz.roomType;
-  const styleDesc = styleDescriptions[quiz.style.toLowerCase()] || quiz.style;
+  // Get style description from first style, or join all styles
+  const firstStyle = quiz.styles?.[0] || "modern";
+  const styleDesc = styleDescriptions[firstStyle.toLowerCase()] || quiz.styles?.join(" + ") || "modern";
   
   // Start with professional photography framing AND strict constraints upfront
   let prompt = `Professional interior design photography: Create a photorealistic, magazine-quality rendering of a ${roomDesc}.
@@ -2448,9 +2469,12 @@ async function generateWithStabilityAI(
  * 3. Random selection based on style tags
  */
 export function extractProductSkus(quiz: QuizResponse, availableProducts: Array<{ sku: string; styleTags: string[] }>): string[] {
-  // Filter products by style match
+  // Filter products by style match - check if any quiz style matches any product tag
   const styleMatch = availableProducts.filter(p => 
-    p.styleTags.some(tag => tag.toLowerCase() === quiz.style.toLowerCase())
+    quiz.styles && quiz.styles.length > 0 &&
+    quiz.styles.some(quizStyle => 
+      p.styleTags.some(tag => tag.toLowerCase() === quizStyle.toLowerCase())
+    )
   );
   
   // Return up to 6 product SKUs
