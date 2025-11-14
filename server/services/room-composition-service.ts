@@ -1,6 +1,230 @@
 import { curalinaStorage } from '../storage-curalina';
 import type { Product, QuizResponse, FunctionalCategory, RoomTemplate, TemplateCategoryRule } from '../../shared/schema';
 
+// Zone-based placement system for natural furniture arrangement
+interface ZoneBlueprint {
+  id: string;
+  name: string;
+  bounds: { x: number; y: number; width: number; height: number }; // Normalized 0-1 coordinates
+  priority: number;
+  allowedCategories: string[];
+  maxItems: number;
+  orientation: 'focal' | 'wall' | 'center' | 'corner';
+  clearance: number; // Minimum clearance in normalized units
+  adjacentZones?: string[];
+  heightTier: 'floor' | 'surface' | 'wall';
+}
+
+interface PlacementInstruction {
+  productId: string;
+  zoneId: string;
+  position: { x: number; y: number };
+  orientation: number; // Rotation in degrees
+  anchorPoint: 'center' | 'wall' | 'corner';
+  spacing: { front: number; sides: number; back: number };
+  supportSurface?: string; // For items that need surfaces (table lamps)
+  confidence: number; // 0-1 score for placement quality
+}
+
+// Room zone configurations for organized layouts
+const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
+  'Living Room': [
+    {
+      id: 'conversation_core',
+      name: 'Main Seating Area',
+      bounds: { x: 0.3, y: 0.3, width: 0.4, height: 0.4 },
+      priority: 1,
+      allowedCategories: ['primary_seating', 'coffee_table', 'accent_seating'],
+      maxItems: 4,
+      orientation: 'focal',
+      clearance: 0.08,
+      adjacentZones: ['focal_wall', 'circulation_path']
+    },
+    {
+      id: 'focal_wall',
+      name: 'TV/Fireplace Wall',
+      bounds: { x: 0.0, y: 0.35, width: 0.15, height: 0.3 },
+      priority: 2,
+      allowedCategories: ['storage', 'decor'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'wall'
+    },
+    {
+      id: 'perimeter_left',
+      name: 'Left Side Zone',
+      bounds: { x: 0.0, y: 0.0, width: 0.2, height: 0.3 },
+      priority: 3,
+      allowedCategories: ['side_table', 'lighting', 'storage'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    {
+      id: 'perimeter_right',
+      name: 'Right Side Zone',
+      bounds: { x: 0.8, y: 0.0, width: 0.2, height: 1.0 },
+      priority: 3,
+      allowedCategories: ['accent_seating', 'side_table', 'lighting'],
+      maxItems: 2,
+      orientation: 'corner',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    {
+      id: 'circulation_path',
+      name: 'Traffic Flow Area',
+      bounds: { x: 0.2, y: 0.0, width: 0.6, height: 0.2 },
+      priority: 4,
+      allowedCategories: [], // Keep clear for movement
+      maxItems: 0,
+      orientation: 'center',
+      clearance: 0.1,
+      heightTier: 'floor'
+    }
+  ],
+  'Bedroom': [
+    {
+      id: 'sleep_zone',
+      name: 'Bed Area',
+      bounds: { x: 0.25, y: 0.6, width: 0.5, height: 0.35 },
+      priority: 1,
+      allowedCategories: ['bed', 'nightstand'],
+      maxItems: 3,
+      orientation: 'wall',
+      clearance: 0.08,
+      adjacentZones: ['bedside_left', 'bedside_right']
+    },
+    {
+      id: 'bedside_left',
+      name: 'Left Nightstand Zone',
+      bounds: { x: 0.05, y: 0.65, width: 0.15, height: 0.25 },
+      priority: 2,
+      allowedCategories: ['nightstand', 'lighting'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.03,
+      heightTier: 'surface'
+    },
+    {
+      id: 'bedside_right',
+      name: 'Right Nightstand Zone',
+      bounds: { x: 0.8, y: 0.65, width: 0.15, height: 0.25 },
+      priority: 2,
+      allowedCategories: ['nightstand', 'lighting'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.03,
+      heightTier: 'surface'
+    },
+    {
+      id: 'dresser_zone',
+      name: 'Dresser/Storage Wall',
+      bounds: { x: 0.25, y: 0.05, width: 0.5, height: 0.15 },
+      priority: 3,
+      allowedCategories: ['dresser', 'storage', 'decor'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    {
+      id: 'seating_corner',
+      name: 'Reading/Seating Corner',
+      bounds: { x: 0.05, y: 0.05, width: 0.15, height: 0.25 },
+      priority: 4,
+      allowedCategories: ['accent_seating', 'side_table', 'lighting'],
+      maxItems: 2,
+      orientation: 'corner',
+      clearance: 0.05,
+      heightTier: 'floor'
+    }
+  ],
+  'Dining Room': [
+    {
+      id: 'dining_center',
+      name: 'Dining Table Zone',
+      bounds: { x: 0.3, y: 0.3, width: 0.4, height: 0.4 },
+      priority: 1,
+      allowedCategories: ['dining_table', 'dining_seating'],
+      maxItems: 9, // Table + 8 chairs
+      orientation: 'center',
+      clearance: 0.1, // Extra clearance for chairs
+      adjacentZones: ['buffet_wall']
+    },
+    {
+      id: 'buffet_wall',
+      name: 'Buffet/Sideboard Wall',
+      bounds: { x: 0.1, y: 0.75, width: 0.8, height: 0.15 },
+      priority: 2,
+      allowedCategories: ['storage', 'decor'],
+      maxItems: 3,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    {
+      id: 'chandelier_zone',
+      name: 'Overhead Lighting Zone',
+      bounds: { x: 0.4, y: 0.4, width: 0.2, height: 0.2 },
+      priority: 3,
+      allowedCategories: ['lighting'],
+      maxItems: 1,
+      orientation: 'center',
+      clearance: 0.0,
+      heightTier: 'wall' // Ceiling mounted
+    }
+  ],
+  'Home Office': [
+    {
+      id: 'work_zone',
+      name: 'Desk Area',
+      bounds: { x: 0.25, y: 0.6, width: 0.5, height: 0.3 },
+      priority: 1,
+      allowedCategories: ['desk', 'office_seating'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.08,
+      adjacentZones: ['storage_zone']
+    },
+    {
+      id: 'storage_zone',
+      name: 'Storage/Bookshelf Wall',
+      bounds: { x: 0.05, y: 0.2, width: 0.15, height: 0.6 },
+      priority: 2,
+      allowedCategories: ['storage'],
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    {
+      id: 'meeting_zone',
+      name: 'Guest Seating Area',
+      bounds: { x: 0.75, y: 0.3, width: 0.2, height: 0.3 },
+      priority: 3,
+      allowedCategories: ['accent_seating', 'side_table'],
+      maxItems: 2,
+      orientation: 'corner',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    {
+      id: 'task_lighting',
+      name: 'Task Lighting Zone',
+      bounds: { x: 0.3, y: 0.7, width: 0.4, height: 0.1 },
+      priority: 4,
+      allowedCategories: ['lighting'],
+      maxItems: 1,
+      orientation: 'focal',
+      clearance: 0.0,
+      heightTier: 'surface'
+    }
+  ]
+};
+
 // Define room composition templates with essential and complementary items
 const ROOM_TEMPLATES = {
   'Living Room': {
@@ -177,11 +401,202 @@ function detectFunctionalCategory(product: Product): string[] {
   return Array.from(categories);
 }
 
+/**
+ * Detect lighting type from product name/description
+ */
+function detectLightingType(product: Product): 'floor' | 'table' | 'ceiling' | 'wall' | null {
+  const text = `${product.name} ${product.description || ''}`.toLowerCase();
+  
+  if (text.includes('floor lamp') || text.includes('standing lamp')) {
+    return 'floor';
+  } else if (text.includes('table lamp') || text.includes('desk lamp') || text.includes('bedside lamp')) {
+    return 'table';
+  } else if (text.includes('chandelier') || text.includes('pendant') || text.includes('ceiling')) {
+    return 'ceiling';
+  } else if (text.includes('sconce') || text.includes('wall lamp')) {
+    return 'wall';
+  }
+  return null;
+}
+
+/**
+ * Assign products to room zones based on functional categories and zone rules
+ */
+function assignItemsToZones(
+  roomType: string,
+  selectedProducts: Product[],
+  composition: Record<string, Product[]>
+): PlacementInstruction[] {
+  const zones = ROOM_ZONES[roomType];
+  if (!zones) return [];
+  
+  const placements: PlacementInstruction[] = [];
+  const zoneOccupancy: Record<string, number> = {};
+  const floorLampCount = { total: 0, perZone: {} as Record<string, number> };
+  
+  // Initialize zone occupancy tracking
+  zones.forEach(zone => {
+    zoneOccupancy[zone.id] = 0;
+    floorLampCount.perZone[zone.id] = 0;
+  });
+  
+  // Sort products by priority (essentials first)
+  const sortedProducts = [...selectedProducts].sort((a, b) => {
+    const aCats = detectFunctionalCategory(a);
+    const bCats = detectFunctionalCategory(b);
+    
+    // Check if essential (from room template)
+    const template = ROOM_TEMPLATES[roomType as keyof typeof ROOM_TEMPLATES];
+    const aEssential = aCats.some(cat => template?.essentials?.[cat as keyof typeof template.essentials]);
+    const bEssential = bCats.some(cat => template?.essentials?.[cat as keyof typeof template.essentials]);
+    
+    if (aEssential && !bEssential) return -1;
+    if (!aEssential && bEssential) return 1;
+    return 0;
+  });
+  
+  // Assign each product to best available zone
+  for (const product of sortedProducts) {
+    const categories = detectFunctionalCategory(product);
+    if (categories.length === 0) continue;
+    
+    let bestZone: ZoneBlueprint | null = null;
+    let bestScore = -1;
+    
+    // Special handling for lighting to prevent multiple floor lamps
+    if (categories.includes('lighting')) {
+      const lightType = detectLightingType(product);
+      
+      // Strict floor lamp limiting
+      if (lightType === 'floor') {
+        if (floorLampCount.total >= 1) {
+          console.log(`Skipping floor lamp "${product.name}" - already have maximum floor lamps`);
+          continue; // Skip this floor lamp entirely
+        }
+      }
+    }
+    
+    // Find best zone for this product
+    for (const zone of zones) {
+      // Check if zone allows any of product's categories
+      const canFit = categories.some(cat => zone.allowedCategories.includes(cat));
+      if (!canFit) continue;
+      
+      // Check zone capacity
+      if (zoneOccupancy[zone.id] >= zone.maxItems) continue;
+      
+      // Special checks for lighting placement
+      if (categories.includes('lighting')) {
+        const lightType = detectLightingType(product);
+        
+        // Table lamps only in zones with surfaces
+        if (lightType === 'table' && zone.heightTier !== 'surface') continue;
+        
+        // Ceiling lights only in ceiling zones
+        if (lightType === 'ceiling' && zone.heightTier !== 'wall') continue;
+        
+        // Floor lamps - check zone limit
+        if (lightType === 'floor' && floorLampCount.perZone[zone.id] >= 1) continue;
+      }
+      
+      // Calculate zone fitness score
+      let score = 100 - (zone.priority * 10); // Prioritize higher priority zones
+      
+      // Bonus for matching orientation preferences
+      if (zone.orientation === 'wall' && product.name.toLowerCase().includes('wall')) score += 20;
+      if (zone.orientation === 'center' && categories.includes('coffee_table')) score += 20;
+      if (zone.orientation === 'focal' && categories.includes('primary_seating')) score += 30;
+      
+      // Penalty for zone congestion
+      score -= (zoneOccupancy[zone.id] * 15);
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestZone = zone;
+      }
+    }
+    
+    if (bestZone) {
+      // Calculate position within zone
+      const position = {
+        x: bestZone.bounds.x + (bestZone.bounds.width * 0.5),
+        y: bestZone.bounds.y + (bestZone.bounds.height * 0.5)
+      };
+      
+      // Adjust position based on zone occupancy for spacing
+      if (zoneOccupancy[bestZone.id] > 0) {
+        const offset = (zoneOccupancy[bestZone.id] / bestZone.maxItems) * 0.3;
+        position.x += offset * bestZone.bounds.width;
+      }
+      
+      // Determine orientation based on zone type
+      let orientation = 0;
+      if (bestZone.orientation === 'focal') {
+        orientation = 0; // Face forward
+      } else if (bestZone.orientation === 'wall') {
+        orientation = 180; // Against wall
+      } else if (bestZone.orientation === 'corner') {
+        orientation = 45; // Diagonal
+      }
+      
+      // Calculate spacing based on product type and zone clearance
+      const spacing = {
+        front: bestZone.clearance * 1.5,
+        sides: bestZone.clearance,
+        back: bestZone.clearance * 0.5
+      };
+      
+      // Determine support surface for table lamps
+      let supportSurface: string | undefined;
+      if (categories.includes('lighting') && detectLightingType(product) === 'table') {
+        // Find a surface in the same zone
+        const surfaceProducts = placements.filter(p => 
+          p.zoneId === bestZone.id && 
+          ['side_table', 'nightstand', 'dresser'].some(cat => 
+            detectFunctionalCategory(sortedProducts.find(sp => sp.id === p.productId) || {} as Product).includes(cat)
+          )
+        );
+        if (surfaceProducts.length > 0) {
+          supportSurface = surfaceProducts[0].productId;
+        }
+      }
+      
+      // Calculate confidence based on fit quality
+      const confidence = Math.max(0, Math.min(1, bestScore / 100));
+      
+      placements.push({
+        productId: product.id,
+        zoneId: bestZone.id,
+        position,
+        orientation,
+        anchorPoint: bestZone.orientation === 'wall' ? 'wall' : 
+                     bestZone.orientation === 'corner' ? 'corner' : 'center',
+        spacing,
+        supportSurface,
+        confidence
+      });
+      
+      zoneOccupancy[bestZone.id]++;
+      
+      // Track floor lamp placement
+      if (categories.includes('lighting') && detectLightingType(product) === 'floor') {
+        floorLampCount.total++;
+        floorLampCount.perZone[bestZone.id]++;
+      }
+    } else {
+      console.warn(`Could not find suitable zone for product: ${product.name}`);
+    }
+  }
+  
+  return placements;
+}
+
 interface CompositionResult {
   selectedProducts: Product[];
   composition: Record<string, Product[]>;
   missingEssentials: string[];
   warnings: string[];
+  placements?: PlacementInstruction[]; // New: zone-based placement instructions
 }
 
 /**
@@ -316,11 +731,15 @@ export async function selectProductsWithComposition(
     selectedProducts.push(...toAdd);
   }
   
+  // Generate zone-based placements
+  const placements = assignItemsToZones(roomType, selectedProducts, composition);
+  
   return {
     selectedProducts,
     composition,
     missingEssentials,
-    warnings
+    warnings,
+    placements
   };
 }
 
