@@ -18,6 +18,14 @@ Key capabilities include:
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### November 14, 2025
+**Critical Bug Fixes - Product Selection & AI Authentication**
+1. **Fixed Product Image Validation**: Updated `hasValidImages()` to accept local asset paths (`/images/`, `/assets/`) in addition to external URLs and object storage paths. This resolved the issue where sofas and other essential furniture with local image paths were being excluded from the candidate pool.
+2. **Fixed Gemini API Authentication**: Switched from Replit AI Integrations (which was returning 401 errors) to direct Google Gemini API using user's own `GEMINI_API_KEY`. This enables reliable AI-powered room rendering.
+3. **Enhanced Product Filtering**: Improved filterProductsByQuiz to check both `designStyle` column AND `styleTags` array for style matching, with 5-level sequential fallback system for better product coverage.
+
 ## System Architecture
 
 ### Frontend Architecture
