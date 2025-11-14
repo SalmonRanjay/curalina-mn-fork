@@ -215,10 +215,10 @@ function hasValidImages(product: Product): boolean {
     const isExternalUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
     const isObjectStorage = trimmed.startsWith('/public-objects/') || trimmed.startsWith('/private-objects/');
     const isS3Path = trimmed.includes('s3.amazonaws.com') || trimmed.includes('curalina');
+    const isLocalAsset = trimmed.startsWith('/images/') || trimmed.startsWith('/assets/');
     
-    // Accept only external URLs (https) or object storage paths
-    // Reject generic relative paths like "/images/" which are likely broken
-    const isValidUrl = isExternalUrl || isObjectStorage || isS3Path;
+    // Accept external URLs, object storage paths, S3 paths, AND local asset paths
+    const isValidUrl = isExternalUrl || isObjectStorage || isS3Path || isLocalAsset;
     
     if (!isValidUrl) {
       return false;
