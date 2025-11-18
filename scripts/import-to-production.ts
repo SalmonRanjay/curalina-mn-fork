@@ -3,6 +3,34 @@ import * as schema from '../shared/schema';
 import fs from 'fs';
 import path from 'path';
 
+// Helper function to convert timestamp strings back to Date objects
+function convertTimestamps(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertTimestamps(item));
+  }
+  
+  const converted: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Check if this looks like a timestamp field
+    if ((key.includes('At') || key.includes('at')) && typeof value === 'string') {
+      // Try to parse as date
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        converted[key] = date;
+      } else {
+        converted[key] = value;
+      }
+    } else if (value && typeof value === 'object') {
+      converted[key] = convertTimestamps(value);
+    } else {
+      converted[key] = value;
+    }
+  }
+  return converted;
+}
+
 async function importToProduction() {
   console.log('📥 Importing data to production...');
   console.log('⚠️  Make sure you have run "npm run db:push --force" first!');
@@ -17,7 +45,10 @@ async function importToProduction() {
       process.exit(1);
     }
 
-    const data = JSON.parse(fs.readFileSync(filename, 'utf-8'));
+    const rawData = JSON.parse(fs.readFileSync(filename, 'utf-8'));
+    
+    // Convert all timestamp strings to Date objects
+    const data = convertTimestamps(rawData);
 
     console.log('📊 Data to import:');
     console.log(`   Users: ${data.users?.length || 0}`);
