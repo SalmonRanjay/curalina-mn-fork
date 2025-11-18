@@ -102,10 +102,7 @@ export default function AdminUsers() {
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof createForm) => {
-      return await apiRequest("/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify(userData),
-      });
+      return await apiRequest("POST", "/api/admin/users", userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -133,10 +130,7 @@ export default function AdminUsers() {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<typeof editForm> }) => {
-      return await apiRequest(`/api/admin/users/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("PUT", `/api/admin/users/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -158,9 +152,7 @@ export default function AdminUsers() {
 
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/admin/users/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/admin/users/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -181,7 +173,32 @@ export default function AdminUsers() {
   });
 
   const handleCreateUser = () => {
-    createUserMutation.mutate(createForm);
+    const trimmedEmail = createForm.email.trim();
+    const trimmedFirstName = createForm.firstName.trim();
+    const trimmedLastName = createForm.lastName.trim();
+    
+    if (!trimmedEmail || !createForm.password || !trimmedFirstName || !trimmedLastName) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (createForm.password.length < 8) {
+      toast({
+        title: "Validation Error",
+        description: "Password must be at least 8 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+    createUserMutation.mutate({
+      ...createForm,
+      email: trimmedEmail,
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+    });
   };
 
   const handleEditUser = (user: UserWithoutPassword) => {
@@ -198,10 +215,31 @@ export default function AdminUsers() {
 
   const handleUpdateUser = () => {
     if (!selectedUser) return;
+    
+    const trimmedEmail = editForm.email.trim();
+    const trimmedFirstName = editForm.firstName.trim();
+    const trimmedLastName = editForm.lastName.trim();
+    
+    if (!trimmedEmail || !trimmedFirstName || !trimmedLastName) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (editForm.password && editForm.password.length < 8) {
+      toast({
+        title: "Validation Error",
+        description: "Password must be at least 8 characters if changing",
+        variant: "destructive",
+      });
+      return;
+    }
     const updates: any = {
-      email: editForm.email,
-      firstName: editForm.firstName,
-      lastName: editForm.lastName,
+      email: trimmedEmail,
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
       role: editForm.role,
     };
     if (editForm.password) {
@@ -341,7 +379,7 @@ export default function AdminUsers() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="create-email">Email</Label>
+              <Label htmlFor="create-email">Email *</Label>
               <Input
                 id="create-email"
                 type="email"
@@ -351,10 +389,11 @@ export default function AdminUsers() {
                   setCreateForm({ ...createForm, email: e.target.value })
                 }
                 data-testid="input-create-email"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-password">Password</Label>
+              <Label htmlFor="create-password">Password *</Label>
               <Input
                 id="create-password"
                 type="password"
@@ -364,11 +403,12 @@ export default function AdminUsers() {
                   setCreateForm({ ...createForm, password: e.target.value })
                 }
                 data-testid="input-create-password"
+                required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-firstName">First Name</Label>
+                <Label htmlFor="create-firstName">First Name *</Label>
                 <Input
                   id="create-firstName"
                   placeholder="John"
@@ -377,10 +417,11 @@ export default function AdminUsers() {
                     setCreateForm({ ...createForm, firstName: e.target.value })
                   }
                   data-testid="input-create-firstName"
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-lastName">Last Name</Label>
+                <Label htmlFor="create-lastName">Last Name *</Label>
                 <Input
                   id="create-lastName"
                   placeholder="Doe"
@@ -389,6 +430,7 @@ export default function AdminUsers() {
                     setCreateForm({ ...createForm, lastName: e.target.value })
                   }
                   data-testid="input-create-lastName"
+                  required
                 />
               </div>
             </div>
@@ -420,7 +462,13 @@ export default function AdminUsers() {
             </Button>
             <Button
               onClick={handleCreateUser}
-              disabled={createUserMutation.isPending}
+              disabled={
+                createUserMutation.isPending ||
+                !createForm.email ||
+                !createForm.password ||
+                !createForm.firstName ||
+                !createForm.lastName
+              }
               data-testid="button-submit-create"
             >
               {createUserMutation.isPending ? "Creating..." : "Create User"}
@@ -440,7 +488,7 @@ export default function AdminUsers() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
+              <Label htmlFor="edit-email">Email *</Label>
               <Input
                 id="edit-email"
                 type="email"
@@ -449,6 +497,7 @@ export default function AdminUsers() {
                   setEditForm({ ...editForm, email: e.target.value })
                 }
                 data-testid="input-edit-email"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -466,7 +515,7 @@ export default function AdminUsers() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-firstName">First Name</Label>
+                <Label htmlFor="edit-firstName">First Name *</Label>
                 <Input
                   id="edit-firstName"
                   value={editForm.firstName}
@@ -474,10 +523,11 @@ export default function AdminUsers() {
                     setEditForm({ ...editForm, firstName: e.target.value })
                   }
                   data-testid="input-edit-firstName"
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-lastName">Last Name</Label>
+                <Label htmlFor="edit-lastName">Last Name *</Label>
                 <Input
                   id="edit-lastName"
                   value={editForm.lastName}
@@ -485,6 +535,7 @@ export default function AdminUsers() {
                     setEditForm({ ...editForm, lastName: e.target.value })
                   }
                   data-testid="input-edit-lastName"
+                  required
                 />
               </div>
             </div>
@@ -516,7 +567,12 @@ export default function AdminUsers() {
             </Button>
             <Button
               onClick={handleUpdateUser}
-              disabled={updateUserMutation.isPending}
+              disabled={
+                updateUserMutation.isPending ||
+                !editForm.email ||
+                !editForm.firstName ||
+                !editForm.lastName
+              }
               data-testid="button-submit-edit"
             >
               {updateUserMutation.isPending ? "Updating..." : "Update User"}
