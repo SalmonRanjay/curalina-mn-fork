@@ -1,5 +1,6 @@
 import { db } from '../server/db';
 import * as schema from '../shared/schema';
+import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 
@@ -59,27 +60,45 @@ async function importToProduction() {
     console.log(`   Renders: ${data.renders?.length || 0}`);
     console.log('');
 
-    // Clear production database first (in reverse order of dependencies)
+    // Clear production database first using TRUNCATE CASCADE for efficiency
     console.log('🗑️  Clearing production database...');
-    await db.delete(schema.designRules);
-    await db.delete(schema.placementGuidelines);
-    await db.delete(schema.productPackages);
-    await db.delete(schema.designExamples);
-    await db.delete(schema.activityLog);
-    await db.delete(schema.settings);
-    await db.delete(schema.content);
-    await db.delete(schema.orderItems);
-    await db.delete(schema.orders);
-    await db.delete(schema.cartItems);
-    await db.delete(schema.selectionLedger);
-    await db.delete(schema.renderEvents);
-    await db.delete(schema.renderProducts);
-    await db.delete(schema.renders);
-    await db.delete(schema.quizResponses);
-    await db.delete(schema.products);
-    await db.delete(schema.suppliers);
-    await db.delete(schema.categories);
-    await db.delete(schema.users);
+    
+    // Use raw SQL to truncate all tables at once with CASCADE
+    // This is much faster and handles all foreign key constraints automatically
+    await db.execute(sql`
+      TRUNCATE TABLE 
+        design_rules,
+        placement_guidelines,
+        product_packages,
+        design_examples,
+        activity_log,
+        settings,
+        content,
+        order_items,
+        orders,
+        cart_items,
+        selection_ledger,
+        render_events,
+        render_products,
+        renders,
+        quiz_responses,
+        documentation_comments,
+        documentation_sections,
+        product_functional_categories,
+        functional_categories,
+        template_category_rules,
+        room_templates,
+        visual_analysis_products,
+        visual_analysis_jobs,
+        upload_job_files,
+        upload_jobs,
+        products,
+        suppliers,
+        categories,
+        users
+      RESTART IDENTITY CASCADE
+    `);
+    
     console.log('✅ Production database cleared');
     console.log('');
 
