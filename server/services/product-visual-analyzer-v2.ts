@@ -1,10 +1,4 @@
 import { GoogleGenAI } from "@google/genai";
-import OpenAI from "openai";
-
-// Initialize OpenAI client
-const openaiClient = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
-});
 import { findFrontViewImage, categorizeImages, isValidImageUrl } from "../utils/image-helpers";
 import { needsAnalysis, markAsAnalyzed, sessionCache } from '../utils/image-cache';
 
@@ -23,22 +17,15 @@ interface AnalysisResult {
   frontViewDescription: string;
 }
 
-interface DualProviderResult {
-  gemini: AnalysisResult | null;
-  openai: AnalysisResult | null;
-}
-
 interface ProductAnalysisResult {
   sku: string;
   productId?: string;
   // Combined descriptions (all images)
   visualDescription: string;
   visualDescriptionGemini: string;
-  visualDescriptionOpenAI: string;
   // Front-view specific descriptions
   visualDescriptionFrontView: string;
   visualDescriptionFrontViewGemini: string;
-  visualDescriptionFrontViewOpenAI: string;
   error?: string;
 }
 
@@ -242,113 +229,7 @@ async function analyzeWithGemini(
 }
 
 /**
- * Analyze a single image using OpenAI with structured format
- */
-async function analyzeImageWithOpenAI(imageUrl: string, imageName: string, isFrontView: boolean = false): Promise<string> {
-  // Pre-validate image URL to avoid wasting API calls on broken images
-  const isValid = await validateImageUrl(imageUrl);
-  if (!isValid) {
-    console.warn(`  ⚠️ OpenAI: Skipping ${imageName} - image URL not accessible`);
-    return '';
-  }
-  
-  try {
-    // Download image as base64
-    const imageData = await downloadImageAsBase64(imageUrl);
-    
-    // Return empty string if image download failed (shouldn't happen after validation, but defensive)
-    if (!imageData) {
-      console.warn(`  ⚠️ OpenAI: Skipping ${imageName} - image download failed`);
-      return '';
-    }
-    
-    const response = await openaiClient.chat.completions.create({
-      model: "gpt-5",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: getStructuredAnalysisPrompt(isFrontView)
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${imageData.mimeType};base64,${imageData.data}`
-              }
-            }
-          ],
-        },
-      ],
-      max_completion_tokens: isFrontView ? 1024 : 2048, // Enforce token limits
-    });
-    
-    const text = response.choices[0].message.content?.trim() || '';
-    
-    // Validate character limits - balanced for completeness
-    const charLimit = isFrontView ? 750 : 1500;
-    if (text.length > charLimit) {
-      console.warn(`OpenAI description exceeds ${charLimit} character limit (${text.length} chars). Truncating...`);
-      return text.substring(0, charLimit);
-    }
-    
-    return text;
-  } catch (error) {
-    // Re-throw AI provider errors (auth, rate limits, etc) - these are real problems
-    console.error(`Error analyzing ${imageName} with OpenAI:`, error);
-    throw error;
-  }
-}
-
-
-/**
- * Single-image analysis with OpenAI: Front-view preferred, fallback to first valid image
- */
-async function analyzeWithOpenAI(
-  productName: string,
-  imageUrls: string[]
-): Promise<AnalysisResult> {
-  const { frontView } = categorizeImages(imageUrls);
-  const validImages = imageUrls.filter(isValidImageUrl);
-  
-  // Determine which image to analyze: front-view preferred, fallback to first valid
-  let imageToAnalyze: string | null = null;
-  let isFrontView = false;
-  
-  if (frontView && isValidImageUrl(frontView)) {
-    imageToAnalyze = frontView;
-    isFrontView = true;
-  } else if (validImages.length > 0) {
-    imageToAnalyze = validImages[0];
-    isFrontView = false;
-    console.log(`  ⚠️ OpenAI: No front-view found, using first valid image as fallback`);
-  }
-  
-  let description = '';
-  
-  if (imageToAnalyze) {
-    try {
-      const label = isFrontView ? 'Front View' : 'Product Image';
-      console.log(`  🎯 OpenAI: Analyzing ${isFrontView ? 'front-view' : 'fallback'} image ONLY`);
-      description = await analyzeImageWithOpenAI(imageToAnalyze, label, isFrontView);
-    } catch (error) {
-      console.error(`  ⚠️ OpenAI: Image analysis failed`);
-      throw error;
-    }
-  } else {
-    console.log(`  ⚠️ OpenAI: No valid images found - skipping analysis`);
-  }
-  
-  // Use single description for both fields (no separate combined analysis)
-  return {
-    frontViewDescription: isFrontView ? description : '',
-    combinedDescription: description
-  };
-}
-
-/**
- * Analyze a single product with both providers in two phases
+ * Analyze a single product with Gemini AI only
  */
 export async function analyzeProductVisualsV2(
   product: { 
@@ -369,10 +250,8 @@ export async function analyzeProductVisualsV2(
       productId: product.productId,
       visualDescription: '',
       visualDescriptionGemini: '',
-      visualDescriptionOpenAI: '',
       visualDescriptionFrontView: '',
       visualDescriptionFrontViewGemini: '',
-      visualDescriptionFrontViewOpenAI: '',
       error: 'No images available'
     };
   }
@@ -417,10 +296,8 @@ export async function analyzeProductVisualsV2(
       productId: product.productId,
       visualDescription: '',
       visualDescriptionGemini: '',
-      visualDescriptionOpenAI: '',
       visualDescriptionFrontView: '',
       visualDescriptionFrontViewGemini: '',
-      visualDescriptionFrontViewOpenAI: '',
       error: 'All images failed validation (broken or unsupported format)'
     };
   }
@@ -440,77 +317,63 @@ export async function analyzeProductVisualsV2(
         productId: product.productId,
         visualDescription: '[cached]',
         visualDescriptionGemini: '[cached]',
-        visualDescriptionOpenAI: '[cached]',
         visualDescriptionFrontView: '[cached]',
-        visualDescriptionFrontViewGemini: '[cached]',
-        visualDescriptionFrontViewOpenAI: '[cached]'
+        visualDescriptionFrontViewGemini: '[cached]'
       };
     }
   }
   
-  // Run both providers in parallel with independent failure handling
-  const [geminiResult, openaiResult] = await Promise.allSettled([
-    analyzeWithGemini(product.name, imagesToAnalyze),
-    analyzeWithOpenAI(product.name, imagesToAnalyze)
-  ]);
-  
-  // Extract results or use empty values on failure
-  const gemini = geminiResult.status === 'fulfilled' ? geminiResult.value : null;
-  const openai = openaiResult.status === 'fulfilled' ? openaiResult.value : null;
-  
-  // Log any failures
-  if (geminiResult.status === 'rejected') {
-    console.error(`  ⚠️ Gemini failed:`, geminiResult.reason);
+  // Run Gemini analysis only
+  try {
+    const gemini = await analyzeWithGemini(product.name, imagesToAnalyze);
+    
+    // Determine active descriptions (Front-view prioritized for rendering accuracy)
+    const activeFrontView = gemini.frontViewDescription || '';
+    const activeDescription = activeFrontView || gemini.combinedDescription || '';
+    
+    // Log results
+    console.log(`  ✅ Analysis complete:`);
+    console.log(`     - Gemini combined: ${gemini.combinedDescription ? `${gemini.combinedDescription.length} chars` : 'N/A'}`);
+    console.log(`     - Gemini front: ${gemini.frontViewDescription ? `${gemini.frontViewDescription.length} chars` : 'N/A'}`);
+    
+    const result = {
+      sku: product.sku,
+      productId: product.productId,
+      // Combined descriptions
+      visualDescription: activeDescription,
+      visualDescriptionGemini: gemini.combinedDescription || '',
+      // Front-view descriptions
+      visualDescriptionFrontView: activeFrontView,
+      visualDescriptionFrontViewGemini: gemini.frontViewDescription || ''
+    };
+    
+    // Only mark as analyzed if we got meaningful results
+    const hasValidResults = result.visualDescriptionGemini || result.visualDescriptionFrontViewGemini;
+    
+    if (product.productId && imagesToAnalyze.length > 0 && hasValidResults) {
+      markAsAnalyzed(product.productId, imagesToAnalyze, {
+        visualDescription: result.visualDescription,
+        visualDescriptionGemini: result.visualDescriptionGemini,
+        visualDescriptionFrontView: result.visualDescriptionFrontView,
+        visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini
+      });
+    } else if (product.productId && !hasValidResults) {
+      console.warn(`  ⚠️ Not caching - no valid analysis results obtained`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`  ⚠️ Gemini analysis failed:`, error);
+    return {
+      sku: product.sku,
+      productId: product.productId,
+      visualDescription: '',
+      visualDescriptionGemini: '',
+      visualDescriptionFrontView: '',
+      visualDescriptionFrontViewGemini: '',
+      error: error instanceof Error ? error.message : 'Gemini analysis failed'
+    };
   }
-  if (openaiResult.status === 'rejected') {
-    console.error(`  ⚠️ OpenAI failed:`, openaiResult.reason);
-  }
-  
-  // Determine active descriptions (Front-view prioritized for rendering accuracy)
-  // Prioritize front-view descriptions for AI rendering (more concise and accurate)
-  const activeFrontView = gemini?.frontViewDescription || openai?.frontViewDescription || '';
-  // For backward compatibility, keep combined as fallback or when front-view unavailable
-  const activeDescription = activeFrontView || gemini?.combinedDescription || openai?.combinedDescription || '';
-  
-  // Log results
-  console.log(`  ✅ Analysis complete:`);
-  console.log(`     - Gemini combined: ${gemini?.combinedDescription ? `${gemini.combinedDescription.length} chars` : 'N/A'}`);
-  console.log(`     - Gemini front: ${gemini?.frontViewDescription ? `${gemini.frontViewDescription.length} chars` : 'N/A'}`);
-  console.log(`     - OpenAI combined: ${openai?.combinedDescription ? `${openai.combinedDescription.length} chars` : 'N/A'}`);
-  console.log(`     - OpenAI front: ${openai?.frontViewDescription ? `${openai.frontViewDescription.length} chars` : 'N/A'}`);
-  
-  const result = {
-    sku: product.sku,
-    productId: product.productId,
-    // Combined descriptions
-    visualDescription: activeDescription,
-    visualDescriptionGemini: gemini?.combinedDescription || '',
-    visualDescriptionOpenAI: openai?.combinedDescription || '',
-    // Front-view descriptions
-    visualDescriptionFrontView: activeFrontView,
-    visualDescriptionFrontViewGemini: gemini?.frontViewDescription || '',
-    visualDescriptionFrontViewOpenAI: openai?.frontViewDescription || ''
-  };
-  
-  // Only mark as analyzed if we got meaningful results from at least one provider
-  // Don't cache empty results from failed analysis
-  const hasValidResults = result.visualDescriptionGemini || result.visualDescriptionOpenAI ||
-                         result.visualDescriptionFrontViewGemini || result.visualDescriptionFrontViewOpenAI;
-  
-  if (product.productId && imagesToAnalyze.length > 0 && hasValidResults) {
-    markAsAnalyzed(product.productId, imagesToAnalyze, {
-      visualDescription: result.visualDescription,
-      visualDescriptionGemini: result.visualDescriptionGemini,
-      visualDescriptionOpenAI: result.visualDescriptionOpenAI,
-      visualDescriptionFrontView: result.visualDescriptionFrontView,
-      visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
-      visualDescriptionFrontViewOpenAI: result.visualDescriptionFrontViewOpenAI
-    });
-  } else if (product.productId && !hasValidResults) {
-    console.warn(`  ⚠️ Not caching - no valid analysis results obtained`);
-  }
-  
-  return result;
 }
 
 /**
@@ -612,10 +475,8 @@ export async function batchAnalyzeProductsConcurrent(
       productId: product.productId,
       visualDescription: '',
       visualDescriptionGemini: '',
-      visualDescriptionOpenAI: '',
       visualDescriptionFrontView: '',
       visualDescriptionFrontViewGemini: '',
-      visualDescriptionFrontViewOpenAI: '',
       error: error.message
     });
     if (onProgress) {
@@ -634,16 +495,12 @@ export async function batchAnalyzeProductsConcurrent(
   // Summary statistics
   const successCount = results.filter(r => !r.error).length;
   const geminiCombinedCount = results.filter(r => r.visualDescriptionGemini).length;
-  const openaiCombinedCount = results.filter(r => r.visualDescriptionOpenAI).length;
   const geminiFrontCount = results.filter(r => r.visualDescriptionFrontViewGemini).length;
-  const openaiFrontCount = results.filter(r => r.visualDescriptionFrontViewOpenAI).length;
   
-  console.log(`\n📊 V2 Concurrent Analysis Complete:`);
+  console.log(`\n📊 Gemini-Only Concurrent Analysis Complete:`);
   console.log(`  ✅ Successful: ${successCount}/${products.length}`);
   console.log(`  🤖 Gemini combined: ${geminiCombinedCount}`);
   console.log(`  🤖 Gemini front: ${geminiFrontCount}`);
-  console.log(`  🤖 OpenAI combined: ${openaiCombinedCount}`);
-  console.log(`  🤖 OpenAI front: ${openaiFrontCount}`);
   console.log(`  ❌ Failed: ${errors.length}`);
   
   return results;

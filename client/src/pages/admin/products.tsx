@@ -657,12 +657,11 @@ export default function AdminProducts() {
     return firstImage;
   };
 
-  // Helper to check if product has any AI analysis (legacy or dual-provider)
+  // Helper to check if product has any AI analysis
   const hasAIAnalysis = (product: Product) => {
     return !!(
       (product as any).visualDescription || 
-      (product as any).visualDescriptionGemini || 
-      (product as any).visualDescriptionOpenAI
+      (product as any).visualDescriptionGemini
     );
   };
 
@@ -1727,7 +1726,7 @@ export default function AdminProducts() {
                         {product.name}
                         {hasAIAnalysis(product) && (
                           <Badge variant="secondary" className="text-xs" data-testid={`badge-analyzed-${product.id}`}>
-                            ✨ {((product as any).visualDescriptionGemini && (product as any).visualDescriptionOpenAI) ? 'Dual AI' : 'AI Analyzed'}
+                            ✨ Gemini AI
                           </Badge>
                         )}
                       </div>
@@ -2143,87 +2142,48 @@ export default function AdminProducts() {
                 )}
               </div>
 
-              {/* AI Visual Descriptions - Dual Provider Comparison */}
+              {/* AI Visual Descriptions - Gemini Only */}
               <div>
                 <h3 className="font-semibold text-lg mb-3">AI Visual Descriptions</h3>
                 
                 {hasAIAnalysis(viewingProduct) ? (
                   <div className="space-y-4">
-                    {/* Dual Provider Comparison (if new fields exist) */}
-                    {((viewingProduct as any).visualDescriptionGemini || (viewingProduct as any).visualDescriptionOpenAI) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Gemini Description */}
-                        <div className={`border rounded-lg p-4 ${(viewingProduct as any).visualDescriptionGemini ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800'}`}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Sparkles className="w-4 h-4 text-blue-600" />
-                            <h4 className="font-semibold text-sm">Gemini 2.5 Flash</h4>
-                          </div>
-                          {(viewingProduct as any).visualDescriptionGemini ? (
-                            <>
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">{(viewingProduct as any).visualDescriptionGemini}</p>
-                              <p className="text-xs text-muted-foreground mt-3">
-                                {(viewingProduct as any).visualDescriptionGemini.length} characters
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No Gemini analysis available
-                            </p>
-                          )}
-                        </div>
-
-                        {/* OpenAI Description */}
-                        <div className={`border rounded-lg p-4 ${(viewingProduct as any).visualDescriptionOpenAI ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800'}`}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Sparkles className="w-4 h-4 text-green-600" />
-                            <h4 className="font-semibold text-sm">OpenAI GPT-5 Vision</h4>
-                          </div>
-                          {(viewingProduct as any).visualDescriptionOpenAI ? (
-                            <>
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">{(viewingProduct as any).visualDescriptionOpenAI}</p>
-                              <p className="text-xs text-muted-foreground mt-3">
-                                {(viewingProduct as any).visualDescriptionOpenAI.length} characters
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No OpenAI analysis available
-                            </p>
-                          )}
-                        </div>
+                    {/* Gemini Description */}
+                    <div className={`border rounded-lg p-4 ${(viewingProduct as any).visualDescriptionGemini ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800'}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-blue-600" />
+                        <h4 className="font-semibold text-sm">Gemini 2.5 Flash</h4>
                       </div>
-                    )}
-
-                    {/* Legacy Single-Provider View (if only old visualDescription exists) */}
-                    {(viewingProduct as any).visualDescription && !(viewingProduct as any).visualDescriptionGemini && !(viewingProduct as any).visualDescriptionOpenAI && (
-                      <div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sparkles className="w-4 h-4 text-amber-600" />
-                          <h4 className="font-semibold text-sm">Legacy AI Analysis</h4>
-                        </div>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">{(viewingProduct as any).visualDescription}</p>
-                        <p className="text-xs text-muted-foreground mt-3">
-                          {(viewingProduct as any).visualDescription.length} characters • Re-analyze to get dual provider comparison
+                      {(viewingProduct as any).visualDescriptionGemini ? (
+                        <>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">{(viewingProduct as any).visualDescriptionGemini}</p>
+                          <p className="text-xs text-muted-foreground mt-3">
+                            {(viewingProduct as any).visualDescriptionGemini.length} characters
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No Gemini analysis available yet
                         </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">
-                      No visual descriptions generated yet. Click "Analyze Product Images" to generate comprehensive AI descriptions from both Gemini and OpenAI providers for quality comparison.
+                      No visual descriptions generated yet. Click "Gemini: Front View + Combined" button to generate AI descriptions.
                     </p>
                   </div>
                 )}
 
                 {/* Active Description Info */}
                 {(viewingProduct as any).visualDescription && (
-                  <div className="mt-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                    <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
-                      🎯 Active Description: {(viewingProduct as any).visualDescription === (viewingProduct as any).visualDescriptionGemini ? 'Gemini 2.5 Flash' : (viewingProduct as any).visualDescription === (viewingProduct as any).visualDescriptionOpenAI ? 'OpenAI GPT-5' : 'Legacy/Other'}
+                  <div className="mt-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-900 dark:text-blue-100">
+                      🎯 Active for AI rendering: Gemini 2.5 Flash
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Used for AI room rendering. You can test rendering with either provider's description to compare quality.
+                      This description is used for AI room rendering and product matching.
                     </p>
                   </div>
                 )}
