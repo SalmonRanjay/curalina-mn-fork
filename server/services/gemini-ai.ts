@@ -257,17 +257,17 @@ function hasValidImages(product: Product): boolean {
  */
 function hasAIVisualDescription(product: Product): boolean {
   // Check if any visual description field is populated
-  // Priority order: Front View > Gemini Vision > OpenAI Vision > Legacy
+  // Priority order: Front View > Front View Gemini > Gemini Vision > Legacy
   const hasFrontView = typeof product.visualDescriptionFrontView === 'string' && 
                        product.visualDescriptionFrontView.trim().length > 0;
+  const hasFrontViewGemini = typeof product.visualDescriptionFrontViewGemini === 'string' && 
+                             product.visualDescriptionFrontViewGemini.trim().length > 0;
   const hasGemini = typeof product.visualDescriptionGemini === 'string' && 
                     product.visualDescriptionGemini.trim().length > 0;
-  const hasOpenAI = typeof product.visualDescriptionOpenAI === 'string' && 
-                    product.visualDescriptionOpenAI.trim().length > 0;
   const hasLegacy = typeof product.visualDescription === 'string' && 
                     product.visualDescription.trim().length > 0;
   
-  return hasFrontView || hasGemini || hasOpenAI || hasLegacy;
+  return hasFrontView || hasFrontViewGemini || hasGemini || hasLegacy;
 }
 
 /**
