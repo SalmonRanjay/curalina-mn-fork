@@ -73,43 +73,50 @@ function Router() {
     };
 
     return (
-      <Switch>
-        {/* Public routes (accessible to logged-in users) */}
-        <Route path="/" component={Home} />
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/styles" component={Styles} />
-        <Route path="/pricing" component={Pricing} />
-        <Route path="/about" component={About} />
-        <Route path="/blog" component={Blog} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/quiz" component={Quiz} />
-        <Route path="/loading" component={Loading} />
-        <Route path="/results" component={Results} />
-        <Route path="/cart" component={Cart} />
-        
-        {/* Admin routes - Specific pages */}
-        <Route path="/admin" component={AdminDashboard} />
-        <Route path="/admin/products" component={AdminProducts} />
-        <Route path="/admin/suppliers" component={AdminSuppliers} />
-        <Route path="/admin/orders" component={AdminOrders} />
-        <Route path="/admin/users" component={AdminUsers} />
-        <Route path="/admin/settings" component={AdminSettings} />
-        <Route path="/admin/training" component={AdminTraining} />
-        <Route path="/admin/analytics" component={AdminAnalytics} />
-        <Route path="/admin/blog" component={AdminBlog} />
-        <Route path="/admin/content" component={AdminContent} />
-        <Route path="/admin/bulk-upload" component={AdminBulkUpload} />
-        <Route path="/admin/csv-import" component={AdminCsvImport} />
-        <Route path="/admin/renders-storage" component={AdminRendersStorage} />
-        <Route path="/admin/documentation" component={AdminDocumentation} />
+      <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <main className="flex-1 overflow-auto">
+            <Switch>
+              {/* Public routes (accessible to logged-in users) */}
+              <Route path="/" component={Home} />
+              <Route path="/login" component={Login} />
+              <Route path="/register" component={Register} />
+              <Route path="/styles" component={Styles} />
+              <Route path="/pricing" component={Pricing} />
+              <Route path="/about" component={About} />
+              <Route path="/blog" component={Blog} />
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/quiz" component={Quiz} />
+              <Route path="/loading" component={Loading} />
+              <Route path="/results" component={Results} />
+              <Route path="/cart" component={Cart} />
+              
+              {/* Admin routes - Specific pages */}
+              <Route path="/admin" component={AdminDashboard} />
+              <Route path="/admin/products" component={AdminProducts} />
+              <Route path="/admin/suppliers" component={AdminSuppliers} />
+              <Route path="/admin/orders" component={AdminOrders} />
+              <Route path="/admin/users" component={AdminUsers} />
+              <Route path="/admin/settings" component={AdminSettings} />
+              <Route path="/admin/training" component={AdminTraining} />
+              <Route path="/admin/analytics" component={AdminAnalytics} />
+              <Route path="/admin/blog" component={AdminBlog} />
+              <Route path="/admin/content" component={AdminContent} />
+              <Route path="/admin/bulk-upload" component={AdminBulkUpload} />
+              <Route path="/admin/csv-import" component={AdminCsvImport} />
+              <Route path="/admin/renders-storage" component={AdminRendersStorage} />
+              <Route path="/admin/documentation" component={AdminDocumentation} />
 
-        {/* User portal routes (admins can access these too) */}
-        <Route path="/portal" component={PortalDashboard} />
-        <Route path="/portal/settings" component={PortalSettings} />
-        
-        <Route component={NotFound} />
-      </Switch>
+              {/* User portal routes (admins can access these too) */}
+              <Route path="/portal" component={PortalDashboard} />
+              <Route path="/portal/settings" component={PortalSettings} />
+              
+              <Route component={NotFound} />
+            </Switch>
+          </main>
+        </div>
+      </SidebarProvider>
     );
   }
 
