@@ -23,7 +23,6 @@ import S3SyncPage from "@/pages/admin/s3-sync";
 import MappingAnalysis from "@/pages/admin/mapping-analysis";
 
 export default function AdminDashboard() {
-  const [activeSection, setActiveSection] = useState("analytics");
   const { isAdmin, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -44,66 +43,9 @@ export default function AdminDashboard() {
     return null;
   }
 
-  const menuItems = [
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "products", label: "Products", icon: Package },
-    { id: "csv-import", label: "CSV Import", icon: FileText },
-    { id: "bulk-upload", label: "Bulk Upload", icon: Upload },
-    { id: "front-view-upload", label: "Front View Upload", icon: ImageIcon },
-    { id: "s3-sync", label: "S3 Sync", icon: Database },
-    { id: "mapping-analysis", label: "Quiz Mapping", icon: GitCompare },
-    { id: "orders", label: "Orders", icon: ShoppingCart },
-    { id: "users", label: "Users", icon: Users },
-    { id: "suppliers", label: "Suppliers", icon: Store },
-    { id: "blog", label: "Blog", icon: BookOpen },
-  ];
-
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <div className="w-64 border-r bg-card">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-bold" data-testid="text-admin-title">Admin Dashboard</h2>
-          <p className="text-sm text-muted-foreground">Manage your platform</p>
-        </div>
-        <nav className="p-4 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeSection === item.id
-                    ? "bg-primary text-primary-foreground"
-                    : "hover-elevate text-foreground"
-                }`}
-                data-testid={`nav-${item.id}`}
-              >
-                <Icon className="w-4 h-4" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="container mx-auto py-8 px-6">
-          {activeSection === "analytics" && <AnalyticsSection />}
-          {activeSection === "products" && <ProductsSection />}
-          {activeSection === "csv-import" && <CSVImportPage />}
-          {activeSection === "bulk-upload" && <BulkUploadPage />}
-          {activeSection === "front-view-upload" && <FrontViewUpload />}
-          {activeSection === "s3-sync" && <S3SyncPage />}
-          {activeSection === "mapping-analysis" && <MappingAnalysis />}
-          {activeSection === "orders" && <OrdersSection />}
-          {activeSection === "users" && <UsersSection />}
-          {activeSection === "suppliers" && <SuppliersSection />}
-          {activeSection === "blog" && <BlogSection />}
-        </div>
-      </div>
+    <div className="container mx-auto py-8 px-6">
+      <AnalyticsSection />
     </div>
   );
 }
