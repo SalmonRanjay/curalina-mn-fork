@@ -408,6 +408,28 @@ export default function AdminProducts() {
     },
   });
 
+  // Gemini-only analysis (front view + combined)
+  const analyzeWithGeminiMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/products/analyze-with-gemini", "POST");
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Gemini analysis started",
+        description: `Analyzing ${data.totalProducts} products. Check server logs for progress.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to start Gemini analysis",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   // New job-based visual analysis mutation
   const startVisualAnalysisMutation = useMutation({
     mutationFn: async (params: { productIds?: string[]; onlyMissingDescriptions?: boolean }) => {
@@ -1277,6 +1299,19 @@ export default function AdminProducts() {
             {reanalyzeFrontViewsMutation.isPending 
               ? "Starting..." 
               : `Re-analyze ${frontViewProductCount} Front View Products`
+            }
+          </Button>
+
+          <Button
+            variant="default"
+            onClick={() => analyzeWithGeminiMutation.mutate()}
+            disabled={analyzeWithGeminiMutation.isPending}
+            data-testid="button-gemini-analysis"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {analyzeWithGeminiMutation.isPending 
+              ? "Analyzing..." 
+              : "Gemini: Front View + Combined"
             }
           </Button>
           

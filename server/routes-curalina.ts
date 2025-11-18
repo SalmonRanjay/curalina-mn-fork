@@ -955,6 +955,96 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Gemini-only analysis for front view + combined (Admin only)
+  app.post('/api/admin/products/analyze-with-gemini', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('\n🎨 Starting Gemini-only product analysis...');
+      
+      const allProducts = await curalinaStorage.getAllProducts();
+      const productsWithImages = allProducts.filter(p => 
+        p.images && p.images.length > 0 && p.images[0].startsWith('https://curalina')
+      );
+      
+      console.log(`Found ${productsWithImages.length} products with valid images`);
+      
+      if (productsWithImages.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: 'No products with images found',
+          analyzed: 0
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Gemini analysis started for ${productsWithImages.length} products. Check server logs for progress.`,
+        totalProducts: productsWithImages.length
+      });
+      
+      (async () => {
+        try {
+          const { batchAnalyzeProductsWithGemini } = await import('./services/gemini-product-analyzer');
+          
+          const MAX_BATCH_SIZE = 20;
+          const productsToAnalyze = productsWithImages
+            .slice(0, MAX_BATCH_SIZE)
+            .map(p => ({
+              sku: p.sku,
+              name: p.name,
+              images: p.images || []
+            }));
+          
+          if (productsWithImages.length > MAX_BATCH_SIZE) {
+            console.log(`⚠️ Limiting to ${MAX_BATCH_SIZE} products (${productsWithImages.length} total)`);
+          }
+          
+          const results = await batchAnalyzeProductsWithGemini(productsToAnalyze);
+          
+          let updated = 0;
+          let failed = 0;
+          
+          for (const result of results) {
+            if (result.success) {
+              try {
+                const product = allProducts.find(p => p.sku === result.sku);
+                if (product) {
+                  await curalinaStorage.updateProduct(product.id, {
+                    visualDescriptionGemini: result.visualDescriptionGemini,
+                    visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
+                    visualDescription: result.visualDescriptionGemini || result.visualDescriptionFrontViewGemini
+                  });
+                  updated++;
+                  console.log(`✅ Updated ${result.sku}`);
+                  if (result.visualDescriptionFrontViewGemini) {
+                    console.log(`   Front View: ${result.visualDescriptionFrontViewGemini.length} chars`);
+                  }
+                  if (result.visualDescriptionGemini) {
+                    console.log(`   Combined: ${result.visualDescriptionGemini.length} chars`);
+                  }
+                }
+              } catch (error) {
+                console.error(`Failed to update ${result.sku}:`, error);
+                failed++;
+              }
+            } else {
+              failed++;
+            }
+          }
+          
+          console.log(`\n📊 Gemini-Only Analysis Complete:`);
+          console.log(`  ✅ Updated: ${updated}`);
+          console.log(`  ❌ Failed: ${failed}`);
+        } catch (error) {
+          console.error('Gemini batch analysis error:', error);
+        }
+      })();
+      
+    } catch (error) {
+      console.error("Error starting Gemini analysis:", error);
+      res.status(500).json({ error: "Failed to start Gemini analysis" });
+    }
+  });
+
   // Batch product visual analysis endpoint (Admin only)
   app.post('/api/admin/products/analyze-visuals', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
