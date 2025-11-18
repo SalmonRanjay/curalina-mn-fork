@@ -439,8 +439,7 @@ export async function batchAnalyzeProducts(
       // Has images but no front view description
       const hasImages = p.images && p.images.length > 0;
       const hasFrontView = p.visualDescriptionFrontView || 
-                          p.visualDescriptionFrontViewGemini || 
-                          p.visualDescriptionFrontViewOpenAI;
+                          p.visualDescriptionFrontViewGemini;
       const hasMultiAngleAnalysis = p.imageAnalyses && Object.keys(p.imageAnalyses as object || {}).length > 0;
       
       return hasImages && !hasFrontView && !hasMultiAngleAnalysis;
@@ -476,8 +475,7 @@ export async function batchAnalyzeProducts(
     const skippedProducts = allProducts.filter((p: Product) => {
       const hasImages = p.images && p.images.length > 0;
       const hasFrontView = p.visualDescriptionFrontView || 
-                          p.visualDescriptionFrontViewGemini || 
-                          p.visualDescriptionFrontViewOpenAI;
+                          p.visualDescriptionFrontViewGemini;
       return !hasImages || hasFrontView;
     }).slice(0, Math.max(0, limit - toAnalyze.length));
     

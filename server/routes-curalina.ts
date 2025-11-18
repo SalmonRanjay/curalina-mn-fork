@@ -1045,94 +1045,12 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Batch product visual analysis endpoint (Admin only)
+  // Legacy route - redirect to new Gemini-only endpoint
   app.post('/api/admin/products/analyze-visuals', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      console.log('\n🎨 Starting batch product visual analysis...');
-      
-      // Get all products with images
-      const allProducts = await curalinaStorage.getAllProducts();
-      const productsWithImages = allProducts.filter(p => 
-        p.images && p.images.length > 0 && p.images[0].startsWith('https://curalina')
-      );
-      
-      console.log(`Found ${productsWithImages.length} products with valid S3 images`);
-      
-      if (productsWithImages.length === 0) {
-        return res.json({ 
-          success: true, 
-          message: 'No products with images found',
-          analyzed: 0,
-          failed: 0
-        });
-      }
-      
-      // Start async analysis
-      res.json({ 
-        success: true, 
-        message: `Analysis started for ${productsWithImages.length} products. Check server logs for progress.`,
-        totalProducts: productsWithImages.length
-      });
-      
-      // Run analysis in background
-      (async () => {
-        try {
-          const { batchAnalyzeProducts } = await import('./services/product-visual-analyzer');
-          
-          // Limit to 20 products at a time to avoid overwhelming the API
-          const MAX_BATCH_SIZE = 20;
-          const productsToAnalyze = productsWithImages
-            .slice(0, MAX_BATCH_SIZE)
-            .map(p => ({
-              sku: p.sku,
-              name: p.name,
-              images: p.images || []
-            }));
-          
-          if (productsWithImages.length > MAX_BATCH_SIZE) {
-            console.log(`⚠️ Limiting batch to ${MAX_BATCH_SIZE} products (${productsWithImages.length} total). Run again to process more.`);
-          }
-          
-          const results = await batchAnalyzeProducts(productsToAnalyze);
-          
-          // Update products with Gemini visual descriptions
-          let updated = 0;
-          let failed = 0;
-          
-          for (const result of results) {
-            if (result.visualDescriptionGemini && !result.error) {
-              try {
-                const product = allProducts.find(p => p.sku === result.sku);
-                if (product) {
-                  await curalinaStorage.updateProduct(product.id, {
-                    visualDescription: result.visualDescription,
-                    visualDescriptionGemini: result.visualDescriptionGemini
-                  });
-                  updated++;
-                  console.log(`✅ Updated ${result.sku} with Gemini AI description`);
-                  console.log(`   Gemini: ${result.visualDescriptionGemini?.length || 0} chars`);
-                }
-              } catch (error) {
-                console.error(`Failed to update ${result.sku}:`, error);
-                failed++;
-              }
-            } else {
-              failed++;
-            }
-          }
-          
-          console.log(`\n📊 Gemini AI Batch Analysis Complete:`);
-          console.log(`  ✅ Updated with descriptions: ${updated}`);
-          console.log(`  ❌ Failed: ${failed}`);
-        } catch (error) {
-          console.error('Batch analysis error:', error);
-        }
-      })();
-      
-    } catch (error) {
-      console.error("Error starting product visual analysis:", error);
-      res.status(500).json({ error: "Failed to start visual analysis" });
-    }
+    res.status(410).json({ 
+      error: "This endpoint has been deprecated. Use '/api/admin/products/analyze-with-gemini' instead.",
+      message: "OpenAI analysis has been removed. Platform now uses Gemini AI exclusively."
+    });
   });
 
   // Visual Analysis Jobs API (Admin only)

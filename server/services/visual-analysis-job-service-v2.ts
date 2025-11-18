@@ -165,19 +165,15 @@ class VisualAnalysisJobQueue {
               await curalinaStorage.updateVisualAnalysisProduct(analysisProduct.id, {
                 status: 'completed',
                 geminiStatus: result.visualDescriptionGemini ? 'success' : 'failed',
-                openaiStatus: result.visualDescriptionOpenAI ? 'success' : 'failed',
-                geminiDescription: result.visualDescriptionGemini || null,
-                openaiDescription: result.visualDescriptionOpenAI || null
+                geminiDescription: result.visualDescriptionGemini || null
               });
               
               // Update product with new descriptions
               await curalinaStorage.updateProduct(analysisProduct.productId, {
                 visualDescription: result.visualDescription || undefined,
                 visualDescriptionGemini: result.visualDescriptionGemini || undefined,
-                visualDescriptionOpenAI: result.visualDescriptionOpenAI || undefined,
                 visualDescriptionFrontView: result.visualDescriptionFrontView || undefined,
-                visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini || undefined,
-                visualDescriptionFrontViewOpenAI: result.visualDescriptionFrontViewOpenAI || undefined
+                visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini || undefined
               });
             }
           }
@@ -303,11 +299,9 @@ export async function createAndStartVisualAnalysisJob(
       const allProducts = await curalinaStorage.getAllProducts();
       productsToAnalyze = skipExisting 
         ? allProducts.filter(p => 
-            // Check if product needs any type of analysis (combined or front-view)
+            // Check if product needs Gemini analysis (combined or front-view)
             (!p.visualDescriptionGemini || 
-             !p.visualDescriptionOpenAI ||
-             !p.visualDescriptionFrontViewGemini ||
-             !p.visualDescriptionFrontViewOpenAI) &&
+             !p.visualDescriptionFrontViewGemini) &&
             p.images && 
             p.images.length > 0
           )
