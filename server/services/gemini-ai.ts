@@ -251,37 +251,36 @@ function hasValidImages(product: Product): boolean {
 }
 
 /**
- * Check if a product has AI-generated visual descriptions from product images
+ * Check if a product has visual descriptions (AI-generated or legacy)
  * @param product - Product to validate
- * @returns true if product has at least one AI-generated visual description
+ * @returns true if product has at least one visual description
  */
 function hasAIVisualDescription(product: Product): boolean {
-  // Check if any AI-generated visual description field is populated
-  // Priority order: Front View > Gemini Vision > OpenAI Vision
-  // Legacy descriptions don't count - must be AI-generated from images
+  // Check if any visual description field is populated
+  // Priority order: Front View > Gemini Vision > OpenAI Vision > Legacy
   const hasFrontView = typeof product.visualDescriptionFrontView === 'string' && 
                        product.visualDescriptionFrontView.trim().length > 0;
   const hasGemini = typeof product.visualDescriptionGemini === 'string' && 
                     product.visualDescriptionGemini.trim().length > 0;
   const hasOpenAI = typeof product.visualDescriptionOpenAI === 'string' && 
                     product.visualDescriptionOpenAI.trim().length > 0;
+  const hasLegacy = typeof product.visualDescription === 'string' && 
+                    product.visualDescription.trim().length > 0;
   
-  return hasFrontView || hasGemini || hasOpenAI;
+  return hasFrontView || hasGemini || hasOpenAI || hasLegacy;
 }
 
 /**
  * Check if a product can be used for AI rendering
- * A product is usable if it has valid, working images
- * Visual descriptions are preferred but not required (allows essential furniture)
+ * A product is usable if it has valid, working images AND AI-generated visual descriptions
  * @param product - Product to validate
  * @returns true if product can be used for AI rendering
  */
 function canUseForAIRendering(product: Product): boolean {
   // REQUIREMENTS:
   // 1. Product MUST have valid images (for compositing onto renders)
-  // 2. Visual descriptions are PREFERRED but not required
-  // This allows essential furniture (tables, chairs) even without AI analysis
-  return hasValidImages(product);
+  // 2. Product MUST have AI-generated visual descriptions (for accurate rendering)
+  return hasValidImages(product) && hasAIVisualDescription(product);
 }
 
 /**
@@ -294,7 +293,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
   const withValidImages = products.filter(p => p.availability === 'in_stock' && hasValidImages(p)).length;
   const withAIDescriptions = products.filter(p => p.availability === 'in_stock' && hasAIVisualDescription(p)).length;
   console.log(`📊 Product Pool: ${products.length} total → ${inStockCount} in stock → ${withValidImages} with valid images`);
-  console.log(`   📸 ${withAIDescriptions} have AI visual descriptions (preferred but not required)`);
+  console.log(`   📸 ${withAIDescriptions} have AI visual descriptions (REQUIRED for rendering)`);
   console.log(`⚠️ Budget NOT enforced during filtering - focusing on render quality`);
   
   // First pass: strict filtering
