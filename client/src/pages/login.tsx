@@ -52,6 +52,22 @@ export default function Login() {
         description: "Logged in successfully",
       });
 
+      // Fetch user data to determine redirect
+      try {
+        const userResponse = await fetch("/api/auth/user");
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          // Redirect admin users to admin dashboard, regular users to home
+          if (userData.role === "admin") {
+            setLocation("/admin");
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data for redirect:", error);
+      }
+      
+      // Default redirect to home
       setLocation("/");
     } catch (error) {
       toast({

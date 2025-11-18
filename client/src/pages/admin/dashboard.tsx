@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, Activity, TrendingUp } from "lucide-react";
+import { Users, FileText, Activity, TrendingUp, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDashboard() {
@@ -141,6 +141,17 @@ export default function AdminDashboard() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <a
+              href="/quiz"
+              className="flex items-center gap-3 p-4 rounded-md border hover-elevate active-elevate-2 transition-all"
+              data-testid="link-quick-quiz"
+            >
+              <Sparkles className="h-5 w-5 text-primary" />
+              <div>
+                <div className="font-medium">Start Quiz</div>
+                <div className="text-sm text-muted-foreground">Take the design style quiz</div>
+              </div>
+            </a>
             <a
               href="/admin/content"
               className="flex items-center gap-3 p-4 rounded-md border hover-elevate active-elevate-2 transition-all"
