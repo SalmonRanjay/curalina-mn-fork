@@ -59,6 +59,30 @@ async function importToProduction() {
     console.log(`   Renders: ${data.renders?.length || 0}`);
     console.log('');
 
+    // Clear production database first (in reverse order of dependencies)
+    console.log('🗑️  Clearing production database...');
+    await db.delete(schema.designRules);
+    await db.delete(schema.placementGuidelines);
+    await db.delete(schema.productPackages);
+    await db.delete(schema.designExamples);
+    await db.delete(schema.activityLog);
+    await db.delete(schema.settings);
+    await db.delete(schema.content);
+    await db.delete(schema.orderItems);
+    await db.delete(schema.orders);
+    await db.delete(schema.cartItems);
+    await db.delete(schema.selectionLedger);
+    await db.delete(schema.renderEvents);
+    await db.delete(schema.renderProducts);
+    await db.delete(schema.renders);
+    await db.delete(schema.quizResponses);
+    await db.delete(schema.products);
+    await db.delete(schema.suppliers);
+    await db.delete(schema.categories);
+    await db.delete(schema.users);
+    console.log('✅ Production database cleared');
+    console.log('');
+
     // Import in the correct order (respecting foreign keys)
     let imported = 0;
 
