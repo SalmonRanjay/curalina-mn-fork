@@ -1080,7 +1080,52 @@ export function attachPlacementMetadata(
 }
 
 /**
+ * Convert zone ID and position to semantic spatial description
+ */
+function getSemanticPosition(zoneId: string, position: { x: number; y: number }, anchorPoint: string): string {
+  // Map common zone patterns to semantic locations
+  const zoneToLocation: Record<string, string> = {
+    'conversation_core': 'front-center of the room',
+    'focal_wall': 'against the back wall',
+    'perimeter_left': 'along the left wall',
+    'perimeter_right': 'along the right wall',
+    'sleep_zone': 'centered against the back wall',
+    'bedside_left': 'left side of the bed',
+    'bedside_right': 'right side of the bed',
+    'window_wall': 'near the window',
+    'entry_zone': 'near the entrance',
+    'desk_zone': 'work area against the wall',
+    'circulation_path': 'center pathway'
+  };
+
+  let location = zoneToLocation[zoneId] || zoneId.replace(/_/g, ' ');
+  
+  // Refine based on anchor point
+  if (anchorPoint === 'corner') {
+    location = location.replace('along', 'in the corner near');
+  }
+  
+  return location;
+}
+
+/**
+ * Get directional relationship for item placement
+ */
+function getDirectionalGuidance(placement: PlacementInstruction, allPlacements: PlacementInstruction[]): string {
+  const hasSpacing = placement.spacing.front > 0.05;
+  
+  if (placement.anchorPoint === 'center') {
+    return hasSpacing ? 'centered with clear space around it' : 'centered in its zone';
+  } else if (placement.anchorPoint === 'wall') {
+    return hasSpacing ? 'against the wall with clearance in front' : 'flush against the wall';
+  } else {
+    return 'angled in the corner';
+  }
+}
+
+/**
  * Generate zone-based placement matrix from PlacementInstruction data
+ * Redesigned to provide clear, step-by-step spatial instructions
  */
 function generateZoneBasedPlacementMatrix(
   selectedProducts: Array<{ sku: string; name: string }>,
@@ -1089,57 +1134,80 @@ function generateZoneBasedPlacementMatrix(
 ): string {
   const matrix = [...matrixHeader];
   
-  matrix.push(`📍 ZONE-BASED PLACEMENT INSTRUCTIONS:`);
-  matrix.push(`Each product has been assigned to a specific room zone with precise spatial constraints.`);
-  matrix.push(`Follow these instructions EXACTLY to achieve professional interior design composition.`);
+  matrix.push(`CAMERA VIEWPOINT: You are viewing the room from the entrance/doorway, looking into the space.`);
+  matrix.push(`Front = closer to camera/entrance | Back = away from camera | Left/Right = from camera perspective`);
   matrix.push(``);
-  
-  // Group placements by zone for organized presentation
-  const placementsByZone: Record<string, PlacementInstruction[]> = {};
-  placements.forEach(p => {
-    if (!placementsByZone[p.zoneId]) {
-      placementsByZone[p.zoneId] = [];
-    }
-    placementsByZone[p.zoneId].push(p);
-  });
-  
-  // Generate instructions for each zone
-  Object.entries(placementsByZone).forEach(([zoneId, zonePlacements]) => {
-    matrix.push(`\n🏷️  ZONE: ${zoneId.toUpperCase().replace(/_/g, ' ')}`);
-    matrix.push(`${'─'.repeat(75)}`);
-    
-    zonePlacements.forEach((placement, idx) => {
-      const product = selectedProducts.find(p => p.sku === placement.productId);
-      if (!product) return;
-      
-      matrix.push(`${idx + 1}. ${product.name} [SKU: ${placement.productId}]`);
-      matrix.push(`   ├─ Position: x=${(placement.position.x * 100).toFixed(0)}% y=${(placement.position.y * 100).toFixed(0)}% (room normalized coordinates)`);
-      matrix.push(`   ├─ Anchor: ${placement.anchorPoint} - ${getAnchorDescription(placement.anchorPoint)}`);
-      matrix.push(`   ├─ Orientation: ${placement.orientation}° rotation`);
-      matrix.push(`   ├─ Clearance: Front ${(placement.spacing.front * 100).toFixed(0)}%, Sides ${(placement.spacing.sides * 100).toFixed(0)}%, Back ${(placement.spacing.back * 100).toFixed(0)}%`);
-      
-      if (placement.supportSurface) {
-        const supportProduct = selectedProducts.find(p => p.sku === placement.supportSurface);
-        matrix.push(`   ├─ Placed On: ${supportProduct?.name || placement.supportSurface} (must be on surface)`);
-      }
-      
-      matrix.push(`   └─ Confidence: ${(placement.confidence * 100).toFixed(0)}% placement quality`);
-      matrix.push(``);
-    });
-  });
-  
-  // Add zone-based composition rules
-  matrix.push(`⚖️ ZONE-BASED COMPOSITION RULES:`);
-  matrix.push(`   • Respect zone boundaries - products assigned to a zone should stay within that zone`);
-  matrix.push(`   • Maintain clearance values for safe circulation and functionality`);
-  matrix.push(`   • Follow orientation angles for proper furniture arrangement`);
-  matrix.push(`   • Anchor points indicate how furniture relates to room architecture (walls/corners/center)`);
-  matrix.push(`   • Products with low confidence (<50%) may need adjustment based on visual balance`);
-  matrix.push(`   • Table lamps MUST be placed on their designated support surfaces`);
-  matrix.push(`   • Maximum 1 floor lamp per room for balanced lighting`);
-  matrix.push(`   • Every product listed MUST appear exactly once in the final render`);
-  matrix.push(``);
+  matrix.push(`PLACEMENT SCRIPT - Execute these steps in order:`);
   matrix.push(`═══════════════════════════════════════════════════════════════════════════`);
+  matrix.push(``);
+  
+  // Sort placements by priority (zone priority determines order)
+  const sortedPlacements = [...placements].sort((a, b) => {
+    // Primary items first (conversation_core, sleep_zone, etc.)
+    const priorityOrder = ['conversation_core', 'sleep_zone', 'desk_zone', 'focal_wall', 'bedside_left', 'bedside_right'];
+    const aPriority = priorityOrder.indexOf(a.zoneId);
+    const bPriority = priorityOrder.indexOf(b.zoneId);
+    
+    if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
+    if (aPriority !== -1) return -1;
+    if (bPriority !== -1) return 1;
+    return 0;
+  });
+  
+  // Generate step-by-step instructions
+  sortedPlacements.forEach((placement, idx) => {
+    const product = selectedProducts.find(p => p.sku === placement.productId);
+    if (!product) return;
+    
+    const step = idx + 1;
+    const semanticLocation = getSemanticPosition(placement.zoneId, placement.position, placement.anchorPoint);
+    const directionalGuidance = getDirectionalGuidance(placement, placements);
+    
+    matrix.push(`Step ${step}: Place "${product.name}"`);
+    matrix.push(`  Location: ${semanticLocation}`);
+    matrix.push(`  Arrangement: ${directionalGuidance}`);
+    
+    // Add orientation guidance if significant
+    if (placement.orientation !== 0) {
+      const rotationDesc = placement.orientation > 0 ? 'angled slightly right' : 'angled slightly left';
+      matrix.push(`  Facing: ${rotationDesc}`);
+    }
+    
+    // Add support surface requirement
+    if (placement.supportSurface) {
+      const supportProduct = selectedProducts.find(p => p.sku === placement.supportSurface);
+      const supportName = supportProduct?.name || 'support surface';
+      matrix.push(`  IMPORTANT: Place this item ON TOP of the ${supportName}`);
+    }
+    
+    // CRITICAL: Add explicit spacing/clearance requirements
+    const frontClearance = Math.round(placement.spacing.front * 10);
+    const sideClearance = Math.round(placement.spacing.sides * 10);
+    const backClearance = Math.round(placement.spacing.back * 10);
+    
+    if (frontClearance > 0 || sideClearance > 0 || backClearance > 0) {
+      matrix.push(`  Spacing Requirements:`);
+      if (frontClearance > 0) {
+        matrix.push(`    - Front: ${frontClearance} feet minimum clearance for walkways/access`);
+      }
+      if (sideClearance > 0) {
+        matrix.push(`    - Sides: ${sideClearance} feet clearance from walls/other furniture`);
+      }
+      if (backClearance > 0) {
+        matrix.push(`    - Back: ${backClearance} feet clearance (if not against wall)`);
+      }
+    }
+    
+    matrix.push(``);
+  });
+  
+  matrix.push(`═══════════════════════════════════════════════════════════════════════════`);
+  matrix.push(`CRITICAL RULES:`);
+  matrix.push(`1. Execute placement steps in the exact order listed above`);
+  matrix.push(`2. Each item must appear EXACTLY ONCE - do not duplicate any furniture`);
+  matrix.push(`3. Respect spatial relationships (items on surfaces, clearances, facing directions)`);
+  matrix.push(`4. Maintain natural furniture arrangement - no floating items or unrealistic positions`);
+  matrix.push(``);
   
   return matrix.join('\n');
 }
@@ -1623,34 +1691,7 @@ WHAT YOU CAN CHANGE:
     }
   }
   
-  // Add comprehensive style description
-  prompt += `\n\nDESIGN STYLE:\n${styleDesc}\n`;
-  
-  // Add color palette if selected
-  if (quiz.colorPalettes && quiz.colorPalettes.length > 0) {
-    const paletteDescs = quiz.colorPalettes
-      .map(p => colorPaletteDescriptions[p.toLowerCase()] || p)
-      .join(" Combined with ");
-    prompt += `\nCOLOR PALETTE:\n${paletteDescs}\n`;
-  }
-  
-  // Add functional features with specific implementation
-  if (quiz.keyFeatures && quiz.keyFeatures.length > 0) {
-    prompt += `\nFUNCTIONAL FEATURES:\n`;
-    quiz.keyFeatures.forEach(feature => {
-      prompt += `- ${feature}: Thoughtfully integrated into the design\n`;
-    });
-  }
-  
-  // Add user preferences with emphasis
-  if (quiz.preferences && Array.isArray(quiz.preferences) && quiz.preferences.length > 0) {
-    const prefs = quiz.preferences.filter(p => p && p.trim());
-    if (prefs.length > 0) {
-      prompt += `\nDESIGN PRIORITIES:\n${prefs.join("\n")}\n`;
-    }
-  }
-  
-  // Track visual description sources for each product
+  // Track visual description sources for each product (styling will be added later, after placement)
   const productMetadata: Record<string, { visualDescriptionSource: string }> = {};
   
   // Add specific curated products with detailed visual descriptions
@@ -1693,8 +1734,80 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
 `;
     });
     
+    // Add few-shot example to demonstrate correct placement interpretation
+    prompt += `
+
+═══════════════════════════════════════════════════════════════════════════
+PLACEMENT INSTRUCTION EXAMPLE - Learn from this reference:
+═══════════════════════════════════════════════════════════════════════════
+
+Example: Modern Living Room
+Camera viewpoint: Standing at entrance, looking into the room
+
+PLACEMENT SCRIPT:
+Step 1: Place "Gray Sectional Sofa"
+  Location: front-center of the room
+  Arrangement: centered with clear space around it
+  Clearance: Leave 3+ feet of open space in front
+
+Step 2: Place "Glass Coffee Table"
+  Location: front-center of the room
+  Arrangement: centered with clear space around it
+  Clearance: Leave 2+ feet of open space in front
+  Position: Directly in front of the sofa, 3 feet away
+
+Step 3: Place "Floor Lamp"
+  Location: in the corner near the right wall
+  Arrangement: angled in the corner
+  Position: Right side of the seating area for ambient lighting
+
+✓ RESULT: Sofa is the focal point in center, coffee table is functionally placed in front, floor lamp provides corner lighting. Natural, professional arrangement.
+
+✗ WRONG: Scattering all items randomly around the room, placing coffee table behind sofa, or duplicating furniture.
+
+═══════════════════════════════════════════════════════════════════════════
+NOW APPLY THIS APPROACH TO YOUR ACTUAL ROOM:
+═══════════════════════════════════════════════════════════════════════════
+`;
+    
     // Add structured placement matrix BEFORE constraints
     prompt += generatePlacementMatrix(selectedProducts, quiz.roomType, roomAnalysis, floorPlanAnalysis, placements);
+    
+    // NOW add styling and atmosphere (after placement is clear)
+    prompt += `
+
+═══════════════════════════════════════════════════════════════════════════
+STYLING AND ATMOSPHERE - Apply AFTER completing placement:
+═══════════════════════════════════════════════════════════════════════════
+
+DESIGN STYLE: ${styleDesc}
+`;
+    
+    // Add color palette if selected
+    if (quiz.colorPalettes && quiz.colorPalettes.length > 0) {
+      const paletteDescs = quiz.colorPalettes
+        .map(p => colorPaletteDescriptions[p.toLowerCase()] || p)
+        .join(" Combined with ");
+      prompt += `\nCOLOR PALETTE: ${paletteDescs}\n`;
+    }
+    
+    // Add functional features with specific implementation
+    if (quiz.keyFeatures && quiz.keyFeatures.length > 0) {
+      prompt += `\nFUNCTIONAL FEATURES:\n`;
+      quiz.keyFeatures.forEach(feature => {
+        prompt += `- ${feature}: Thoughtfully integrated into the design\n`;
+      });
+    }
+    
+    // Add user preferences with emphasis
+    if (quiz.preferences && Array.isArray(quiz.preferences) && quiz.preferences.length > 0) {
+      const prefs = quiz.preferences.filter(p => p && p.trim());
+      if (prefs.length > 0) {
+        prompt += `\nDESIGN PRIORITIES:\n${prefs.join("\n")}\n`;
+      }
+    }
+    
+    prompt += `\n`;
     
     prompt += `
 ═══════════════════════════════════════════════════════════════════════════

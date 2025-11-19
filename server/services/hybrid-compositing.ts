@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import type { PlacementInstruction } from './room-composition-service';
 
 /**
  * Placement configuration for a product in the composited scene
@@ -51,17 +52,95 @@ export function selectBestProductAngle(
 }
 
 /**
+ * Derive scale factor from zone placement with bounds-based sizing
+ * Considers both zone type and actual spacing constraints
+ */
+function deriveScaleFromZonePlacement(placement: PlacementInstruction): number {
+  const { zoneId, anchorPoint, spacing } = placement;
+  
+  // Calculate base scale from zone type (functional category)
+  let baseScale = 0.25; // Default medium
+  
+  if (zoneId.includes('conversation') || zoneId.includes('sleep')) {
+    baseScale = 0.35; // Large focal items (sofas, beds)
+  } else if (zoneId.includes('desk') || zoneId.includes('dining')) {
+    baseScale = 0.30; // Medium-large work surfaces
+  } else if (zoneId.includes('bedside') || zoneId.includes('side') || anchorPoint === 'corner') {
+    baseScale = 0.20; // Medium accent items (nightstands, side tables)
+  } else if (zoneId.includes('lighting') || zoneId.includes('decor')) {
+    baseScale = 0.15; // Small decorative items
+  } else if (anchorPoint === 'wall' && !zoneId.includes('conversation')) {
+    baseScale = 0.18; // Wall-mounted items slightly smaller
+  }
+  
+  // Adjust based on spacing constraints (tighter spacing = smaller scale)
+  const totalSpacing = spacing.front + spacing.sides + spacing.back;
+  
+  if (totalSpacing > 0.25) {
+    // High clearance requirement = this is a large item
+    baseScale = Math.min(baseScale * 1.2, 0.40); // Cap at 40%
+  } else if (totalSpacing < 0.10) {
+    // Low clearance = compact item
+    baseScale = Math.max(baseScale * 0.85, 0.12); // Floor at 12%
+  }
+  
+  return baseScale;
+}
+
+/**
  * Generate placement guidelines based on room type and product selection
- * For MVP, we use predefined placement templates
+ * Now uses zone-based placement instructions for consistent spatial logic
  */
 export function generatePlacementGuidelines(
   roomType: string,
-  selectedProducts: Array<{ sku: string; name: string; placement: string; images: string[] }>
+  selectedProducts: Array<{ sku: string; name: string; placement: string; images: string[] }>,
+  zonePlacements?: PlacementInstruction[]
 ): ProductPlacement[] {
   const placements: ProductPlacement[] = [];
   
-  // Simple MVP placement logic based on product order
-  // Products are arranged in a visually pleasing composition
+  // Use zone-based placements if available
+  if (zonePlacements && zonePlacements.length > 0) {
+    console.log(`📐 Using zone-based placement system for ${zonePlacements.length} products`);
+    
+    zonePlacements.forEach((zonePlace, index) => {
+      const product = selectedProducts.find(p => p.sku === zonePlace.productId);
+      if (!product) {
+        console.warn(`⚠️ Product ${zonePlace.productId} not found in selected products`);
+        return;
+      }
+      
+      // Select best image angle based on anchor point
+      const placementHint = zonePlace.anchorPoint === 'corner' ? 'corner' : 
+                           zonePlace.anchorPoint === 'wall' ? 'wall' : 'center';
+      const selectedImage = selectBestProductAngle(product.images, placementHint);
+      
+      // Use zone position directly (already normalized 0-1)
+      const position = zonePlace.position;
+      
+      // Derive scale from zone placement (considers bounds and spacing)
+      const scale = deriveScaleFromZonePlacement(zonePlace);
+      
+      // Use index for z-ordering (back to front)
+      const zIndex = index;
+      
+      placements.push({
+        sku: product.sku,
+        productName: product.name,
+        imageUrl: selectedImage,
+        position,
+        scale,
+        zIndex,
+        addShadow: false // Disabled until background removal is implemented
+      });
+      
+      console.log(`  ✓ ${product.name}: zone=${zonePlace.zoneId}, pos=(${position.x.toFixed(2)}, ${position.y.toFixed(2)}), scale=${scale.toFixed(2)}`);
+    });
+    
+    return placements;
+  }
+  
+  // Fallback to legacy grid-based placement if no zone placements provided
+  console.log(`⚠️ No zone placements available, falling back to legacy grid placement`);
   
   selectedProducts.forEach((product, index) => {
     const totalProducts = selectedProducts.length;
@@ -69,23 +148,18 @@ export function generatePlacementGuidelines(
     // Select best image angle
     const selectedImage = selectBestProductAngle(product.images, product.placement);
     
-    // Generate position based on index and total count
+    // Generate position based on index and total count (legacy logic)
     let position = { x: 0.5, y: 0.5 }; // Default center
     let scale = 0.25; // Default scale
     let zIndex = index; // Back to front ordering
     
-    // TEMPORARY: Simplified placement while background removal is being implemented
-    // Products are arranged in lower portion of image to simulate floor placement
-    // Note: This is a stopgap - proper scene analysis is needed for realistic placement
     if (totalProducts <= 3) {
-      // Horizontal arrangement for 1-3 products - larger scale, lower placement
       position = {
         x: 0.25 + (index * 0.25),
-        y: 0.7 // Lower in frame to suggest floor placement
+        y: 0.7
       };
-      scale = 0.15; // Smaller to reduce background visibility
+      scale = 0.15;
     } else if (totalProducts <= 6) {
-      // 2 rows for 4-6 products
       const row = Math.floor(index / 3);
       const col = index % 3;
       position = {
@@ -94,14 +168,13 @@ export function generatePlacementGuidelines(
       };
       scale = 0.12;
     } else {
-      // 3 rows for 7+ products - very small to minimize background artifacts
       const row = Math.floor(index / 3);
       const col = index % 3;
       position = {
         x: 0.2 + (col * 0.3),
         y: 0.6 + (row * 0.15)
       };
-      scale = 0.1; // Very small to minimize white box artifacts
+      scale = 0.1;
     }
     
     placements.push({
@@ -111,7 +184,7 @@ export function generatePlacementGuidelines(
       position,
       scale,
       zIndex,
-      addShadow: false // Disabled until background removal is implemented
+      addShadow: false
     });
   });
   
