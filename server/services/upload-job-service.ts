@@ -4,8 +4,11 @@ import type { InsertUploadJob, UploadJob, UploadJobFile } from "@shared/schema";
 import crypto from "crypto";
 // Visual analysis import moved to dynamic import based on feature flag
 
+// AWS_REGION might be set to "global" which is invalid - default to us-east-1
+const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
+
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION!,
+  region: AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -40,7 +43,7 @@ async function checkFileExists(fileName: string): Promise<string | null> {
         Key: key,
       })
     );
-    return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
   } catch (error: any) {
     if (error.name === "NotFound") {
       return null;
@@ -64,7 +67,7 @@ async function uploadFileToS3(fileName: string, buffer: Buffer, contentType: str
     })
   );
 
-  return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
 }
 
 /**
