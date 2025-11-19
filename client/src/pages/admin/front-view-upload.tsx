@@ -270,7 +270,8 @@ export default function FrontViewUpload() {
           body: formData,
         });
 
-        if (!uploadResponse.ok) {
+        // S3 presigned POST returns 204 No Content or 303 redirect on success
+        if (!uploadResponse.ok && uploadResponse.status !== 303 && uploadResponse.status !== 204) {
           throw new Error('S3 upload failed');
         }
 
