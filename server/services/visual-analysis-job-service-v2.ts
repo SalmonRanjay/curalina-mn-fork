@@ -88,6 +88,8 @@ class VisualAnalysisJobQueue {
     
     let processedCount = 0;
     let errorCount = 0;
+    let processedSinceLastCheckpoint = 0;
+    let errorsSinceLastCheckpoint = 0;
     const startTime = Date.now();
     
     try {
@@ -144,6 +146,9 @@ class VisualAnalysisJobQueue {
           }
         );
         
+        // Track which analysis products were matched
+        const matchedAnalysisProductIds = new Set<string>();
+        
         // Save results
         for (const result of results) {
           const analysisProduct = batch.find(ap => {
@@ -152,14 +157,18 @@ class VisualAnalysisJobQueue {
           });
           
           if (analysisProduct) {
+            matchedAnalysisProductIds.add(analysisProduct.id);
+            
             if (result.error) {
               errorCount++;
+              errorsSinceLastCheckpoint++;
               await curalinaStorage.updateVisualAnalysisProduct(analysisProduct.id, {
                 status: 'failed',
                 errorMessage: result.error
               });
             } else {
               processedCount++;
+              processedSinceLastCheckpoint++;
               
               // Update visual analysis product record
               await curalinaStorage.updateVisualAnalysisProduct(analysisProduct.id, {
@@ -179,9 +188,24 @@ class VisualAnalysisJobQueue {
           }
         }
         
-        // Checkpoint: Save progress to job
+        // Mark any unmatched products as failed (stuck in analyzing)
+        for (const ap of batch) {
+          if (!matchedAnalysisProductIds.has(ap.id)) {
+            errorCount++;
+            errorsSinceLastCheckpoint++;
+            await curalinaStorage.updateVisualAnalysisProduct(ap.id, {
+              status: 'failed',
+              errorMessage: 'Product analysis result not matched - possible SKU mismatch'
+            });
+            console.warn(`  ⚠️ Unmatched product ${ap.productSku} marked as failed`);
+          }
+        }
+        
+        // Checkpoint: Save progress to job (only the delta since last checkpoint)
         if ((processedCount + errorCount) % this.checkpointInterval === 0) {
-          await this.saveCheckpoint(job.id, processedCount, errorCount);
+          await this.saveCheckpoint(job.id, processedSinceLastCheckpoint, errorsSinceLastCheckpoint);
+          processedSinceLastCheckpoint = 0;
+          errorsSinceLastCheckpoint = 0;
         }
         
         // Check if job was cancelled
@@ -192,13 +216,20 @@ class VisualAnalysisJobQueue {
         }
       }
       
-      // Final save
-      await this.saveCheckpoint(job.id, processedCount, errorCount);
+      // Final save (save remaining delta)
+      if (processedSinceLastCheckpoint > 0 || errorsSinceLastCheckpoint > 0) {
+        await this.saveCheckpoint(job.id, processedSinceLastCheckpoint, errorsSinceLastCheckpoint);
+      }
       
-      // Check if all products are processed
+      // Check if all products are processed (no pending AND no analyzing)
       const remainingPending = await curalinaStorage.getPendingVisualAnalysisProducts(job.id, 1);
-      if (remainingPending.length === 0) {
+      const allProducts = await curalinaStorage.getVisualAnalysisProducts(job.id);
+      const analyzingProducts = allProducts.filter(p => p.status === 'analyzing');
+      
+      if (remainingPending.length === 0 && analyzingProducts.length === 0) {
         await this.completeJob(job.id);
+      } else if (analyzingProducts.length > 0) {
+        console.warn(`  ⚠️ Job has ${analyzingProducts.length} products still in analyzing status - not completing yet`);
       }
       
     } catch (error) {
