@@ -30,27 +30,46 @@ interface ProductAnalysisResult {
 }
 
 /**
- * Validate if an image URL is accessible
+ * Validate if an image URL is accessible with retry logic for S3 eventual consistency
  */
-async function validateImageUrl(imageUrl: string): Promise<boolean> {
-  try {
-    let fullUrl = imageUrl;
-    if (imageUrl.startsWith('/')) {
-      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-      fullUrl = `${baseUrl}${imageUrl}`;
-    } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-      fullUrl = `${baseUrl}/${imageUrl}`;
-    }
-    
-    const response = await fetch(fullUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-    const contentType = response.headers.get('content-type') || '';
-    
-    // Check if it's an image and accessible
-    return response.ok && contentType.startsWith('image/');
-  } catch (error) {
-    return false;
+async function validateImageUrl(imageUrl: string, maxRetries = 3): Promise<boolean> {
+  let fullUrl = imageUrl;
+  if (imageUrl.startsWith('/')) {
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    fullUrl = `${baseUrl}${imageUrl}`;
+  } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    fullUrl = `${baseUrl}/${imageUrl}`;
   }
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(fullUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      const contentType = response.headers.get('content-type') || '';
+      
+      // Check if it's an image and accessible
+      if (response.ok && contentType.startsWith('image/')) {
+        return true;
+      }
+      
+      // If not found and we have retries left, wait before retrying
+      if (response.status === 404 && attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
+      
+      return false;
+    } catch (error) {
+      // On error, retry with exponential backoff if we have retries left
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
+      return false;
+    }
+  }
+  
+  return false;
 }
 
 /**
