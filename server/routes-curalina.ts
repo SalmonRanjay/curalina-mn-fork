@@ -1053,42 +1053,92 @@ export function registerCuralinaRoutes(app: Express) {
     });
   });
 
-  // Visual Analysis Jobs API (Admin only)
+  // Visual Analysis Jobs API (Admin only) - NOW USES COMPREHENSIVE ANALYZER
   app.post('/api/admin/visual-analysis/start', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const { productIds, onlyMissingDescriptions } = req.body;
+      const { productIds = [], onlyMissingDescriptions = false } = req.body;
       
-      // Import configuration and check feature flag
-      const { visualAnalysisConfig } = await import('./config/visual-analysis');
-      const servicePath = visualAnalysisConfig.useV2 
-        ? './services/visual-analysis-job-service-v2'
-        : './services/visual-analysis-job-service';
+      console.log(`\n🎨 Comprehensive Analysis Started (${productIds.length || 'all'} products)`);
       
-      console.log(`Using visual analysis service: ${visualAnalysisConfig.useV2 ? 'V2 (Enhanced)' : 'V1 (Legacy)'}`);
+      const { analyzeProductComprehensively } = await import('./services/comprehensive-visual-analyzer');
+      const { EnhancedQualityScorer } = await import('./services/enhanced-quality-scorer');
       
-      const { 
-        createVisualAnalysisJob, 
-        processVisualAnalysisJob 
-      } = await import(servicePath);
-      
-      // Create the job
-      const job = await createVisualAnalysisJob(
-        req.user?.id || null,
-        'manual',
-        undefined,
-        { productIds, onlyMissingDescriptions }
-      );
-      
-      // Start processing in background (V2 auto-starts, but V1 needs manual trigger)
-      if (!visualAnalysisConfig.useV2) {
-        setTimeout(() => processVisualAnalysisJob(job.id), 1000);
+      // Get products to analyze
+      let productsToAnalyze: Product[] = [];
+      if (productIds && productIds.length > 0) {
+        productsToAnalyze = await Promise.all(
+          productIds.map(id => curalinaStorage.getProduct(id))
+        ).then(results => results.filter((p): p is Product => p !== null));
+      } else {
+        const allProducts = await curalinaStorage.getAllProducts();
+        productsToAnalyze = onlyMissingDescriptions 
+          ? allProducts.filter(p => !p.structuredAnalysis)
+          : allProducts;
       }
+      
+      if (productsToAnalyze.length === 0) {
+        return res.json({ 
+          success: true,
+          analyzed: 0,
+          message: 'No products to analyze'
+        });
+      }
+      
+      // Start analysis in background
+      const results = [];
+      (async () => {
+        for (const product of productsToAnalyze) {
+          try {
+            console.log(`\n📸 Analyzing: ${product.name} (${product.sku})`);
+            
+            const analysis = await analyzeProductComprehensively(product.name, product.images);
+            if (!analysis) {
+              console.warn(`  ❌ No valid images for ${product.sku}`);
+              continue;
+            }
+            
+            const metrics = EnhancedQualityScorer.calculateMetrics(analysis.frontViewAnalysis);
+            
+            const structuredData = {
+              frontView: analysis.frontViewAnalysis,
+              multiAngle: analysis.synthesizedAnalysis,
+              analysisDate: new Date().toISOString(),
+              geminiVersion: 'gemini-2.5-flash'
+            };
+            
+            await curalinaStorage.updateProductStructuredAnalysis(
+              product.id,
+              structuredData,
+              metrics.overallScore
+            );
+            
+            console.log(`  ✅ Score: ${metrics.overallScore}/100 (${metrics.regenerationReadiness})`);
+            
+            results.push({
+              id: product.id,
+              sku: product.sku,
+              name: product.name,
+              score: metrics.overallScore,
+              readiness: metrics.regenerationReadiness
+            });
+          } catch (error) {
+            console.error(`  ❌ Failed to analyze ${product.sku}:`, error);
+            results.push({
+              id: product.id,
+              sku: product.sku,
+              name: product.name,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+        console.log(`\n✅ Batch analysis complete: ${results.length}/${productsToAnalyze.length} analyzed`);
+      })();
       
       res.json({ 
         success: true,
-        jobId: job.id,
-        message: `Visual analysis started for ${job.totalProducts} products`,
-        version: visualAnalysisConfig.useV2 ? 'v2' : 'v1'
+        totalProducts: productsToAnalyze.length,
+        message: `Comprehensive analysis started for ${productsToAnalyze.length} products. Check server logs for progress.`,
+        version: 'comprehensive-v3'
       });
       
     } catch (error) {
@@ -1134,110 +1184,90 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Bulk re-analyze products that need Front View analysis
-  // Targets: 1) Products with Front View images, 2) Single-image products, 3) Missing Front View data
+  // Bulk re-analyze products that need analysis - NOW USES COMPREHENSIVE ANALYZER
+  // Analyzes: 1) Products with Front View images, 2) Single-image products, 3) Missing structured analysis
   app.post('/api/admin/visual-analysis/reanalyze-front-views', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('🔍 Finding products that need Front View analysis...');
+      console.log('\n🎨 Comprehensive Analysis: Finding products to re-analyze...');
       
-      // Get all products
       const allProducts = await curalinaStorage.getAllProducts();
       
-      // Filter products that need Front View analysis
-      const productsNeedingFrontView = allProducts.filter(product => {
+      // Filter products that need comprehensive analysis
+      const productsToAnalyze = allProducts.filter(product => {
         if (!product.images || product.images.length === 0) return false;
         
-        // Case 1: Has a named Front View image
-        const hasNamedFrontView = product.images.some(imageUrl => {
-          const lowerUrl = imageUrl.toLowerCase();
-          return lowerUrl.includes('front-view') || 
-                 lowerUrl.includes('front_view') || 
-                 lowerUrl.includes('frontview');
-        });
-        
-        // Case 2: Has exactly one image (should be treated as Front View)
+        const hasFrontView = product.images.some(url => 
+          url.toLowerCase().includes('front')
+        );
         const hasSingleImage = product.images.length === 1;
+        const missingAnalysis = !product.structuredAnalysis;
         
-        // Case 3: Missing Front View analysis data
-        const missingFrontViewData = !product.visualDescriptionFrontView || 
-                                      product.visualDescriptionFrontView.trim().length === 0;
-        
-        // Include if: (has named front view OR single image) AND missing data
-        // OR just has single image (needs re-analysis with new logic)
-        return (hasNamedFrontView || hasSingleImage) && (missingFrontViewData || hasSingleImage);
+        return (hasFrontView || hasSingleImage) && missingAnalysis;
       });
       
-      console.log(`📊 Found ${productsNeedingFrontView.length} products needing Front View analysis`);
+      console.log(`📊 Found ${productsToAnalyze.length} products needing analysis`);
       
-      // Log breakdown
-      const withNamedFrontView = productsNeedingFrontView.filter(p => 
-        p.images?.some(url => url.toLowerCase().includes('front'))
-      ).length;
-      const withSingleImage = productsNeedingFrontView.filter(p => 
-        p.images?.length === 1
-      ).length;
-      const missingData = productsNeedingFrontView.filter(p => 
-        !p.visualDescriptionFrontView || p.visualDescriptionFrontView.trim().length === 0
-      ).length;
-      
-      console.log(`  - ${withNamedFrontView} with named Front View images`);
-      console.log(`  - ${withSingleImage} with single images (auto Front View)`);
-      console.log(`  - ${missingData} missing Front View analysis data`);
-      
-      if (productsNeedingFrontView.length === 0) {
+      if (productsToAnalyze.length === 0) {
         return res.json({
           success: true,
-          message: 'No products need Front View analysis',
-          jobId: null,
+          message: 'No products need analysis',
           totalProducts: 0
         });
       }
       
-      // Extract product IDs
-      const productIds = productsNeedingFrontView.map(p => p.id);
+      const { analyzeProductComprehensively } = await import('./services/comprehensive-visual-analyzer');
+      const { EnhancedQualityScorer } = await import('./services/enhanced-quality-scorer');
       
-      // Import configuration and create the job
-      const { visualAnalysisConfig } = await import('./config/visual-analysis');
-      const servicePath = visualAnalysisConfig.useV2 
-        ? './services/visual-analysis-job-service-v2'
-        : './services/visual-analysis-job-service';
-      
-      const { 
-        createVisualAnalysisJob, 
-        processVisualAnalysisJob 
-      } = await import(servicePath);
-      
-      // Create the job for all front-view products
-      const job = await createVisualAnalysisJob(
-        req.user?.id || null,
-        'manual',
-        undefined,
-        { productIds, onlyMissingDescriptions: false } // Re-analyze even if they have descriptions
-      );
-      
-      // Start processing in background (V2 auto-starts, but V1 needs manual trigger)
-      if (!visualAnalysisConfig.useV2) {
-        setTimeout(() => processVisualAnalysisJob(job.id), 1000);
-      }
-      
-      console.log(`✅ Created visual analysis job ${job.id} for ${productsNeedingFrontView.length} products needing Front View analysis`);
+      // Start analysis in background
+      const results = [];
+      (async () => {
+        for (const product of productsToAnalyze) {
+          try {
+            console.log(`  📸 ${product.name}`);
+            
+            const analysis = await analyzeProductComprehensively(product.name, product.images);
+            if (!analysis) continue;
+            
+            const metrics = EnhancedQualityScorer.calculateMetrics(analysis.frontViewAnalysis);
+            
+            const structuredData = {
+              frontView: analysis.frontViewAnalysis,
+              multiAngle: analysis.synthesizedAnalysis,
+              analysisDate: new Date().toISOString(),
+              geminiVersion: 'gemini-2.5-flash'
+            };
+            
+            await curalinaStorage.updateProductStructuredAnalysis(
+              product.id,
+              structuredData,
+              metrics.overallScore
+            );
+            
+            console.log(`    ✅ Score: ${metrics.overallScore}/100`);
+            
+            results.push({
+              id: product.id,
+              sku: product.sku,
+              score: metrics.overallScore,
+              readiness: metrics.regenerationReadiness
+            });
+          } catch (error) {
+            console.error(`    ❌ ${product.sku}:`, error);
+          }
+        }
+        console.log(`\n✅ Re-analysis complete: ${results.length} products updated`);
+      })();
       
       res.json({ 
         success: true,
-        jobId: job.id,
-        totalProducts: productsNeedingFrontView.length,
-        breakdown: {
-          namedFrontView: withNamedFrontView,
-          singleImage: withSingleImage,
-          missingData: missingData
-        },
-        message: `Visual analysis started for ${productsNeedingFrontView.length} products (${withNamedFrontView} named Front View, ${withSingleImage} single-image, ${missingData} missing data)`,
-        version: visualAnalysisConfig.useV2 ? 'v2' : 'v1'
+        totalProducts: productsToAnalyze.length,
+        message: `Comprehensive analysis started for ${productsToAnalyze.length} products. Check server logs for progress.`,
+        version: 'comprehensive-v3'
       });
       
     } catch (error) {
-      console.error("Error starting bulk Front View re-analysis:", error);
-      res.status(500).json({ error: "Failed to start bulk re-analysis" });
+      console.error("Error starting re-analysis:", error);
+      res.status(500).json({ error: "Failed to start re-analysis" });
     }
   });
 
