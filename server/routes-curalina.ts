@@ -2915,4 +2915,195 @@ export function registerCuralinaRoutes(app: Express) {
       res.status(500).json({ error: "Failed to resolve comment" });
     }
   });
+
+  // COMPREHENSIVE ANALYSIS ENDPOINTS
+  // Trigger comprehensive analysis for a single product
+  app.post('/api/admin/products/:id/analyze-comprehensive', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const product = await curalinaStorage.getProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      const { analyzeProductComprehensively } = await import("./services/comprehensive-visual-analyzer");
+      const { EnhancedQualityScorer } = await import("./services/enhanced-quality-scorer");
+
+      console.log(`\n📸 Starting comprehensive analysis for: ${product.name}`);
+      
+      const result = await analyzeProductComprehensively(product.name, product.images);
+      
+      if (!result) {
+        return res.status(400).json({ error: "No valid images found for analysis" });
+      }
+
+      // Calculate detailed quality metrics
+      const metrics = EnhancedQualityScorer.calculateMetrics(result.frontViewAnalysis);
+
+      // Save to database
+      const structuredData = {
+        frontView: result.frontViewAnalysis,
+        multiAngle: result.synthesizedAnalysis,
+        analysisDate: new Date().toISOString(),
+        geminiVersion: 'gemini-2.5-flash'
+      };
+
+      await curalinaStorage.updateProductStructuredAnalysis(
+        req.params.id,
+        structuredData,
+        metrics.overallScore
+      );
+
+      res.json({
+        success: true,
+        product: {
+          id: product.id,
+          name: product.name,
+          sku: product.sku
+        },
+        analysis: {
+          frontView: result.frontViewAnalysis,
+          synthesized: result.synthesizedAnalysis,
+          metrics,
+          imageCount: result.multiAngleAnalyses.length
+        }
+      });
+    } catch (error) {
+      console.error("Error in comprehensive analysis:", error);
+      res.status(500).json({ error: "Analysis failed", details: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Trigger analysis for all products needing it
+  app.post('/api/admin/products/analyze-batch', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { limit = 10, minScore = 60 } = req.body;
+
+      const productsToAnalyze = await curalinaStorage.getProductsNeedingAnalysis(limit);
+
+      if (productsToAnalyze.length === 0) {
+        return res.json({ 
+          message: "No products need analysis", 
+          analyzed: 0 
+        });
+      }
+
+      console.log(`\n📸 Starting batch analysis for ${productsToAnalyze.length} products`);
+
+      const { analyzeProductComprehensively } = await import("./services/comprehensive-visual-analyzer");
+      const { EnhancedQualityScorer } = await import("./services/enhanced-quality-scorer");
+
+      const results = [];
+
+      for (const product of productsToAnalyze) {
+        try {
+          const analysis = await analyzeProductComprehensively(product.name, product.images);
+          
+          if (analysis) {
+            const metrics = EnhancedQualityScorer.calculateMetrics(analysis.frontViewAnalysis);
+            
+            const structuredData = {
+              frontView: analysis.frontViewAnalysis,
+              multiAngle: analysis.synthesizedAnalysis,
+              analysisDate: new Date().toISOString(),
+              geminiVersion: 'gemini-2.5-flash'
+            };
+
+            await curalinaStorage.updateProductStructuredAnalysis(
+              product.id,
+              structuredData,
+              metrics.overallScore
+            );
+
+            results.push({
+              id: product.id,
+              sku: product.sku,
+              name: product.name,
+              score: metrics.overallScore,
+              readiness: metrics.regenerationReadiness
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to analyze ${product.sku}:`, error);
+          results.push({
+            id: product.id,
+            sku: product.sku,
+            name: product.name,
+            error: error instanceof Error ? error.message : "Unknown error"
+          });
+        }
+      }
+
+      res.json({
+        analyzed: results.length,
+        results
+      });
+    } catch (error) {
+      console.error("Error in batch analysis:", error);
+      res.status(500).json({ error: "Batch analysis failed", details: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Get products by quality score range
+  app.get('/api/admin/products/quality/:minScore/:maxScore', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const minScore = parseInt(req.params.minScore) || 0;
+      const maxScore = parseInt(req.params.maxScore) || 100;
+
+      const products = await curalinaStorage.getProductsByQualityScore(minScore, maxScore);
+      
+      res.json({
+        count: products.length,
+        minScore,
+        maxScore,
+        products: products.map(p => ({
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          score: p.structuredAnalysisQuality,
+          analyzedAt: p.structuredAnalysisUpdatedAt
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching products by quality:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  // Get detailed analysis for a product
+  app.get('/api/admin/products/:id/analysis', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const product = await curalinaStorage.getProduct(req.params.id);
+      
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      if (!product.structuredAnalysis) {
+        return res.status(404).json({ error: "No analysis available for this product" });
+      }
+
+      const { EnhancedQualityScorer } = await import("./services/enhanced-quality-scorer");
+      
+      const frontView = (product.structuredAnalysis as any).frontView;
+      const metrics = frontView ? EnhancedQualityScorer.calculateMetrics(frontView) : null;
+      const report = frontView ? EnhancedQualityScorer.generateReport(frontView) : 'No analysis data';
+
+      res.json({
+        product: {
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+          images: product.images
+        },
+        analysis: product.structuredAnalysis,
+        metrics,
+        qualityScore: product.structuredAnalysisQuality,
+        analyzedAt: product.structuredAnalysisUpdatedAt,
+        report
+      });
+    } catch (error) {
+      console.error("Error fetching analysis:", error);
+      res.status(500).json({ error: "Failed to fetch analysis" });
+    }
+  });
 }
