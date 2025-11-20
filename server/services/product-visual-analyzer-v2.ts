@@ -397,9 +397,7 @@ export async function analyzeProductVisualsV2(
         visualDescription: result.visualDescription,
         visualDescriptionGemini: result.visualDescriptionGemini,
         visualDescriptionFrontView: result.visualDescriptionFrontView,
-        visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
-        structuredAnalysis: result.structuredAnalysis,
-        structuredAnalysisQuality: result.structuredAnalysisQuality
+        visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini
       });
     } else if (product.productId && !hasValidResults) {
       console.warn(`  ⚠️ Not caching - no valid analysis results obtained`);
