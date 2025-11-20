@@ -38,6 +38,7 @@ import AdminS3Sync from "@/pages/admin/s3-sync";
 import AdminRendersStorage from "@/pages/admin/renders-storage";
 import AdminDocumentation from "@/pages/admin/documentation";
 import AdminMappingAnalysis from "@/pages/admin/mapping-analysis";
+import AnalysisDashboard from "@/pages/admin/analysis-dashboard";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 
@@ -70,6 +71,7 @@ function AdminLayout() {
             <Route path="/admin/renders-storage" component={AdminRendersStorage} />
             <Route path="/admin/documentation" component={AdminDocumentation} />
             <Route path="/admin/mapping-analysis" component={AdminMappingAnalysis} />
+            <Route path="/admin/analysis" component={AnalysisDashboard} />
             <Route component={NotFound} />
           </Switch>
         </main>

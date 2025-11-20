@@ -58,28 +58,26 @@ async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string; 
 }
 
 function getMultiAnglePrompt(angleType: string): string {
-  return `You are an expert furniture analyzer. Analyze this ${angleType} view image for precise product specifications.
+  return `You are an expert furniture analyzer. Analyze this ${angleType} view image for PRECISE product specifications.
 
-**OUTPUT FORMAT - STRUCTURED DATA ONLY:**
+**OUTPUT FORMAT - CONCISE STRUCTURED DATA ONLY:**
 
-Product Name: [Descriptive name]
-Primary Material: [Specific material with finish, e.g., "Walnut wood with matte lacquer"]
-Color & Finish: [Exact color with HEX code and finish type, e.g., "Charcoal (#2C2C2C), matte]
-Form Factor: [Core shape and structure]
-Dimensions: [Exact H/W/D in inches with decimals, e.g., "H:32.5\" W:68\" D:28.5\""]
-Key Geometry: [Exact geometric features and proportions]
-Distinctive Features: [Up to 3 unique design elements specific to this angle]
-Texture & Surface: [Texture type, grain pattern, weave, etc.]
-Visible Hardware: [Handles, knobs, legs, feet - exact style and material]
-View-Specific Details: [Features unique to this angle]
+Product Name: [Name]
+Primary Material: [Material with finish]
+Color & Finish: [Color with HEX code and finish]
+Form Factor: [Shape]
+Dimensions: [H:X" W:X" D:X"]
+Key Geometry: [Main geometric features - max 30 words]
+Distinctive Features: [2-3 features only]
+Texture & Surface: [Texture/grain/weave type]
+View-Specific Details: [Unique to this angle - max 15 words]
 
-**REQUIREMENTS:**
-- Maximum 850 characters
-- Use EXACT HEX colors (e.g., #A4B5C6)
-- Include all dimensions as decimals (e.g., 32.5" not 32)
-- Be highly specific about materials and finishes
-- Include textile details (weave pattern, pile, etc.) if applicable
-- Describe hardware in detail`;
+**CRITICAL REQUIREMENTS:**
+- MAXIMUM 400 characters TOTAL
+- Use EXACT HEX colors (#XXXXXX format)
+- Be extremely CONCISE - no lengthy descriptions
+- Only essential details that affect rendering
+- No flowery language - technical facts only`;
 }
 
 function getAngleFromFilename(imageUrl: string): string {
