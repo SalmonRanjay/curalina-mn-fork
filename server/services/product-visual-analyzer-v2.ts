@@ -1,6 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { findFrontViewImage, categorizeImages, isValidImageUrl } from "../utils/image-helpers";
 import { needsAnalysis, markAsAnalyzed, sessionCache } from '../utils/image-cache';
+import { StructuredAnalysisParser } from "./structured-analysis-parser";
+import type { StructuredAnalysisData } from "@shared/schema";
 
 // Initialize Gemini client
 const ai = new GoogleGenAI({
@@ -26,6 +28,9 @@ interface ProductAnalysisResult {
   // Front-view specific descriptions
   visualDescriptionFrontView: string;
   visualDescriptionFrontViewGemini: string;
+  // NEW: Structured analysis with quality scoring
+  structuredAnalysis?: StructuredAnalysisData;
+  structuredAnalysisQuality?: number;
   error?: string;
 }
 
@@ -350,6 +355,21 @@ export async function analyzeProductVisualsV2(
     const activeFrontView = gemini.frontViewDescription || '';
     const activeDescription = activeFrontView || gemini.combinedDescription || '';
     
+    // NEW: Parse structured analysis with quality scoring
+    let structuredAnalysis: StructuredAnalysisData | undefined;
+    let structuredAnalysisQuality: number | undefined;
+    
+    try {
+      structuredAnalysis = StructuredAnalysisParser.buildAnalysis(
+        gemini.frontViewDescription,
+        gemini.combinedDescription
+      );
+      structuredAnalysisQuality = StructuredAnalysisParser.getOverallQuality(structuredAnalysis);
+      console.log(`  📊 Structured analysis quality: ${structuredAnalysisQuality}/100`);
+    } catch (error) {
+      console.warn(`  ⚠️ Failed to parse structured analysis:`, error);
+    }
+    
     // Log results
     console.log(`  ✅ Analysis complete:`);
     console.log(`     - Gemini combined: ${gemini.combinedDescription ? `${gemini.combinedDescription.length} chars` : 'N/A'}`);
@@ -363,7 +383,10 @@ export async function analyzeProductVisualsV2(
       visualDescriptionGemini: gemini.combinedDescription || '',
       // Front-view descriptions
       visualDescriptionFrontView: activeFrontView,
-      visualDescriptionFrontViewGemini: gemini.frontViewDescription || ''
+      visualDescriptionFrontViewGemini: gemini.frontViewDescription || '',
+      // Structured analysis
+      structuredAnalysis,
+      structuredAnalysisQuality
     };
     
     // Only mark as analyzed if we got meaningful results
@@ -374,7 +397,9 @@ export async function analyzeProductVisualsV2(
         visualDescription: result.visualDescription,
         visualDescriptionGemini: result.visualDescriptionGemini,
         visualDescriptionFrontView: result.visualDescriptionFrontView,
-        visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini
+        visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
+        structuredAnalysis: result.structuredAnalysis,
+        structuredAnalysisQuality: result.structuredAnalysisQuality
       });
     } else if (product.productId && !hasValidResults) {
       console.warn(`  ⚠️ Not caching - no valid analysis results obtained`);
@@ -413,6 +438,12 @@ async function processWorker(
     try {
       const result = await analyzeProductVisualsV2(product);
       onComplete(result);
+      
+      // Log quality score if available
+      if (result.structuredAnalysisQuality !== undefined) {
+        const qualityLevel = result.structuredAnalysisQuality >= 75 ? '✅' : result.structuredAnalysisQuality >= 50 ? '⚠️' : '❌';
+        console.log(`  ${qualityLevel} Quality Score: ${result.structuredAnalysisQuality}/100`);
+      }
       
       // Adaptive delay based on success (shorter if successful, longer if struggling)
       const delay = result.error ? 10000 : 5000;
