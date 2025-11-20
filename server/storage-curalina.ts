@@ -66,7 +66,7 @@ import {
   type InsertDocumentationComment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, desc, isNull, isNotNull, or, sql } from "drizzle-orm";
 
 export interface ICuralinaStorage {
   // Category operations
@@ -94,6 +94,9 @@ export interface ICuralinaStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
+  updateProductStructuredAnalysis(id: string, analysis: any, quality: number): Promise<Product>;
+  getProductsByQualityScore(minScore?: number, maxScore?: number): Promise<Product[]>;
+  getProductsNeedingAnalysis(limit?: number): Promise<Product[]>;
   setProductImageHealthStatus(id: string, status: 'healthy' | 'repairing' | 'removed', metadata?: any): Promise<Product>;
   
   // Quiz operations
@@ -398,6 +401,51 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async deleteProduct(id: string): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  async updateProductStructuredAnalysis(
+    id: string,
+    analysis: any,
+    quality: number
+  ): Promise<Product> {
+    const [product] = await db
+      .update(products)
+      .set({
+        structuredAnalysis: analysis,
+        structuredAnalysisQuality: quality,
+        structuredAnalysisUpdatedAt: new Date(),
+      })
+      .where(eq(products.id, id))
+      .returning();
+    return product;
+  }
+
+  async getProductsByQualityScore(minScore: number = 0, maxScore: number = 100): Promise<Product[]> {
+    return db
+      .select()
+      .from(products)
+      .where(
+        and(
+          isNotNull(products.structuredAnalysisQuality),
+          sql`${products.structuredAnalysisQuality} >= ${minScore}`,
+          sql`${products.structuredAnalysisQuality} <= ${maxScore}`
+        )
+      )
+      .orderBy(desc(products.structuredAnalysisQuality));
+  }
+
+  async getProductsNeedingAnalysis(limit: number = 50): Promise<Product[]> {
+    return db
+      .select()
+      .from(products)
+      .where(
+        or(
+          isNull(products.structuredAnalysisQuality),
+          sql`${products.structuredAnalysisQuality} < 60`
+        )
+      )
+      .orderBy(desc(products.createdAt))
+      .limit(limit);
   }
 
   // Quiz operations
