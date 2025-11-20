@@ -206,6 +206,12 @@ export const products = pgTable("products", {
   imageAnalyses: jsonb("image_analyses"), // { [imageUrl]: { angle, confidence, description, features } }
   synthesizedFrontView: text("synthesized_front_view"), // AI-generated front view from multi-angle synthesis
   completeProductDescription: text("complete_product_description"), // Comprehensive description from all angles
+  
+  // NEW: Structured Analysis - Machine-readable attribute extraction
+  structuredAnalysis: jsonb("structured_analysis"), // { frontView: {...}, multiAngle: {...}, qualityScore: 0-100 }
+  structuredAnalysisQuality: integer("structured_analysis_quality"), // Quality score 0-100
+  structuredAnalysisUpdatedAt: timestamp("structured_analysis_updated_at"), // When structured analysis was last updated
+  
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
@@ -230,6 +236,33 @@ export const productRelations = relations(products, ({ one }) => ({
 }));
 
 export type Product = typeof products.$inferSelect;
+
+// Structured Analysis Types - Precise, machine-readable product attributes
+export type StructuredAttributeSet = {
+  productName: string;
+  primaryMaterial: string;
+  colorAndFinish: string;
+  hexColor?: string;
+  formFactor: string;
+  dimensions?: {
+    height?: number;
+    width?: number;
+    depth?: number;
+    unit: string; // 'inches' or 'cm'
+  };
+  keyGeometry: string;
+  distinctiveFeatures?: string[];
+  viewSpecificDetails?: string;
+  confidence: number; // 0-100, how confident is this analysis
+};
+
+export type StructuredAnalysisData = {
+  frontView?: StructuredAttributeSet;
+  multiAngle?: StructuredAttributeSet;
+  analysisDate?: string;
+  geminiVersion?: string;
+};
+
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
   createdAt: true,
