@@ -2947,6 +2947,97 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // COMPREHENSIVE ANALYSIS ENDPOINTS
+  // Analyze ALL products with one trigger
+  app.post('/api/admin/products/analyze-all-comprehensive', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('\n🎨 ANALYZING ALL PRODUCTS - COMPREHENSIVE APPROACH');
+      
+      const allProducts = await curalinaStorage.getAllProducts();
+      const productsWithImages = allProducts.filter(p => p.images && p.images.length > 0);
+      
+      console.log(`📊 Found ${productsWithImages.length}/${allProducts.length} products with images`);
+      
+      if (productsWithImages.length === 0) {
+        return res.json({
+          success: true,
+          totalProducts: 0,
+          message: 'No products with images found',
+          analyzed: 0
+        });
+      }
+      
+      const { analyzeProductComprehensively } = await import('./services/comprehensive-visual-analyzer');
+      const { EnhancedQualityScorer } = await import('./services/enhanced-quality-scorer');
+      
+      // Start background analysis of ALL products
+      const results = [];
+      (async () => {
+        console.log(`🚀 Starting analysis of ${productsWithImages.length} products...`);
+        
+        for (let i = 0; i < productsWithImages.length; i++) {
+          const product = productsWithImages[i];
+          try {
+            console.log(`\n[${i+1}/${productsWithImages.length}] 📸 ${product.name} (${product.sku})`);
+            
+            const analysis = await analyzeProductComprehensively(product.name, product.images);
+            if (!analysis) {
+              console.warn(`  ❌ No valid images`);
+              continue;
+            }
+            
+            const metrics = EnhancedQualityScorer.calculateMetrics(analysis.frontViewAnalysis);
+            
+            const structuredData = {
+              frontView: analysis.frontViewAnalysis,
+              multiAngle: analysis.synthesizedAnalysis,
+              analysisDate: new Date().toISOString(),
+              geminiVersion: 'gemini-2.5-flash'
+            };
+            
+            await curalinaStorage.updateProductStructuredAnalysis(
+              product.id,
+              structuredData,
+              metrics.overallScore
+            );
+            
+            console.log(`  ✅ Score: ${metrics.overallScore}/100 | ${metrics.regenerationReadiness}`);
+            
+            results.push({
+              id: product.id,
+              sku: product.sku,
+              name: product.name,
+              score: metrics.overallScore,
+              readiness: metrics.regenerationReadiness
+            });
+          } catch (error) {
+            console.error(`  ❌ Error:`, error instanceof Error ? error.message : 'Unknown');
+            results.push({
+              id: product.id,
+              sku: product.sku,
+              name: product.name,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+        
+        const successful = results.filter(r => !r.error).length;
+        console.log(`\n✅ ANALYSIS COMPLETE: ${successful}/${productsWithImages.length} products analyzed`);
+        console.log(`📊 Ready: ${results.filter(r => r.readiness === 'ready').length} | Caution: ${results.filter(r => r.readiness === 'caution').length} | Needs Work: ${results.filter(r => r.readiness === 'needs_work').length}`);
+      })();
+      
+      res.json({
+        success: true,
+        totalProducts: productsWithImages.length,
+        message: `Comprehensive analysis started for all ${productsWithImages.length} products. Check server logs for real-time progress.`,
+        version: 'comprehensive-v3'
+      });
+      
+    } catch (error) {
+      console.error("Error analyzing all products:", error);
+      res.status(500).json({ error: "Failed to start analysis", details: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+  
   // Trigger comprehensive analysis for a single product
   app.post('/api/admin/products/:id/analyze-comprehensive', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
