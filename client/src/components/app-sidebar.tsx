@@ -15,6 +15,7 @@ import {
   Database,
   BookOpen,
   ChevronDown,
+  Map,
 } from "lucide-react";
 
 import {
@@ -107,6 +108,11 @@ const intelligenceItems = [
     title: "Renders Storage",
     url: "/admin/renders-storage",
     icon: Database,
+  },
+  {
+    title: "Quiz Mapping Analysis",
+    url: "/admin/mapping-analysis",
+    icon: Map,
   },
   {
     title: "Curalina Documentation",
