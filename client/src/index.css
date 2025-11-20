@@ -104,6 +104,11 @@
   --space-10: 5rem;
   --space-12: 6rem;
 
+  /* Admin-specific Spacing */
+  --admin-page-padding: 2rem;
+  --admin-section-gap: 1.5rem;
+  --admin-card-padding: 1.25rem;
+
   /* Design Tokens */
   --radius: 0.5rem;
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.04);
@@ -429,5 +434,111 @@
   .dark .surface-inset {
     background-color: hsl(var(--surface-inset));
     color: hsl(var(--foreground));
+  }
+
+  /* Admin Page Layout */
+  .admin-page {
+    padding: var(--admin-page-padding);
+  }
+
+  .admin-page-header {
+    margin-bottom: 2rem;
+  }
+
+  .admin-section-gap {
+    gap: var(--admin-section-gap);
+  }
+
+  /* Enhanced Table Styling */
+  .admin-table {
+    @apply w-full border-collapse;
+  }
+
+  .admin-table thead {
+    @apply sticky top-0 z-10 bg-muted/50 backdrop-blur-sm;
+  }
+
+  .admin-table th {
+    @apply text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 px-4;
+  }
+
+  .admin-table td {
+    @apply py-3 px-4 border-t border-border;
+  }
+
+  .admin-table tbody tr {
+    @apply transition-colors hover:bg-muted/30;
+  }
+
+  /* Status Badge Variants */
+  .status-badge-success {
+    @apply inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 text-xs font-medium;
+  }
+
+  .status-badge-warning {
+    @apply inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300 px-2 py-1 text-xs font-medium;
+  }
+
+  .status-badge-error {
+    @apply inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 text-xs font-medium;
+  }
+
+  .status-badge-info {
+    @apply inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-1 text-xs font-medium;
+  }
+
+  /* Enhanced Card Styling */
+  .card-highlight {
+    @apply ring-2 ring-primary/20 shadow-md;
+  }
+
+  .card-compact {
+    @apply p-4;
+  }
+
+  /* Loading States */
+  .skeleton {
+    @apply animate-pulse bg-muted/50 rounded;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply text-center py-12 px-6;
+  }
+
+  .empty-state-icon {
+    @apply h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-20;
+  }
+
+  .empty-state-title {
+    @apply text-lg font-medium text-foreground mb-2;
+  }
+
+  .empty-state-description {
+    @apply text-sm text-muted-foreground max-w-md mx-auto;
+  }
+
+  /* Focus States */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Data Density */
+  .dense-layout th,
+  .dense-layout td {
+    @apply py-2 px-3 text-sm;
+  }
+
+  /* Improved Contrast for Accessibility */
+  .high-contrast {
+    @apply text-foreground;
+  }
+
+  .medium-contrast {
+    @apply text-foreground/80;
+  }
+
+  .low-contrast {
+    @apply text-muted-foreground;
   }
 }

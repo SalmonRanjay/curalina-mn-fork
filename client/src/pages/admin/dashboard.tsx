@@ -88,35 +88,37 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold mb-2" data-testid="text-admin-title">
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <h1 className="text-3xl font-bold mb-2 tracking-tight" data-testid="text-admin-title">
           Dashboard
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-base medium-contrast">
           Welcome to your admin dashboard. Monitor and manage your platform.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="hover-elevate transition-all" data-testid={`card-stat-${index}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-              <CardTitle className="text-sm font-medium">
+          <Card key={index} className="hover-elevate transition-all border-border/50" data-testid={`card-stat-${index}`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 gap-2">
+              <CardTitle className="text-sm font-semibold uppercase tracking-wide low-contrast">
                 {stat.title}
               </CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
+              <div className="rounded-lg bg-primary/10 p-2">
+                <stat.icon className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <div className="text-3xl font-bold tracking-tight mb-1">{stat.value}</div>
+              <p className="text-sm low-contrast">
                 {stat.description}
               </p>
-              <div className="flex items-center gap-1 mt-2">
-                <span className="text-xs text-green-600 dark:text-green-500">
+              <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">
                   {stat.trend}
                 </span>
-                <span className="text-xs text-muted-foreground">from last month</span>
+                <span className="text-xs low-contrast">from last month</span>
               </div>
             </CardContent>
           </Card>
@@ -124,54 +126,63 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+        <Card className="border-border/50">
+          <CardHeader className="border-b border-border/50">
+            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
-              <Activity className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>No recent activity</p>
+          <CardContent className="pt-6">
+            <div className="empty-state">
+              <Activity className="empty-state-icon" />
+              <p className="empty-state-title">No recent activity</p>
+              <p className="empty-state-description">
+                Activity logs will appear here as actions are performed
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+        <Card className="border-border/50">
+          <CardHeader className="border-b border-border/50">
+            <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="pt-6 space-y-2">
             <a
               href="/quiz"
-              className="flex items-center gap-3 p-4 rounded-md border hover-elevate active-elevate-2 transition-all"
+              className="group flex items-center gap-4 p-4 rounded-lg border border-border/50 hover-elevate active-elevate-2 transition-all"
               data-testid="link-quick-quiz"
             >
-              <Sparkles className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">Start Quiz</div>
-                <div className="text-sm text-muted-foreground">Take the design style quiz</div>
+              <div className="rounded-lg bg-primary/10 p-2.5 group-hover:bg-primary/20 transition-colors">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold mb-0.5">Start Quiz</div>
+                <div className="text-sm low-contrast">Take the design style quiz</div>
               </div>
             </a>
             <a
               href="/admin/content"
-              className="flex items-center gap-3 p-4 rounded-md border hover-elevate active-elevate-2 transition-all"
+              className="group flex items-center gap-4 p-4 rounded-lg border border-border/50 hover-elevate active-elevate-2 transition-all"
               data-testid="link-quick-content"
             >
-              <FileText className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">Manage Content</div>
-                <div className="text-sm text-muted-foreground">Create and edit content</div>
+              <div className="rounded-lg bg-accent/10 p-2.5 group-hover:bg-accent/20 transition-colors">
+                <FileText className="h-5 w-5 text-accent" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold mb-0.5">Manage Content</div>
+                <div className="text-sm low-contrast">Create and edit content</div>
               </div>
             </a>
             <a
               href="/admin/users"
-              className="flex items-center gap-3 p-4 rounded-md border hover-elevate active-elevate-2 transition-all"
+              className="group flex items-center gap-4 p-4 rounded-lg border border-border/50 hover-elevate active-elevate-2 transition-all"
               data-testid="link-quick-users"
             >
-              <Users className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">Manage Users</div>
-                <div className="text-sm text-muted-foreground">View and manage users</div>
+              <div className="rounded-lg bg-secondary/10 p-2.5 group-hover:bg-secondary/20 transition-colors">
+                <Users className="h-5 w-5 text-secondary" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold mb-0.5">Manage Users</div>
+                <div className="text-sm low-contrast">View and manage users</div>
               </div>
             </a>
           </CardContent>
