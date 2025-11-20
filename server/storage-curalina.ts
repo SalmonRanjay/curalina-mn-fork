@@ -66,7 +66,7 @@ import {
   type InsertDocumentationComment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, desc, isNull, isNotNull, asc, sql } from "drizzle-orm";
 
 export interface ICuralinaStorage {
   // Category operations
@@ -95,6 +95,20 @@ export interface ICuralinaStorage {
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
   setProductImageHealthStatus(id: string, status: 'healthy' | 'repairing' | 'removed', metadata?: any): Promise<Product>;
+  
+  // NEW: Structured analysis operations
+  updateProductStructuredAnalysis(
+    id: string,
+    structuredAnalysis: any,
+    qualityScore: number
+  ): Promise<Product>;
+  getProductsByAnalysisQuality(minScore: number, limit?: number): Promise<Product[]>;
+  getProductsNeedingAnalysisRefinement(maxScore: number, limit?: number): Promise<Product[]>;
+  getAnalysisStatistics(): Promise<{
+    totalAnalyzed: number;
+    averageQuality: number;
+    qualityDistribution: Record<string, number>;
+  }>;
   
   // Quiz operations
   createQuizResponse(quiz: InsertQuizResponse): Promise<QuizResponse>;
@@ -398,6 +412,126 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async deleteProduct(id: string): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  // NEW: Structured analysis operations
+  async updateProductStructuredAnalysis(
+    id: string,
+    structuredAnalysis: any,
+    qualityScore: number
+  ): Promise<Product> {
+    const [product] = await db
+      .update(products)
+      .set({
+        structuredAnalysis,
+        structuredAnalysisQuality: qualityScore,
+        structuredAnalysisUpdatedAt: new Date(),
+      })
+      .where(eq(products.id, id))
+      .returning();
+    
+    if (!product) {
+      throw new Error(`Product with id ${id} not found`);
+    }
+    
+    return product;
+  }
+
+  async getProductsByAnalysisQuality(minScore: number, limit?: number): Promise<Product[]> {
+    let query = db
+      .select()
+      .from(products)
+      .where(
+        and(
+          isNotNull(products.structuredAnalysisQuality),
+          sql`${products.structuredAnalysisQuality} >= ${minScore}`
+        )
+      )
+      .orderBy(desc(products.structuredAnalysisQuality));
+    
+    if (limit) {
+      query = query.limit(limit) as any;
+    }
+    
+    return query;
+  }
+
+  async getProductsNeedingAnalysisRefinement(maxScore: number, limit?: number): Promise<Product[]> {
+    let query = db
+      .select()
+      .from(products)
+      .where(
+        and(
+          isNotNull(products.structuredAnalysisQuality),
+          sql`${products.structuredAnalysisQuality} < ${maxScore}`
+        )
+      )
+      .orderBy(asc(products.structuredAnalysisQuality));
+    
+    if (limit) {
+      query = query.limit(limit) as any;
+    }
+    
+    return query;
+  }
+
+  async getAnalysisStatistics(): Promise<{
+    totalAnalyzed: number;
+    averageQuality: number;
+    qualityDistribution: Record<string, number>;
+  }> {
+    // Get all products with structured analysis
+    const analyzedProducts = await db
+      .select()
+      .from(products)
+      .where(isNotNull(products.structuredAnalysisQuality));
+    
+    if (analyzedProducts.length === 0) {
+      return {
+        totalAnalyzed: 0,
+        averageQuality: 0,
+        qualityDistribution: {},
+      };
+    }
+
+    // Calculate statistics
+    const qualityScores = analyzedProducts
+      .map(p => p.structuredAnalysisQuality || 0)
+      .filter(q => q > 0);
+    
+    const averageQuality = qualityScores.length > 0
+      ? Math.round(qualityScores.reduce((a, b) => a + b, 0) / qualityScores.length)
+      : 0;
+
+    // Distribution by quality tiers
+    const distribution: Record<string, number> = {
+      'excellent_75_100': 0,
+      'good_50_74': 0,
+      'fair_25_49': 0,
+      'poor_0_24': 0,
+      'not_analyzed': 0,
+    };
+
+    for (const product of analyzedProducts) {
+      const score = product.structuredAnalysisQuality || 0;
+      if (score === 0) {
+        distribution.not_analyzed++;
+      } else if (score >= 75) {
+        distribution.excellent_75_100++;
+      } else if (score >= 50) {
+        distribution.good_50_74++;
+      } else if (score >= 25) {
+        distribution.fair_25_49++;
+      } else {
+        distribution.poor_0_24++;
+      }
+    }
+
+    return {
+      totalAnalyzed: analyzedProducts.length,
+      averageQuality,
+      qualityDistribution: distribution,
+    };
   }
 
   // Quiz operations
