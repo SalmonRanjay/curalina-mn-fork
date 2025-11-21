@@ -604,6 +604,17 @@ interface CompositionResult {
 }
 
 /**
+ * Categories that need matching sets (same product repeated)
+ * For these, select the BEST product and replicate it instead of diversifying
+ */
+const SET_CATEGORIES = new Set([
+  'dining_seating',    // Dining chairs - need matching set
+  'office_seating',    // Office chairs - need matching set
+  'bedroom_seating',   // Bedroom chairs - need matching set
+  'accent_seating_set' // Accent chair sets
+]);
+
+/**
  * Select products intelligently based on room template and composition rules
  */
 export async function selectProductsWithComposition(
@@ -701,19 +712,39 @@ export async function selectProductsWithComposition(
         }
       }
       
-      // Add some randomness to avoid always picking the same products
-      score += Math.random() * 10;
+      // NO randomness for set categories - we want consistent matching sets
+      // For other categories, add randomness to avoid always picking the same products
+      if (!SET_CATEGORIES.has(category)) {
+        score += Math.random() * 10;
+      }
       
       return { product, score };
     });
     
-    // Sort by score and select top N
+    // Sort by score
     scoredProducts.sort((a, b) => b.score - a.score);
-    const selected = scoredProducts.slice(0, toSelect).map(s => s.product);
+    
+    // For SET categories: pick the best product and replicate it
+    // For other categories: pick different products
+    let selected: Product[] = [];
+    
+    if (SET_CATEGORIES.has(category)) {
+      // Pick the BEST product and replicate it 'toSelect' times
+      if (scoredProducts.length > 0) {
+        const bestProduct = scoredProducts[0].product;
+        selected = Array(toSelect).fill(bestProduct);
+        console.log(`✅ SET: Selected "${bestProduct.name}" x${toSelect} for matching ${category}`);
+      }
+    } else {
+      // Pick different products (original behavior)
+      selected = scoredProducts.slice(0, toSelect).map(s => s.product);
+    }
     
     for (const product of selected) {
       if (selectedProducts.length >= maxProducts) break;
       selectedProducts.push(product);
+      
+      // Only mark as used once per unique product
       usedProductIds.add(product.id);
       
       if (!composition[category]) {
