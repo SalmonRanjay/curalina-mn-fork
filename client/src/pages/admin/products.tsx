@@ -439,7 +439,7 @@ export default function AdminProducts() {
   const startVisualAnalysisMutation = useMutation({
     mutationFn: async (params: { productIds?: string[]; onlyMissingDescriptions?: boolean }) => {
       const response = await apiRequest("POST", "/api/admin/visual-analysis/start", params);
-      return response.json();
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
@@ -462,7 +462,7 @@ export default function AdminProducts() {
   const reanalyzeFrontViewsMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/admin/visual-analysis/reanalyze-front-views");
-      return response.json();
+      return await response.json();
     },
     onSuccess: (data: any) => {
       const breakdown = data.breakdown || {};
@@ -490,7 +490,7 @@ export default function AdminProducts() {
   const generateDescriptionsMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/admin/products/generate-descriptions", {});
-      return response.json();
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
@@ -616,7 +616,7 @@ export default function AdminProducts() {
       });
       
       if (!response.ok) throw new Error('Import failed');
-      return response.json();
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
