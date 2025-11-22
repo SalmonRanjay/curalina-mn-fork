@@ -81,17 +81,14 @@ export default function AdminProducts() {
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
-    refetchOnMount: "always", // Always refetch on mount for admin products
   });
 
   const { data: categories } = useQuery<Category[]>({
     queryKey: ["/api/admin/categories"],
-    refetchOnMount: "always",
   });
 
   const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/admin/suppliers"],
-    refetchOnMount: "always",
   });
 
   // Visual Analysis Jobs queries
