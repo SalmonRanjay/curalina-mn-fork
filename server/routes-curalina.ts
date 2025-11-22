@@ -3247,7 +3247,11 @@ export function registerCuralinaRoutes(app: Express) {
       if (deleteAll) {
         const allProducts = await curalinaStorage.getAllProducts();
         for (const product of allProducts) {
-          await curalinaStorage.deleteProduct(product.id);
+          try {
+            await curalinaStorage.deleteProduct(product.id);
+          } catch (e) {
+            console.error(`Failed to delete product ${product.id}:`, e);
+          }
         }
         return res.json({ success: true, deletedCount: allProducts.length });
       }
@@ -3258,8 +3262,12 @@ export function registerCuralinaRoutes(app: Express) {
       
       let deletedCount = 0;
       for (const id of productIds) {
-        const deleted = await curalinaStorage.deleteProduct(id);
-        if (deleted) deletedCount++;
+        try {
+          await curalinaStorage.deleteProduct(id);
+          deletedCount++;
+        } catch (e) {
+          console.error(`Failed to delete product ${id}:`, e);
+        }
       }
       
       res.json({ success: true, deletedCount });
