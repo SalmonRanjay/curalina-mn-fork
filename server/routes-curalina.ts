@@ -1081,11 +1081,11 @@ export function registerCuralinaRoutes(app: Express) {
       const { EnhancedQualityScorer } = await import('./services/enhanced-quality-scorer');
       
       // Get products to analyze
-      let productsToAnalyze: Product[] = [];
+      let productsToAnalyze: any[] = [];
       if (productIds && productIds.length > 0) {
         productsToAnalyze = await Promise.all(
-          productIds.map(id => curalinaStorage.getProduct(id))
-        ).then(results => results.filter((p): p is Product => p !== null));
+          productIds.map((id: string) => curalinaStorage.getProduct(id))
+        ).then(results => results.filter((p): p is any => p !== null));
       } else {
         const allProducts = await curalinaStorage.getAllProducts();
         productsToAnalyze = onlyMissingDescriptions 
@@ -1676,7 +1676,8 @@ export function registerCuralinaRoutes(app: Express) {
       
       // Immediately persist 'submitted' lifecycle event
       const { buildRenderEvent } = await import('./services/render-ingestion');
-      const submittedEvent = buildRenderEvent(render.id, 'submitted', 'User submitted render request', req.user?.id);
+      const userId = (req.user as any)?.id || null;
+      const submittedEvent = buildRenderEvent(render.id, 'submitted', 'User submitted render request', userId);
       await curalinaStorage.createRenderEvent(submittedEvent);
       
       // Create initial ledger entry with candidate pool snapshot
@@ -1711,7 +1712,7 @@ export function registerCuralinaRoutes(app: Express) {
         lifecycleEvents.push(processingEvent);
         
         try {
-          console.log(`🎨 Starting AI render for ${quiz.roomType} in ${quiz.style} style`);
+          console.log(`🎨 Starting AI render for ${quiz.roomType} in ${quiz.styles?.[0] || 'modern'} style`);
           
           // Step 1: Get all products
           const allProducts = await curalinaStorage.getAllProducts();
@@ -1787,20 +1788,17 @@ export function registerCuralinaRoutes(app: Express) {
             const fullProduct = allProducts.find(p => p.sku === sp.sku);
             if (!fullProduct) return sp;
             
-            // Include ALL visual description fields for prioritization
-            // Priority system (in buildPromptFromQuiz): Front View → Gemini → legacy
+            // Include visual description for prioritization
             return {
               ...sp,
               name: fullProduct.name,
-              visualDescriptionFrontView: fullProduct.visualDescriptionFrontView || undefined,
-              visualDescriptionGemini: fullProduct.visualDescriptionGemini || undefined,
               visualDescription: fullProduct.visualDescription || undefined,
             };
           });
           
-          // Count products with visual descriptions (using priority system)
+          // Count products with visual descriptions
           const productsWithVisuals = enrichedProducts.filter((p: any) => {
-            return p.visualDescriptionFrontView || p.visualDescriptionGemini || p.visualDescription;
+            return p.visualDescription;
           }).length;
           
           if (productsWithVisuals > 0) {
@@ -3392,10 +3390,8 @@ export function registerCuralinaRoutes(app: Express) {
   // Get S3 configuration
   app.get('/api/admin/settings/s3', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const bucketSetting = await curalinaStorage.getSettings?.('s3_bucket_name') || 
-        { key: 's3_bucket_name', value: process.env.S3_BUCKET || 'curalina', description: 'S3 bucket name' };
-      const prefixSetting = await curalinaStorage.getSettings?.('s3_folder_prefix') || 
-        { key: 's3_folder_prefix', value: 'products', description: 'S3 folder prefix' };
+      const bucketSetting = { key: 's3_bucket_name', value: process.env.S3_BUCKET || 'curalina', description: 'S3 bucket name' };
+      const prefixSetting = { key: 's3_folder_prefix', value: 'products', description: 'S3 folder prefix' };
       
       res.json({
         bucketName: bucketSetting?.value || process.env.S3_BUCKET || 'curalina',
