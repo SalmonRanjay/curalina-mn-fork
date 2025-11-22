@@ -878,10 +878,23 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getActiveUploadJobs(userId?: string): Promise<UploadJob[]> {
-    const conditions = [inArray(uploadJobs.status, ["pending", "processing"])];
+    // Include completed/failed jobs from the last 5 minutes to show final status
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    const conditions = [
+      or(
+        inArray(uploadJobs.status, ["pending", "processing"]),
+        and(
+          inArray(uploadJobs.status, ["completed", "failed"]),
+          sql`${uploadJobs.completedAt} > ${fiveMinutesAgo}`
+        )
+      )
+    ];
+    
     if (userId) {
       conditions.push(eq(uploadJobs.userId, userId));
     }
+    
     return db.select().from(uploadJobs).where(and(...conditions)).orderBy(desc(uploadJobs.createdAt));
   }
 
