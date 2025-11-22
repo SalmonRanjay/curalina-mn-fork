@@ -1,0 +1,45 @@
+📍 Using: Front View image
+  📸 Analyzing image: front-view-bench.png
+  ❌ Analysis failed: ApiError: {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:826:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:487:9)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async generateAccurateVisualDescription (/home/runner/workspace/server/services/batch-visual-description-regenerator.ts:89:22)
+    at async regenerateAllVisualDescriptions (/home/runner/workspace/server/services/batch-visual-description-regenerator.ts:248:27)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:1574:28) {
+  status: 400
+}
+  ❌ Failed - could not generate description
+
+[79/621] 106414-006 - Raffael Bar Cabinet
+  📍 Using: Front View image
+  📸 Analyzing image: front-view-cabinet.png
+  ❌ Analysis failed: ApiError: {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:826:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:487:9)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async generateAccurateVisualDescription (/home/runner/workspace/server/services/batch-visual-description-regenerator.ts:89:22)
+    at async regenerateAllVisualDescriptions (/home/runner/workspace/server/services/batch-visual-description-regenerator.ts:248:27)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:1574:28) {
+  status: 400
+}
+  ❌ Failed - could not generate description
+
+[80/621] 228578-001 - Soto Desk
+  📍 Using: Front View image
+  📸 Analyzing image: front-view-desk.png
+  ❌ Analysis failed: ApiError: {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:826:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:487:9)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async generateAccurateVisualDescription (/home/runner/workspace/server/services/batch-visual-description-regenerator.ts:89:22)
+    at async regenerateAllVisualDescriptions (/home/runner/workspace/server/services/batch-visual-description-regenerator.ts:248:27)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:1574:28) {
+  status: 400
+}
+  ❌ Failed - could not generate description
+
+📊 Progress: 80/621 (0 successful, 80 failed, 0 skipped)
