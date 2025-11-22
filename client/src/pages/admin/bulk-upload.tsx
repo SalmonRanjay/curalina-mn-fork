@@ -44,6 +44,7 @@ export default function BulkUpload() {
   const [isAiMatching, setIsAiMatching] = useState(false);
   const [jobFileMapping, setJobFileMapping] = useState<Map<string, string[]>>(new Map()); // jobId -> filenames
   const [completedJobIds, setCompletedJobIds] = useState<Set<string>>(new Set());
+  const [currentBatchJobIds, setCurrentBatchJobIds] = useState<Set<string>>(new Set()); // Track jobs from current upload batch
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -222,21 +223,13 @@ export default function BulkUpload() {
   useEffect(() => {
     if (!activeJobs || activeJobs.length === 0) return;
 
+    const newlyCompletedJobs: any[] = [];
+
     activeJobs.forEach((job: any) => {
       // Check if job just completed
       if ((job.status === 'completed' || job.status === 'failed') && !completedJobIds.has(job.id)) {
         setCompletedJobIds(prev => new Set(prev).add(job.id));
-
-        // Show completion toast
-        const successMsg = job.status === 'completed' 
-          ? `✅ Upload complete for ${job.productName || 'product'}: ${job.completedFiles} uploaded, ${job.skippedFiles} skipped`
-          : `❌ Upload failed for ${job.productName || 'product'}: ${job.failedFiles} errors`;
-
-        toast({
-          title: job.status === 'completed' ? "Upload Complete" : "Upload Failed",
-          description: successMsg,
-          variant: job.status === 'completed' ? "default" : "destructive",
-        });
+        newlyCompletedJobs.push(job);
 
         // Fetch detailed file status and update local files
         (async () => {
@@ -280,7 +273,40 @@ export default function BulkUpload() {
         queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       }
     });
-  }, [activeJobs, completedJobIds, jobFileMapping, toast]);
+
+    // Check if ALL jobs from current batch are complete
+    if (currentBatchJobIds.size > 0 && newlyCompletedJobs.length > 0) {
+      const batchJobsInActive = activeJobs.filter((job: any) => currentBatchJobIds.has(job.id));
+      const allBatchComplete = batchJobsInActive.every((job: any) => 
+        job.status === 'completed' || job.status === 'failed'
+      );
+
+      if (allBatchComplete) {
+        // Calculate totals across all batch jobs
+        const totals = batchJobsInActive.reduce((acc, job) => ({
+          completed: acc.completed + (job.completedFiles || 0),
+          skipped: acc.skipped + (job.skippedFiles || 0),
+          failed: acc.failed + (job.failedFiles || 0),
+          products: acc.products + 1,
+        }), { completed: 0, skipped: 0, failed: 0, products: 0 });
+
+        // Show single summary toast
+        const hasErrors = totals.failed > 0;
+        const successMsg = hasErrors
+          ? `Upload complete: ${totals.completed} uploaded, ${totals.skipped} skipped, ${totals.failed} failed across ${totals.products} product(s)`
+          : `✅ Upload complete: ${totals.completed} uploaded, ${totals.skipped} skipped across ${totals.products} product(s)`;
+
+        toast({
+          title: hasErrors ? "Upload Complete (with errors)" : "Upload Complete",
+          description: successMsg,
+          variant: hasErrors ? "destructive" : "default",
+        });
+
+        // Clear the batch tracker
+        setCurrentBatchJobIds(new Set());
+      }
+    }
+  }, [activeJobs, completedJobIds, currentBatchJobIds, jobFileMapping, toast]);
 
   // Background upload handler - creates jobs and lets server process them
   const handleBulkUpload = async () => {
@@ -348,6 +374,9 @@ export default function BulkUpload() {
           }));
         }
       }
+
+      // Track this batch of jobs for summary notification
+      setCurrentBatchJobIds(new Set(jobsCreated));
 
       // Invalidate active jobs query to start polling
       await queryClient.invalidateQueries({ queryKey: ["/api/admin/upload-jobs/active"] });
