@@ -411,8 +411,8 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Bulk CSV/Excel import
-  app.post('/api/admin/products/import-csv', isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
+  // Preview CSV for column mapping
+  app.post('/api/admin/products/preview-csv', isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -430,12 +430,61 @@ export function registerCuralinaRoutes(app: Express) {
         return res.status(400).json({ error: "File is empty or has no valid data" });
       }
 
+      // Extract columns and sample data
+      const columns = Object.keys(data[0] as any);
+      const sampleData = data.slice(0, 3); // Return first 3 rows as sample
+
+      res.json({ columns, sampleData });
+    } catch (error) {
+      console.error("Error previewing CSV:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to preview CSV" });
+    }
+  });
+
+  // Bulk CSV/Excel import with column mapping
+  app.post('/api/admin/products/import-csv', isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { read, utils } = await import('xlsx');
+      
+      // Parse the file
+      const workbook = read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const data = utils.sheet_to_json(worksheet);
+
+      // Get column mappings if provided
+      const mappings = req.body.mappings ? JSON.parse(req.body.mappings) : null;
+      
+      // Create a mapping function to transform row data
+      const mapRow = (row: any) => {
+        if (!mappings) return row; // No mapping, return as-is
+        
+        const mapped: any = {};
+        mappings.forEach((mapping: any) => {
+          if (mapping.targetField && row[mapping.csvColumn] !== undefined) {
+            mapped[mapping.targetField] = row[mapping.csvColumn];
+          }
+        });
+        return mapped;
+      };
+
+      if (data.length === 0) {
+        return res.status(400).json({ error: "File is empty or has no valid data" });
+      }
+
       let imported = 0;
       let skipped = 0;
       const errors: string[] = [];
 
-      for (const row of data as any[]) {
+      for (const rawRow of data as any[]) {
         try {
+          // Apply column mapping if provided
+          const row = mapRow(rawRow);
+          
           // Get or create category
           const categoryName = row['Furniture Category'] || 'Furniture';
           const firstCategory = categoryName.split(',')[0].trim();

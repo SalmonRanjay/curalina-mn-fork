@@ -759,7 +759,7 @@ export default function AdminProducts() {
   // Image health mutations
   const repairImagesMutation = useMutation({
     mutationFn: async (productId: string) => {
-      return apiRequest(`/api/admin/products/${productId}/image-health/repair`, "PATCH");
+      return apiRequest("PATCH", `/api/admin/products/${productId}/image-health/repair`);
     },
     onSuccess: () => {
       toast({
@@ -779,7 +779,7 @@ export default function AdminProducts() {
 
   const removeImagesMutation = useMutation({
     mutationFn: async (productId: string) => {
-      return apiRequest(`/api/admin/products/${productId}/image-health/remove`, "PATCH");
+      return apiRequest("PATCH", `/api/admin/products/${productId}/image-health/remove`);
     },
     onSuccess: () => {
       toast({

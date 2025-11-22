@@ -1,0 +1,265 @@
+1️⃣ Stop Relying Only on Long Text Descriptions for Product Fidelity
+
+Right now you’re doing “visualDescription → long prompt → room render”. That inevitably makes the model interpret the product instead of copying it.
+
+Strategy: Make the product image itself the ground truth
+
+For Gemini:
+
+When generating the room, always pass the actual product images as inputs, not just text.
+
+Use a structure like:
+
+Input:
+
+Room photo / empty room base
+
+Product front-view image(s)
+
+Short, dense description:
+
+“Place this sofa (image_1) against the north wall. Copy its exact shape, arm style, fabric color, and legs. Do not change its proportions or design.”
+
+You already store multiple product images + visualDescriptionFrontView / visualDescriptionGemini / visualDescriptionOpenAI – prioritize front-view image + a short description, not a 400-word paragraph. 
+
+Curalina AI Decomentation
+
+For Stability (very important):
+
+Use image-conditioned generation:
+
+Use IP-Adapter / image encoder conditioning so the model locks onto the exact sofa image as a style token.
+
+For “hero products” (sofas, main table, bed), consider training LoRAs / textual embeddings per product family or per supplier line so the product is consistently reproduced.
+
+Implementation change:
+
+Instead of:
+
+Big textual description of 8 products dumped into one prompt
+
+Move to:
+
+for each hero product in layout:
+    send reference image + short 1–2 sentence description
+    tell model “copy this exactly”
+
+2️⃣ Introduce a Layout Plan Step Before Rendering (Fix Placement Chaos)
+
+Right now placement relies mostly on prompt text like “sofa on north wall, coffee table 18 inches...” – models only kinda follow that.
+
+You already have:
+
+placementGuidelines (zone logic, relativeToProduct)
+
+designRules (essential vs complementary, composition rules) 
+
+Curalina AI Decomentation
+
+Use them to add a planning stage:
+
+Step A – Generate a 2D layout / scene graph
+
+Before any image call, build something like:
+
+{
+  "roomSize": {"width_ft": 15, "length_ft": 20},
+  "furniture": [
+    {"sku": "SOFA-001", "x": 0.1, "y": 0.5, "w": 0.5, "h": 0.2, "zone": "seating"},
+    {"sku": "COFFEE-002", "x": 0.35, "y": 0.55, "w": 0.2, "h": 0.1}
+  ]
+}
+
+
+That can be generated with:
+
+A simple rules engine using your placementGuidelines + product dimensions
+
+Or a small “layout model”: Gemini text-only call that outputs a structured plan.
+
+Step B – Use Control / Layout in Stability
+
+Once you have the plan:
+
+Convert layout to a low-res mask / bounding box image:
+
+Rectangles for sofa, table, rug, etc., in correct positions.
+
+Use Stability ControlNet (or similar):
+
+Control type: “layout / scribble / depth” to strongly constrain object placement.
+
+Prompt: “Fill these layout shapes with the corresponding products, preserving the layout exactly.”
+
+This shifts the problem from “hope the model follows the words” → “model must fill in predefined boxes”.
+
+Step C – Reflect layout in Gemini prompts too
+
+When calling Gemini 2.5 Flash:
+
+“You are given a room with a fixed layout. The following grid coordinates are mandatory for object placement. Do not move furniture away from these positions. If unsure, choose the closest layout, but never change the relative order.”
+
+3️⃣ Enforce Real-World Scale Using Dimensions You Already Have
+
+Your schema already stores:
+
+Product dimensions (JSON)
+
+Room dimensions & ceiling height via Vision / floor plan analysis 
+
+Curalina AI Decomentation
+
+Right now, you’re not really binding pixels to feet/meters.
+
+Strategy: Convert dimensions → normalized scale
+
+From Gemini floor plan / room analysis:
+
+Get room width/length.
+
+From product dimensions:
+
+Get width, depth, height in same unit.
+
+Compute relative scale:
+
+sofa_width_ratio = sofa.width_ft / room.width_ft  # e.g., 7ft / 15ft ≈ 0.46
+
+
+Feed explicit constraints to the generator:
+
+In prompts:
+
+“The room is 15 ft wide and 20 ft long with a 9 ft ceiling.
+The main sofa is 7 ft wide and should occupy about 45% of the north wall.
+Ensure the sofa is clearly larger than side tables and smaller than the entire wall.
+Never make the coffee table larger than half the sofa width.”
+
+In Stability (with layout masks):
+
+Ensure the width of the sofa mask is 0.45 × room width in the layout image.
+
+Other masks follow real ratios (beds > nightstands, etc.).
+
+This combo (prompt + geometric layout) drastically reduces goofy scaling.
+
+4️⃣ Use an Automated QA Loop With Gemini Vision After Each Render
+
+Right now, generation is one shot. If it’s wrong, user sees the mistake.
+
+You already use Gemini Vision for:
+
+Room analysis
+
+Product visual analysis
+
+Reuse it for post-render validation:
+
+Pipeline:
+
+Generate room image (Gemini or Stability).
+
+Send final render → Gemini Vision with a validation prompt like:
+
+“Compare this rendered room to the target spec:
+
+Required products: [list with small reference images or thumbnails]
+
+Room dimensions: [15x20 ft, 9 ft ceiling]
+
+Structural constraints: [2 windows north wall, 1 door east wall]
+
+Answer:
+
+Did each product appear? (per SKU)
+
+Is relative scale realistic? (too small / correct / too large)
+
+Did we preserve windows/doors? (yes/no)
+
+List any violations with severity score 1–10.”
+
+If severity > threshold:
+
+Automatically regenerate with:
+
+Lower temperature
+
+Adjusted layout
+
+Stronger wording in prompt: “You previously made the sofa too small. This time, make it 40–50% of wall width.”
+
+This is effectively unit tests for images.
+
+5️⃣ Tighten and Shorten Product Descriptions for Generation
+
+Your current Gemini Vision descriptions are 300–400 word paragraphs per product. 
+
+Curalina AI Decomentation
+
+That’s great for documentation, but for control they can be:
+
+Too long → the model “hallucinates” details
+
+Too fuzzy → key constraints get buried
+
+Strategy: Two-tiered descriptions
+
+Long description (already have) → stored for reference only.
+
+Short, generation-ready snippet per product, e.g.:
+
+“Low-profile organic modern sofa, 3 seats, curved arms, cream boucle fabric, natural oak legs, approx. 7ft wide, no tufting, no skirt.”
+
+Use a small internal step:
+
+shortDesc = summarizeVisualDescription(longDesc, max_tokens=40, focusing on:
+    - silhouette
+    - main material
+    - main color
+    - key distinctive features
+    - overall size
+)
+
+
+Then in prompt:
+
+“Reproduce this sofa exactly: {shortDesc}. Do not change its color, fabric type, or leg design.”
+
+Much more “command-like”, less “story-like”.
+
+6️⃣ Consider a Two-View UX: Photoreal Room + Perfectly Accurate Product Board
+
+Even with all the above, no generative model will be 100% pixel-identical to catalog photos.
+
+To manage expectations and increase trust:
+
+A. Photoreal Room View (imperfect but immersive)
+
+Use Gemini / Stability with all the improved strategies above.
+
+Users see context, lighting, vibe.
+
+B. “Shop the Look” / Design Board View (perfect product accuracy)
+
+Use your compositing pipeline (Sharp + background-removed PNGs as planned) 
+
+Curalina AI Decomentation
+
+Show each product:
+
+True catalog image
+
+Name, price, dimensions, colors
+
+Consider a side-by-side mini board on the results page:
+
+Left: AI render
+
+Right: Product strip / grid with accurate images
+
+This way:
+
+The room can be a bit approximate.
+
+The products the customer buys are always 100% accurate to catalog.

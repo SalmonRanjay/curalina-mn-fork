@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Download } from "lucide-react";
@@ -17,15 +19,67 @@ interface ImportResult {
   details?: string;
 }
 
+interface ColumnMapping {
+  csvColumn: string;
+  targetField: string;
+}
+
+interface FilePreview {
+  columns: string[];
+  sampleData: any[];
+}
+
 export default function CSVImportPage() {
   const { toast } = useToast();
   const [uploadProgress, setUploadProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [showMappingDialog, setShowMappingDialog] = useState(false);
+  const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
 
-  const importMutation = useMutation({
+  // Preview file mutation to show column mapping
+  const previewFileMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
+
+      const response = await fetch('/api/admin/products/preview-csv', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Preview failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data: FilePreview) => {
+      setFilePreview(data);
+      // Initialize mappings with auto-detected matches
+      const initialMappings = data.columns.map(col => ({
+        csvColumn: col,
+        targetField: autoMapColumn(col)
+      }));
+      setColumnMappings(initialMappings);
+      setShowMappingDialog(true);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Preview Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async ({ file, mappings }: { file: File; mappings: ColumnMapping[] }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mappings', JSON.stringify(mappings));
 
       const response = await fetch('/api/admin/products/import-csv', {
         method: 'POST',
@@ -67,6 +121,60 @@ export default function CSVImportPage() {
     },
   });
 
+  // Auto-map CSV column names to target fields
+  const autoMapColumn = (csvColumn: string): string => {
+    const normalized = csvColumn.toLowerCase().trim();
+    
+    // Exact matches
+    const exactMappings: Record<string, string> = {
+      'product name': 'Product Name',
+      'name': 'Product Name',
+      'sku': 'SKU',
+      'overview': 'Overview',
+      'description': 'Overview',
+      'supplier': 'Supplier',
+      'furniture category': 'Furniture Category',
+      'category': 'Furniture Category',
+      'room type': 'Room Type',
+      'design style': 'Design Style',
+      'style': 'Design Style',
+      'key features': 'Key Features',
+      'features': 'Key Features',
+      'storage solutions': 'Storage Solutions',
+      'storage': 'Storage Solutions',
+      'colour': 'Colour',
+      'color': 'Colour',
+      'product material': 'Product Material',
+      'material': 'Product Material',
+      'materials': 'Product Material',
+      'inventory': 'Inventory',
+      'stock': 'Inventory',
+      'trade price': 'Trade Price',
+      'retail price': 'Retail Price',
+      'price': 'Retail Price',
+      'dimensions (height)': 'Dimensions (Height)',
+      'height': 'Dimensions (Height)',
+      'dimensions (width)': 'Dimensions (Width)',
+      'width': 'Dimensions (Width)',
+      'dimensions (depth)': 'Dimensions (Depth)',
+      'depth': 'Dimensions (Depth)',
+      'arm width': 'Arm Width',
+      'arm depth': 'Arm Depth',
+      'seat width': 'Seat Width',
+      'seat depth': 'Seat Depth',
+      'seating': 'Seating',
+      'assembly': 'Assembly',
+      'lead time': 'Lead Time',
+      'delivery options': 'Delivery Options',
+      'delivery location': 'Delivery Location',
+      'delivery policy': 'Delivery Policy',
+      'tags': 'Tags',
+      'weight': 'Weight',
+    };
+    
+    return exactMappings[normalized] || '';
+  };
+
   const { getRootProps, getInputProps, isDragActive, acceptedFiles } = useDropzone({
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -77,11 +185,19 @@ export default function CSVImportPage() {
     onDrop: (files) => {
       if (files.length > 0) {
         setImportResult(null);
-        setUploadProgress(10);
-        importMutation.mutate(files[0]);
+        setPendingFile(files[0]);
+        previewFileMutation.mutate(files[0]);
       }
     },
   });
+
+  const handleConfirmImport = () => {
+    if (pendingFile) {
+      setShowMappingDialog(false);
+      setUploadProgress(10);
+      importMutation.mutate({ file: pendingFile, mappings: columnMappings });
+    }
+  };
 
   const downloadTemplate = () => {
     // Helper function to escape CSV fields properly
@@ -349,6 +465,95 @@ export default function CSVImportPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Column Mapping Dialog */}
+      <Dialog open={showMappingDialog} onOpenChange={setShowMappingDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Map CSV Columns</DialogTitle>
+            <DialogDescription>
+              Match your CSV columns to the expected fields. Auto-detected mappings are shown.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {filePreview && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm font-medium border-b pb-2">
+                <div>Your CSV Column</div>
+                <div>Maps To</div>
+              </div>
+              
+              {filePreview.columns.map((csvCol, index) => (
+                <div key={csvCol} className="grid grid-cols-2 gap-4 items-center">
+                  <div className="font-mono text-sm p-2 bg-muted rounded">{csvCol}</div>
+                  <Select
+                    value={columnMappings[index]?.targetField || ''}
+                    onValueChange={(value) => {
+                      const newMappings = [...columnMappings];
+                      newMappings[index] = { csvColumn: csvCol, targetField: value };
+                      setColumnMappings(newMappings);
+                    }}
+                  >
+                    <SelectTrigger data-testid={`select-mapping-${index}`}>
+                      <SelectValue placeholder="Skip this column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Skip (Don't Import)</SelectItem>
+                      <SelectItem value="Product Name">Product Name</SelectItem>
+                      <SelectItem value="SKU">SKU</SelectItem>
+                      <SelectItem value="Overview">Overview</SelectItem>
+                      <SelectItem value="Supplier">Supplier</SelectItem>
+                      <SelectItem value="Furniture Category">Furniture Category</SelectItem>
+                      <SelectItem value="Room Type">Room Type</SelectItem>
+                      <SelectItem value="Design Style">Design Style</SelectItem>
+                      <SelectItem value="Key Features">Key Features</SelectItem>
+                      <SelectItem value="Storage Solutions">Storage Solutions</SelectItem>
+                      <SelectItem value="Colour">Colour</SelectItem>
+                      <SelectItem value="Product Material">Product Material</SelectItem>
+                      <SelectItem value="Inventory">Inventory</SelectItem>
+                      <SelectItem value="Trade Price">Trade Price</SelectItem>
+                      <SelectItem value="Retail Price">Retail Price</SelectItem>
+                      <SelectItem value="Dimensions (Height)">Dimensions (Height)</SelectItem>
+                      <SelectItem value="Dimensions (Width)">Dimensions (Width)</SelectItem>
+                      <SelectItem value="Dimensions (Depth)">Dimensions (Depth)</SelectItem>
+                      <SelectItem value="Arm Width">Arm Width</SelectItem>
+                      <SelectItem value="Arm Depth">Arm Depth</SelectItem>
+                      <SelectItem value="Seat Width">Seat Width</SelectItem>
+                      <SelectItem value="Seat Depth">Seat Depth</SelectItem>
+                      <SelectItem value="Seating">Seating</SelectItem>
+                      <SelectItem value="Assembly">Assembly</SelectItem>
+                      <SelectItem value="Lead Time">Lead Time</SelectItem>
+                      <SelectItem value="Delivery Options">Delivery Options</SelectItem>
+                      <SelectItem value="Delivery Location">Delivery Location</SelectItem>
+                      <SelectItem value="Delivery Policy">Delivery Policy</SelectItem>
+                      <SelectItem value="Tags">Tags</SelectItem>
+                      <SelectItem value="Weight">Weight</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              
+              {filePreview.sampleData.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-semibold mb-2">Sample Data Preview</h4>
+                  <div className="bg-muted p-3 rounded text-xs font-mono overflow-x-auto">
+                    {JSON.stringify(filePreview.sampleData[0], null, 2)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMappingDialog(false)} data-testid="button-cancel-mapping">
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmImport} data-testid="button-confirm-import">
+              Import with Mapping
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Instructions */}
       <Card>
