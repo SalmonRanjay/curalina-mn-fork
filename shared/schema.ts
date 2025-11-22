@@ -197,20 +197,9 @@ export const products = pgTable("products", {
   // Media & metadata
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
-  visualDescription: text("visual_description"), // Active visual description from Gemini
-  visualDescriptionGemini: text("visual_description_gemini"), // Gemini Vision analysis
-  // Front-view specific descriptions (for prioritized analysis)
-  visualDescriptionFrontView: text("visual_description_front_view"), // Active front-view description
-  visualDescriptionFrontViewGemini: text("visual_description_front_view_gemini"), // Gemini front-view analysis
-  // Multi-angle analysis fields
-  imageAnalyses: jsonb("image_analyses"), // { [imageUrl]: { angle, confidence, description, features } }
-  synthesizedFrontView: text("synthesized_front_view"), // AI-generated front view from multi-angle synthesis
-  completeProductDescription: text("complete_product_description"), // Comprehensive description from all angles
-  
-  // NEW: Structured Analysis - Machine-readable attribute extraction
+  visualDescription: text("visual_description"), // AI-generated visual description (400 char max for Gemini render accuracy)
+  imageAnalyses: jsonb("image_analyses"), // { frontView: {...}, multiAngle: {...}, analysisDate, images: [...] }
   structuredAnalysis: jsonb("structured_analysis"), // { frontView: {...}, multiAngle: {...}, qualityScore: 0-100 }
-  structuredAnalysisQuality: integer("structured_analysis_quality"), // Quality score 0-100
-  structuredAnalysisUpdatedAt: timestamp("structured_analysis_updated_at"), // When structured analysis was last updated
   
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
