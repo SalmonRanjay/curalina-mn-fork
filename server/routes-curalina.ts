@@ -630,9 +630,13 @@ export function registerCuralinaRoutes(app: Express) {
           const seatWidthVal = parseNumeric(row['Seat Width']);
           const seatDepthVal = parseNumeric(row['Seat Depth']);
           const seatHeightVal = parseNumeric(row['Seat Height']);
+          const volumeVal = parseNumeric(row['Volume']);
+          const doorWidthVal = parseNumeric(row['Door Width']);
+          const doorThicknessVal = parseNumeric(row['Door Thickness']);
+          const doorHeightVal = parseNumeric(row['Door Height']);
           
           // If individual dimensions provided, use or merge them
-          if (heightVal || widthVal || depthVal || armWidthVal || armDepthVal || seatWidthVal || seatDepthVal || seatHeightVal) {
+          if (heightVal || widthVal || depthVal || armWidthVal || armDepthVal || seatWidthVal || seatDepthVal || seatHeightVal || volumeVal || doorWidthVal || doorThicknessVal || doorHeightVal) {
             dimensions = {
               ...dimensions,
               w: widthVal || dimensions?.w || null,
@@ -643,6 +647,10 @@ export function registerCuralinaRoutes(app: Express) {
               seatWidth: seatWidthVal || null,
               seatDepth: seatDepthVal || null,
               seatHeight: seatHeightVal || null,
+              volume: volumeVal || null,
+              doorWidth: doorWidthVal || null,
+              doorThickness: doorThicknessVal || null,
+              doorHeight: doorHeightVal || null,
               unit: 'inches'
             };
           }
