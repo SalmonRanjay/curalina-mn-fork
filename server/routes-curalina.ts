@@ -1976,24 +1976,25 @@ export function registerCuralinaRoutes(app: Express) {
           
           console.log(`📝 Generated prompt with ${analysisTypes.length > 0 ? analysisTypes.join(' + ') : 'no image analysis'}`);
           
-          // Prepare product reference images (Front View priority)
-          // Pass ALL selected products' images to Gemini for maximum color fidelity
+          // Prepare product reference images (Front View ONLY for consistency)
+          // Pass only Front View images to Gemini for accurate color and style matching
           const productImages: Array<{ url: string; productName: string }> = [];
           for (const product of productsWithPlacement) {
             if (product.images && product.images.length > 0) {
-              // Find Front View image if available, otherwise use first image
+              // Find Front View image - use ONLY Front View images
               const frontViewImage = product.images.find((url: string) => url.includes('Front') || url.includes('front'));
-              const imageUrl = frontViewImage || product.images[0];
               
-              productImages.push({
-                url: imageUrl,
-                productName: product.name
-              });
+              if (frontViewImage) {
+                productImages.push({
+                  url: frontViewImage,
+                  productName: product.name
+                });
+              }
             }
           }
           
           if (productImages.length > 0) {
-            console.log(`📸 Preparing ${productImages.length} product reference images for Gemini (all selected products)`);
+            console.log(`📸 Preparing ${productImages.length} Front View reference images for Gemini (all selected products with Front View)`);
           }
           
           // Generate layout mask from zone-based placements for ControlNet
