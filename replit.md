@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 - **Direct Browser-to-S3 Upload Optimization**: Uses a presigned URL flow for direct, secure, and faster browser-to-S3 uploads, including duplicate detection.
 - **Render Ingestion Pipeline**: Production-ready pipeline with staged lifecycle events, atomic snapshots, performance optimization, SKU coverage validation, metadata enrichment, and idempotency for robust render data processing.
 - **Zone-Based Placement System**: Configurable room zones with `ROOM_ZONES` definitions, `assignItemsToZones()` for product-to-zone assignment based on functional categories and design rules, and `generateZoneBasedPlacementMatrix()` to create explicit spatial instructions for AI prompts.
+- **Product Fidelity System**: Condensed product descriptions (40-50 tokens) for precise AI control, real-world scale enforcement using product dimensions, post-render QA validation with Gemini Vision checking product appearance/scale/placement accuracy, and regeneration recommendations when quality thresholds are not met.
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM.

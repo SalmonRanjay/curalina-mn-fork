@@ -30,9 +30,15 @@ interface QAResults {
 /**
  * Analyze a generated render to validate product fidelity
  * Uses Gemini Vision to check if products match their specifications
+ * 
+ * @param renderImageBase64 - Base64-encoded image data (without data URI prefix)
+ * @param mimeType - Image MIME type (e.g., 'image/png' or 'image/jpeg')
+ * @param expectedProducts - Products that should be present in the render
+ * @param renderPrompt - Original prompt used to generate the render
  */
 export async function validateRenderQuality(
-  renderImageUrl: string,
+  renderImageBase64: string,
+  mimeType: string,
   expectedProducts: Array<{
     sku: string;
     name: string;
@@ -52,19 +58,20 @@ export async function validateRenderQuality(
   try {
     console.log('🔍 Starting QA validation for render...');
     
-    // Fetch the render image
-    const renderResponse = await fetch(renderImageUrl);
-    if (!renderResponse.ok) {
-      throw new Error(`Failed to fetch render image: ${renderResponse.statusText}`);
-    }
-    
-    const renderBuffer = await renderResponse.arrayBuffer();
-    const renderBase64 = Buffer.from(renderBuffer).toString('base64');
-    
     // Build validation prompt
     const validationPrompt = buildValidationPrompt(expectedProducts, renderPrompt);
     
     console.log('📤 Sending validation request to Gemini Vision...');
+    
+    // Check image size to ensure it's within Gemini's inline limits (~4MB)
+    const imageSizeKB = (renderImageBase64.length * 3) / 4 / 1024; // Approximate size in KB
+    const imageSizeMB = imageSizeKB / 1024;
+    
+    if (imageSizeMB > 4) {
+      console.warn(`⚠️ Image size (${imageSizeMB.toFixed(2)}MB) exceeds Gemini inline limit (4MB)`);
+      console.warn('   QA validation skipped - consider implementing image compression');
+      throw new Error(`Image too large for inline validation: ${imageSizeMB.toFixed(2)}MB > 4MB limit`);
+    }
     
     // Use Gemini Vision to analyze the render
     const response = await ai.models.generateContent({
@@ -76,8 +83,8 @@ export async function validateRenderQuality(
             { text: validationPrompt },
             {
               inlineData: {
-                data: renderBase64,
-                mimeType: "image/jpeg",
+                data: renderImageBase64,
+                mimeType: mimeType, // Use actual MIME type from image generation
               },
             },
           ],
