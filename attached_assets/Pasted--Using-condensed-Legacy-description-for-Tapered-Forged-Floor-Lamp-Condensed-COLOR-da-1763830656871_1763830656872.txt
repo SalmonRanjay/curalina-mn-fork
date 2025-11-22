@@ -1,0 +1,38 @@
+   📸 Using condensed Legacy description for: Tapered Forged Floor Lamp
+   🔍 Condensed: "COLOR: dark grey | MATERIAL: metal | SHAPE: angular, rectangular"
+   📸 Using condensed Legacy description for: Petrified Wood Organic Sculpture, Set Of 3
+   🔍 Condensed: "COLOR: beige"
+   📸 Using condensed Legacy description for: Runa Bowl
+   🔍 Condensed: "COLOR: dark brown | MATERIAL: wood | SHAPE: curved, U-shaped"
+   📸 Using condensed Legacy description for: Sumba Pedestal Set
+   🔍 Condensed: "COLOR: beige"
+Zone-based placement matrix generation failed, falling back to legacy matrix
+📝 Generated prompt with floor plan analysis
+🎨 Generating layout mask: 1024x1024px with 7 placements
+✅ Layout mask generated: 25.5KB
+🎭 Generated layout mask from 7 zone placements for ControlNet guidance
+🖼️ Using Gemini image-to-image mode with uploaded space photo + 13 product images + layout mask
+📸 Fetching 13 product reference images...
+4:56:49 PM [express] GET /api/render/latest 304 in 575ms :: {"id":"e5a625eb-7650-44f3-b8b6-8fd221641…
+✅ Successfully fetched 13/13 product images
+Fetching room image from: https://3193113e-1de4-4de4-890b-7834758581fe-00-29vc51uosd79x.kirk.replit.dev/public-objects/floorplans/1763830548859-unxgi-download-1.jpg
+Using Gemini for structure-preserving image-to-image editing with MIME type: image/jpeg
+4:56:51 PM [express] GET /api/render/latest 304 in 303ms :: {"id":"e5a625eb-7650-44f3-b8b6-8fd221641…
+4:56:54 PM [express] GET /api/render/latest 304 in 263ms :: {"id":"e5a625eb-7650-44f3-b8b6-8fd221641…
+AI generation error: ApiError: {"error":{"code":500,"message":"An internal error has occurred. Please retry or report in https://developers.generativeai.google/guide/troubleshooting","status":"INTERNAL"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:826:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:487:9)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async generateInteriorImage (/home/runner/workspace/server/services/gemini-ai.ts:2760:22)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:2017:32) {
+  status: 500
+}
+AI generation error: Error: Failed to generate interior design: {"error":{"code":500,"message":"An internal error has occurred. Please retry or report in https://developers.generativeai.google/guide/troubleshooting","status":"INTERNAL"}}
+    at generateInteriorImage (/home/runner/workspace/server/services/gemini-ai.ts:2809:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:2017:32)
+4:56:56 PM [express] GET /api/render/latest 200 in 262ms :: {"id":"e5a625eb-7650-44f3-b8b6-8fd221641…
+4:56:57 PM [express] GET /api/render/latest 304 in 263ms :: {"id":"e5a625eb-7650-44f3-b8b6-8fd221641…
+4:56:58 PM [express] GET /api/render/e5a625eb-7650-44f3-b8b6-8fd221641472/ledger 200 in 781ms :: {"i…
+4:56:58 PM [express] GET /api/products 304 in 1009ms :: [{"id":"9e4083ea-0041-4750-aa5e-6e7aa87feabb…

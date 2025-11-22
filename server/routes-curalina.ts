@@ -1977,8 +1977,11 @@ export function registerCuralinaRoutes(app: Express) {
           console.log(`📝 Generated prompt with ${analysisTypes.length > 0 ? analysisTypes.join(' + ') : 'no image analysis'}`);
           
           // Prepare product reference images (Front View priority)
+          // LIMIT TO TOP 5 PRODUCTS: Gemini has image limits for image-to-image generation
           const productImages: Array<{ url: string; productName: string }> = [];
-          for (const product of productsWithPlacement) {
+          const maxProductImages = 5; // Gemini image-to-image limit
+          for (let i = 0; i < Math.min(productsWithPlacement.length, maxProductImages); i++) {
+            const product = productsWithPlacement[i];
             if (product.images && product.images.length > 0) {
               // Find Front View image if available, otherwise use first image
               const frontViewImage = product.images.find((url: string) => url.includes('Front') || url.includes('front'));
@@ -2173,7 +2176,7 @@ export function registerCuralinaRoutes(app: Express) {
               quizContext: {
                 roomType: quiz.roomType,
                 style: quiz.styles?.[0] || 'Modern', // Use first style from array
-                budget: quiz.budgetRange
+                budget: quiz.budgetRange || 'unspecified' // String field
               }
             }, eventSnapshot);
           } catch (error) {
