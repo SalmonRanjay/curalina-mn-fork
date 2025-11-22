@@ -294,7 +294,7 @@ export default function AdminProducts() {
   // Multi-angle analysis mutation for single product
   const multiAngleAnalysisMutation = useMutation({
     mutationFn: async (productId: string) => {
-      return apiRequest(`/api/admin/products/${productId}/analyze-multi-angle`, "POST");
+      return apiRequest("POST", `/api/admin/products/${productId}/analyze-multi-angle`);
     },
     onSuccess: (data: any) => {
       toast({
@@ -317,7 +317,7 @@ export default function AdminProducts() {
   // Batch multi-angle analysis mutation
   const batchMultiAngleMutation = useMutation({
     mutationFn: async (limit: number = 10) => {
-      return apiRequest(`/api/admin/products/analyze-batch`, "POST", { limit });
+      return apiRequest("POST", `/api/admin/products/analyze-batch`, { limit });
     },
     onSuccess: (data: any) => {
       toast({
@@ -415,7 +415,7 @@ export default function AdminProducts() {
   // Gemini-only analysis (front view + combined)
   const analyzeWithGeminiMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/admin/products/analyze-with-gemini", "POST");
+      const response = await apiRequest("POST", "/api/admin/products/analyze-with-gemini");
       return response;
     },
     onSuccess: (data: any) => {
@@ -510,7 +510,7 @@ export default function AdminProducts() {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("/api/admin/products/bulk-delete", "DELETE", {
+      return apiRequest("DELETE", "/api/admin/products/bulk-delete", {
         productIds: selectedProductIds.length > 0 ? selectedProductIds : undefined,
         deleteAll: selectedProductIds.length === 0,
       });
@@ -566,7 +566,7 @@ export default function AdminProducts() {
   // Export filtered products
   const exportFilteredMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/admin/products/export/filtered", "POST", {
+      const response = await apiRequest("POST", "/api/admin/products/export/filtered", {
         searchQuery,
         categoryId: categoryFilter,
         supplierId: supplierFilter,
