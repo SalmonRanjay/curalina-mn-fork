@@ -40,6 +40,7 @@ import AdminRendersStorage from "@/pages/admin/renders-storage";
 import AdminDocumentation from "@/pages/admin/documentation";
 import AdminMappingAnalysis from "@/pages/admin/mapping-analysis";
 import AnalysisDashboard from "@/pages/admin/analysis-dashboard";
+import AdminVisualDescriptions from "@/pages/admin/visual-descriptions";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 
@@ -61,6 +62,7 @@ function AdminLayout() {
             <Route path="/admin/products/bulk-upload" component={AdminBulkUpload} />
             <Route path="/admin/products/front-view-upload" component={AdminFrontViewUpload} />
             <Route path="/admin/products/s3-sync" component={AdminS3Sync} />
+            <Route path="/admin/products/visual-descriptions" component={AdminVisualDescriptions} />
             <Route path="/admin/suppliers" component={AdminSuppliers} />
             <Route path="/admin/orders" component={AdminOrders} />
             <Route path="/admin/users" component={AdminUsers} />

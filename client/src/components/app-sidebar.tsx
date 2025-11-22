@@ -16,6 +16,7 @@ import {
   BookOpen,
   ChevronDown,
   Map,
+  Sparkles,
 } from "lucide-react";
 
 import {
@@ -100,6 +101,11 @@ const productSubItems = [
     title: "S3 Sync",
     url: "/admin/products/s3-sync",
     icon: Cloud,
+  },
+  {
+    title: "Visual Descriptions",
+    url: "/admin/products/visual-descriptions",
+    icon: Sparkles,
   },
 ];
 
