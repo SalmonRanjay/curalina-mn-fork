@@ -1380,8 +1380,7 @@ export default function AdminProducts() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem
-                onClick={() => startVisualAnalysisMutation.mutate({ onlyMissingDescriptions: true })}
-                disabled={startVisualAnalysisMutation.isPending}
+                onClick={() => !startVisualAnalysisMutation.isPending && startVisualAnalysisMutation.mutate({ onlyMissingDescriptions: true })}
                 data-testid="button-analyze-visuals"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
@@ -1390,8 +1389,7 @@ export default function AdminProducts() {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => reanalyzeFrontViewsMutation.mutate()}
-                disabled={reanalyzeFrontViewsMutation.isPending || frontViewProductCount === 0}
+                onClick={() => !reanalyzeFrontViewsMutation.isPending && frontViewProductCount > 0 && reanalyzeFrontViewsMutation.mutate()}
                 data-testid="button-reanalyze-front-views"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
@@ -1400,8 +1398,7 @@ export default function AdminProducts() {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => analyzeWithGeminiMutation.mutate()}
-                disabled={analyzeWithGeminiMutation.isPending}
+                onClick={() => !analyzeWithGeminiMutation.isPending && analyzeWithGeminiMutation.mutate()}
                 data-testid="button-gemini-analysis"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
@@ -1410,11 +1407,7 @@ export default function AdminProducts() {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => {
-                  setBatchAnalyzing(true);
-                  batchMultiAngleMutation.mutate(10);
-                }}
-                disabled={batchAnalyzing}
+                onClick={() => !batchAnalyzing && (setBatchAnalyzing(true), batchMultiAngleMutation.mutate(10))}
                 data-testid="button-batch-multi-angle"
               >
                 <Scan className="w-4 h-4 mr-2" />
@@ -1423,8 +1416,7 @@ export default function AdminProducts() {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => generateDescriptionsMutation.mutate()}
-                disabled={generateDescriptionsMutation.isPending}
+                onClick={() => !generateDescriptionsMutation.isPending && generateDescriptionsMutation.mutate()}
                 data-testid="button-generate-descriptions"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
