@@ -2,6 +2,7 @@ import { GoogleGenAI, Modality, Type } from "@google/genai";
 import OpenAI from "openai";
 import type { QuizResponse, Product } from "@shared/schema";
 import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate, type PlacementInstruction } from './room-composition-service';
+import { buildDimensionPrompt } from './dimension-utils';
 
 // Initialize Gemini client with fallback to integration API key
 // Supports both user-supplied keys and Replit integration keys
@@ -1892,6 +1893,13 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
    VISUAL NOTE: No specific visual description available. Use product name and room style to determine appropriate appearance.
    
 `;
+      }
+      
+      // Add dimension information if available
+      const dimensionPrompt = buildDimensionPrompt(product);
+      if (dimensionPrompt) {
+        prompt += `   ${dimensionPrompt}\n`;
+        console.log(`   📏 Added dimensions: ${dimensionPrompt}`);
       }
       
       prompt += `   

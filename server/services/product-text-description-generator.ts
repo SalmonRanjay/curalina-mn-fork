@@ -1,4 +1,5 @@
 import type { Product } from '@shared/schema';
+import { buildDimensionSummary } from './dimension-utils';
 
 /**
  * Generate rich product descriptions that scale naturally with available data
@@ -99,28 +100,22 @@ export function generateRichProductDescription(product: Product): string {
     sections.push(materialElements.join(', ') + '.');
   }
   
-  // DIMENSIONS: Only add if we have dimension data
-  if (product.dimensions) {
-    const dims = product.dimensions as { w?: number; d?: number; h?: number; unit?: string };
-    const unit = dims.unit || 'inches';
+  // DIMENSIONS: Use category-aware dimension summary for comprehensive info
+  const dimensionSummary = buildDimensionSummary(product);
+  if (dimensionSummary) {
+    const dims = product.dimensions as any;
     
-    if (dims.w || dims.h || dims.d) {
-      const measurements: string[] = [];
-      if (dims.w) measurements.push(`${dims.w}${unit} W`);
-      if (dims.d) measurements.push(`${dims.d}${unit} D`);
-      if (dims.h) measurements.push(`${dims.h}${unit} H`);
-      
-      let dimText = `Dimensions: ${measurements.join(' × ')}`;
-      
-      // Add scale context if dimensions suggest it
-      if (dims.w && dims.w > 72) {
-        dimText += ', substantial scale for larger spaces';
-      } else if (dims.w && dims.w < 36) {
-        dimText += ', compact for space-efficient placement';
-      }
-      
-      sections.push(dimText + '.');
+    let dimText = `Dimensions: ${dimensionSummary}`;
+    
+    // Add scale context based on width if available
+    const width = dims?.w || dims?.width;
+    if (width && width > 72) {
+      dimText += ', substantial scale for larger spaces';
+    } else if (width && width < 36) {
+      dimText += ', compact for space-efficient placement';
     }
+    
+    sections.push(dimText + '.');
   }
   
   if (product.weight) {
