@@ -442,28 +442,62 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Bulk CSV/Excel import with column mapping
-  app.post('/api/admin/products/import-csv', isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
+  app.post('/api/admin/products/import-csv', isAuthenticated, isAdmin, upload.fields([{ name: 'file', maxCount: 1 }]), async (req: any, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+      // When using upload.fields(), files are in req.files object
+      const uploadedFile = req.files && req.files.file && req.files.file[0];
+      
+      if (!uploadedFile) {
+        return res.status(400).json({ 
+          success: false,
+          error: "No file uploaded",
+          imported: 0,
+          skipped: 0,
+          errors: []
+        });
       }
+
+      console.log('📥 CSV Import started:', uploadedFile.originalname);
+      console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
 
       const { read, utils } = await import('xlsx');
       
       // Parse the file
-      const workbook = read(req.file.buffer, { type: 'buffer' });
+      const workbook = read(uploadedFile.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const data = utils.sheet_to_json(worksheet);
 
+      console.log(`📊 Parsed ${data.length} rows from Excel file`);
+
       // Get column mappings if provided (from multipart form data)
       // Multer parses files but we need to access other form fields from req.body
       const mappingsStr = (req.body && typeof req.body.mappings === 'string') ? req.body.mappings : null;
-      const mappings = mappingsStr ? JSON.parse(mappingsStr) : null;
+      let mappings = null;
+      
+      try {
+        mappings = mappingsStr ? JSON.parse(mappingsStr) : null;
+        console.log('🗺️  Column mappings:', mappings ? `${mappings.length} mappings` : 'none provided');
+        if (mappings && mappings.length > 0) {
+          console.log('First mapping example:', mappings[0]);
+        }
+      } catch (parseError) {
+        console.error('❌ Failed to parse mappings JSON:', parseError);
+        return res.status(400).json({ 
+          success: false,
+          error: "Invalid column mappings format",
+          imported: 0,
+          skipped: 0,
+          errors: ['Failed to parse column mappings']
+        });
+      }
       
       // Create a mapping function to transform row data
       const mapRow = (row: any) => {
-        if (!mappings) return row; // No mapping, return as-is
+        if (!mappings || mappings.length === 0) {
+          // No mapping provided, return as-is
+          return row;
+        }
         
         const mapped: any = {};
         mappings.forEach((mapping: any) => {
@@ -475,8 +509,19 @@ export function registerCuralinaRoutes(app: Express) {
       };
 
       if (data.length === 0) {
-        return res.status(400).json({ error: "File is empty or has no valid data" });
+        return res.status(400).json({ 
+          success: false,
+          error: "File is empty or has no valid data",
+          imported: 0,
+          skipped: 0,
+          errors: []
+        });
       }
+
+      // Log first row before and after mapping
+      console.log('🔍 First row (original):', Object.keys(data[0] as any).slice(0, 5));
+      const firstMapped = mapRow(data[0] as any);
+      console.log('🔍 First row (mapped):', Object.keys(firstMapped).slice(0, 5));
 
       let imported = 0;
       let skipped = 0;
@@ -681,10 +726,13 @@ export function registerCuralinaRoutes(app: Express) {
             imported++;
           }
         } catch (error) {
-          console.error(`Error importing row:`, error);
-          errors.push(`Row ${imported + skipped + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`❌ Error importing row ${imported + skipped + 1}:`, errorMessage);
+          errors.push(`Row ${imported + skipped + 1}: ${errorMessage}`);
         }
       }
+
+      console.log(`✅ CSV Import completed: ${imported} imported, ${skipped} updated, ${errors.length} errors`);
 
       res.json({
         success: true,
@@ -692,16 +740,23 @@ export function registerCuralinaRoutes(app: Express) {
         skipped,
         updated: skipped,
         errors,
-        details: `Processed ${data.length} rows. Imported ${imported} new products, updated ${skipped} existing products.`
+        details: `Processed ${data.length} rows. Imported ${imported} new products, updated ${skipped} existing products.${errors.length > 0 ? ` Encountered ${errors.length} errors.` : ''}`
       });
     } catch (error) {
-      console.error("Error processing CSV import:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to process import file";
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      console.error("❌ Error processing CSV import:", errorMessage);
+      if (errorStack) {
+        console.error("Stack trace:", errorStack);
+      }
+      
       res.status(500).json({ 
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process import file",
+        error: errorMessage,
         imported: 0,
         skipped: 0,
-        errors: []
+        errors: [errorMessage]
       });
     }
   });

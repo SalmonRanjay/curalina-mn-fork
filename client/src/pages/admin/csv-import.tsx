@@ -487,10 +487,10 @@ export default function CSVImportPage() {
                 <div key={csvCol} className="grid grid-cols-2 gap-4 items-center">
                   <div className="font-mono text-sm p-2 bg-muted rounded">{csvCol}</div>
                   <Select
-                    value={columnMappings[index]?.targetField || ''}
+                    value={columnMappings[index]?.targetField || '_skip_'}
                     onValueChange={(value) => {
                       const newMappings = [...columnMappings];
-                      newMappings[index] = { csvColumn: csvCol, targetField: value };
+                      newMappings[index] = { csvColumn: csvCol, targetField: value === '_skip_' ? '' : value };
                       setColumnMappings(newMappings);
                     }}
                   >
@@ -498,7 +498,7 @@ export default function CSVImportPage() {
                       <SelectValue placeholder="Skip this column" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Skip (Don't Import)</SelectItem>
+                      <SelectItem value="_skip_">Skip (Don't Import)</SelectItem>
                       <SelectItem value="Product Name">Product Name</SelectItem>
                       <SelectItem value="SKU">SKU</SelectItem>
                       <SelectItem value="Overview">Overview</SelectItem>
