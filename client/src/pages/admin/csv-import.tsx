@@ -543,6 +543,10 @@ export default function CSVImportPage() {
                       <SelectItem value="Seat Width">Seat Width</SelectItem>
                       <SelectItem value="Seat Depth">Seat Depth</SelectItem>
                       <SelectItem value="Seat Height">Seat Height</SelectItem>
+                      <SelectItem value="Volume">Volume</SelectItem>
+                      <SelectItem value="Door Width">Door Width</SelectItem>
+                      <SelectItem value="Door Thickness">Door Thickness</SelectItem>
+                      <SelectItem value="Door Height">Door Height</SelectItem>
                       <SelectItem value="Seating">Seating</SelectItem>
                       <SelectItem value="Assembly">Assembly</SelectItem>
                       <SelectItem value="Lead Time">Lead Time</SelectItem>
@@ -591,7 +595,7 @@ export default function CSVImportPage() {
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="shrink-0">Optional</Badge>
-              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, Dimensions (Inch) Width x Depth x Height, Weight (lbs), Colour, Product Materials, Assembly, LEAD Time, Inventory, Tags, Source File</span>
+              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, Dimensions (Height, Width, Depth), Volume, Door Width, Door Thickness, Door Height, Weight (lbs), Colour, Product Materials, Assembly, Lead Time, Inventory, Tags</span>
             </div>
           </div>
           
