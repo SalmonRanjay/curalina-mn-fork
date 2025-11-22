@@ -2374,10 +2374,21 @@ export async function generateInteriorImage(
     
     // Image-to-image generation with Gemini (structure-preserving)
     console.log(`Fetching room image from: ${floorplanUrl}`);
-    const roomImageResponse = await fetch(floorplanUrl);
+    
+    // Convert relative URLs to absolute URLs for fetch
+    let fetchUrl = floorplanUrl;
+    if (fetchUrl.startsWith('/')) {
+      // Get the base URL from environment or construct it
+      const baseUrl = process.env.VITE_API_BASE_URL || process.env.APP_URL || 'http://localhost:5000';
+      fetchUrl = `${baseUrl}${floorplanUrl}`;
+    }
+    
+    const roomImageResponse = await fetch(fetchUrl, {
+      headers: { 'Accept': 'image/*' }
+    });
     
     if (!roomImageResponse.ok) {
-      console.warn(`Failed to fetch room image (${roomImageResponse.status}), falling back to text-to-image`);
+      console.warn(`Failed to fetch room image (${roomImageResponse.status}) from ${fetchUrl}, falling back to text-to-image`);
       // Fallback to text-to-image generation
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",

@@ -799,10 +799,14 @@ export function registerCuralinaRoutes(app: Express) {
   // Public asset serving endpoint
   app.get('/public-objects/:filePath(*)', async (req, res) => {
     try {
-      const filePath = req.params.filePath;
+      let filePath = req.params.filePath;
+      // Decode URL-encoded path components
+      filePath = decodeURIComponent(filePath);
+      
       const file = await objectStorageService.searchPublicObject(filePath);
       
       if (!file) {
+        console.warn(`File not found in object storage: ${filePath}`);
         return res.status(404).json({ error: "File not found" });
       }
       
@@ -827,7 +831,12 @@ export function registerCuralinaRoutes(app: Express) {
 
       // Upload each file to object storage
       for (const file of req.files) {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.originalname}`;
+        // Sanitize filename: remove spaces and special characters
+        const sanitizedName = file.originalname
+          .toLowerCase()
+          .replace(/\s+/g, '-') // Replace spaces with hyphens
+          .replace(/[^a-z0-9.\-_]/g, ''); // Remove special characters
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${sanitizedName}`;
         
         // Use public directory so files are accessible via /public-objects route
         const publicPaths = objectStorageService.getPublicObjectSearchPaths();
@@ -845,7 +854,9 @@ export function registerCuralinaRoutes(app: Express) {
           },
         });
         
-        const publicUrl = `/public-objects/${folder}/${fileName}`;
+        // URL encode the file path for proper browser handling
+        const encodedFileName = encodeURIComponent(fileName);
+        const publicUrl = `/public-objects/${folder}/${encodedFileName}`;
         uploadedUrls.push(publicUrl);
       }
       
