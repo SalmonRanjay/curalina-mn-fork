@@ -998,7 +998,8 @@ function generateScaleConstraints(products: Array<{ name: string; dimensions?: a
 
 /**
  * Condense a long visual description into a short, generation-ready format
- * Focuses on: silhouette, main material, main color, distinctive features, overall size
+ * CRITICAL: Preserves color and material information with explicit labels to prevent AI drift
+ * Format: COLOR: [exact color] | MATERIAL: [material] | SHAPE: [shape] | SIZE: [dimensions]
  * Target: 40-50 tokens max for precise AI control
  */
 function condenseVisualDescription(fullDescription: string, productName: string): string {
@@ -1009,42 +1010,68 @@ function condenseVisualDescription(fullDescription: string, productName: string)
   // Extract key visual elements using pattern matching
   const text = fullDescription.toLowerCase();
   
-  // Extract silhouette/shape
-  const shapeWords = ['curved', 'straight', 'angular', 'rounded', 'rectangular', 'square', 'circular', 'oval', 'L-shaped', 'U-shaped', 'sectional', 'tufted', 'low-profile', 'high-back', 'armless', 'with arms', 'tapered', 'flared'];
+  // Extract COLOR with compound descriptors (most critical for fidelity)
+  // Look for compound colors first: "soft taupe", "warm beige", "dark charcoal"
+  const colorModifiers = ['soft', 'warm', 'cool', 'light', 'dark', 'deep', 'pale', 'muted', 'bright', 'rich'];
+  const baseColors = ['white', 'black', 'gray', 'grey', 'beige', 'cream', 'brown', 'tan', 'taupe', 'navy', 'blue', 'green', 'sage', 'terracotta', 'rust', 'blush', 'pink', 'charcoal', 'ivory', 'camel', 'cognac', 'natural', 'sand', 'mushroom', 'olive', 'slate', 'graphite'];
+  
+  let colorDescriptor = '';
+  for (const modifier of colorModifiers) {
+    for (const color of baseColors) {
+      const compoundColor = `${modifier} ${color}`;
+      if (text.includes(compoundColor)) {
+        colorDescriptor = compoundColor;
+        break;
+      }
+    }
+    if (colorDescriptor) break;
+  }
+  
+  // If no compound color, try base colors
+  if (!colorDescriptor) {
+    colorDescriptor = baseColors.find(c => text.includes(c)) || '';
+  }
+  
+  // Extract MATERIAL with specificity
+  const specificMaterials = ['performance linen', 'performance fabric', 'bouclé', 'boucle', 'velvet', 'leather', 'genuine leather', 'faux leather', 'solid wood', 'oak', 'walnut', 'teak', 'pine', 'brushed brass', 'antique brass', 'stainless steel', 'powder-coated metal'];
+  const baseMaterials = ['wood', 'metal', 'steel', 'brass', 'iron', 'fabric', 'linen', 'cotton', 'wool', 'marble', 'glass', 'acrylic', 'rattan', 'wicker', 'cane'];
+  
+  let materialDescriptor = specificMaterials.find(m => text.includes(m)) || baseMaterials.find(m => text.includes(m)) || '';
+  
+  // Extract SHAPE/SILHOUETTE
+  const shapeWords = ['curved', 'straight', 'angular', 'rounded', 'rectangular', 'square', 'L-shaped', 'U-shaped', 'sectional', 'tufted', 'low-profile', 'high-back', 'armless', 'skirted'];
   const shapes = shapeWords.filter(w => text.includes(w.toLowerCase())).slice(0, 2);
   
-  // Extract primary material
-  const materials = ['wood', 'oak', 'walnut', 'teak', 'pine', 'metal', 'steel', 'brass', 'iron', 'leather', 'fabric', 'velvet', 'linen', 'boucle', 'cotton', 'wool', 'marble', 'glass', 'acrylic', 'rattan', 'wicker'];
-  const primaryMaterial = materials.find(m => text.includes(m)) || '';
+  // Extract SIZE/DIMENSIONS (exact measurements critical for scale)
+  const dimMatch = fullDescription.match(/(\d+(?:\.\d+)?)\s*(?:W|H|D|L)?\s*(?:x\s*\d+(?:\.\d+)?(?:\s*x\s*\d+(?:\.\d+)?)?)?[\s]*(?:ft|feet|inches|in|cm|"|')/i);
+  const sizeDescriptor = dimMatch ? dimMatch[0] : '';
   
-  // Extract main color
-  const colors = ['white', 'black', 'gray', 'grey', 'beige', 'cream', 'brown', 'tan', 'navy', 'blue', 'green', 'sage', 'terracotta', 'rust', 'blush', 'pink', 'charcoal', 'ivory', 'camel', 'cognac', 'natural'];
-  const mainColor = colors.find(c => text.includes(c)) || '';
+  // Build structured condensed description with explicit labels
+  const parts: string[] = [];
   
-  // Extract size indicators
-  const sizes = ['compact', 'oversized', 'large', 'small', 'medium', 'wide', 'narrow', 'tall', 'short'];
-  const size = sizes.find(s => text.includes(s)) || '';
+  if (colorDescriptor) {
+    parts.push(`COLOR: ${colorDescriptor}`);
+  }
   
-  // Extract distinctive features (limit to 1-2)
-  const features = ['no tufting', 'tufted', 'without skirt', 'skirted', 'with cushions', 'cushioned', 'no ornament', 'minimalist', 'modern', 'traditional', 'vintage'];
-  const distinctiveFeatures = features.filter(f => text.includes(f)).slice(0, 2);
+  if (materialDescriptor) {
+    parts.push(`MATERIAL: ${materialDescriptor}`);
+  }
   
-  // Build condensed description
-  const parts = [
-    shapes.join(', '),
-    size,
-    mainColor,
-    primaryMaterial,
-    ...distinctiveFeatures
-  ].filter(Boolean);
+  if (shapes.length > 0) {
+    parts.push(`SHAPE: ${shapes.join(', ')}`);
+  }
   
-  // Create a command-like instruction
-  let condensed = parts.slice(0, 6).join(' ');
+  if (sizeDescriptor) {
+    parts.push(`SIZE: ${sizeDescriptor}`);
+  }
   
-  // Add dimensions if mentioned
-  const dimMatch = fullDescription.match(/(\d+)\s*(?:ft|feet|inches|in|cm)/i);
-  if (dimMatch) {
-    condensed += `, approx. ${dimMatch[0]}`;
+  // Join with separators for clarity
+  let condensed = parts.join(' | ');
+  
+  // If we got nothing useful, extract first sentence
+  if (!condensed) {
+    const firstSentence = fullDescription.split(/[.!?]/)[0]?.trim();
+    condensed = firstSentence?.substring(0, 150) || `${productName} - match catalog exactly`;
   }
   
   // Ensure it's not too long (rough token estimate: ~1 token per 4 characters)
@@ -1052,7 +1079,7 @@ function condenseVisualDescription(fullDescription: string, productName: string)
     condensed = condensed.substring(0, 200);
   }
   
-  return condensed || `${productName} - match catalog exactly`;
+  return condensed;
 }
 
 /**

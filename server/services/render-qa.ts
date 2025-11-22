@@ -19,6 +19,7 @@ interface QAResults {
   validatedAt: string;
   productChecks: Record<string, {
     found: boolean;
+    colorMatch?: boolean; // Explicit color validation
     appearanceMatch: number; // 0-100
     scaleAccuracy: number; // 0-100
     placementCorrect: boolean;
@@ -175,9 +176,16 @@ VALIDATION CHECKLIST:
 
 For each product, check:
 1. PRESENCE: Is the product visible in the render?
-2. APPEARANCE: Does it match the visual description (color, material, style, shape)?
-3. SCALE: Are the dimensions proportionally correct relative to other furniture and the room?
-4. PLACEMENT: Is it in the correct location as specified?
+2. COLOR MATCH: Does the color EXACTLY match the specification? (CRITICAL - score 0 if wrong color)
+3. MATERIAL MATCH: Does the material/fabric match the specification?
+4. SHAPE/STYLE: Does the silhouette and design match?
+5. SCALE: Are the dimensions proportionally correct relative to other furniture and the room?
+6. PLACEMENT: Is it in the correct location as specified?
+
+⚠️ COLOR VALIDATION IS CRITICAL:
+- If specified color is "soft taupe" but render shows "beige" → Appearance Match = 0
+- If specified color is "charcoal gray" but render shows "light gray" → Appearance Match = 0
+- Only score 90+ if color is an exact or very close match
 
 RESPONSE FORMAT:
 Provide your analysis in this exact structure:
@@ -188,10 +196,11 @@ PRODUCT CHECKS:
 [For each product]
 - Product Name: [name]
   Found: [yes/no]
+  Color Match: [yes/no - EXACT match required]
   Appearance Match: [0-100]
   Scale Accuracy: [0-100]
   Placement: [correct/incorrect/N/A]
-  Notes: [brief observations]
+  Notes: [brief observations, especially color discrepancies]
 
 ISSUES FOUND:
 [List any problems, one per line]
@@ -218,7 +227,7 @@ function parseQAResponse(
   const scoreMatch = analysisText.match(/OVERALL SCORE:\s*(\d+)/i);
   const overallScore = scoreMatch ? parseInt(scoreMatch[1], 10) : 70; // Default to 70 if not found
   
-  // Extract product checks
+  // Extract product checks with actual scores from Gemini's response
   const productCheckRegex = /Product Name:\s*(.+?)\s*\n\s*Found:\s*(yes|no)/gi;
   let match;
   while ((match = productCheckRegex.exec(analysisText)) !== null) {
@@ -231,12 +240,55 @@ function parseQAResponse(
     );
     
     if (product) {
+      // Extract actual scores from Gemini's response for this product
+      const productSection = analysisText.substring(match.index, match.index + 500); // Look ahead 500 chars
+      
+      // Extract Color Match (yes/no) - FAIL CLOSED if not explicitly "yes"
+      const colorMatchRegex = /Color Match:\s*(yes|no)/i;
+      const colorMatchResult = productSection.match(colorMatchRegex);
+      const colorMatches = colorMatchResult ? colorMatchResult[1].toLowerCase() === 'yes' : false; // Default to false for safety
+      
+      // Extract Appearance Match score
+      const appearanceMatchRegex = /Appearance Match:\s*(\d+)/i;
+      const appearanceMatchResult = productSection.match(appearanceMatchRegex);
+      let appearanceMatch = appearanceMatchResult ? parseInt(appearanceMatchResult[1], 10) : (found ? 70 : 0);
+      
+      // If color doesn't match, set appearance to 0 (critical failure) and add issue
+      if (!colorMatches && found) {
+        appearanceMatch = 0; // Complete failure - wrong color
+        console.warn(`🔴 CRITICAL: Color mismatch detected for ${productName} - setting appearance to 0`);
+        
+        // Add critical issue for color mismatch
+        issues.push({
+          severity: 'critical',
+          category: 'appearance',
+          description: `Product color does not match specification`,
+          affectedProduct: productName,
+        });
+      }
+      
+      // Extract Scale Accuracy score
+      const scaleAccuracyRegex = /Scale Accuracy:\s*(\d+)/i;
+      const scaleAccuracyResult = productSection.match(scaleAccuracyRegex);
+      const scaleAccuracy = scaleAccuracyResult ? parseInt(scaleAccuracyResult[1], 10) : (found ? 70 : 0);
+      
+      // Extract Placement
+      const placementRegex = /Placement:\s*(correct|incorrect|N\/A)/i;
+      const placementResult = productSection.match(placementRegex);
+      const placementCorrect = placementResult ? placementResult[1].toLowerCase() === 'correct' : found;
+      
+      // Extract Notes
+      const notesRegex = /Notes:\s*(.+)/i;
+      const notesResult = productSection.match(notesRegex);
+      const notes = notesResult ? notesResult[1].trim() : `Product ${found ? 'found' : 'not found'} in render`;
+      
       productChecks[product.sku] = {
         found,
-        appearanceMatch: found ? 80 : 0, // Simplified - would extract from response
-        scaleAccuracy: found ? 75 : 0,
-        placementCorrect: found,
-        notes: `Product ${found ? 'found' : 'not found'} in render`,
+        colorMatch: colorMatches,
+        appearanceMatch,
+        scaleAccuracy,
+        placementCorrect,
+        notes,
       };
     }
   }
@@ -281,6 +333,15 @@ function parseQAResponse(
  * Returns true if issues are severe enough to warrant a retry
  */
 export function shouldRegenerateRender(qaResults: QAResults): boolean {
+  // CRITICAL: Regenerate if any product has a color mismatch
+  const hasColorMismatch = Object.values(qaResults.productChecks).some(
+    check => check.found && check.colorMatch === false
+  );
+  if (hasColorMismatch) {
+    console.warn('🔴 Regeneration required: Color mismatch detected');
+    return true;
+  }
+  
   // Regenerate if overall score is below 60
   if (qaResults.overallScore < 60) {
     return true;
