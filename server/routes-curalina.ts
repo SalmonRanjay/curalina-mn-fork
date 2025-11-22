@@ -1977,11 +1977,9 @@ export function registerCuralinaRoutes(app: Express) {
           console.log(`📝 Generated prompt with ${analysisTypes.length > 0 ? analysisTypes.join(' + ') : 'no image analysis'}`);
           
           // Prepare product reference images (Front View priority)
-          // LIMIT TO TOP 5 PRODUCTS: Gemini has image limits for image-to-image generation
+          // Pass ALL selected products' images to Gemini for maximum color fidelity
           const productImages: Array<{ url: string; productName: string }> = [];
-          const maxProductImages = 5; // Gemini image-to-image limit
-          for (let i = 0; i < Math.min(productsWithPlacement.length, maxProductImages); i++) {
-            const product = productsWithPlacement[i];
+          for (const product of productsWithPlacement) {
             if (product.images && product.images.length > 0) {
               // Find Front View image if available, otherwise use first image
               const frontViewImage = product.images.find((url: string) => url.includes('Front') || url.includes('front'));
@@ -1992,6 +1990,10 @@ export function registerCuralinaRoutes(app: Express) {
                 productName: product.name
               });
             }
+          }
+          
+          if (productImages.length > 0) {
+            console.log(`📸 Preparing ${productImages.length} product reference images for Gemini (all selected products)`);
           }
           
           // Generate layout mask from zone-based placements for ControlNet
