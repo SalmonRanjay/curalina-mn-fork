@@ -221,7 +221,7 @@ export default function CSVImportPage() {
       return field;
     };
 
-    // CSV template with 12 required fields + 17 optional fields
+    // CSV template with 12 required fields + 21 optional fields
     const headers = [
       // ✅ REQUIRED FIELDS (12)
       'Product Name',
@@ -236,7 +236,7 @@ export default function CSVImportPage() {
       'Colour',
       'Product Material',
       'Inventory',
-      // 🟨 OPTIONAL FIELDS (17)
+      // 🟨 OPTIONAL FIELDS (21)
       'Trade Price',
       'Retail Price',
       'Dimensions (Height)',
@@ -246,6 +246,10 @@ export default function CSVImportPage() {
       'Arm Depth',
       'Seat Width',
       'Seat Depth',
+      'Volume',
+      'Door Width',
+      'Door Thickness',
+      'Door Height',
       'Seating',
       'Assembly',
       'Lead Time',
@@ -270,7 +274,7 @@ export default function CSVImportPage() {
       'Ivory, Cream, Natural Oak',
       'Boucle fabric, Oak wood, Foam cushions',
       '15',
-      // OPTIONAL (17 fields)
+      // OPTIONAL (21 fields)
       '1199.00',           // Trade Price
       '1499.00',           // Retail Price
       '32',                // Dimensions (Height)
@@ -280,6 +284,10 @@ export default function CSVImportPage() {
       '32',                // Arm Depth
       '60',                // Seat Width
       '24',                // Seat Depth
+      '98',                // Volume
+      '28',                // Door Width
+      '2',                 // Door Thickness
+      '72',                // Door Height
       '3 seats',           // Seating
       'No',                // Assembly
       '7',                 // Lead Time
@@ -322,7 +330,7 @@ export default function CSVImportPage() {
         <CardHeader>
           <CardTitle>Download Template</CardTitle>
           <CardDescription>
-            CSV template with 12 required fields and 17 optional fields. Download and fill in all required fields for each product.
+            CSV template with 12 required fields and 21 optional fields. Download and fill in all required fields for each product.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -345,12 +353,13 @@ export default function CSVImportPage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-2 text-yellow-700 dark:text-yellow-400">🟨 Optional Fields (17)</h4>
+              <h4 className="font-semibold mb-2 text-yellow-700 dark:text-yellow-400">🟨 Optional Fields (21)</h4>
               <ul className="space-y-1 text-muted-foreground text-xs">
                 <li>• Trade Price, Retail Price</li>
                 <li>• Dimensions (Height, Width, Depth)</li>
                 <li>• Arm Width, Arm Depth</li>
                 <li>• Seat Width, Seat Depth</li>
+                <li>• Volume, Door Width, Door Thickness, Door Height</li>
                 <li>• Seating</li>
                 <li>• Assembly</li>
                 <li>• Lead Time</li>
