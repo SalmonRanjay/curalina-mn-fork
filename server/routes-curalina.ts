@@ -611,16 +611,21 @@ export function registerCuralinaRoutes(app: Express) {
 
           if (existingProduct) {
             // Update existing product (preserves images and other fields not in CSV)
+            // Don't include slug in update - keep the original slug
             await curalinaStorage.updateProduct(existingProduct.id, productData);
             skipped++;
           } else {
-            // Create new product
+            // Create new product with unique slug (append random suffix to handle duplicates)
+            const baseSlug = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(sku).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const uniqueSuffix = Math.random().toString(36).substring(2, 6); // 4 random chars
+            const uniqueSlug = baseSlug + '-' + uniqueSuffix;
+            
             await curalinaStorage.createProduct({
               sku,
               ...productData,
               images: [],
               asset3dUrl: null,
-              slug: productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(sku).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              slug: uniqueSlug,
             });
             imported++;
           }

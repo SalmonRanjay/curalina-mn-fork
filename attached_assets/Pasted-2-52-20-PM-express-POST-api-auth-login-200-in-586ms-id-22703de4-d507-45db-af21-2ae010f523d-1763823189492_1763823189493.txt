@@ -1,0 +1,65 @@
+2:52:20 PM [express] POST /api/auth/login 200 in 586ms :: {"id":"22703de4-d507-45db-af21-2ae010f523d…
+2:52:20 PM [express] GET /api/auth/user 304 in 196ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2:52:21 PM [express] GET /api/auth/user 304 in 195ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2:52:21 PM [express] GET /api/auth/user 304 in 196ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2:52:21 PM [express] GET /api/admin/suppliers 304 in 276ms :: [{"id":"3672fb50-3f8a-499d-ad93-55bbe8…
+2:52:22 PM [express] GET /api/admin/users 304 in 475ms :: [{"id":"8b377b31-0712-4786-944d-795d35b69f…
+2:52:22 PM [express] GET /api/admin/orders 304 in 477ms :: []
+2:52:22 PM [express] GET /api/admin/products 304 in 710ms :: [{"id":"37ccf7fa-9052-4866-a298-eb5e424…
+2:52:28 PM [express] GET /api/auth/user 304 in 196ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2:52:28 PM [express] GET /api/auth/user 304 in 196ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2:52:34 PM [express] GET /api/auth/user 304 in 196ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2:52:34 PM [express] GET /api/auth/user 304 in 197ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+Error importing row: error: duplicate key value violates unique constraint "products_slug_unique"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async CuralinaStorage.createProduct (/home/runner/workspace/server/storage-curalina.ts:345:23)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:618:13) {
+  length: 228,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (slug)=(fawkes-bench-223315-001-) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'products',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'products_slug_unique',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+Error importing row: error: duplicate key value violates unique constraint "products_slug_unique"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async CuralinaStorage.createProduct (/home/runner/workspace/server/storage-curalina.ts:345:23)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:618:13) {
+  length: 234,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (slug)=(zander-outdoor-bench-imar-219-) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'products',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'products_slug_unique',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+2:52:48 PM [express] POST /api/admin/products/import-csv 200 in 6559ms :: {"success":true,"imported"…
+2:52:53 PM [express] [ImageHealthWorker] Running initial validation
+[ImageHealthWorker] Starting validation for 0 products marked as repairing
+[ImageHealthWorker] Validation complete: 0 processed, 0 updated, 0 errors
+2:52:54 PM [express] [ImageHealthWorker] Initial validation complete: 0 processed, 0 updated
