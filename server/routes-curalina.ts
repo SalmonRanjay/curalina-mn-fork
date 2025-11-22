@@ -634,9 +634,14 @@ export function registerCuralinaRoutes(app: Express) {
           const doorWidthVal = parseNumeric(row['Door Width']);
           const doorThicknessVal = parseNumeric(row['Door Thickness']);
           const doorHeightVal = parseNumeric(row['Door Height']);
+          const legBaseDepth1Val = parseNumeric(row['Leg/Base Depth 1']);
+          const legBaseHeight1Val = parseNumeric(row['Leg/Base Height 1']);
+          const legBaseWidth1Val = parseNumeric(row['Leg/Base Width 1']);
+          const tabletopThicknessVal = parseNumeric(row['Tabletop Thickness']);
+          const shapeTypeVal = row['Shape Type'] ? String(row['Shape Type']).trim() : null;
           
           // If individual dimensions provided, use or merge them
-          if (heightVal || widthVal || depthVal || armWidthVal || armDepthVal || seatWidthVal || seatDepthVal || seatHeightVal || volumeVal || doorWidthVal || doorThicknessVal || doorHeightVal) {
+          if (heightVal || widthVal || depthVal || armWidthVal || armDepthVal || seatWidthVal || seatDepthVal || seatHeightVal || volumeVal || doorWidthVal || doorThicknessVal || doorHeightVal || legBaseDepth1Val || legBaseHeight1Val || legBaseWidth1Val || tabletopThicknessVal || shapeTypeVal) {
             dimensions = {
               ...dimensions,
               w: widthVal || dimensions?.w || null,
@@ -651,6 +656,11 @@ export function registerCuralinaRoutes(app: Express) {
               doorWidth: doorWidthVal || null,
               doorThickness: doorThicknessVal || null,
               doorHeight: doorHeightVal || null,
+              legBaseDepth1: legBaseDepth1Val || null,
+              legBaseHeight1: legBaseHeight1Val || null,
+              legBaseWidth1: legBaseWidth1Val || null,
+              tabletopThickness: tabletopThicknessVal || null,
+              shapeType: shapeTypeVal || null,
               unit: 'inches'
             };
           }

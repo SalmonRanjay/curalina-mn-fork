@@ -182,6 +182,14 @@ export default function CSVImportPage() {
       'door width': 'Door Width',
       'door thickness': 'Door Thickness',
       'door height': 'Door Height',
+      'leg/base depth 1': 'Leg/Base Depth 1',
+      'leg base depth 1': 'Leg/Base Depth 1',
+      'leg/base height 1': 'Leg/Base Height 1',
+      'leg base height 1': 'Leg/Base Height 1',
+      'leg/base width 1': 'Leg/Base Width 1',
+      'leg base width 1': 'Leg/Base Width 1',
+      'tabletop thickness': 'Tabletop Thickness',
+      'shape type': 'Shape Type',
     };
     
     return exactMappings[normalized] || '';
@@ -221,7 +229,7 @@ export default function CSVImportPage() {
       return field;
     };
 
-    // CSV template with 12 required fields + 21 optional fields
+    // CSV template with 12 required fields + 26 optional fields
     const headers = [
       // ✅ REQUIRED FIELDS (12)
       'Product Name',
@@ -236,7 +244,7 @@ export default function CSVImportPage() {
       'Colour',
       'Product Material',
       'Inventory',
-      // 🟨 OPTIONAL FIELDS (21)
+      // 🟨 OPTIONAL FIELDS (26)
       'Trade Price',
       'Retail Price',
       'Dimensions (Height)',
@@ -250,6 +258,11 @@ export default function CSVImportPage() {
       'Door Width',
       'Door Thickness',
       'Door Height',
+      'Leg/Base Depth 1',
+      'Leg/Base Height 1',
+      'Leg/Base Width 1',
+      'Tabletop Thickness',
+      'Shape Type',
       'Seating',
       'Assembly',
       'Lead Time',
@@ -274,7 +287,7 @@ export default function CSVImportPage() {
       'Ivory, Cream, Natural Oak',
       'Boucle fabric, Oak wood, Foam cushions',
       '15',
-      // OPTIONAL (21 fields)
+      // OPTIONAL (26 fields)
       '1199.00',           // Trade Price
       '1499.00',           // Retail Price
       '32',                // Dimensions (Height)
@@ -288,6 +301,11 @@ export default function CSVImportPage() {
       '28',                // Door Width
       '2',                 // Door Thickness
       '72',                // Door Height
+      '8',                 // Leg/Base Depth 1
+      '4',                 // Leg/Base Height 1
+      '6',                 // Leg/Base Width 1
+      '1.5',               // Tabletop Thickness
+      'Round',             // Shape Type
       '3 seats',           // Seating
       'No',                // Assembly
       '7',                 // Lead Time
@@ -330,7 +348,7 @@ export default function CSVImportPage() {
         <CardHeader>
           <CardTitle>Download Template</CardTitle>
           <CardDescription>
-            CSV template with 12 required fields and 21 optional fields. Download and fill in all required fields for each product.
+            CSV template with 12 required fields and 26 optional fields. Download and fill in all required fields for each product.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -353,13 +371,15 @@ export default function CSVImportPage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-2 text-yellow-700 dark:text-yellow-400">🟨 Optional Fields (21)</h4>
+              <h4 className="font-semibold mb-2 text-yellow-700 dark:text-yellow-400">🟨 Optional Fields (26)</h4>
               <ul className="space-y-1 text-muted-foreground text-xs">
                 <li>• Trade Price, Retail Price</li>
                 <li>• Dimensions (Height, Width, Depth)</li>
                 <li>• Arm Width, Arm Depth</li>
                 <li>• Seat Width, Seat Depth</li>
                 <li>• Volume, Door Width, Door Thickness, Door Height</li>
+                <li>• Leg/Base Depth 1, Height 1, Width 1</li>
+                <li>• Tabletop Thickness, Shape Type</li>
                 <li>• Seating</li>
                 <li>• Assembly</li>
                 <li>• Lead Time</li>
@@ -547,6 +567,11 @@ export default function CSVImportPage() {
                       <SelectItem value="Door Width">Door Width</SelectItem>
                       <SelectItem value="Door Thickness">Door Thickness</SelectItem>
                       <SelectItem value="Door Height">Door Height</SelectItem>
+                      <SelectItem value="Leg/Base Depth 1">Leg/Base Depth 1</SelectItem>
+                      <SelectItem value="Leg/Base Height 1">Leg/Base Height 1</SelectItem>
+                      <SelectItem value="Leg/Base Width 1">Leg/Base Width 1</SelectItem>
+                      <SelectItem value="Tabletop Thickness">Tabletop Thickness</SelectItem>
+                      <SelectItem value="Shape Type">Shape Type</SelectItem>
                       <SelectItem value="Seating">Seating</SelectItem>
                       <SelectItem value="Assembly">Assembly</SelectItem>
                       <SelectItem value="Lead Time">Lead Time</SelectItem>
@@ -595,7 +620,7 @@ export default function CSVImportPage() {
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="shrink-0">Optional</Badge>
-              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, Dimensions (Height, Width, Depth), Volume, Door Width, Door Thickness, Door Height, Weight (lbs), Colour, Product Materials, Assembly, Lead Time, Inventory, Tags</span>
+              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, Dimensions (Height, Width, Depth), Volume, Door Width, Door Thickness, Door Height, Leg/Base Depth 1, Leg/Base Height 1, Leg/Base Width 1, Tabletop Thickness, Shape Type, Weight (lbs), Colour, Product Materials, Assembly, Lead Time, Inventory, Tags</span>
             </div>
           </div>
           
