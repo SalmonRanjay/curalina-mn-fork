@@ -2,11 +2,13 @@ import { GoogleGenAI } from "@google/genai";
 import type { Product } from "@shared/schema";
 import { buildDimensionSummary } from './dimension-utils';
 
-const getGeminiApiKey = () => {
-  return process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-};
-
-const genAI = new GoogleGenAI({ apiKey: getGeminiApiKey() || "" });
+const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
+  httpOptions: {
+    apiVersion: "",
+    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
+  },
+});
 
 /**
  * Image prioritization for visual description generation

@@ -53,11 +53,19 @@ export async function validateRenderQuality(
   renderPrompt: string
 ): Promise<QAResults> {
   const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("Gemini API key not configured");
+  const baseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
+  
+  if (!apiKey || !baseUrl) {
+    throw new Error("Gemini API not configured - AI_INTEGRATIONS_GEMINI_API_KEY and AI_INTEGRATIONS_GEMINI_BASE_URL required");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      apiVersion: "",
+      baseUrl,
+    },
+  });
 
   try {
     console.log('🔍 Starting QA validation for render...');

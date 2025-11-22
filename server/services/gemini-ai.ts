@@ -4,15 +4,14 @@ import type { QuizResponse, Product } from "@shared/schema";
 import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate, type PlacementInstruction } from './room-composition-service';
 import { buildDimensionPrompt } from './dimension-utils';
 
-// Initialize Gemini client with fallback to integration API key
-// Supports both user-supplied keys and Replit integration keys
-const getGeminiApiKey = () => {
-  // Try user-supplied key first (via GEMINI_API_KEY), fallback to integration key
-  return process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY!;
-};
-
+// Initialize Gemini client using Replit AI Integrations
+// This provides Gemini-compatible API access without requiring your own API key
 const ai = new GoogleGenAI({
-  apiKey: getGeminiApiKey(),
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
+  httpOptions: {
+    apiVersion: "",
+    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
+  },
 });
 
 // Lazy initialization of OpenAI client to avoid crashes when key is not set

@@ -50,8 +50,9 @@ Preferred communication style: Simple, everyday language.
     - AWS S3
 - **AI/ML**:
     - Stability AI SDXL (for structure-preserving image-to-image rendering)
-    - Google Gemini 2.5 Flash (for text-to-image generation, AI image matching)
-    - Google Gemini Vision (for multi-modal image analysis)
+    - Google Gemini 2.5 Flash via Replit AI Integrations (for text-to-image generation, AI image matching)
+    - Google Gemini Vision via Replit AI Integrations (for multi-modal image analysis)
+    - **Note**: Uses Replit AI Integrations for Gemini access (no API key required, billed to Replit credits)
 - **Image Processing**:
     - Sharp
 - **Payment Processing**:
