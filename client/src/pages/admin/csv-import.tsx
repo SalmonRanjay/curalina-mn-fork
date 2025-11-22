@@ -156,6 +156,7 @@ export default function CSVImportPage() {
       'dimensions': 'General Dimensions (Inch)',
       'retail price': 'Retail Price',
       'price': 'Retail Price',
+      'seat height': 'Seat Height',
       'dimensions (height)': 'Dimensions (Height)',
       'height': 'Dimensions (Height)',
       'dimensions (width)': 'Dimensions (Width)',
@@ -525,6 +526,7 @@ export default function CSVImportPage() {
                       <SelectItem value="Arm Depth">Arm Depth</SelectItem>
                       <SelectItem value="Seat Width">Seat Width</SelectItem>
                       <SelectItem value="Seat Depth">Seat Depth</SelectItem>
+                      <SelectItem value="Seat Height">Seat Height</SelectItem>
                       <SelectItem value="Seating">Seating</SelectItem>
                       <SelectItem value="Assembly">Assembly</SelectItem>
                       <SelectItem value="Lead Time">Lead Time</SelectItem>

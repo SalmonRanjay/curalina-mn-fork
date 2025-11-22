@@ -183,7 +183,7 @@ export const products = pgTable("products", {
   materials: text("materials").array(),
   
   // Physical specifications
-  dimensions: jsonb("dimensions"), // { w, d, h, armWidth, armDepth, seatWidth, seatDepth, unit }
+  dimensions: jsonb("dimensions"), // { w, d, h, armWidth, armDepth, seatWidth, seatDepth, seatHeight, unit }
   weight: text("weight"), // '150 lbs'
   seating: text("seating"), // '2 seats', '3-4 people', etc.
   assembly: text("assembly"), // 'Yes', 'No', 'Partial'
