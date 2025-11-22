@@ -2256,7 +2256,7 @@ export function registerCuralinaRoutes(app: Express) {
               quizContext: {
                 roomType: quiz.roomType,
                 style: quiz.styles?.[0] || 'Modern', // Use first style from array
-                budget: quiz.budgetRange // Already a string from database
+                budget: quiz.budgetRange ? parseInt(quiz.budgetRange) : 0 // Convert budget range string to number
               }
             }, eventSnapshot);
           } catch (error) {
