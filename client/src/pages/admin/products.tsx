@@ -1691,6 +1691,29 @@ export default function AdminProducts() {
             )}
           </div>
           <div className="flex gap-2">
+            <input
+              type="file"
+              accept=".csv,.xlsx"
+              onChange={handleCsvImport}
+              disabled={csvImporting}
+              className="hidden"
+              id="csv-import-file"
+              data-testid="input-csv-import-file"
+            />
+            <label htmlFor="csv-import-file" className="contents">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={csvImporting}
+                asChild
+                data-testid="button-import-csv"
+              >
+                <span className="cursor-pointer">
+                  <Upload className="w-4 h-4 mr-2" />
+                  {csvImporting ? "Importing..." : "Import CSV"}
+                </span>
+              </Button>
+            </label>
             <Button
               size="sm"
               variant="outline"
