@@ -151,10 +151,11 @@ export default function CSVImportPage() {
       'inventory': 'Inventory',
       'stock': 'Inventory',
       'trade price': 'Trade Price',
-      'general dimensions (inch)': 'General Dimensions (Inch)',
-      'general dimensions': 'General Dimensions (Inch)',
-      'dimensions (inch)': 'General Dimensions (Inch)',
-      'dimensions': 'General Dimensions (Inch)',
+      'general dimensions (inch)': 'Dimensions (Inch) Width x Depth x Height',
+      'general dimensions': 'Dimensions (Inch) Width x Depth x Height',
+      'dimensions (inch)': 'Dimensions (Inch) Width x Depth x Height',
+      'dimensions': 'Dimensions (Inch) Width x Depth x Height',
+      'dimensions (inch) width x depth x height': 'Dimensions (Inch) Width x Depth x Height',
       'retail price': 'Retail Price',
       'price': 'Retail Price',
       'seat height': 'Seat Height',
@@ -520,7 +521,7 @@ export default function CSVImportPage() {
                       <SelectItem value="Inventory">Inventory</SelectItem>
                       <SelectItem value="Trade Price">Trade Price</SelectItem>
                       <SelectItem value="Retail Price">Retail Price</SelectItem>
-                      <SelectItem value="General Dimensions (Inch)">General Dimensions (Inch)</SelectItem>
+                      <SelectItem value="Dimensions (Inch) Width x Depth x Height">Dimensions (Inch) Width x Depth x Height</SelectItem>
                       <SelectItem value="Dimensions (Height)">Dimensions (Height)</SelectItem>
                       <SelectItem value="Dimensions (Width)">Dimensions (Width)</SelectItem>
                       <SelectItem value="Dimensions (Depth)">Dimensions (Depth)</SelectItem>
@@ -577,7 +578,7 @@ export default function CSVImportPage() {
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="shrink-0">Optional</Badge>
-              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, General Dimensions, Weight (lbs), Colour, Product Materials, Assembly, LEAD Time, Inventory, Tags, Source File</span>
+              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, Dimensions (Inch) Width x Depth x Height, Weight (lbs), Colour, Product Materials, Assembly, LEAD Time, Inventory, Tags, Source File</span>
             </div>
           </div>
           

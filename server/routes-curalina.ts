@@ -582,7 +582,7 @@ export function registerCuralinaRoutes(app: Express) {
 
           // Parse dimensions - supports multiple field formats
           let dimensions = null;
-          const dimString = row['General Dimensions (Inch)\r\nWidth x Depth x Height'] || row['General Dimensions (Inch)'] || row['General Dimensions'];
+          const dimString = row['Dimensions (Inch) Width x Depth x Height'] || row['General Dimensions (Inch)\r\nWidth x Depth x Height'] || row['General Dimensions (Inch)'] || row['General Dimensions'];
           
           // Start with general dimensions
           if (dimString) {
