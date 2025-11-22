@@ -256,18 +256,11 @@ function hasValidImages(product: Product): boolean {
  * @returns true if product has at least one visual description
  */
 function hasAIVisualDescription(product: Product): boolean {
-  // Check if any visual description field is populated
-  // Priority order: Front View > Front View Gemini > Gemini Vision > Legacy
-  const hasFrontView = typeof product.visualDescriptionFrontView === 'string' && 
-                       product.visualDescriptionFrontView.trim().length > 0;
-  const hasFrontViewGemini = typeof product.visualDescriptionFrontViewGemini === 'string' && 
-                             product.visualDescriptionFrontViewGemini.trim().length > 0;
-  const hasGemini = typeof product.visualDescriptionGemini === 'string' && 
-                    product.visualDescriptionGemini.trim().length > 0;
-  const hasLegacy = typeof product.visualDescription === 'string' && 
-                    product.visualDescription.trim().length > 0;
+  // Check if visual description field is populated
+  const hasVisualDescription = typeof product.visualDescription === 'string' && 
+                               product.visualDescription.trim().length > 0;
   
-  return hasFrontView || hasFrontViewGemini || hasGemini || hasLegacy;
+  return hasVisualDescription;
 }
 
 /**

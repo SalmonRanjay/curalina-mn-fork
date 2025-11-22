@@ -1031,17 +1031,12 @@ export function registerCuralinaRoutes(app: Express) {
                 const product = allProducts.find(p => p.sku === result.sku);
                 if (product) {
                   await curalinaStorage.updateProduct(product.id, {
-                    visualDescriptionGemini: result.visualDescriptionGemini,
-                    visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini,
-                    visualDescription: result.visualDescriptionGemini || result.visualDescriptionFrontViewGemini
+                    visualDescription: result.visualDescription
                   });
                   updated++;
                   console.log(`✅ Updated ${result.sku}`);
-                  if (result.visualDescriptionFrontViewGemini) {
-                    console.log(`   Front View: ${result.visualDescriptionFrontViewGemini.length} chars`);
-                  }
-                  if (result.visualDescriptionGemini) {
-                    console.log(`   Combined: ${result.visualDescriptionGemini.length} chars`);
+                  if (result.visualDescription) {
+                    console.log(`   Description: ${result.visualDescription.length} chars`);
                   }
                 }
               } catch (error) {
@@ -3202,8 +3197,8 @@ export function registerCuralinaRoutes(app: Express) {
           id: p.id,
           sku: p.sku,
           name: p.name,
-          score: p.structuredAnalysisQuality,
-          analyzedAt: p.structuredAnalysisUpdatedAt
+          score: (p.structuredAnalysis as any)?.qualityScore || 50,
+          analyzedAt: p.createdAt
         }))
       });
     } catch (error) {
@@ -3240,8 +3235,8 @@ export function registerCuralinaRoutes(app: Express) {
         },
         analysis: product.structuredAnalysis,
         metrics,
-        qualityScore: product.structuredAnalysisQuality,
-        analyzedAt: product.structuredAnalysisUpdatedAt,
+        qualityScore: (product.structuredAnalysis as any)?.qualityScore || 50,
+        analyzedAt: product.createdAt,
         report
       });
     } catch (error) {

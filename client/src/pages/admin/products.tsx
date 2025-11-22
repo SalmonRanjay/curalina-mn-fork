@@ -124,8 +124,8 @@ export default function AdminProducts() {
       const hasSingleImage = product.images.length === 1;
       
       // Case 3: Missing Front View analysis data
-      const missingFrontViewData = !product.visualDescriptionFrontView || 
-                                    product.visualDescriptionFrontView.trim().length === 0;
+      const missingFrontViewData = !product.visualDescription || 
+                                    product.visualDescription.trim().length === 0;
       
       // Include if: (has named front view OR single image) AND missing data
       // OR just has single image (needs re-analysis with new logic)

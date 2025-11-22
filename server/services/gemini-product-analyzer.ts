@@ -133,7 +133,7 @@ async function analyzeImageWithGemini(
   try {
     const { data, mimeType } = await downloadImageAsBase64(imageUrl);
     
-    const model = ai.getModel({
+    const model = ai.getGenerativeModel({
       model: "gemini-2.0-flash-exp",
     });
     
