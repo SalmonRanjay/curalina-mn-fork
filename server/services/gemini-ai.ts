@@ -2362,7 +2362,23 @@ export async function generateInteriorImage(
       }
 
       const mimeType = imagePart.inlineData.mimeType || "image/png";
-      return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+      const baseImage = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+      
+      // Apply Stability AI QC refinement if enabled
+      if (process.env.ENABLE_STABILITY_QC === 'true' && process.env.STABILITY_AI_API_KEY) {
+        try {
+          const { applyQCRefinement } = await import('./stability-ai-qc');
+          const refinedImage = await applyQCRefinement(baseImage, prompt);
+          if (refinedImage) {
+            console.log("✅ QC refinement applied to text-to-image render");
+            return refinedImage;
+          }
+        } catch (error) {
+          console.error("QC refinement error:", error);
+        }
+      }
+      
+      return baseImage;
     }
     
     // Image-to-image generation with Gemini (structure-preserving)
@@ -2399,7 +2415,23 @@ export async function generateInteriorImage(
       }
 
       const mimeType = imagePart.inlineData.mimeType || "image/png";
-      return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+      const baseImage = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+      
+      // Apply Stability AI QC refinement if enabled
+      if (process.env.ENABLE_STABILITY_QC === 'true' && process.env.STABILITY_AI_API_KEY) {
+        try {
+          const { applyQCRefinement } = await import('./stability-ai-qc');
+          const refinedImage = await applyQCRefinement(baseImage, prompt);
+          if (refinedImage) {
+            console.log("✅ QC refinement applied to text-to-image render");
+            return refinedImage;
+          }
+        } catch (error) {
+          console.error("QC refinement error:", error);
+        }
+      }
+      
+      return baseImage;
     }
     
     // Fetch and encode the room image for Gemini
