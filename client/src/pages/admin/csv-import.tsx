@@ -144,9 +144,10 @@ export default function CSVImportPage() {
       'storage': 'Storage Solutions',
       'colour': 'Colour',
       'color': 'Colour',
-      'product material': 'Product Material',
-      'material': 'Product Material',
-      'materials': 'Product Material',
+      'product material': 'Product Materials',
+      'product materials': 'Product Materials',
+      'material': 'Product Materials',
+      'materials': 'Product Materials',
       'inventory': 'Inventory',
       'stock': 'Inventory',
       'trade price': 'Trade Price',
@@ -174,7 +175,8 @@ export default function CSVImportPage() {
       'delivery location': 'Delivery Location',
       'delivery policy': 'Delivery Policy',
       'tags': 'Tags',
-      'weight': 'Weight',
+      'weight': 'Weight (lbs)',
+      'weight (lbs)': 'Weight (lbs)',
     };
     
     return exactMappings[normalized] || '';
@@ -246,7 +248,7 @@ export default function CSVImportPage() {
       'Delivery Location',
       'Delivery Policy',
       'Tags',
-      'Weight'
+      'Weight (lbs)'
     ];
     
     const sampleRow = [
@@ -333,7 +335,7 @@ export default function CSVImportPage() {
                 <li>• Key Features</li>
                 <li>• Storage Solutions</li>
                 <li>• Colour</li>
-                <li>• Product Material</li>
+                <li>• Product Materials</li>
                 <li>• Inventory</li>
               </ul>
             </div>
@@ -348,7 +350,7 @@ export default function CSVImportPage() {
                 <li>• Assembly</li>
                 <li>• Lead Time</li>
                 <li>• Delivery Options, Location, Policy</li>
-                <li>• Tags, Weight</li>
+                <li>• Tags, Weight (lbs)</li>
               </ul>
             </div>
           </div>
@@ -514,7 +516,7 @@ export default function CSVImportPage() {
                       <SelectItem value="Key Features">Key Features</SelectItem>
                       <SelectItem value="Storage Solutions">Storage Solutions</SelectItem>
                       <SelectItem value="Colour">Colour</SelectItem>
-                      <SelectItem value="Product Material">Product Material</SelectItem>
+                      <SelectItem value="Product Materials">Product Materials</SelectItem>
                       <SelectItem value="Inventory">Inventory</SelectItem>
                       <SelectItem value="Trade Price">Trade Price</SelectItem>
                       <SelectItem value="Retail Price">Retail Price</SelectItem>
@@ -534,7 +536,7 @@ export default function CSVImportPage() {
                       <SelectItem value="Delivery Location">Delivery Location</SelectItem>
                       <SelectItem value="Delivery Policy">Delivery Policy</SelectItem>
                       <SelectItem value="Tags">Tags</SelectItem>
-                      <SelectItem value="Weight">Weight</SelectItem>
+                      <SelectItem value="Weight (lbs)">Weight (lbs)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -575,7 +577,7 @@ export default function CSVImportPage() {
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="shrink-0">Optional</Badge>
-              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, General Dimensions, Weight, Colour, Product Material, Assembly, LEAD Time, Inventory, Tags, Source File</span>
+              <span className="text-muted-foreground">Overview, Trade Price, Room Type, Design Style, Key Features, Storage Solutions, General Dimensions, Weight (lbs), Colour, Product Materials, Assembly, LEAD Time, Inventory, Tags, Source File</span>
             </div>
           </div>
           
@@ -585,7 +587,7 @@ export default function CSVImportPage() {
               <li><strong>Prices:</strong> 1299.99 (without $)</li>
               <li><strong>Colors/Materials:</strong> Black, Brown, White (comma-separated)</li>
               <li><strong>Dimensions:</strong> 84" W X 36" D X 32" H</li>
-              <li><strong>Weight:</strong> 150 lbs</li>
+              <li><strong>Weight (lbs):</strong> 150 lbs</li>
               <li><strong>Room Type:</strong> Living room, Bedroom (comma-separated)</li>
               <li><strong>Design Style:</strong> Modern, Contemporary (comma-separated)</li>
               <li><strong>Key Features:</strong> pet-friendly, casual setting (comma-separated)</li>

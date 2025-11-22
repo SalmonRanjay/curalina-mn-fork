@@ -652,7 +652,7 @@ export function registerCuralinaRoutes(app: Express) {
           const colorArray = colorField ? colorField.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
           
           // Parse materials
-          const materialField = row['Product Material'];
+          const materialField = row['Product Materials'] || row['Product Material'];
           const materialArray = materialField ? materialField.split(',').map((m: string) => m.trim()).filter(Boolean) : [];
           
           // Parse room types
@@ -708,7 +708,7 @@ export function registerCuralinaRoutes(app: Express) {
             colors: colorArray,
             materials: materialArray,
             dimensions,
-            weight: row['Weight (lbs) '] || row['Weight (lbs)'] || row.Weight || null,
+            weight: row['Weight (lbs)'] || row['Weight (lbs) '] || row.Weight || null,
             seating: seatingValue,
             assembly: row.Assembly || null,
             inventory: inventoryValue,
