@@ -238,20 +238,43 @@ export default function BulkUpload() {
           variant: job.status === 'completed' ? "default" : "destructive",
         });
 
-        // Mark associated files as success/error
-        const fileNames = jobFileMapping.get(job.id);
-        if (fileNames) {
-          setFiles(prev => prev.map(f => {
-            if (fileNames.includes(f.file.name)) {
-              return {
-                ...f,
-                status: job.status === 'completed' ? 'success' : 'error',
-                error: job.status === 'failed' ? job.errorMessage : undefined,
-              };
+        // Fetch detailed file status and update local files
+        (async () => {
+          try {
+            const res = await fetch(`/api/admin/upload-jobs/${job.id}/status`);
+            const data = await res.json();
+            const fileStatuses = new Map<string, { status: string; isDuplicate?: boolean }>();
+            
+            // Map file-level status from backend
+            if (data.files) {
+              data.files.forEach((file: any) => {
+                fileStatuses.set(file.fileName, {
+                  status: file.status === 'completed' ? 'success' : 
+                          file.status === 'skipped' ? 'skipped' :
+                          file.status === 'failed' ? 'error' : 
+                          file.status === 'uploading' ? 'uploading' : 'pending',
+                  isDuplicate: file.isDuplicate
+                });
+              });
             }
-            return f;
-          }));
-        }
+
+            // Update files with detailed status
+            setFiles(prev => prev.map(f => {
+              const fileStatus = fileStatuses.get(f.file.name);
+              if (fileStatus) {
+                return {
+                  ...f,
+                  status: fileStatus.status as any,
+                  isDuplicate: fileStatus.isDuplicate,
+                  error: fileStatus.status === 'error' ? 'Upload failed' : undefined,
+                };
+              }
+              return f;
+            }));
+          } catch (err) {
+            console.error('Failed to fetch job details:', err);
+          }
+        })();
 
         // Invalidate products cache to show new images
         queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
@@ -453,10 +476,21 @@ export default function BulkUpload() {
     }
   };
 
-  const pendingCount = files.filter(f => f.status === "pending").length;
-  const successCount = files.filter(f => f.status === "success").length;
-  const skippedCount = files.filter(f => f.status === "skipped").length;
-  const errorCount = files.filter(f => f.status === "error").length;
+  // Calculate counts from both local files and active jobs
+  const localPendingCount = files.filter(f => f.status === "pending").length;
+  const localSuccessCount = files.filter(f => f.status === "success").length;
+  const localSkippedCount = files.filter(f => f.status === "skipped").length;
+  const localErrorCount = files.filter(f => f.status === "error").length;
+  
+  // Add counts from active jobs for real-time display
+  const jobSkippedCount = activeJobs?.reduce((sum, job) => sum + (job.skippedFiles || 0), 0) || 0;
+  const jobSuccessCount = activeJobs?.reduce((sum, job) => sum + (job.completedFiles || 0), 0) || 0;
+  const jobErrorCount = activeJobs?.reduce((sum, job) => sum + (job.failedFiles || 0), 0) || 0;
+  
+  const pendingCount = localPendingCount;
+  const successCount = Math.max(localSuccessCount, jobSuccessCount);
+  const skippedCount = Math.max(localSkippedCount, jobSkippedCount);
+  const errorCount = Math.max(localErrorCount, jobErrorCount);
 
   return (
     <div className="space-y-6">
@@ -662,7 +696,7 @@ export default function BulkUpload() {
           <Button
             variant="outline"
             onClick={clearCompleted}
-            disabled={successCount === 0}
+            disabled={successCount === 0 && skippedCount === 0}
             data-testid="button-clear-completed"
           >
             Clear Completed
@@ -715,13 +749,13 @@ export default function BulkUpload() {
                       <CheckCircle className="w-3 h-3 text-green-600" />
                       {job.completedFiles} uploaded
                     </span>
-                    {job.skippedFiles > 0 && (
+                    {(job.skippedFiles || 0) > 0 && (
                       <span className="flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 text-yellow-600" />
+                        <AlertCircle className="w-3 h-3 text-blue-600" />
                         {job.skippedFiles} duplicates skipped
                       </span>
                     )}
-                    {job.failedFiles > 0 && (
+                    {(job.failedFiles || 0) > 0 && (
                       <span className="flex items-center gap-1">
                         <XCircle className="w-3 h-3 text-red-600" />
                         {job.failedFiles} failed
@@ -793,12 +827,14 @@ export default function BulkUpload() {
                         <Badge
                           variant={
                             fileWithMeta.status === "success" ? "default" :
+                            fileWithMeta.status === "skipped" ? "secondary" :
                             fileWithMeta.status === "error" ? "destructive" :
                             fileWithMeta.status === "uploading" ? "secondary" :
                             "outline"
                           }
                         >
                           {fileWithMeta.status === "success" && <CheckCircle className="w-3 h-3 mr-1" />}
+                          {fileWithMeta.status === "skipped" && <AlertCircle className="w-3 h-3 mr-1" />}
                           {fileWithMeta.status === "error" && <XCircle className="w-3 h-3 mr-1" />}
                           {fileWithMeta.status === "uploading" && <AlertCircle className="w-3 h-3 mr-1" />}
                           {fileWithMeta.status}
@@ -809,6 +845,8 @@ export default function BulkUpload() {
                           fileWithMeta.error
                         ) : fileWithMeta.status === "success" ? (
                           "Uploaded successfully"
+                        ) : fileWithMeta.status === "skipped" ? (
+                          "Skipped - duplicate image already exists"
                         ) : fileWithMeta.confidence ? (
                           <div className="flex items-center gap-2">
                             <Badge variant={fileWithMeta.confidence >= 80 ? "default" : "secondary"}>
