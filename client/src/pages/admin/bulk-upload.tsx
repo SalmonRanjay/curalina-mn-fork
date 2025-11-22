@@ -15,12 +15,13 @@ import type { Product } from "@shared/schema";
 interface FileWithMeta {
   file: File;
   sku: string;
-  status: "pending" | "uploading" | "success" | "error";
+  status: "pending" | "uploading" | "success" | "error" | "skipped";
   error?: string;
   productId?: string;
   preview?: string;
   confidence?: number;
   reasoning?: string;
+  isDuplicate?: boolean;
 }
 
 interface UploadJob {
@@ -350,10 +351,10 @@ export default function BulkUpload() {
   const clearCompleted = () => {
     setFiles(prev => {
       // Revoke object URLs for completed files to prevent memory leaks
-      prev.filter(f => f.status === "success").forEach(f => {
+      prev.filter(f => f.status === "success" || f.status === "skipped").forEach(f => {
         if (f.preview) URL.revokeObjectURL(f.preview);
       });
-      return prev.filter(f => f.status !== "success");
+      return prev.filter(f => f.status !== "success" && f.status !== "skipped");
     });
   };
 
@@ -454,6 +455,7 @@ export default function BulkUpload() {
 
   const pendingCount = files.filter(f => f.status === "pending").length;
   const successCount = files.filter(f => f.status === "success").length;
+  const skippedCount = files.filter(f => f.status === "skipped").length;
   const errorCount = files.filter(f => f.status === "error").length;
 
   return (
@@ -465,7 +467,7 @@ export default function BulkUpload() {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Total Files</CardTitle>
@@ -488,6 +490,14 @@ export default function BulkUpload() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{successCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Skipped (Duplicates)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{skippedCount}</div>
           </CardContent>
         </Card>
         <Card>

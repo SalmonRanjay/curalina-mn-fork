@@ -238,7 +238,7 @@ async function updateProductImages(productId: string, jobId: string): Promise<vo
       console.log(`Updated product ${productId} with ${successfulUploads.length} new images`);
       
       // Auto-trigger visual analysis for products with new images if they don't have descriptions
-      if (!product.visualDescription || !product.visualDescriptionGemini) {
+      if (!product.visualDescription) {
         try {
           // Import configuration and check feature flag
           const visualAnalysisConfig = (await import('../config/visual-analysis')).default;
