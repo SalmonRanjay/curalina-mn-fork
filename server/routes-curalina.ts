@@ -463,11 +463,6 @@ export function registerCuralinaRoutes(app: Express) {
           // Check if product already exists by SKU
           const sku = row.SKU || `PRODUCT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const existingProduct = await curalinaStorage.getProductBySku(sku);
-          
-          if (existingProduct) {
-            skipped++;
-            continue;
-          }
 
           // Parse retail price
           let price = 0;
@@ -575,10 +570,9 @@ export function registerCuralinaRoutes(app: Express) {
           const deliveryLocation = row['Delivery Location'] || null;
           const deliveryPolicy = row['Delivery Policy'] || null;
 
-          // Insert product
+          // Create or update product based on existence
           const productName = row['Product Name'] || 'Unknown Product';
-          await curalinaStorage.createProduct({
-            sku,
+          const productData = {
             name: productName,
             description: row.Overview || '',
             categoryId: category.id,
@@ -600,8 +594,6 @@ export function registerCuralinaRoutes(app: Express) {
             inventory: inventoryValue,
             leadTime: parsedLeadTime,
             availability: (inventoryValue && inventoryValue > 0) ? 'in_stock' : 'preorder',
-            images: [],
-            asset3dUrl: null,
             tags: tagsArray,
             sourceFile: row['Source File'] || null,
             shipping: { 
@@ -615,10 +607,23 @@ export function registerCuralinaRoutes(app: Express) {
               title: productName, 
               description: row.Overview ? row.Overview.substring(0, 160) : '' 
             },
-            slug: productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(sku).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          });
+          };
 
-          imported++;
+          if (existingProduct) {
+            // Update existing product (preserves images and other fields not in CSV)
+            await curalinaStorage.updateProduct(existingProduct.id, productData);
+            skipped++;
+          } else {
+            // Create new product
+            await curalinaStorage.createProduct({
+              sku,
+              ...productData,
+              images: [],
+              asset3dUrl: null,
+              slug: productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(sku).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            });
+            imported++;
+          }
         } catch (error) {
           console.error(`Error importing row:`, error);
           errors.push(`Row ${imported + skipped + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -629,8 +634,9 @@ export function registerCuralinaRoutes(app: Express) {
         success: true,
         imported,
         skipped,
+        updated: skipped,
         errors,
-        details: `Processed ${data.length} rows. Imported ${imported} products, skipped ${skipped} duplicates.`
+        details: `Processed ${data.length} rows. Imported ${imported} new products, updated ${skipped} existing products.`
       });
     } catch (error) {
       console.error("Error processing CSV import:", error);

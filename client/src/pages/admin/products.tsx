@@ -79,6 +79,7 @@ export default function AdminProducts() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -599,6 +600,59 @@ export default function AdminProducts() {
       });
     },
   });
+
+  // CSV import mutation
+  const csvImportMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch("/api/admin/products/import-csv", {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${document.cookie.split('sessionToken=')[1]?.split(';')[0] || ''}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Import failed');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "CSV import complete",
+        description: `Imported ${data.imported} products, updated ${data.updated} products. ${data.errors.length > 0 ? `${data.errors.length} errors` : 'No errors'}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setCsvImporting(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Import failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setCsvImporting(false);
+    },
+  });
+
+  const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a CSV or Excel file",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setCsvImporting(true);
+    csvImportMutation.mutate(file);
+  };
 
   const handleFileSelect = async (productId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
