@@ -515,7 +515,7 @@ export default function AdminProducts() {
         productIds: selectedProductIds.length > 0 ? selectedProductIds : undefined,
         deleteAll: selectedProductIds.length === 0,
       });
-      return response.json();
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({

@@ -456,8 +456,10 @@ export function registerCuralinaRoutes(app: Express) {
       const worksheet = workbook.Sheets[sheetName];
       const data = utils.sheet_to_json(worksheet);
 
-      // Get column mappings if provided
-      const mappings = req.body.mappings ? JSON.parse(req.body.mappings) : null;
+      // Get column mappings if provided (from multipart form data)
+      // Multer parses files but we need to access other form fields from req.body
+      const mappingsStr = (req.body && typeof req.body.mappings === 'string') ? req.body.mappings : null;
+      const mappings = mappingsStr ? JSON.parse(mappingsStr) : null;
       
       // Create a mapping function to transform row data
       const mapRow = (row: any) => {
