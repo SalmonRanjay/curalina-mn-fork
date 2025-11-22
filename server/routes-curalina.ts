@@ -2887,7 +2887,7 @@ export function registerCuralinaRoutes(app: Express) {
         contentType: file.mimetype,
       }));
       
-      const job = await createUploadJob(productId, filesData, req.user?.id);
+      const job = await createUploadJob(productId, product.sku, filesData, req.user?.id);
       
       // Start processing in background (non-blocking)
       setImmediate(async () => {

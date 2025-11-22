@@ -32,11 +32,11 @@ function calculateFileHash(buffer: Buffer): string {
 }
 
 /**
- * Check if file already exists in S3
+ * Check if file already exists in S3 (within product's SKU folder)
  */
-async function checkFileExists(fileName: string): Promise<string | null> {
+async function checkFileExists(productSku: string, fileName: string): Promise<string | null> {
   try {
-    const key = `products/${fileName}`;
+    const key = `products/${productSku}/${fileName}`;
     await s3Client.send(
       new HeadObjectCommand({
         Bucket: S3_BUCKET,
@@ -53,10 +53,10 @@ async function checkFileExists(fileName: string): Promise<string | null> {
 }
 
 /**
- * Upload file to S3
+ * Upload file to S3 (within product's SKU folder)
  */
-async function uploadFileToS3(fileName: string, buffer: Buffer, contentType: string): Promise<string> {
-  const key = `products/${fileName}`;
+async function uploadFileToS3(productSku: string, fileName: string, buffer: Buffer, contentType: string): Promise<string> {
+  const key = `products/${productSku}/${fileName}`;
   
   await s3Client.send(
     new PutObjectCommand({
@@ -72,14 +72,15 @@ async function uploadFileToS3(fileName: string, buffer: Buffer, contentType: str
 
 /**
  * Create a new upload job with initial file list
- * Marks duplicates up front before any processing
+ * Marks duplicates up front before any processing (per-SKU)
  */
 export async function createUploadJob(
   productId: string,
+  productSku: string,
   files: FileToUpload[],
   userId?: string
 ): Promise<UploadJob> {
-  console.log(`Creating upload job for product ${productId} with ${files.length} files`);
+  console.log(`Creating upload job for product ${productId} (SKU: ${productSku}) with ${files.length} files`);
 
   // Create the job record
   const job = await curalinaStorage.createUploadJob({
@@ -92,11 +93,11 @@ export async function createUploadJob(
     skippedFiles: 0,
   });
 
-  // Check for duplicates and create file records
+  // Check for duplicates and create file records (within this product's SKU folder)
   const fileRecords = await Promise.all(
     files.map(async (file) => {
       const fileHash = calculateFileHash(file.buffer);
-      const existingUrl = await checkFileExists(file.fileName);
+      const existingUrl = await checkFileExists(productSku, file.fileName);
       
       return {
         jobId: job.id,
@@ -143,6 +144,12 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
     throw new Error(`Upload job ${jobId} not found`);
   }
 
+  // Get product to access its SKU
+  const product = await curalinaStorage.getProduct(job.productId);
+  if (!product) {
+    throw new Error(`Product ${job.productId} not found`);
+  }
+
   // Update job status to processing
   if (job.status === "pending") {
     await curalinaStorage.updateUploadJob(jobId, { status: "processing" });
@@ -151,12 +158,13 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
   // Get pending files from database
   const pendingDbFiles = await curalinaStorage.getPendingUploadJobFiles(jobId);
   
-  // Process next batch in parallel for speed
+  // Process next batch - upload to S3 in parallel for speed
   const batch = pendingDbFiles.slice(0, BATCH_SIZE);
   
-  await Promise.all(batch.map(async (dbFile) => {
+  // Step 1: Upload all files to S3 in parallel (fast)
+  const uploadResults = await Promise.all(batch.map(async (dbFile) => {
     try {
-      console.log(`Processing file ${dbFile.fileName} for job ${jobId}`);
+      console.log(`Processing file ${dbFile.fileName} for job ${jobId} (SKU: ${product.sku})`);
       
       // Update file status to uploading
       await curalinaStorage.updateUploadJobFile(dbFile.id, { status: "uploading" });
@@ -167,8 +175,8 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
         throw new Error(`File buffer not found for ${dbFile.fileName}`);
       }
       
-      // Upload to S3
-      const s3Url = await uploadFileToS3(dbFile.fileName, fileToUpload.buffer, fileToUpload.contentType);
+      // Upload to S3 with SKU-based path
+      const s3Url = await uploadFileToS3(product.sku, dbFile.fileName, fileToUpload.buffer, fileToUpload.contentType);
       
       // Update file as completed
       await curalinaStorage.updateUploadJobFile(dbFile.id, {
@@ -185,20 +193,8 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
         });
       }
       
-      // IMMEDIATELY add image to product - don't wait for job completion
-      const product = await curalinaStorage.getProduct(job.productId);
-      if (product && s3Url) {
-        const existingImages = product.images || [];
-        // Only add if not already present (avoid duplicates on retries)
-        if (!existingImages.includes(s3Url)) {
-          await curalinaStorage.updateProduct(job.productId, { 
-            images: [...existingImages, s3Url] 
-          });
-          console.log(`✅ Immediately added ${dbFile.fileName} to product ${job.productId}`);
-        }
-      }
-      
       console.log(`Successfully uploaded ${dbFile.fileName}`);
+      return { success: true, s3Url, fileName: dbFile.fileName };
     } catch (error) {
       console.error(`Failed to upload ${dbFile.fileName}:`, error);
       
@@ -215,8 +211,32 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
           failedFiles: updatedJob.failedFiles + 1,
         });
       }
+      
+      return { success: false, fileName: dbFile.fileName };
     }
   }));
+  
+  // Step 2: Update product.images SEQUENTIALLY to avoid race conditions
+  for (const result of uploadResults) {
+    if (result.success && result.s3Url) {
+      try {
+        // Fetch fresh product data to get latest images
+        const freshProduct = await curalinaStorage.getProduct(job.productId);
+        if (freshProduct) {
+          const existingImages = freshProduct.images || [];
+          // Only add if not already present (avoid duplicates on retries)
+          if (!existingImages.includes(result.s3Url)) {
+            await curalinaStorage.updateProduct(job.productId, { 
+              images: [...existingImages, result.s3Url] 
+            });
+            console.log(`✅ Immediately added ${result.fileName} to product ${product.sku} (${job.productId})`);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to add ${result.fileName} to product:`, error);
+      }
+    }
+  }
   
   // Check if all files are processed
   const remainingFiles = await curalinaStorage.getPendingUploadJobFiles(jobId);
