@@ -506,6 +506,98 @@ export default function AdminProducts() {
     },
   });
 
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/admin/products/bulk-delete", "DELETE", {
+        productIds: selectedProductIds.length > 0 ? selectedProductIds : undefined,
+        deleteAll: selectedProductIds.length === 0,
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Products deleted",
+        description: `Deleted ${data.deletedCount} product(s)`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setSelectedProductIds([]);
+      setShowBulkDeleteDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete products",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Export all products
+  const exportAllMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/admin/products/export/all");
+      if (!response.ok) throw new Error("Export failed");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `products-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Export complete",
+        description: "Products exported to CSV",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Export failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Export filtered products
+  const exportFilteredMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/products/export/filtered", "POST", {
+        searchQuery,
+        categoryId: categoryFilter,
+        supplierId: supplierFilter,
+        minPrice: priceRange[0],
+        maxPrice: priceRange[1],
+        hasImages: imageFilter === "with" ? "true" : imageFilter === "without" ? "false" : undefined,
+      });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `products-filtered-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Export complete",
+        description: "Filtered products exported to CSV",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Export failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFileSelect = async (productId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
