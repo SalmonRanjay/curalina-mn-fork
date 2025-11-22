@@ -923,6 +923,80 @@ function validateAndAdjustForBudget(
 }
 
 /**
+ * Calculate size relationships between products and generate scale enforcement prompts
+ * Uses actual product dimensions to prevent AI from hallucinating incorrect scales
+ * Supports both legacy (w/d/h) and normalized (width/depth/height) dimension keys
+ */
+function generateScaleConstraints(products: Array<{ name: string; dimensions?: any; functionalCategory?: string }>): string {
+  // Helper to extract dimension value supporting both key formats
+  const getDim = (dims: any, key: 'width' | 'depth' | 'height'): number | undefined => {
+    const shortKey = key[0]; // 'w' for width, 'd' for depth, 'h' for height
+    return dims[key] || dims[shortKey];
+  };
+  
+  const productsWithDims = products.filter(p => {
+    if (!p.dimensions) return false;
+    const dims = p.dimensions;
+    return getDim(dims, 'width') || getDim(dims, 'depth') || getDim(dims, 'height');
+  });
+  
+  if (productsWithDims.length === 0) {
+    return '';
+  }
+  
+  let scaleText = '\n\n═══════════════════════════════════════════════════════════════════════════\n';
+  scaleText += 'REAL-WORLD SCALE ENFORCEMENT - MANDATORY SIZE CONSTRAINTS:\n';
+  scaleText += '═══════════════════════════════════════════════════════════════════════════\n\n';
+  
+  scaleText += '⚠️ CRITICAL: Maintain correct real-world proportions between ALL items:\n\n';
+  
+  // Add absolute dimensions for each product
+  productsWithDims.forEach(product => {
+    const dims = product.dimensions;
+    const unit = dims.unit || 'inches';
+    const parts: string[] = [];
+    
+    const width = getDim(dims, 'width');
+    const depth = getDim(dims, 'depth');
+    const height = getDim(dims, 'height');
+    
+    if (width) parts.push(`${width}${unit} wide`);
+    if (depth) parts.push(`${depth}${unit} deep`);
+    if (height) parts.push(`${height}${unit} tall`);
+    
+    if (parts.length > 0) {
+      scaleText += `• ${product.name}: ${parts.join(', ')}\n`;
+    }
+  });
+  
+  // Generate comparative size relationships for key furniture pairs
+  const sofas = productsWithDims.filter(p => 
+    p.functionalCategory === 'seating' || p.name.toLowerCase().includes('sofa') || p.name.toLowerCase().includes('chair'));
+  const tables = productsWithDims.filter(p => 
+    p.functionalCategory === 'surfaces' || p.name.toLowerCase().includes('table'));
+    
+  if (sofas.length > 0 && tables.length > 0) {
+    scaleText += '\nSIZE RELATIONSHIPS TO ENFORCE:\n';
+    
+    sofas.forEach(sofa => {
+      tables.forEach(table => {
+        const sofaHeight = getDim(sofa.dimensions, 'height');
+        const tableHeight = getDim(table.dimensions, 'height');
+        
+        if (sofaHeight && tableHeight && tableHeight < sofaHeight * 0.7) {
+          scaleText += `• ${table.name} MUST be noticeably lower than ${sofa.name} (approx. ${Math.round(sofaHeight / tableHeight * 10) / 10}x shorter)\n`;
+        }
+      });
+    });
+  }
+  
+  scaleText += '\n⚠️ DO NOT make furniture unrealistically large or small compared to these dimensions.\n';
+  scaleText += '⚠️ A person sitting on a sofa should look natural and proportional.\n';
+  
+  return scaleText;
+}
+
+/**
  * Condense a long visual description into a short, generation-ready format
  * Focuses on: silhouette, main material, main color, distinctive features, overall size
  * Target: 40-50 tokens max for precise AI control
@@ -1789,6 +1863,13 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
       prompt += `   
 `;
     });
+    
+    // Add real-world scale enforcement using product dimensions
+    const scaleConstraints = generateScaleConstraints(selectedProducts);
+    if (scaleConstraints) {
+      prompt += scaleConstraints;
+      console.log('✅ Added real-world scale constraints to prompt');
+    }
     
     // Add few-shot example to demonstrate correct placement interpretation
     prompt += `
