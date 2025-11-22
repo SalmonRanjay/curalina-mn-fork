@@ -1505,6 +1505,115 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Batch regenerate visual descriptions using Gemini Vision (Admin only)
+  // Prioritizes front-view images and generates dimension-aware, highly accurate descriptions
+  app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('\n🎨 Starting batch visual description regeneration...');
+      
+      const { targetFilter, specificSkus } = req.body;
+      
+      // Get products to process
+      const allProducts = await curalinaStorage.getAllProducts();
+      let productsToProcess: any[] = [];
+      
+      if (specificSkus && Array.isArray(specificSkus) && specificSkus.length > 0) {
+        // Process specific SKUs
+        productsToProcess = allProducts.filter(p => specificSkus.includes(p.sku));
+        console.log(`📌 Processing ${productsToProcess.length} specific products`);
+      } else if (targetFilter === 'all') {
+        // Process all products with images
+        productsToProcess = allProducts.filter(p => p.images && p.images.length > 0);
+        console.log(`📊 Processing all ${productsToProcess.length} products with images`);
+      } else if (targetFilter === 'missing') {
+        // Process only products without visual descriptions
+        productsToProcess = allProducts.filter(p => 
+          (p.images && p.images.length > 0) && !p.visualDescription
+        );
+        console.log(`📊 Processing ${productsToProcess.length} products without descriptions`);
+      } else if (targetFilter === 'front-view-only') {
+        // Process only products with front-view images
+        productsToProcess = allProducts.filter(p => {
+          if (!p.images || p.images.length === 0) return false;
+          return p.images.some((url: string) => 
+            url.toLowerCase().includes('front')
+          );
+        });
+        console.log(`📊 Processing ${productsToProcess.length} products with front-view images`);
+      } else {
+        // Default: products without descriptions
+        productsToProcess = allProducts.filter(p => 
+          (p.images && p.images.length > 0) && !p.visualDescription
+        );
+        console.log(`📊 Processing ${productsToProcess.length} products without descriptions (default)`);
+      }
+      
+      if (productsToProcess.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No products match the specified criteria',
+          totalProducts: 0
+        });
+      }
+      
+      // Return immediately, process in background
+      res.json({
+        success: true,
+        message: `Visual description regeneration started for ${productsToProcess.length} products. Check server logs for progress.`,
+        totalProducts: productsToProcess.length,
+        targetFilter: targetFilter || 'missing'
+      });
+      
+      // Run regeneration in background
+      (async () => {
+        try {
+          const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
+          
+          let updated = 0;
+          
+          const progress = await regenerateAllVisualDescriptions(
+            productsToProcess,
+            (progress) => {
+              // Optional: could broadcast progress via WebSocket
+              if (progress.processed % 10 === 0 || progress.processed === progress.total) {
+                console.log(`\n📊 Progress: ${progress.processed}/${progress.total} (${progress.successful} successful, ${progress.failed} failed, ${progress.skipped} skipped)`);
+              }
+            }
+          );
+          
+          // Update all successful products in database
+          for (const product of productsToProcess) {
+            if (product.visualDescription) {
+              try {
+                await curalinaStorage.updateProduct(product.id, {
+                  visualDescription: product.visualDescription
+                });
+                updated++;
+              } catch (error) {
+                console.error(`Failed to update product ${product.sku}:`, error);
+              }
+            }
+          }
+          
+          console.log(`\n✅ Batch Visual Description Regeneration Complete:`);
+          console.log(`  📊 Total Processed: ${progress.processed}`);
+          console.log(`  ✅ Successfully Generated: ${progress.successful}`);
+          console.log(`  💾 Database Updates: ${updated}`);
+          console.log(`  ❌ Failed: ${progress.failed}`);
+          console.log(`  ⏭️  Skipped (no images): ${progress.skipped}`);
+          console.log(`  📈 Coverage: ${((updated / allProducts.length) * 100).toFixed(1)}% of all products now have Gemini Vision descriptions`);
+          
+        } catch (error) {
+          console.error('❌ Batch regeneration error:', error);
+        }
+      })();
+      
+    } catch (error) {
+      console.error("Error starting visual description regeneration:", error);
+      res.status(500).json({ error: "Failed to start regeneration" });
+    }
+  });
+
   app.get('/api/products/alternatives/:id', async (req, res) => {
     try {
       const alternatives = await curalinaStorage.getProductAlternatives(req.params.id);
