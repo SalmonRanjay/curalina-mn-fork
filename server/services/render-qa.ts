@@ -1,13 +1,14 @@
 import { GoogleGenAI, Modality } from "@google/genai";
+import { buildDimensionSummary, normalizeDimensions } from './dimension-utils';
 
 /**
  * Post-render QA validation using Gemini Vision
- * Checks product appearance, scale, and accuracy against specifications
+ * Checks product appearance, scale, accuracy, and dimensional fidelity against specifications
  */
 
 interface QAIssue {
   severity: 'critical' | 'major' | 'minor';
-  category: 'appearance' | 'scale' | 'placement' | 'missing' | 'hallucination';
+  category: 'appearance' | 'scale' | 'placement' | 'missing' | 'hallucination' | 'dimensions';
   description: string;
   affectedSku?: string;
   affectedProduct?: string;
@@ -15,6 +16,7 @@ interface QAIssue {
 
 interface QAResults {
   overallScore: number; // 0-100
+  dimensionAccuracy: number; // 0-100 (NEW: specific to dimension validation)
   issues: QAIssue[];
   validatedAt: string;
   productChecks: Record<string, {
@@ -22,6 +24,7 @@ interface QAResults {
     colorMatch?: boolean; // Explicit color validation
     appearanceMatch: number; // 0-100
     scaleAccuracy: number; // 0-100
+    dimensionAccuracy?: number; // 0-100 (NEW: per-product dimension accuracy)
     placementCorrect: boolean;
     notes: string;
   }>;
@@ -109,6 +112,7 @@ export async function validateRenderQuality(
     // Return a minimal QA result indicating validation failure
     return {
       overallScore: 50, // Assume average quality if validation fails
+      dimensionAccuracy: 50,
       issues: [{
         severity: 'major',
         category: 'hallucination',
@@ -149,23 +153,57 @@ EXPECTED PRODUCTS (${expectedProducts.length} items):
       prompt += `   Visual Specs: ${product.visualDescription}\n`;
     }
     
+    // Enhanced dimension information with scale context
     if (product.dimensions) {
       const dims = product.dimensions;
+      const normalized = normalizeDimensions(product);
+      
+      // Get basic dimensions (support both legacy w/d/h and normalized width/depth/height keys)
       const getDim = (key: string) => dims[key] || dims[key[0]];
       const parts: string[] = [];
       const width = getDim('width');
       const depth = getDim('depth');
       const height = getDim('height');
-      if (width) parts.push(`${width}${dims.unit || 'in'} wide`);
-      if (depth) parts.push(`${depth}${dims.unit || 'in'} deep`);
-      if (height) parts.push(`${height}${dims.unit || 'in'} tall`);
+      const unit = dims.unit || 'in';
+      
+      if (width) parts.push(`${width}${unit} wide`);
+      if (depth) parts.push(`${depth}${unit} deep`);
+      if (height) parts.push(`${height}${unit} tall`);
+      
       if (parts.length > 0) {
-        prompt += `   Dimensions: ${parts.join(', ')}\n`;
+        prompt += `   Expected Dimensions: ${parts.join(', ')}\n`;
+        
+        // Add scale context to help with validation
+        if (normalized) {
+          const scaleContext = [];
+          
+          if (width && width > 72) {
+            scaleContext.push('large/oversized piece - should appear substantial in the room');
+          } else if (width && width < 36) {
+            scaleContext.push('compact piece - should appear modest in scale');
+          }
+          
+          if (normalized.seatHeight) {
+            if (normalized.seatHeight >= 17 && normalized.seatHeight <= 19) {
+              scaleContext.push(`seat height ${normalized.seatHeight}${unit} (standard seating height)`);
+            } else if (normalized.seatHeight >= 24 && normalized.seatHeight <= 26) {
+              scaleContext.push(`seat height ${normalized.seatHeight}${unit} (counter height)`);
+            } else if (normalized.seatHeight >= 28 && normalized.seatHeight <= 30) {
+              scaleContext.push(`seat height ${normalized.seatHeight}${unit} (bar height)`);
+            } else {
+              scaleContext.push(`seat height ${normalized.seatHeight}${unit}`);
+            }
+          }
+          
+          if (scaleContext.length > 0) {
+            prompt += `   Scale Context: ${scaleContext.join(', ')}\n`;
+          }
+        }
       }
     }
     
     if (product.placement) {
-      prompt += `   Placement: ${product.placement}\n`;
+      prompt += `   Expected Placement: ${product.placement}\n`;
     }
     
     prompt += '\n';
@@ -180,17 +218,29 @@ For each product, check:
 3. MATERIAL MATCH: Does the material/fabric match the specification?
 4. SHAPE/STYLE: Does the silhouette and design match?
 5. SCALE: Are the dimensions proportionally correct relative to other furniture and the room?
-6. PLACEMENT: Is it in the correct location as specified?
+6. DIMENSIONAL ACCURACY: Do the proportions match the specified dimensions?
+   - Compare width to height ratios
+   - Check if furniture appears too large or too small for the room
+   - Verify seating heights look appropriate (17-19" standard, 24-26" counter, 28-30" bar)
+   - Use visual cues (standard door height ~80", typical ceiling ~96", human scale ~5.5-6 feet)
+7. PLACEMENT: Is it in the correct location as specified?
 
 ⚠️ COLOR VALIDATION IS CRITICAL:
 - If specified color is "soft taupe" but render shows "beige" → Appearance Match = 0
 - If specified color is "charcoal gray" but render shows "light gray" → Appearance Match = 0
 - Only score 90+ if color is an exact or very close match
 
+⚠️ DIMENSION VALIDATION IS IMPORTANT:
+- Compare relative sizes between products (sofa should be larger than chairs)
+- Check proportions against room elements (ceiling, doors, windows)
+- Verify seating heights appear correct for their type
+- Score based on how accurately the render reflects the specified dimensions
+
 RESPONSE FORMAT:
 Provide your analysis in this exact structure:
 
 OVERALL SCORE: [0-100]
+DIMENSION ACCURACY: [0-100] (overall accuracy of all product dimensions and proportions)
 
 PRODUCT CHECKS:
 [For each product]
@@ -199,15 +249,16 @@ PRODUCT CHECKS:
   Color Match: [yes/no - EXACT match required]
   Appearance Match: [0-100]
   Scale Accuracy: [0-100]
+  Dimension Accuracy: [0-100] (how well dimensions match specifications)
   Placement: [correct/incorrect/N/A]
-  Notes: [brief observations, especially color discrepancies]
+  Notes: [brief observations, especially color discrepancies and dimension issues]
 
 ISSUES FOUND:
 [List any problems, one per line]
-- [CRITICAL/MAJOR/MINOR] [Category]: [Description] (affects: [product name])
+- [CRITICAL/MAJOR/MINOR] [dimensions/appearance/scale/placement/missing/hallucination]: [Description] (affects: [product name])
 
 SUMMARY:
-[2-3 sentence overall assessment]
+[2-3 sentence overall assessment including dimension accuracy]
 `;
 
   return prompt;
@@ -226,6 +277,10 @@ function parseQAResponse(
   // Extract overall score
   const scoreMatch = analysisText.match(/OVERALL SCORE:\s*(\d+)/i);
   const overallScore = scoreMatch ? parseInt(scoreMatch[1], 10) : 70; // Default to 70 if not found
+  
+  // Extract dimension accuracy score
+  const dimScoreMatch = analysisText.match(/DIMENSION ACCURACY:\s*(\d+)/i);
+  const dimensionAccuracy = dimScoreMatch ? parseInt(dimScoreMatch[1], 10) : 70; // Default to 70 if not found
   
   // Extract product checks with actual scores from Gemini's response
   const productCheckRegex = /Product Name:\s*(.+?)\s*\n\s*Found:\s*(yes|no)/gi;
@@ -272,6 +327,11 @@ function parseQAResponse(
       const scaleAccuracyResult = productSection.match(scaleAccuracyRegex);
       const scaleAccuracy = scaleAccuracyResult ? parseInt(scaleAccuracyResult[1], 10) : (found ? 70 : 0);
       
+      // Extract Dimension Accuracy score (NEW)
+      const dimensionAccuracyRegex = /Dimension Accuracy:\s*(\d+)/i;
+      const dimensionAccuracyResult = productSection.match(dimensionAccuracyRegex);
+      const productDimensionAccuracy = dimensionAccuracyResult ? parseInt(dimensionAccuracyResult[1], 10) : (found ? 70 : 0);
+      
       // Extract Placement
       const placementRegex = /Placement:\s*(correct|incorrect|N\/A)/i;
       const placementResult = productSection.match(placementRegex);
@@ -287,6 +347,7 @@ function parseQAResponse(
         colorMatch: colorMatches,
         appearanceMatch,
         scaleAccuracy,
+        dimensionAccuracy: productDimensionAccuracy,
         placementCorrect,
         notes,
       };
@@ -321,6 +382,7 @@ function parseQAResponse(
   
   return {
     overallScore,
+    dimensionAccuracy,
     issues,
     validatedAt: new Date().toISOString(),
     productChecks,
