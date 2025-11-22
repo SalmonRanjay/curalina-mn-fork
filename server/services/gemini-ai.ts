@@ -2465,9 +2465,48 @@ Return your analysis as a JSON object with this format:
 }
 
 /**
+ * Fetch and convert an image URL to base64
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    // Handle relative URLs
+    let fetchUrl = imageUrl;
+    if (fetchUrl.startsWith('/')) {
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
+      fetchUrl = `${baseUrl}${imageUrl}`;
+    }
+    
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      console.warn(`Failed to fetch image from ${fetchUrl}: ${response.status}`);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuffer).toString('base64');
+    
+    // Detect MIME type
+    let mimeType = response.headers.get('content-type') || 'image/jpeg';
+    if (!mimeType.startsWith('image/')) {
+      const urlLower = imageUrl.toLowerCase();
+      if (urlLower.endsWith('.png')) mimeType = 'image/png';
+      else if (urlLower.endsWith('.webp')) mimeType = 'image/webp';
+      else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else mimeType = 'image/jpeg';
+    }
+    
+    return { data: base64Data, mimeType };
+  } catch (error) {
+    console.error(`Error fetching image ${imageUrl}:`, error);
+    return null;
+  }
+}
+
+/**
  * Generate an interior design image using Gemini 2.5 Flash:
  * - Text-to-image: Creative generation when no room photo provided
  * - Image-to-image: Structure-preserving redesign when room photo provided (AI sees actual space)
+ * - Multi-modal: Can include product reference images to improve fidelity
  * 
  * Image-to-image mode ensures the AI can see and preserve the actual uploaded room's:
  * - Architectural features (windows, doors, walls, ceiling)
@@ -2478,21 +2517,55 @@ Return your analysis as a JSON object with this format:
  * @param floorplanUrl - Optional room photo/floor plan URL for structure-preserving generation
  * @param roomAnalysis - Optional analysis of the current room from analyzeRoomImage
  * @param floorPlanAnalysis - Optional analysis of the floor plan from analyzeFloorPlan
+ * @param productImages - Optional array of product image URLs to include as visual references
  * @returns Base64 data URL (data:image/png;base64,...)
  */
 export async function generateInteriorImage(
   prompt: string,
   floorplanUrl?: string,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
-  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>
+  floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>,
+  productImages?: Array<{ url: string; productName: string }>
 ): Promise<string> {
   try {
+    // Fetch product reference images if provided
+    const productImageParts: any[] = [];
+    if (productImages && productImages.length > 0) {
+      console.log(`📸 Fetching ${productImages.length} product reference images...`);
+      let fetchedCount = 0;
+      
+      for (const productImage of productImages) {
+        const imageData = await fetchImageAsBase64(productImage.url);
+        if (imageData) {
+          productImageParts.push({
+            inlineData: {
+              data: imageData.data,
+              mimeType: imageData.mimeType
+            }
+          });
+          fetchedCount++;
+        }
+      }
+      
+      console.log(`✅ Successfully fetched ${fetchedCount}/${productImages.length} product images`);
+      
+      // Add product image context to prompt if we have images
+      if (productImageParts.length > 0) {
+        const productNames = productImages.slice(0, fetchedCount).map(p => p.productName).join(', ');
+        prompt = `${prompt}\n\n🖼️ REFERENCE IMAGES PROVIDED:\nThe following images show the exact products to feature in this design: ${productNames}\nUse these images as visual references to ensure accurate product representation.`;
+      }
+    }
+    
     // Text-to-image generation with Gemini (creative generation - no room photo)
     if (!floorplanUrl) {
       console.log("Using Gemini for text-to-image creative generation");
+      
+      // Build parts array: text prompt + product images
+      const parts: any[] = [{ text: prompt }, ...productImageParts];
+      
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts }],
         config: {
           responseModalities: [Modality.TEXT, Modality.IMAGE],
         },
@@ -2553,10 +2626,12 @@ export async function generateInteriorImage(
     
     if (!roomImageResponse.ok) {
       console.warn(`Failed to fetch room image (${roomImageResponse.status}) from ${fetchUrl}, falling back to text-to-image`);
-      // Fallback to text-to-image generation
+      // Fallback to text-to-image generation with product images
+      const parts: any[] = [{ text: prompt }, ...productImageParts];
+      
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts }],
         config: {
           responseModalities: [Modality.TEXT, Modality.IMAGE],
         },
@@ -2640,15 +2715,19 @@ ${prompt}
 
 Generate a photorealistic redesign that preserves the room's architecture while implementing the design vision described above. The output should look like a professional interior design photo of the SAME physical space with new furniture and styling.`;
     
-    // Use Gemini's image-to-image capability with the uploaded room photo
+    // Use Gemini's image-to-image capability with the uploaded room photo + product images
+    // Build parts array: prompt + room photo + product images
+    const imageParts: any[] = [
+      { text: imageToImagePrompt },
+      { inlineData: { data: roomPhotoBase64, mimeType: photoMimeType } },
+      ...productImageParts
+    ];
+    
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
       contents: [{
         role: "user",
-        parts: [
-          { text: imageToImagePrompt },
-          { inlineData: { data: roomPhotoBase64, mimeType: photoMimeType } }
-        ]
+        parts: imageParts
       }],
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],

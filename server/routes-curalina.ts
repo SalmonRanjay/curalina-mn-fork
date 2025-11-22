@@ -1974,16 +1974,38 @@ export function registerCuralinaRoutes(app: Express) {
           
           console.log(`📝 Generated prompt with ${analysisTypes.length > 0 ? analysisTypes.join(' + ') : 'no image analysis'}`);
           
+          // Prepare product reference images (Front View priority)
+          const productImages: Array<{ url: string; productName: string }> = [];
+          for (const product of productsWithPlacement) {
+            if (product.images && product.images.length > 0) {
+              // Find Front View image if available, otherwise use first image
+              const frontViewImage = product.images.find((url: string) => url.includes('Front') || url.includes('front'));
+              const imageUrl = frontViewImage || product.images[0];
+              
+              productImages.push({
+                url: imageUrl,
+                productName: product.name
+              });
+            }
+          }
+          
           // Generate AI image with detailed product descriptions embedded in prompt
           // Products include rich Gemini Vision analysis (300-400 word descriptions)
           // AI generates furniture matching real products based on these visual specifications
+          // NOW ALSO INCLUDES: actual product images as visual references for improved fidelity
           if (floorplanUrl) {
-            console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo`);
+            console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo + ${productImages.length} product images`);
           } else {
-            console.log(`🎨 Using Gemini text-to-image mode (no space photo uploaded)`);
+            console.log(`🎨 Using Gemini text-to-image mode (no space photo) + ${productImages.length} product images`);
           }
-          const imageDataUrl = await generateInteriorImage(prompt, floorplanUrl, roomAnalysis, floorPlanAnalysis);
-          console.log(`✅ AI-generated room rendering complete`);
+          const imageDataUrl = await generateInteriorImage(
+            prompt,
+            floorplanUrl,
+            roomAnalysis,
+            floorPlanAnalysis,
+            productImages.length > 0 ? productImages : undefined
+          );
+          console.log(`✅ AI-generated room rendering complete with ${productImages.length} product visual references`);
           
           // Extract base64 data and MIME type from data URL (format: data:image/png;base64,...)
           const base64Match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
