@@ -510,10 +510,11 @@ export default function AdminProducts() {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("DELETE", "/api/admin/products/bulk-delete", {
+      const response = await apiRequest("DELETE", "/api/admin/products/bulk-delete", {
         productIds: selectedProductIds.length > 0 ? selectedProductIds : undefined,
         deleteAll: selectedProductIds.length === 0,
       });
+      return response.json();
     },
     onSuccess: (data: any) => {
       toast({
