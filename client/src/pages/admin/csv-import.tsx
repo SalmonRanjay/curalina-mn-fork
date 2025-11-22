@@ -14,7 +14,7 @@ import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Download } 
 interface ImportResult {
   success: boolean;
   imported: number;
-  skipped: number;
+  updated: number;
   errors: string[];
   details?: string;
 }
@@ -100,7 +100,7 @@ export default function CSVImportPage() {
       if (result.success) {
         toast({
           title: "Import Completed",
-          description: `Successfully imported ${result.imported} products. Skipped ${result.skipped} duplicates.`,
+          description: `Created ${result.imported} new products. Updated ${result.updated} existing products.`,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       } else {
@@ -447,9 +447,9 @@ export default function CSVImportPage() {
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Skipped (Duplicates)</p>
-                <p className="text-2xl font-bold text-yellow-600" data-testid="text-skipped-count">
-                  {importResult.skipped}
+                <p className="text-sm text-muted-foreground">Updated (Existing Products)</p>
+                <p className="text-2xl font-bold text-blue-600" data-testid="text-updated-count">
+                  {importResult.updated}
                 </p>
               </div>
             </div>

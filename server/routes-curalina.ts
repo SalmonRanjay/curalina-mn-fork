@@ -524,7 +524,7 @@ export function registerCuralinaRoutes(app: Express) {
       console.log('🔍 First row (mapped):', Object.keys(firstMapped).slice(0, 5));
 
       let imported = 0;
-      let skipped = 0;
+      let updated = 0;
       const errors: string[] = [];
 
       for (const rawRow of data as any[]) {
@@ -733,7 +733,8 @@ export function registerCuralinaRoutes(app: Express) {
             // Update existing product (preserves images and other fields not in CSV)
             // Don't include slug in update - keep the original slug
             await curalinaStorage.updateProduct(existingProduct.id, productData);
-            skipped++;
+            updated++;
+            console.log(`✏️  Updated product ${sku}: ${productName}`);
           } else {
             // Create new product with unique slug (append random suffix to handle duplicates)
             const baseSlug = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(sku).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -748,23 +749,23 @@ export function registerCuralinaRoutes(app: Express) {
               slug: uniqueSlug,
             });
             imported++;
+            console.log(`✅ Created new product ${sku}: ${productName}`);
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`❌ Error importing row ${imported + skipped + 1}:`, errorMessage);
-          errors.push(`Row ${imported + skipped + 1}: ${errorMessage}`);
+          console.error(`❌ Error importing row ${imported + updated + 1}:`, errorMessage);
+          errors.push(`Row ${imported + updated + 1}: ${errorMessage}`);
         }
       }
 
-      console.log(`✅ CSV Import completed: ${imported} imported, ${skipped} updated, ${errors.length} errors`);
+      console.log(`✅ CSV Import completed: ${imported} imported, ${updated} updated, ${errors.length} errors`);
 
       res.json({
         success: true,
         imported,
-        skipped,
-        updated: skipped,
+        updated,
         errors,
-        details: `Processed ${data.length} rows. Imported ${imported} new products, updated ${skipped} existing products.${errors.length > 0 ? ` Encountered ${errors.length} errors.` : ''}`
+        details: `Processed ${data.length} rows. Created ${imported} new products, updated ${updated} existing products.${errors.length > 0 ? ` Encountered ${errors.length} errors.` : ''}`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to process import file";
