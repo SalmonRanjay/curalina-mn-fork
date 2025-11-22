@@ -227,7 +227,7 @@ export default function AdminProducts() {
   const createMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
       const payload = transformFormData(data);
-      return apiRequest("/api/admin/products", "POST", payload);
+      return apiRequest("POST", "/api/admin/products", payload);
     },
     onSuccess: () => {
       toast({
@@ -250,7 +250,7 @@ export default function AdminProducts() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ProductFormData }) => {
       const payload = transformFormData(data);
-      return apiRequest(`/api/admin/products/${id}`, "PATCH", payload);
+      return apiRequest("PATCH", `/api/admin/products/${id}`, payload);
     },
     onSuccess: () => {
       toast({
@@ -271,7 +271,7 @@ export default function AdminProducts() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/admin/products/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/admin/products/${id}`);
     },
     onSuccess: () => {
       toast({
