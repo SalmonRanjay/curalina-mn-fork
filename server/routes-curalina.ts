@@ -582,11 +582,12 @@ export function registerCuralinaRoutes(app: Express) {
 
           // Parse dimensions - supports multiple field formats
           let dimensions = null;
-          const dimString = row['General Dimensions (Inch)\r\nWidth x Depth x Height'] || row['General Dimensions (Inch)'];
+          const dimString = row['General Dimensions (Inch)\r\nWidth x Depth x Height'] || row['General Dimensions (Inch)'] || row['General Dimensions'];
           
           // Start with general dimensions
           if (dimString) {
-            const matches = dimString.match(/(\d+\.?\d*)\s*"\s*W\s*X\s*(\d+\.?\d*)\s*"\s*D\s*X\s*(\d+\.?\d*)\s*"\s*H/i);
+            // Try matching: 90"W x 20"D x 32"H format
+            let matches = dimString.match(/(\d+\.?\d*)\s*"\s*W\s*X\s*(\d+\.?\d*)\s*"\s*D\s*X\s*(\d+\.?\d*)\s*"\s*H/i);
             if (matches) {
               dimensions = {
                 w: parseFloat(matches[1]),
@@ -594,6 +595,27 @@ export function registerCuralinaRoutes(app: Express) {
                 h: parseFloat(matches[3]),
                 unit: 'inches'
               };
+            } else {
+              // Try matching: 90"d x 20"h format (depth and height only, common for chairs)
+              matches = dimString.match(/(\d+\.?\d*)\s*["\']?\s*[Dd]\s*[Xx×]\s*(\d+\.?\d*)\s*["\']?\s*[Hh]/);
+              if (matches) {
+                dimensions = {
+                  d: parseFloat(matches[1]),  // First number is depth
+                  h: parseFloat(matches[2]),  // Second number is height
+                  unit: 'inches'
+                };
+              } else {
+                // Try matching: WxDxH format (just numbers separated by x)
+                matches = dimString.match(/(\d+\.?\d*)\s*[Xx×]\s*(\d+\.?\d*)\s*[Xx×]\s*(\d+\.?\d*)/);
+                if (matches) {
+                  dimensions = {
+                    w: parseFloat(matches[1]),
+                    d: parseFloat(matches[2]),
+                    h: parseFloat(matches[3]),
+                    unit: 'inches'
+                  };
+                }
+              }
             }
           }
           

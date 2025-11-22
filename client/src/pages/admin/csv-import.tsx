@@ -150,6 +150,10 @@ export default function CSVImportPage() {
       'inventory': 'Inventory',
       'stock': 'Inventory',
       'trade price': 'Trade Price',
+      'general dimensions (inch)': 'General Dimensions (Inch)',
+      'general dimensions': 'General Dimensions (Inch)',
+      'dimensions (inch)': 'General Dimensions (Inch)',
+      'dimensions': 'General Dimensions (Inch)',
       'retail price': 'Retail Price',
       'price': 'Retail Price',
       'dimensions (height)': 'Dimensions (Height)',
@@ -513,6 +517,7 @@ export default function CSVImportPage() {
                       <SelectItem value="Inventory">Inventory</SelectItem>
                       <SelectItem value="Trade Price">Trade Price</SelectItem>
                       <SelectItem value="Retail Price">Retail Price</SelectItem>
+                      <SelectItem value="General Dimensions (Inch)">General Dimensions (Inch)</SelectItem>
                       <SelectItem value="Dimensions (Height)">Dimensions (Height)</SelectItem>
                       <SelectItem value="Dimensions (Width)">Dimensions (Width)</SelectItem>
                       <SelectItem value="Dimensions (Depth)">Dimensions (Depth)</SelectItem>
