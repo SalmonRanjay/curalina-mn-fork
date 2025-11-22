@@ -16,7 +16,7 @@ const s3Client = new S3Client({
 });
 
 const S3_BUCKET = "curalina";
-const BATCH_SIZE = 5; // Process 5 files at a time to avoid timeouts
+const BATCH_SIZE = 10; // Process 10 files at a time for faster uploads to avoid timeouts
 
 interface FileToUpload {
   fileName: string;
@@ -151,15 +151,12 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
   // Get pending files from database
   const pendingDbFiles = await curalinaStorage.getPendingUploadJobFiles(jobId);
   
-  // Process next batch
+  // Process next batch in parallel for speed
   const batch = pendingDbFiles.slice(0, BATCH_SIZE);
   
-  for (const dbFile of batch) {
+  await Promise.all(batch.map(async (dbFile) => {
     try {
       console.log(`Processing file ${dbFile.fileName} for job ${jobId}`);
-      
-      // Update current file in job
-      await curalinaStorage.updateUploadJob(jobId, { currentFileName: dbFile.fileName });
       
       // Update file status to uploading
       await curalinaStorage.updateUploadJobFile(dbFile.id, { status: "uploading" });
@@ -188,6 +185,19 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
         });
       }
       
+      // IMMEDIATELY add image to product - don't wait for job completion
+      const product = await curalinaStorage.getProduct(job.productId);
+      if (product && s3Url) {
+        const existingImages = product.images || [];
+        // Only add if not already present (avoid duplicates on retries)
+        if (!existingImages.includes(s3Url)) {
+          await curalinaStorage.updateProduct(job.productId, { 
+            images: [...existingImages, s3Url] 
+          });
+          console.log(`✅ Immediately added ${dbFile.fileName} to product ${job.productId}`);
+        }
+      }
+      
       console.log(`Successfully uploaded ${dbFile.fileName}`);
     } catch (error) {
       console.error(`Failed to upload ${dbFile.fileName}:`, error);
@@ -206,7 +216,7 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
         });
       }
     }
-  }
+  }));
   
   // Check if all files are processed
   const remainingFiles = await curalinaStorage.getPendingUploadJobFiles(jobId);
@@ -222,8 +232,8 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
         currentFileName: null,
       });
       
-      // Update product images
-      await updateProductImages(finalJob.productId, jobId);
+      // Trigger visual analysis if needed (images already added to product incrementally)
+      await triggerVisualAnalysisIfNeeded(finalJob.productId, jobId);
     }
   }
   
@@ -231,45 +241,33 @@ export async function processUploadJobBatch(jobId: string, files: FileToUpload[]
 }
 
 /**
- * Update product's images array with successfully uploaded files
+ * Trigger visual analysis if needed (after job completion)
+ * Images are already added incrementally, this just triggers analysis
  */
-async function updateProductImages(productId: string, jobId: string): Promise<void> {
-  const files = await curalinaStorage.getUploadJobFiles(jobId);
-  const successfulUploads = files
-    .filter((f) => f.status === "completed" && f.s3Url)
-    .map((f) => f.s3Url!);
+async function triggerVisualAnalysisIfNeeded(productId: string, jobId: string): Promise<void> {
+  const product = await curalinaStorage.getProduct(productId);
   
-  if (successfulUploads.length > 0) {
-    const product = await curalinaStorage.getProduct(productId);
-    if (product) {
-      const existingImages = product.images || [];
-      const newImages = [...existingImages, ...successfulUploads];
-      await curalinaStorage.updateProduct(productId, { images: newImages });
-      console.log(`Updated product ${productId} with ${successfulUploads.length} new images`);
+  // Auto-trigger visual analysis for products with new images if they don't have descriptions
+  if (product && !product.visualDescription) {
+    try {
+      // Import configuration and check feature flag
+      const visualAnalysisConfig = (await import('../config/visual-analysis')).default;
+      const servicePath = visualAnalysisConfig.useV2 
+        ? './visual-analysis-job-service-v2'
+        : './visual-analysis-job-service';
       
-      // Auto-trigger visual analysis for products with new images if they don't have descriptions
-      if (!product.visualDescription) {
-        try {
-          // Import configuration and check feature flag
-          const visualAnalysisConfig = (await import('../config/visual-analysis')).default;
-          const servicePath = visualAnalysisConfig.useV2 
-            ? './visual-analysis-job-service-v2'
-            : './visual-analysis-job-service';
-          
-          const { createVisualAnalysisJob } = await import(servicePath);
-          
-          const analysisJob = await createVisualAnalysisJob(
-            null, // userId (null for system-triggered jobs)
-            "auto_after_upload", // jobType
-            jobId, // uploadJobId
-            { productIds: [productId] } // filters
-          );
-          console.log(`Auto-triggered visual analysis job ${analysisJob.id} for product ${productId} after upload (${visualAnalysisConfig.useV2 ? 'V2' : 'V1'})`);
-        } catch (error) {
-          console.error(`Failed to auto-trigger visual analysis for product ${productId}:`, error);
-          // Don't fail the upload job if visual analysis trigger fails
-        }
-      }
+      const { createVisualAnalysisJob } = await import(servicePath);
+      
+      const analysisJob = await createVisualAnalysisJob(
+        null, // userId (null for system-triggered jobs)
+        "auto_after_upload", // jobType
+        jobId, // uploadJobId
+        { productIds: [productId] } // filters
+      );
+      console.log(`Auto-triggered visual analysis job ${analysisJob.id} for product ${productId} after upload (${visualAnalysisConfig.useV2 ? 'V2' : 'V1'})`);
+    } catch (error) {
+      console.error(`Failed to auto-trigger visual analysis for product ${productId}:`, error);
+      // Don't fail the upload job if visual analysis trigger fails
     }
   }
 }
