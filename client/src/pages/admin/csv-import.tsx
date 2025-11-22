@@ -123,7 +123,8 @@ export default function CSVImportPage() {
 
   // Auto-map CSV column names to target fields
   const autoMapColumn = (csvColumn: string): string => {
-    const normalized = csvColumn.toLowerCase().trim();
+    // Clean up the column name by removing extra whitespace and line breaks
+    const cleaned = csvColumn.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').toLowerCase().trim();
     
     // Exact matches
     const exactMappings: Record<string, string> = {
@@ -192,7 +193,7 @@ export default function CSVImportPage() {
       'shape type': 'Shape Type',
     };
     
-    return exactMappings[normalized] || '';
+    return exactMappings[cleaned] || '';
   };
 
   const { getRootProps, getInputProps, isDragActive, acceptedFiles } = useDropzone({
