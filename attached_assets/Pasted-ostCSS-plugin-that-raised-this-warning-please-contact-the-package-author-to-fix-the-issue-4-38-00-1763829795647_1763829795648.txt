@@ -1,0 +1,167 @@
+ostCSS plugin that raised this warning, please contact the package author to fix the issue.
+4:38:00 PM [express] GET /api/auth/user 304 in 593ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+4:38:25 PM [express] [ImageHealthWorker] Running initial validation
+[ImageHealthWorker] Starting validation for 0 products marked as repairing
+[ImageHealthWorker] Validation complete: 0 processed, 0 updated, 0 errors
+4:38:26 PM [express] [ImageHealthWorker] Initial validation complete: 0 processed, 0 updated
+4:40:32 PM [express] POST /api/upload 200 in 5991ms :: {"urls":["/public-objects/floorplans/17638296…
+4:40:34 PM [express] POST /api/quiz 200 in 295ms :: {"id":"1f3d0888-074f-4fe5-ada8-def956df90fe","se…
+📊 Product Pool: 542 total → 541 in stock → 397 with valid images
+   📸 382 have AI visual descriptions (REQUIRED for rendering)
+⚠️ Budget NOT enforced during filtering - focusing on render quality
+📊 Candidate pool: 174 products match quiz criteria
+✨ New selection hash: 525087ec... - creating fresh render
+📝 Created ledger with 174 candidate products
+4:40:36 PM [express] POST /api/render 200 in 1163ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f9be",…
+🎨 Starting AI render for Living Room in Modern Farmhouse style
+Found 542 total products
+📊 Product Pool: 542 total → 541 in stock → 397 with valid images
+   📸 382 have AI visual descriptions (REQUIRED for rendering)
+⚠️ Budget NOT enforced during filtering - focusing on render quality
+Filtered to 174 matching products
+4:40:37 PM [express] GET /api/render/latest 200 in 272ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:39 PM [express] GET /api/render/latest 304 in 266ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:42 PM [express] GET /api/render/latest 304 in 262ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:44 PM [express] GET /api/render/latest 304 in 262ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:47 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:50 PM [express] GET /api/render/latest 304 in 263ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:52 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:55 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:40:57 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:00 PM [express] GET /api/render/latest 304 in 263ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:03 PM [express] GET /api/render/latest 304 in 262ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:05 PM [express] GET /api/render/latest 304 in 266ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:09 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:11 PM [express] GET /api/render/latest 304 in 270ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:14 PM [express] GET /api/render/latest 304 in 368ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:16 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:19 PM [express] GET /api/render/latest 304 in 263ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+AI selected 7 products for Living Room
+🏠 Applying room composition rules for Living Room...
+Could not find suitable zone for product: Lund Table Lamp
+Could not find suitable zone for product: Selby Table Lamp
+Could not find suitable zone for product: Stonewash Linen Pillow
+✅ Room composition complete:
+  primary_seating: 1 items
+  coffee_table: 1 items
+  accent_seating: 2 items
+  side_table: 1 items
+  storage: 1 items
+  lighting: 2 items
+  decor: 2 items
+💰 No budget limit set, proceeding with all selected products
+AI selected 13 products with 7 zone-based placements
+🔍 Analyzing floor plan with Gemini Vision...
+Analyzing floor plan with Gemini Vision: https://3193113e-1de4-4de4-890b-7834758581fe-00-29vc51uosd79x.kirk.replit.dev/public-objects/floorplans/1763829631615-7d8nvf-download-1.jpg
+4:41:22 PM [express] GET /api/render/latest 304 in 264ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+Floor plan analysis completed: {
+  roomDimensions: 'The room appears to be a spacious, rectangular area with a significant width, suggested by the large expanse of the main wall and the multi-panel window assembly. Exact measurements are not visible, but it conveys an open and airy feel.',
+  windowLocations: [
+    'Right wall: A large, multi-panel window assembly extends along a significant portion of the wall, providing ample natural light.'
+  ],
+  doorLocations: [],
+  builtInFeatures: [
+    'Main wall: A low-profile, two-unit built-in cabinet or bench spans a large section of the main wall, featuring light wood-toned tops and white fronts.',
+    'Left wall: A recessed shelving unit with light wood-toned shelves is integrated into the wall.',
+    'Right wall: A decorative vertical slat panel, also in a light wood tone, is integrated next to the window assembly.'
+  ],
+  ceilingRoofDesign: 'The ceiling features a modern tray ceiling design with a central recessed rectangular panel. This recess appears to house integrated linear lighting or coving, providing indirect illumination. The overall ceiling is flat, painted white, and suggests a standard height, enhanced by the architectural detail of the tray design.',
+  layoutNotes: 'The room has a clean, rectilinear shape with predominantly white walls creating a bright and minimalist aesthetic. The floor appears to be a light, possibly polished concrete or large-format tile, reflecting light and contributing to the open feel. The layout emphasizes a central focal wall with integrated storage and decorative elements, balanced by a large window bringing in natural light.',
+  overallDescription: 'This is a bright and modern rectangular room characterized by its minimalist aesthetic and clean lines. Key features include a prominent built-in low cabinet and a recessed shelving unit, complemented by a sophisticated tray ceiling with integrated lighting. A large window assembly on one wall ensures abundant natural light, contributing to the open and airy ambiance of the space.'
+}
+✅ Floor plan analysis complete: The room appears to be a spacious, rectangular area with a significant width, suggested by the large expanse of the main wall and the multi-panel window assembly. Exact measurements are not visible, but it conveys an open and airy feel.
+✨ 13/13 products have visual descriptions (prioritizing Front View → Gemini → Legacy)
+4:41:24 PM [express] GET /api/render/latest 304 in 265ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+📊 Product Pool: 542 total → 541 in stock → 397 with valid images
+   📸 382 have AI visual descriptions (REQUIRED for rendering)
+⚠️ Budget NOT enforced during filtering - focusing on render quality
+📋 Updated ledger: 13 products in 2 essential + 6 complementary categories, 161 exclusions, diversity: 40
+   ⚠️ No ledger data for 237923-002, detected as primary_seating with priority 1
+   ⚠️ No ledger data for 227714-001, detected as coffee_table with priority 2
+   ⚠️ No ledger data for 242468-001, detected as accent_seating with priority 3
+   ⚠️ No ledger data for 248560-003, detected as accent_seating with priority 3
+   ⚠️ No ledger data for GZ-1020-02-0, detected as side_table with priority 4
+   ⚠️ No ledger data for 241449-001, detected as storage with priority 5
+   ⚠️ No ledger data for 240658-001, detected as lighting with priority 6
+   ⚠️ No ledger data for 247981-001, detected as lighting with priority 6
+   ⚠️ No ledger data for CASH-19955-889, detected as primary_seating with priority 1
+   ⚠️ No ledger data for 237026-005, detected as decor with priority 7
+   ⚠️ No ledger data for 227720-001, detected as decor with priority 7
+   ⚠️ No ledger data for 246122-001, detected as decor with priority 7
+   ⚠️ No ledger data for 247308-001, detected as decor with priority 7
+   📸 Using condensed Legacy description for: Wellborn Sofa
+   🔍 Condensed: "COLOR: tan | MATERIAL: leather | SHAPE: rounded"
+   📸 Using condensed Legacy description for: Oval Petrified Wood Bowl
+   🔍 Condensed: "COLOR: beige | SHAPE: curved"
+   📸 Using condensed Legacy description for: Crane Pillow
+   🔍 Condensed: "COLOR: light grey | SHAPE: rounded, square"
+   📸 Using condensed Legacy description for: Olsen Pillow
+   🔍 Condensed: "COLOR: brown | MATERIAL: fabric | SHAPE: rounded, square"
+   📸 Using condensed Legacy description for: Dusk Accent Table Black
+   🔍 Condensed: "COLOR: dark grey | MATERIAL: marble"
+   📸 Using condensed Legacy description for: Jimi Cabinet
+   🔍 Condensed: "COLOR: black | MATERIAL: metal | SHAPE: angular, rectangular | SIZE: 2 in"
+   📸 Using condensed Legacy description for: Lund Table Lamp
+   🔍 Condensed: "MATERIAL: brass"
+   📸 Using condensed Legacy description for: Selby Table Lamp
+   🔍 Condensed: "COLOR: dark brown | MATERIAL: metal | SHAPE: curved"
+   📸 Using condensed Legacy description for: Reese Sofa
+   🔍 Condensed: "COLOR: dark brown | MATERIAL: velvet | SHAPE: rounded"
+   📸 Using condensed Legacy description for: Stonewash Linen Pillow
+   🔍 Condensed: "COLOR: light beige | MATERIAL: fabric | SHAPE: rounded, square"
+   📸 Using condensed Legacy description for: Petrified Wood Organic Sculpture, Set Of 3
+   🔍 Condensed: "COLOR: beige"
+   📸 Using condensed Legacy description for: Runa Bowl
+   🔍 Condensed: "COLOR: dark brown | MATERIAL: wood | SHAPE: curved, U-shaped"
+   📸 Using condensed Legacy description for: Sumba Pedestal Set
+   🔍 Condensed: "COLOR: beige"
+Zone-based placement matrix generation failed, falling back to legacy matrix
+📝 Generated prompt with floor plan analysis
+🎨 Generating layout mask: 1024x1024px with 7 placements
+✅ Layout mask generated: 25.5KB
+🎭 Generated layout mask from 7 zone placements for ControlNet guidance
+🖼️ Using Gemini image-to-image mode with uploaded space photo + 0 product images + layout mask
+Fetching room image from: https://3193113e-1de4-4de4-890b-7834758581fe-00-29vc51uosd79x.kirk.replit.dev/public-objects/floorplans/1763829631615-7d8nvf-download-1.jpg
+Using Gemini for structure-preserving image-to-image editing with MIME type: image/jpeg
+4:41:27 PM [express] GET /api/render/latest 304 in 263ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:29 PM [express] GET /api/render/latest 304 in 262ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:32 PM [express] GET /api/render/latest 304 in 269ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+✅ Successfully generated structure-preserving redesign with Gemini
+✅ AI-generated room rendering complete with 0 product visual references and layout mask guidance
+4:41:34 PM [express] GET /api/render/latest 304 in 265ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+🔍 Starting post-render QA validation for render b7429fe1-4bcc-49a9-ab6c-2821ec94f9be...
+   Image format: image/png, size: 2005.3KB
+🔍 Starting QA validation for render...
+📤 Sending validation request to Gemini Vision...
+❌ QA validation error: ApiError: {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:826:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:487:9)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:69:14)
+    at async validateRenderQuality (/home/runner/workspace/server/services/render-qa.ts:78:22)
+    at async <anonymous> (/home/runner/workspace/server/routes-curalina.ts:2065:25) {
+  status: 400
+}
+📊 QA Validation Complete for render b7429fe1-4bcc-49a9-ab6c-2821ec94f9be:
+   Overall Score: 50/100
+   Issues Found: 1
+   - [MAJOR] hallucination: QA validation failed: {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]}}
+⚠️ Render b7429fe1-4bcc-49a9-ab6c-2821ec94f9be: QA score below threshold or critical issues detected
+💡 Recommendation: Regenerate render with adjusted prompt
+   (Auto-retry not yet implemented - user can manually retry via UI)
+🔍 Analyzing generated image to identify visible products from 13 candidates...
+4:41:37 PM [express] GET /api/render/latest 304 in 268ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:40 PM [express] GET /api/render/latest 304 in 264ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:42 PM [express] GET /api/render/latest 304 in 261ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:45 PM [express] GET /api/render/latest 304 in 262ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+✅ Identified 3 unique visible products out of 13 total: 227714-001, GZ-1020-02-0, 247308-001
+🛍️ Visibility analysis: 3/13 products clearly identified in image
+   Visible: 227714-001, GZ-1020-02-0, 247308-001
+   Not clearly visible: 237923-002, 242468-001, 248560-003, 241449-001, 240658-001, 247981-001, CASH-19955-889, 237026-005, 227720-001, 246122-001
+✅ Ingested 13 product snapshots + 3 events for render b7429fe1-4bcc-49a9-ab6c-2821ec94f9be
+🔒 Locked selection ledger for render b7429fe1-4bcc-49a9-ab6c-2821ec94f9be
+✅ Render b7429fe1-4bcc-49a9-ab6c-2821ec94f9be completed with 13 products available in Shop the Look
+4:41:48 PM [express] GET /api/render/latest 200 in 265ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:48 PM [express] GET /api/render/b7429fe1-4bcc-49a9-ab6c-2821ec94f9be/ledger 200 in 328ms :: {"i…
+4:41:49 PM [express] GET /api/render/latest 304 in 662ms :: {"id":"b7429fe1-4bcc-49a9-ab6c-2821ec94f…
+4:41:50 PM [express] GET /api/products 304 in 554ms :: [{"id":"9e4083ea-0041-4750-aa5e-6e7aa87feabb"…

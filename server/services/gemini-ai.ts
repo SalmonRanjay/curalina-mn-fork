@@ -3,9 +3,15 @@ import OpenAI from "openai";
 import type { QuizResponse, Product } from "@shared/schema";
 import { selectProductsWithComposition, generateCompositionInstructions, validateComposition, detectFunctionalCategory, getRoomTemplate, type PlacementInstruction } from './room-composition-service';
 
-// Initialize Gemini client with user's API key
+// Initialize Gemini client with fallback to integration API key
+// Supports both user-supplied keys and Replit integration keys
+const getGeminiApiKey = () => {
+  // Try user-supplied key first (via GEMINI_API_KEY), fallback to integration key
+  return process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY!;
+};
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
+  apiKey: getGeminiApiKey(),
 });
 
 // Lazy initialization of OpenAI client to avoid crashes when key is not set
@@ -2770,8 +2776,34 @@ Generate a photorealistic redesign that preserves the room's architecture while 
     }
 
     const mimeType = imagePart.inlineData.mimeType || "image/png";
+    const baseImage = `data:${mimeType};base64,${imagePart.inlineData.data}`;
     console.log("✅ Successfully generated structure-preserving redesign with Gemini");
-    return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    
+    // Apply Stability AI QC refinement if enabled (image-to-image path)
+    const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
+    const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+    
+    if (qcEnabled && hasApiKey) {
+      try {
+        console.log("🔄 QC enabled - applying Stability AI refinement...");
+        const { applyQCRefinement } = await import('./stability-ai-qc');
+        const refinedImage = await applyQCRefinement(baseImage, prompt, productImages, layoutMask);
+        if (refinedImage) {
+          console.log("✅ QC refinement successfully applied");
+          return refinedImage;
+        } else {
+          console.warn("⚠️ QC refinement returned null, using original image");
+        }
+      } catch (error) {
+        console.error("❌ QC refinement error:", error);
+        // Fall back to original image on error
+      }
+    } else {
+      if (!qcEnabled) console.log("ℹ️ QC disabled by admin settings");
+      if (!hasApiKey) console.log("ℹ️ Stability AI API key not configured");
+    }
+    
+    return baseImage;
   } catch (error) {
     console.error("AI generation error:", error);
     throw new Error(`Failed to generate interior design: ${error instanceof Error ? error.message : "Unknown error"}`);

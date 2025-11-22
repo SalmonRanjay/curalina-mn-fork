@@ -1839,11 +1839,13 @@ export function registerCuralinaRoutes(app: Express) {
             const fullProduct = allProducts.find(p => p.sku === sp.sku);
             if (!fullProduct) return sp;
             
-            // Include visual description for prioritization
+            // Include visual description AND images for AI generation
+            // Preserve existing images from selectedProducts (e.g., ledger overrides), fallback to fullProduct images
             return {
               ...sp,
               name: fullProduct.name,
               visualDescription: fullProduct.visualDescription || undefined,
+              images: (sp as any).images || fullProduct.images || [], // Preserve ledger overrides, fallback to product images
             };
           });
           
