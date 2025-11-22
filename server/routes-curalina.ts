@@ -3428,17 +3428,25 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       const { enabled, strength } = req.body;
       
-      // Note: In a production app, you'd save these to a database
-      // For now, we're using environment variables which require restart
-      process.env.ENABLE_STABILITY_QC = enabled ? 'true' : 'false';
-      process.env.STABILITY_QC_STRENGTH = strength || '0.7';
+      // Validate and normalize the strength value
+      let normalizedStrength = parseFloat(strength);
+      if (isNaN(normalizedStrength) || normalizedStrength < 0.3 || normalizedStrength > 1.0) {
+        console.warn(`Invalid strength value: ${strength}, defaulting to 0.7`);
+        normalizedStrength = 0.7;
+      }
       
-      console.log(`✅ Stability AI QC settings updated: enabled=${enabled}, strength=${strength}`);
+      // Update environment variables (in production, save to database)
+      process.env.ENABLE_STABILITY_QC = enabled ? 'true' : 'false';
+      process.env.STABILITY_QC_STRENGTH = normalizedStrength.toString();
+      
+      console.log(`✅ Stability AI QC settings updated:`);
+      console.log(`   - Enabled: ${enabled}`);
+      console.log(`   - Strength: ${normalizedStrength}`);
       
       res.json({ 
         success: true,
-        enabled,
-        strength,
+        enabled: !!enabled,
+        strength: normalizedStrength.toString(),
         message: 'QC settings updated. Changes will take effect on next render.'
       });
     } catch (error) {

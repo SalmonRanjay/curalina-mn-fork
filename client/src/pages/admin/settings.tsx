@@ -19,7 +19,7 @@ export default function AdminSettings() {
   const [qcStrength, setQcStrength] = useState("0.7");
   
   // Fetch current QC settings
-  const { data: qcSettings } = useQuery({
+  const { data: qcSettings } = useQuery<{ enabled: boolean; strength: string; hasApiKey: boolean; message: string }>({
     queryKey: ['/api/admin/settings/stability-qc'],
     enabled: isAuthenticated && isAdmin,
   });

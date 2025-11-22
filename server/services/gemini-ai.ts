@@ -2365,17 +2365,28 @@ export async function generateInteriorImage(
       const baseImage = `data:${mimeType};base64,${imagePart.inlineData.data}`;
       
       // Apply Stability AI QC refinement if enabled
-      if (process.env.ENABLE_STABILITY_QC === 'true' && process.env.STABILITY_AI_API_KEY) {
+      // Properly check the runtime settings, not just env vars
+      const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
+      const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+      
+      if (qcEnabled && hasApiKey) {
         try {
+          console.log("🔄 QC enabled - applying Stability AI refinement...");
           const { applyQCRefinement } = await import('./stability-ai-qc');
           const refinedImage = await applyQCRefinement(baseImage, prompt);
           if (refinedImage) {
-            console.log("✅ QC refinement applied to text-to-image render");
+            console.log("✅ QC refinement successfully applied");
             return refinedImage;
+          } else {
+            console.warn("⚠️ QC refinement returned null, using original image");
           }
         } catch (error) {
-          console.error("QC refinement error:", error);
+          console.error("❌ QC refinement error:", error);
+          // Fall back to original image on error
         }
+      } else {
+        if (!qcEnabled) console.log("ℹ️ QC disabled by admin settings");
+        if (!hasApiKey) console.log("ℹ️ Stability AI API key not configured");
       }
       
       return baseImage;
@@ -2418,17 +2429,28 @@ export async function generateInteriorImage(
       const baseImage = `data:${mimeType};base64,${imagePart.inlineData.data}`;
       
       // Apply Stability AI QC refinement if enabled
-      if (process.env.ENABLE_STABILITY_QC === 'true' && process.env.STABILITY_AI_API_KEY) {
+      // Properly check the runtime settings, not just env vars
+      const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
+      const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+      
+      if (qcEnabled && hasApiKey) {
         try {
+          console.log("🔄 QC enabled - applying Stability AI refinement...");
           const { applyQCRefinement } = await import('./stability-ai-qc');
           const refinedImage = await applyQCRefinement(baseImage, prompt);
           if (refinedImage) {
-            console.log("✅ QC refinement applied to text-to-image render");
+            console.log("✅ QC refinement successfully applied");
             return refinedImage;
+          } else {
+            console.warn("⚠️ QC refinement returned null, using original image");
           }
         } catch (error) {
-          console.error("QC refinement error:", error);
+          console.error("❌ QC refinement error:", error);
+          // Fall back to original image on error
         }
+      } else {
+        if (!qcEnabled) console.log("ℹ️ QC disabled by admin settings");
+        if (!hasApiKey) console.log("ℹ️ Stability AI API key not configured");
       }
       
       return baseImage;

@@ -319,7 +319,16 @@ export async function applyQCRefinement(
   baseImageData: string,
   prompt: string
 ): Promise<string | null> {
-  if (!process.env.STABILITY_AI_API_KEY) {
+  // Verify QC is actually enabled and API key exists
+  const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
+  const apiKey = process.env.STABILITY_AI_API_KEY;
+  
+  if (!qcEnabled) {
+    console.log('ℹ️ QC refinement skipped - disabled by admin');
+    return null;
+  }
+  
+  if (!apiKey) {
     console.warn('⚠️ Stability AI API key not configured');
     return null;
   }
@@ -334,12 +343,19 @@ export async function applyQCRefinement(
     
     const imageBuffer = Buffer.from(base64Match[1], 'base64');
     
+    // Get control strength from settings (validated server-side)
+    const controlStrength = parseFloat(process.env.STABILITY_QC_STRENGTH || '0.7');
+    const validStrength = !isNaN(controlStrength) ? 
+      Math.max(0.3, Math.min(1.0, controlStrength)) : 0.7;
+    
+    console.log(`🎚️ Using control strength: ${validStrength}`);
+    
     // Create form data for Stability API
     const formData = new FormData();
     const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
     formData.append('image', imageBlob, 'render.png');
     formData.append('prompt', prompt + ' photorealistic interior design, accurate product representation, exact furniture matching');
-    formData.append('control_strength', '0.7'); // Moderate control for balance
+    formData.append('control_strength', validStrength.toString());
     formData.append('output_format', 'png');
     formData.append('negative_prompt', 'distorted furniture, wrong products, incorrect colors, mismatched items, blurry, low quality');
     
