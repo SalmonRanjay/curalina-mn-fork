@@ -1596,24 +1596,96 @@ export default function AdminProducts() {
           </div>
         </div>
 
-        {/* Filter Results Summary */}
-        <div className="mt-4 flex items-center gap-2 text-sm text-stone-600">
-          <span>Showing {filteredProducts.length} of {products?.length || 0} products</span>
-          {hasActiveFilters && (
-            <Badge variant="secondary" data-testid="badge-active-filters">
-              {[
-                searchQuery && "Search",
-                categoryFilter !== "all" && "Category",
-                supplierFilter !== "all" && "Supplier",
-                imageFilter !== "all" && "Images",
-                availabilityFilter !== "all" && "Status",
-                analysisFilter !== "all" && "Analysis",
-                imageHealthFilter !== "all" && "Health"
-              ].filter(Boolean).length} filter(s) active
-            </Badge>
-          )}
+        {/* Price Range Filter */}
+        <div className="mt-6 pt-6 border-t">
+          <Label className="text-sm mb-3 block">Price Range: ${priceRange[0]} - ${priceRange[1]}</Label>
+          <div className="flex items-center gap-4">
+            <Input
+              type="number"
+              min="0"
+              value={priceRange[0]}
+              onChange={(e) => setPriceRange([Math.min(parseInt(e.target.value) || 0, priceRange[1]), priceRange[1]])}
+              placeholder="Min"
+              className="w-20"
+              data-testid="input-price-min"
+            />
+            <span className="text-stone-400">to</span>
+            <Input
+              type="number"
+              min="0"
+              value={priceRange[1]}
+              onChange={(e) => setPriceRange([priceRange[0], Math.max(parseInt(e.target.value) || 10000, priceRange[0])])}
+              placeholder="Max"
+              className="w-20"
+              data-testid="input-price-max"
+            />
+          </div>
+        </div>
+
+        {/* Filter Results Summary & Bulk Actions */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-stone-600">
+            <span>Showing {filteredProducts.length} of {products?.length || 0} products</span>
+            {hasActiveFilters && (
+              <Badge variant="secondary" data-testid="badge-active-filters">
+                {[
+                  searchQuery && "Search",
+                  categoryFilter !== "all" && "Category",
+                  supplierFilter !== "all" && "Supplier",
+                  imageFilter !== "all" && "Images",
+                  availabilityFilter !== "all" && "Status",
+                  analysisFilter !== "all" && "Analysis",
+                  imageHealthFilter !== "all" && "Health",
+                  (priceRange[0] > 0 || priceRange[1] < 10000) && "Price"
+                ].filter(Boolean).length} filter(s) active
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => exportAllMutation.mutate()}
+              disabled={exportAllMutation.isPending}
+              data-testid="button-export-all"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {exportAllMutation.isPending ? "Exporting..." : "Export All"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => exportFilteredMutation.mutate()}
+              disabled={exportFilteredMutation.isPending || filteredProducts.length === 0}
+              data-testid="button-export-filtered"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {exportFilteredMutation.isPending ? "Exporting..." : "Export Filtered"}
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {/* Bulk Operations Toolbar */}
+      {selectedProductIds.length > 0 && (
+        <Card className="p-4 mb-6 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <span className="font-semibold">{selectedProductIds.length} product(s) selected</span>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setShowBulkDeleteDialog(true)}
+              disabled={bulkDeleteMutation.isPending}
+              data-testid="button-bulk-delete"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete Selected"}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Visual Analysis Jobs */}
       {activeAnalysisJobs && activeAnalysisJobs.length > 0 && (
@@ -1776,6 +1848,21 @@ export default function AdminProducts() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedProductIds.length > 0 && selectedProductIds.length === filteredProducts.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedProductIds(filteredProducts.map(p => p.id));
+                        } else {
+                          setSelectedProductIds([]);
+                        }
+                      }}
+                      data-testid="checkbox-select-all"
+                      className="rounded"
+                    />
+                  </TableHead>
                   <TableHead>Image</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Name</TableHead>
@@ -1790,13 +1877,28 @@ export default function AdminProducts() {
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-stone-500">
+                    <TableCell colSpan={10} className="text-center py-12 text-stone-500">
                       {hasActiveFilters ? "No products match your filters" : "No products found"}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredProducts.map((product) => (
                     <TableRow key={product.id} data-testid={`product-row-${product.id}`}>
+                    <TableCell className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.includes(product.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedProductIds([...selectedProductIds, product.id]);
+                          } else {
+                            setSelectedProductIds(selectedProductIds.filter(id => id !== product.id));
+                          }
+                        }}
+                        data-testid={`checkbox-select-${product.id}`}
+                        className="rounded"
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="w-16 h-16 bg-stone-100 dark:bg-stone-800 rounded overflow-hidden">
                         {getImageUrl(product.images) ? (
@@ -2019,6 +2121,28 @@ export default function AdminProducts() {
               className="bg-red-600 hover:bg-red-700"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedProductIds.length} Product(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedProductIds.length} product(s)? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkDeleteMutation.mutate()}
+              data-testid="button-confirm-bulk-delete"
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete All"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
