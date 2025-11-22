@@ -178,6 +178,10 @@ export default function CSVImportPage() {
       'tags': 'Tags',
       'weight': 'Weight (lbs)',
       'weight (lbs)': 'Weight (lbs)',
+      'volume': 'Volume',
+      'door width': 'Door Width',
+      'door thickness': 'Door Thickness',
+      'door height': 'Door Height',
     };
     
     return exactMappings[normalized] || '';
