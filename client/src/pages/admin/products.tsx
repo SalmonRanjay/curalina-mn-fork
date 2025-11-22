@@ -508,6 +508,55 @@ export default function AdminProducts() {
     },
   });
 
+  // Visual description regeneration mutation
+  const [regenerationProgress, setRegenerationProgress] = useState<{
+    total: number;
+    processed: number;
+    success: number;
+    failed: number;
+    skipped: number;
+  } | null>(null);
+  const [showRegenerationDialog, setShowRegenerationDialog] = useState(false);
+  const [regenerationMode, setRegenerationMode] = useState<'all' | 'missing' | 'front-view'>('front-view');
+
+  const regenerateVisualDescriptionsMutation = useMutation({
+    mutationFn: async (params: { mode: 'all' | 'missing' | 'front-view' | 'skus'; skus?: string[] }) => {
+      // Initialize progress state when starting
+      setRegenerationProgress({
+        total: 0,
+        processed: 0,
+        success: 0,
+        failed: 0,
+        skipped: 0,
+      });
+      const response = await apiRequest("POST", "/api/admin/products/regenerate-visual-descriptions", params);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      setRegenerationProgress({
+        total: data.totalProducts,
+        processed: data.results.successCount + data.results.failureCount + data.results.skippedCount,
+        success: data.results.successCount,
+        failed: data.results.failureCount,
+        skipped: data.results.skippedCount,
+      });
+      toast({
+        title: "Visual description regeneration complete",
+        description: `Processed ${data.totalProducts} products: ${data.results.successCount} success, ${data.results.failureCount} failed, ${data.results.skippedCount} skipped`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setTimeout(() => setShowRegenerationDialog(false), 2000); // Keep dialog open to show results
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to regenerate visual descriptions",
+        description: error.message,
+        variant: "destructive",
+      });
+      setRegenerationProgress(null);
+    },
+  });
+
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
@@ -1740,6 +1789,16 @@ export default function AdminProducts() {
               <Download className="w-4 h-4 mr-2" />
               {exportFilteredMutation.isPending ? "Exporting..." : "Export Filtered"}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowRegenerationDialog(true)}
+              disabled={regenerateVisualDescriptionsMutation.isPending}
+              data-testid="button-regenerate-descriptions"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {regenerateVisualDescriptionsMutation.isPending ? "Regenerating..." : "Regenerate Descriptions"}
+            </Button>
           </div>
         </div>
       </Card>
@@ -2252,6 +2311,119 @@ export default function AdminProducts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Visual Description Regeneration Dialog */}
+      <Dialog open={showRegenerationDialog} onOpenChange={setShowRegenerationDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Regenerate Visual Descriptions</DialogTitle>
+            <DialogDescription>
+              Use Gemini Vision to analyze product images and generate detailed visual descriptions
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm mb-2 block">Regeneration Mode</Label>
+              <Select 
+                value={regenerationMode} 
+                onValueChange={(value) => setRegenerationMode(value as 'all' | 'missing' | 'front-view')}
+              >
+                <SelectTrigger data-testid="select-regeneration-mode">
+                  <SelectValue placeholder="Front View Only (Priority)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="front-view">Front View Only (Priority)</SelectItem>
+                  <SelectItem value="missing">Missing Descriptions Only</SelectItem>
+                  <SelectItem value="all">All Products</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Alert>
+              <Sparkles className="h-4 w-4" />
+              <AlertDescription>
+                {regenerationMode === 'front-view' && (
+                  <>Regenerates descriptions for products with front-view images. Prioritizes exact visual accuracy for AI rendering.</>
+                )}
+                {regenerationMode === 'missing' && (
+                  <>Regenerates descriptions only for products currently missing visual descriptions.</>
+                )}
+                {regenerationMode === 'all' && (
+                  <>⚠️ WARNING: Regenerates ALL product descriptions. This will overwrite existing descriptions and may take several minutes.</>
+                )}
+              </AlertDescription>
+            </Alert>
+
+            {regenerateVisualDescriptionsMutation.isPending && !regenerationProgress?.total && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Initializing regeneration...</span>
+              </div>
+            )}
+
+            {regenerationProgress && regenerationProgress.total > 0 && (
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>Progress</span>
+                    <span>{regenerationProgress.processed} / {regenerationProgress.total}</span>
+                  </div>
+                  <Progress value={(regenerationProgress.processed / regenerationProgress.total) * 100} className="h-2" />
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    <span className="text-muted-foreground">Success:</span>
+                    <span className="font-medium">{regenerationProgress.success}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <XCircle className="w-3 h-3 text-red-600" />
+                    <span className="text-muted-foreground">Failed:</span>
+                    <span className="font-medium">{regenerationProgress.failed}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    <span className="text-muted-foreground">Skipped:</span>
+                    <span className="font-medium">{regenerationProgress.skipped}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRegenerationDialog(false);
+                setRegenerationProgress(null);
+              }}
+              disabled={regenerateVisualDescriptionsMutation.isPending}
+              data-testid="button-cancel-regeneration"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => regenerateVisualDescriptionsMutation.mutate({ mode: regenerationMode })}
+              disabled={regenerateVisualDescriptionsMutation.isPending}
+              data-testid="button-start-regeneration"
+            >
+              {regenerateVisualDescriptionsMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Regenerating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Start Regeneration
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* View Dialog */}
       <Dialog open={!!viewingProduct} onOpenChange={(open) => !open && setViewingProduct(null)}>
