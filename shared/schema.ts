@@ -299,6 +299,7 @@ export const renders = pgTable("renders", {
   productSkus: text("product_skus").array(), // Products featured in render
   productPlacements: jsonb("product_placements"), // Spatial metadata: [{ sku, region, boundingBox }]
   productMetadata: jsonb("product_metadata"), // Product-specific metadata: { [sku]: { visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'Legacy' | 'None' } }
+  qaResults: jsonb("qa_results"), // Post-render quality validation: { overallScore, issues[], productChecks, summary }
   parentRenderId: varchar("parent_render_id"), // References parent render if this is a swap
   swappedSku: text("swapped_sku"), // SKU that was replaced (if this is a swap)
   status: varchar("status", { length: 20 }).notNull().default("generating"), // 'generating', 'completed', 'failed'
