@@ -257,7 +257,8 @@ function hasValidImages(product: Product): boolean {
 }
 
 /**
- * Check if a product has visual descriptions (AI-generated or legacy)
+ * Check if a product has quality visual descriptions for AI rendering
+ * Accepts any visual description field (Front View, Gemini, Legacy)
  * @param product - Product to validate
  * @returns true if product has at least one visual description
  */
