@@ -114,11 +114,21 @@ export async function createUploadJob(
 
   // Update job with skipped count
   const skippedCount = fileRecords.filter((f) => f.isDuplicate).length;
-  if (skippedCount > 0) {
+  
+  // If ALL files are duplicates, mark job as completed immediately
+  if (skippedCount === files.length && skippedCount > 0) {
+    await curalinaStorage.updateUploadJob(job.id, { 
+      skippedFiles: skippedCount,
+      status: "completed",
+      completedAt: new Date(),
+    });
+    console.log(`Upload job ${job.id} completed immediately - all ${skippedCount} files were duplicates`);
+  } else if (skippedCount > 0) {
     await curalinaStorage.updateUploadJob(job.id, { skippedFiles: skippedCount });
+    console.log(`Upload job ${job.id} created with ${skippedCount} duplicates skipped`);
+  } else {
+    console.log(`Upload job ${job.id} created with ${files.length} files to upload`);
   }
-
-  console.log(`Upload job ${job.id} created with ${skippedCount} duplicates skipped`);
   
   return job;
 }

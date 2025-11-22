@@ -3094,7 +3094,20 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       const userId = req.user?.id;
       const jobs = await curalinaStorage.getActiveUploadJobs(userId);
-      res.json(jobs);
+      
+      // Enhance jobs with product information
+      const jobsWithProduct = await Promise.all(
+        jobs.map(async (job) => {
+          const product = await curalinaStorage.getProduct(job.productId);
+          return {
+            ...job,
+            productName: product?.name || 'Unknown Product',
+            productSku: product?.sku,
+          };
+        })
+      );
+      
+      res.json(jobsWithProduct);
     } catch (error) {
       console.error("Error fetching active upload jobs:", error);
       res.status(500).json({ error: "Failed to fetch active upload jobs" });
