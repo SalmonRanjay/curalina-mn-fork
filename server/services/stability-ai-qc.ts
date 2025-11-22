@@ -310,3 +310,60 @@ CRITICAL FURNITURE ACCURACY REQUIREMENTS:
 - Apply photorealistic quality control
 - Validate that all pieces fit proportionally within the space`;
 }
+
+/**
+ * Simple QC refinement function for integration
+ * Used when ENABLE_STABILITY_QC is set to 'true'
+ */
+export async function applyQCRefinement(
+  baseImageData: string,
+  prompt: string
+): Promise<string | null> {
+  if (!process.env.STABILITY_AI_API_KEY) {
+    console.warn('⚠️ Stability AI API key not configured');
+    return null;
+  }
+
+  try {
+    // Extract base64 data from data URL
+    const base64Match = baseImageData.match(/^data:image\/\w+;base64,(.*)$/);
+    if (!base64Match) {
+      console.error('Invalid image data format');
+      return null;
+    }
+    
+    const imageBuffer = Buffer.from(base64Match[1], 'base64');
+    
+    // Create form data for Stability API
+    const formData = new FormData();
+    const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
+    formData.append('image', imageBlob, 'render.png');
+    formData.append('prompt', prompt + ' photorealistic interior design, accurate product representation, exact furniture matching');
+    formData.append('control_strength', '0.7'); // Moderate control for balance
+    formData.append('output_format', 'png');
+    formData.append('negative_prompt', 'distorted furniture, wrong products, incorrect colors, mismatched items, blurry, low quality');
+    
+    const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.STABILITY_AI_API_KEY}`,
+        'Accept': 'image/*'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Stability AI QC error (${response.status}): ${errorText}`);
+      return null;
+    }
+
+    const refinedImageBuffer = await response.arrayBuffer();
+    const base64Refined = Buffer.from(refinedImageBuffer).toString('base64');
+    
+    return `data:image/png;base64,${base64Refined}`;
+  } catch (error) {
+    console.error('QC refinement failed:', error);
+    return null;
+  }
+}

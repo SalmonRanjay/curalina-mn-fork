@@ -3403,6 +3403,50 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Get Stability AI QC Settings
+  app.get('/api/admin/settings/stability-qc', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      // Check environment variables for current state
+      const enabled = process.env.ENABLE_STABILITY_QC === 'true';
+      const strength = process.env.STABILITY_QC_STRENGTH || '0.7';
+      const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+      
+      res.json({ 
+        enabled,
+        strength,
+        hasApiKey,
+        message: hasApiKey ? 'API key configured' : 'API key not configured'
+      });
+    } catch (error) {
+      console.error("Error fetching QC settings:", error);
+      res.status(500).json({ error: "Failed to fetch QC settings" });
+    }
+  });
+  
+  // Update Stability AI QC Settings
+  app.post('/api/admin/settings/stability-qc', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { enabled, strength } = req.body;
+      
+      // Note: In a production app, you'd save these to a database
+      // For now, we're using environment variables which require restart
+      process.env.ENABLE_STABILITY_QC = enabled ? 'true' : 'false';
+      process.env.STABILITY_QC_STRENGTH = strength || '0.7';
+      
+      console.log(`✅ Stability AI QC settings updated: enabled=${enabled}, strength=${strength}`);
+      
+      res.json({ 
+        success: true,
+        enabled,
+        strength,
+        message: 'QC settings updated. Changes will take effect on next render.'
+      });
+    } catch (error) {
+      console.error("Error updating QC settings:", error);
+      res.status(500).json({ error: "Failed to update QC settings" });
+    }
+  });
+  
   // Update S3 configuration
   app.put('/api/admin/settings/s3', isAuthenticated, isAdmin, async (req: any, res) => {
     try {

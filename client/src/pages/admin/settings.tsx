@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,10 +7,49 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Sparkles, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function AdminSettings() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const [stabilityQCEnabled, setStabilityQCEnabled] = useState(false);
+  const [qcStrength, setQcStrength] = useState("0.7");
+  
+  // Fetch current QC settings
+  const { data: qcSettings } = useQuery({
+    queryKey: ['/api/admin/settings/stability-qc'],
+    enabled: isAuthenticated && isAdmin,
+  });
+  
+  useEffect(() => {
+    if (qcSettings) {
+      setStabilityQCEnabled(qcSettings.enabled || false);
+      setQcStrength(qcSettings.strength || "0.7");
+    }
+  }, [qcSettings]);
+  
+  // Save QC settings mutation
+  const saveQCSettings = useMutation({
+    mutationFn: (data: { enabled: boolean; strength: string }) =>
+      apiRequest('/api/admin/settings/stability-qc', 'POST', data),
+    onSuccess: () => {
+      toast({
+        title: "Settings Saved",
+        description: "Stability AI QC settings have been updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/settings/stability-qc'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save QC settings.",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -139,6 +178,73 @@ export default function AdminSettings() {
             <div className="pt-4">
               <Button variant="outline" data-testid="button-save-email">
                 Save Email Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              AI Render Settings
+            </CardTitle>
+            <CardDescription>
+              Configure AI-powered render generation and quality control
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Stability AI Quality Control uses ControlNet to ensure furniture in renders matches actual product images exactly.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Enable Stability AI Quality Control</Label>
+                <p className="text-sm text-muted-foreground">
+                  Apply QC refinement to ensure accurate product representation
+                </p>
+              </div>
+              <Switch 
+                checked={stabilityQCEnabled}
+                onCheckedChange={setStabilityQCEnabled}
+                data-testid="switch-stability-qc" 
+              />
+            </div>
+
+            {stabilityQCEnabled && (
+              <div className="space-y-2">
+                <Label htmlFor="qcStrength">Control Strength ({qcStrength})</Label>
+                <Input
+                  id="qcStrength"
+                  type="range"
+                  min="0.3"
+                  max="1.0"
+                  step="0.1"
+                  value={qcStrength}
+                  onChange={(e) => setQcStrength(e.target.value)}
+                  className="w-full"
+                  data-testid="slider-qc-strength"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Higher values preserve more structure from the base render
+                </p>
+              </div>
+            )}
+
+            <div className="pt-4">
+              <Button 
+                onClick={() => saveQCSettings.mutate({ 
+                  enabled: stabilityQCEnabled, 
+                  strength: qcStrength 
+                })}
+                disabled={saveQCSettings.isPending}
+                data-testid="button-save-qc-settings"
+              >
+                {saveQCSettings.isPending ? "Saving..." : "Save QC Settings"}
               </Button>
             </div>
           </CardContent>
