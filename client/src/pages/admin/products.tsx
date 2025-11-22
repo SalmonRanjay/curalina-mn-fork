@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle, Scan, ScanText, Wrench, CircleX } from "lucide-react";
+import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle, Scan, ScanText, Wrench, CircleX, Download, Settings } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -75,6 +75,9 @@ export default function AdminProducts() {
   const [analyzeAllProducts, setAnalyzeAllProducts] = useState(false);
   const [analyzingProductId, setAnalyzingProductId] = useState<string | null>(null);
   const [batchAnalyzing, setBatchAnalyzing] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],

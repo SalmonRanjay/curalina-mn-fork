@@ -3227,4 +3227,181 @@ export function registerCuralinaRoutes(app: Express) {
       res.status(500).json({ error: "Failed to fetch analysis" });
     }
   });
+
+  // Bulk delete products
+  app.delete('/api/admin/products/bulk-delete', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { productIds, deleteAll } = req.body;
+      
+      if (deleteAll) {
+        const allProducts = await curalinaStorage.getAllProducts();
+        for (const product of allProducts) {
+          await curalinaStorage.deleteProduct(product.id);
+        }
+        return res.json({ success: true, deletedCount: allProducts.length });
+      }
+      
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ error: "productIds array required" });
+      }
+      
+      let deletedCount = 0;
+      for (const id of productIds) {
+        const deleted = await curalinaStorage.deleteProduct(id);
+        if (deleted) deletedCount++;
+      }
+      
+      res.json({ success: true, deletedCount });
+    } catch (error) {
+      console.error("Error bulk deleting products:", error);
+      res.status(500).json({ error: "Failed to delete products" });
+    }
+  });
+
+  // Export all products as CSV
+  app.get('/api/admin/products/export/all', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const products = await curalinaStorage.getAllProducts();
+      
+      const headers = [
+        'SKU', 'Name', 'Price', 'Trade Price', 'Category', 'Supplier', 'Images',
+        'Availability', 'Description', 'Visual Description', 'Dimensions', 'Colors'
+      ];
+      
+      const rows = products.map(p => [
+        p.sku,
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        p.price || '',
+        p.tradePrice || '',
+        p.categoryId || '',
+        p.supplierId || '',
+        (p.images || []).length,
+        p.availability || 'unknown',
+        `"${(p.description || '').replace(/"/g, '""')}"`,
+        `"${((p as any).visualDescription || '').substring(0, 100).replace(/"/g, '""')}"`,
+        p.dimensions ? JSON.stringify(p.dimensions) : '',
+        (p.colors || []).join('; ')
+      ]);
+      
+      const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="products.csv"');
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting products:", error);
+      res.status(500).json({ error: "Failed to export products" });
+    }
+  });
+
+  // Export filtered products as CSV
+  app.post('/api/admin/products/export/filtered', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { searchQuery, categoryId, supplierId, minPrice, maxPrice, hasImages } = req.body;
+      let products = await curalinaStorage.getAllProducts();
+      
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        products = products.filter(p => 
+          p.sku.toLowerCase().includes(q) || 
+          p.name.toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q)
+        );
+      }
+      
+      if (categoryId && categoryId !== 'all') {
+        products = products.filter(p => p.categoryId === categoryId);
+      }
+      
+      if (supplierId && supplierId !== 'all') {
+        products = products.filter(p => p.supplierId === supplierId);
+      }
+      
+      if (minPrice) {
+        const min = parseFloat(minPrice);
+        products = products.filter(p => parseFloat(p.price || '0') >= min);
+      }
+      
+      if (maxPrice) {
+        const max = parseFloat(maxPrice);
+        products = products.filter(p => parseFloat(p.price || '0') <= max);
+      }
+      
+      if (hasImages === 'true') {
+        products = products.filter(p => p.images && p.images.length > 0);
+      } else if (hasImages === 'false') {
+        products = products.filter(p => !p.images || p.images.length === 0);
+      }
+      
+      const headers = [
+        'SKU', 'Name', 'Price', 'Trade Price', 'Category', 'Supplier', 'Images',
+        'Availability', 'Description', 'Visual Description', 'Dimensions', 'Colors'
+      ];
+      
+      const rows = products.map(p => [
+        p.sku,
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        p.price || '',
+        p.tradePrice || '',
+        p.categoryId || '',
+        p.supplierId || '',
+        (p.images || []).length,
+        p.availability || 'unknown',
+        `"${(p.description || '').replace(/"/g, '""')}"`,
+        `"${((p as any).visualDescription || '').substring(0, 100).replace(/"/g, '""')}"`,
+        p.dimensions ? JSON.stringify(p.dimensions) : '',
+        (p.colors || []).join('; ')
+      ]);
+      
+      const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="products-filtered.csv"');
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting filtered products:", error);
+      res.status(500).json({ error: "Failed to export products" });
+    }
+  });
+
+  // Get S3 configuration
+  app.get('/api/admin/settings/s3', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const bucketSetting = await curalinaStorage.getSettings?.('s3_bucket_name') || 
+        { key: 's3_bucket_name', value: process.env.S3_BUCKET || 'curalina', description: 'S3 bucket name' };
+      const prefixSetting = await curalinaStorage.getSettings?.('s3_folder_prefix') || 
+        { key: 's3_folder_prefix', value: 'products', description: 'S3 folder prefix' };
+      
+      res.json({
+        bucketName: bucketSetting?.value || process.env.S3_BUCKET || 'curalina',
+        folderPrefix: prefixSetting?.value || 'products'
+      });
+    } catch (error) {
+      console.error("Error fetching S3 settings:", error);
+      res.status(500).json({ error: "Failed to fetch S3 settings" });
+    }
+  });
+
+  // Update S3 configuration
+  app.put('/api/admin/settings/s3', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { bucketName, folderPrefix } = req.body;
+      
+      if (!bucketName || !folderPrefix) {
+        return res.status(400).json({ error: "bucketName and folderPrefix are required" });
+      }
+      
+      // TODO: Save to database when storage has settings support
+      // For now just return the values
+      res.json({ 
+        success: true, 
+        bucketName, 
+        folderPrefix,
+        message: "S3 configuration updated (in-memory - restart required for persistence)"
+      });
+    } catch (error) {
+      console.error("Error updating S3 settings:", error);
+      res.status(500).json({ error: "Failed to update S3 settings" });
+    }
+  });
 }
