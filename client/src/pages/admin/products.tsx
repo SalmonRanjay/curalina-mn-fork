@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Upload, Edit, Trash2, Plus, Eye, Search, Filter, X, Sparkles, Loader2, CheckCircle2, XCircle, AlertCircle, Scan, ScanText, Wrench, CircleX, Download, Settings } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -1370,68 +1371,69 @@ export default function AdminProducts() {
         </div>
 
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              // Start visual analysis for all products without descriptions
-              startVisualAnalysisMutation.mutate({ onlyMissingDescriptions: true });
-            }}
-            disabled={startVisualAnalysisMutation.isPending}
-            data-testid="button-analyze-visuals"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {startVisualAnalysisMutation.isPending ? "Starting..." : "Analyze Visuals"}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="button-analysis-tools">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Analysis Tools
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onClick={() => startVisualAnalysisMutation.mutate({ onlyMissingDescriptions: true })}
+                disabled={startVisualAnalysisMutation.isPending}
+                data-testid="button-analyze-visuals"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                <span>Analyze Visuals</span>
+                {startVisualAnalysisMutation.isPending && <Loader2 className="w-4 h-4 ml-auto animate-spin" />}
+              </DropdownMenuItem>
 
-          <Button
-            variant="outline"
-            onClick={() => reanalyzeFrontViewsMutation.mutate()}
-            disabled={reanalyzeFrontViewsMutation.isPending || frontViewProductCount === 0}
-            data-testid="button-reanalyze-front-views"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {reanalyzeFrontViewsMutation.isPending 
-              ? "Starting..." 
-              : `Re-analyze ${frontViewProductCount} Front View Products`
-            }
-          </Button>
+              <DropdownMenuItem
+                onClick={() => reanalyzeFrontViewsMutation.mutate()}
+                disabled={reanalyzeFrontViewsMutation.isPending || frontViewProductCount === 0}
+                data-testid="button-reanalyze-front-views"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                <span>Re-analyze Front Views ({frontViewProductCount})</span>
+                {reanalyzeFrontViewsMutation.isPending && <Loader2 className="w-4 h-4 ml-auto animate-spin" />}
+              </DropdownMenuItem>
 
-          <Button
-            variant="default"
-            onClick={() => analyzeWithGeminiMutation.mutate()}
-            disabled={analyzeWithGeminiMutation.isPending}
-            data-testid="button-gemini-analysis"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {analyzeWithGeminiMutation.isPending 
-              ? "Analyzing..." 
-              : "Gemini: Front View + Combined"
-            }
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={() => {
-              setBatchAnalyzing(true);
-              batchMultiAngleMutation.mutate(10);
-            }}
-            disabled={batchAnalyzing}
-            data-testid="button-batch-multi-angle"
-          >
-            <Scan className="w-4 h-4 mr-2" />
-            {batchAnalyzing ? "Analyzing..." : "Multi-Angle Analysis (10)"}
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={() => generateDescriptionsMutation.mutate()}
-            disabled={generateDescriptionsMutation.isPending}
-            data-testid="button-generate-descriptions"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {generateDescriptionsMutation.isPending ? "Generating..." : "Generate Text Descriptions"}
-          </Button>
-          
+              <DropdownMenuItem
+                onClick={() => analyzeWithGeminiMutation.mutate()}
+                disabled={analyzeWithGeminiMutation.isPending}
+                data-testid="button-gemini-analysis"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                <span>Gemini Analysis</span>
+                {analyzeWithGeminiMutation.isPending && <Loader2 className="w-4 h-4 ml-auto animate-spin" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => {
+                  setBatchAnalyzing(true);
+                  batchMultiAngleMutation.mutate(10);
+                }}
+                disabled={batchAnalyzing}
+                data-testid="button-batch-multi-angle"
+              >
+                <Scan className="w-4 h-4 mr-2" />
+                <span>Multi-Angle Analysis (10)</span>
+                {batchAnalyzing && <Loader2 className="w-4 h-4 ml-auto animate-spin" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => generateDescriptionsMutation.mutate()}
+                disabled={generateDescriptionsMutation.isPending}
+                data-testid="button-generate-descriptions"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                <span>Generate Text Descriptions</span>
+                {generateDescriptionsMutation.isPending && <Loader2 className="w-4 h-4 ml-auto animate-spin" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-product">
