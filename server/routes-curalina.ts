@@ -1892,7 +1892,7 @@ export function registerCuralinaRoutes(app: Express) {
                 // Record selection for each functional category this product belongs to
                 for (const category of functionalCategories) {
                   // Safe template access with null guards
-                  const isEssential = template?.essentials?.[category as any] !== undefined;
+                  const isEssential = template?.essentials?.[category as keyof typeof template.essentials] !== undefined;
                   let rules = defaultRules;
                   
                   if (template) {
@@ -2064,10 +2064,11 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`   Image format: ${mimeType}, size: ${(imageBuffer.length / 1024).toFixed(1)}KB`);
             
             // Pass base64 image data and MIME type directly to avoid URL resolution issues
+            // Use enrichedProducts (not selectedProducts) because they have visual descriptions
             qaResults = await validateRenderQuality(
               base64Data,
               mimeType,
-              selectedProducts.map(p => ({
+              enrichedProducts.map((p: any) => ({
                 sku: p.sku,
                 name: p.name,
                 visualDescription: p.visualDescription,
@@ -2171,8 +2172,8 @@ export function registerCuralinaRoutes(app: Express) {
               ledgerData: ledgerData || null,
               quizContext: {
                 roomType: quiz.roomType,
-                style: quiz.style,
-                budget: quiz.budget
+                style: quiz.styles?.[0] || 'Modern', // Use first style from array
+                budget: quiz.budgetRange
               }
             }, eventSnapshot);
           } catch (error) {
