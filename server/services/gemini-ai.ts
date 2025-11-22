@@ -2590,7 +2590,7 @@ export async function generateInteriorImage(
         try {
           console.log("🔄 QC enabled - applying Stability AI refinement...");
           const { applyQCRefinement } = await import('./stability-ai-qc');
-          const refinedImage = await applyQCRefinement(baseImage, prompt);
+          const refinedImage = await applyQCRefinement(baseImage, prompt, productImages);
           if (refinedImage) {
             console.log("✅ QC refinement successfully applied");
             return refinedImage;
@@ -2656,7 +2656,7 @@ export async function generateInteriorImage(
         try {
           console.log("🔄 QC enabled - applying Stability AI refinement...");
           const { applyQCRefinement } = await import('./stability-ai-qc');
-          const refinedImage = await applyQCRefinement(baseImage, prompt);
+          const refinedImage = await applyQCRefinement(baseImage, prompt, productImages);
           if (refinedImage) {
             console.log("✅ QC refinement successfully applied");
             return refinedImage;

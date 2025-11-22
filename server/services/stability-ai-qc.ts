@@ -312,12 +312,41 @@ CRITICAL FURNITURE ACCURACY REQUIREMENTS:
 }
 
 /**
+ * Fetch and convert an image URL to base64
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
+  try {
+    // Handle relative URLs
+    let fetchUrl = imageUrl;
+    if (fetchUrl.startsWith('/')) {
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
+      fetchUrl = `${baseUrl}${imageUrl}`;
+    }
+    
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      console.warn(`Failed to fetch image from ${fetchUrl}: ${response.status}`);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuffer).toString('base64');
+    return base64Data;
+  } catch (error) {
+    console.error(`Error fetching image ${imageUrl}:`, error);
+    return null;
+  }
+}
+
+/**
  * Simple QC refinement function for integration
  * Used when ENABLE_STABILITY_QC is set to 'true'
+ * Now supports product images as visual references for improved fidelity
  */
 export async function applyQCRefinement(
   baseImageData: string,
-  prompt: string
+  prompt: string,
+  productImages?: Array<{ url: string; productName: string }>
 ): Promise<string | null> {
   // Verify QC is actually enabled and API key exists
   const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
@@ -350,7 +379,61 @@ export async function applyQCRefinement(
     
     console.log(`🎚️ Using control strength: ${validStrength}`);
     
-    // Create form data for Stability API
+    // If product images are provided, use Sketch endpoint with reference images
+    if (productImages && productImages.length > 0) {
+      console.log(`📸 Using ${productImages.length} product reference images for Stability AI refinement`);
+      
+      // Fetch product images
+      const productImageData: string[] = [];
+      for (const productImage of productImages.slice(0, 3)) { // Limit to 3 for performance
+        const base64Data = await fetchImageAsBase64(productImage.url);
+        if (base64Data) {
+          productImageData.push(base64Data);
+        }
+      }
+      
+      if (productImageData.length > 0) {
+        console.log(`✅ Successfully fetched ${productImageData.length} product images for reference`);
+        
+        // Use Sketch endpoint with style preset to match reference images
+        const formData = new FormData();
+        const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
+        formData.append('image', imageBlob, 'render.png');
+        
+        // Add first product image as style reference
+        const referenceBlob = new Blob([Buffer.from(productImageData[0], 'base64')], { type: 'image/png' });
+        formData.append('style_image', referenceBlob, 'reference.png');
+        
+        formData.append('prompt', prompt + ' photorealistic interior design with exact product matching from reference images');
+        formData.append('control_strength', validStrength.toString());
+        formData.append('style_strength', '0.8'); // High style strength for product fidelity
+        formData.append('output_format', 'png');
+        formData.append('negative_prompt', 'distorted furniture, wrong products, incorrect colors, mismatched items, blurry, low quality');
+        
+        const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/sketch', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.STABILITY_AI_API_KEY}`,
+            'Accept': 'image/*'
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Stability AI Sketch API error (${response.status}): ${errorText}`);
+          console.log('Falling back to structure-only refinement...');
+        } else {
+          const refinedImageBuffer = await response.arrayBuffer();
+          const base64Refined = Buffer.from(refinedImageBuffer).toString('base64');
+          console.log('✅ Stability AI refinement with product references complete');
+          return `data:image/png;base64,${base64Refined}`;
+        }
+      }
+    }
+    
+    // Fallback: Use structure control without product references
+    console.log('📐 Using structure-only refinement (no product references)');
     const formData = new FormData();
     const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
     formData.append('image', imageBlob, 'render.png');
