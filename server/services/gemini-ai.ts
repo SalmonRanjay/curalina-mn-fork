@@ -923,6 +923,65 @@ function validateAndAdjustForBudget(
 }
 
 /**
+ * Condense a long visual description into a short, generation-ready format
+ * Focuses on: silhouette, main material, main color, distinctive features, overall size
+ * Target: 40-50 tokens max for precise AI control
+ */
+function condenseVisualDescription(fullDescription: string, productName: string): string {
+  if (!fullDescription || fullDescription.trim().length === 0) {
+    return `${productName} - exact appearance from catalog`;
+  }
+  
+  // Extract key visual elements using pattern matching
+  const text = fullDescription.toLowerCase();
+  
+  // Extract silhouette/shape
+  const shapeWords = ['curved', 'straight', 'angular', 'rounded', 'rectangular', 'square', 'circular', 'oval', 'L-shaped', 'U-shaped', 'sectional', 'tufted', 'low-profile', 'high-back', 'armless', 'with arms', 'tapered', 'flared'];
+  const shapes = shapeWords.filter(w => text.includes(w.toLowerCase())).slice(0, 2);
+  
+  // Extract primary material
+  const materials = ['wood', 'oak', 'walnut', 'teak', 'pine', 'metal', 'steel', 'brass', 'iron', 'leather', 'fabric', 'velvet', 'linen', 'boucle', 'cotton', 'wool', 'marble', 'glass', 'acrylic', 'rattan', 'wicker'];
+  const primaryMaterial = materials.find(m => text.includes(m)) || '';
+  
+  // Extract main color
+  const colors = ['white', 'black', 'gray', 'grey', 'beige', 'cream', 'brown', 'tan', 'navy', 'blue', 'green', 'sage', 'terracotta', 'rust', 'blush', 'pink', 'charcoal', 'ivory', 'camel', 'cognac', 'natural'];
+  const mainColor = colors.find(c => text.includes(c)) || '';
+  
+  // Extract size indicators
+  const sizes = ['compact', 'oversized', 'large', 'small', 'medium', 'wide', 'narrow', 'tall', 'short'];
+  const size = sizes.find(s => text.includes(s)) || '';
+  
+  // Extract distinctive features (limit to 1-2)
+  const features = ['no tufting', 'tufted', 'without skirt', 'skirted', 'with cushions', 'cushioned', 'no ornament', 'minimalist', 'modern', 'traditional', 'vintage'];
+  const distinctiveFeatures = features.filter(f => text.includes(f)).slice(0, 2);
+  
+  // Build condensed description
+  const parts = [
+    shapes.join(', '),
+    size,
+    mainColor,
+    primaryMaterial,
+    ...distinctiveFeatures
+  ].filter(Boolean);
+  
+  // Create a command-like instruction
+  let condensed = parts.slice(0, 6).join(' ');
+  
+  // Add dimensions if mentioned
+  const dimMatch = fullDescription.match(/(\d+)\s*(?:ft|feet|inches|in|cm)/i);
+  if (dimMatch) {
+    condensed += `, approx. ${dimMatch[0]}`;
+  }
+  
+  // Ensure it's not too long (rough token estimate: ~1 token per 4 characters)
+  if (condensed.length > 200) {
+    condensed = condensed.substring(0, 200);
+  }
+  
+  return condensed || `${productName} - match catalog exactly`;
+}
+
+/**
  * Get the best available visual description for a product
  * Priority: Actual Front View → Synthesized Front View → Gemini → OpenAI → Complete Description → Legacy
  */
@@ -1700,19 +1759,23 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
       prompt += `${index + 1}. ${product.name} [REQUIRED]\n`;
       
       // Use visual description already attached to the selected product
-      const description = product.visualDescription || '';
+      const fullDescription = product.visualDescription || '';
       const source = product.visualDescriptionSource || 'None';
       
       // Track the source for this product
       productMetadata[product.sku] = { visualDescriptionSource: source };
       
-      if (description && description !== "No visual description available - use product name and materials to approximate appearance") {
-        console.log(`   📸 Using ${source} description for: ${product.name}`);
+      if (fullDescription && fullDescription !== "No visual description available - use product name and materials to approximate appearance") {
+        // Condense the description for generation (40-50 tokens max)
+        const condensedDesc = condenseVisualDescription(fullDescription, product.name);
+        console.log(`   📸 Using condensed ${source} description for: ${product.name}`);
+        console.log(`   🔍 Condensed: "${condensedDesc}"`);
+        
         prompt += `   
-   VISUAL SPECIFICATIONS (MUST MATCH EXACTLY):
-   ${description}
+   COPY THIS EXACTLY:
+   ${condensedDesc}
    
-   ⚠️ CRITICAL: This product MUST look exactly as described above. Do not substitute or approximate.
+   ⚠️ CRITICAL: Reproduce this product exactly as described. Do not change its color, fabric, shape, or leg design.
    
 `;
       } else {
