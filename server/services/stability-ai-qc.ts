@@ -2,6 +2,7 @@ import type { Product } from "@shared/schema";
 
 /**
  * Stability AI Quality Control Service
+ * Note: Uses Node.js 20+ native fetch API with FormData and Blob globals
  * Uses ControlNet Reference to enforce product accuracy in renders
  * 
  * Flow:
@@ -341,12 +342,15 @@ async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
 /**
  * Simple QC refinement function for integration
  * Used when ENABLE_STABILITY_QC is set to 'true'
- * Now supports product images as visual references for improved fidelity
+ * Now supports:
+ * - Product images as visual references for improved fidelity
+ * - Layout masks for ControlNet-guided placement
  */
 export async function applyQCRefinement(
   baseImageData: string,
   prompt: string,
-  productImages?: Array<{ url: string; productName: string }>
+  productImages?: Array<{ url: string; productName: string }>,
+  layoutMask?: string
 ): Promise<string | null> {
   // Verify QC is actually enabled and API key exists
   const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
@@ -379,7 +383,52 @@ export async function applyQCRefinement(
     
     console.log(`🎚️ Using control strength: ${validStrength}`);
     
-    // If product images are provided, use Sketch endpoint with reference images
+    // Priority 1: If layout mask is provided, use ControlNet Structure endpoint with mask
+    if (layoutMask) {
+      console.log(`🎭 Using ControlNet with layout mask for precise furniture placement`);
+      
+      // Extract base64 from layout mask data URL
+      const maskMatch = layoutMask.match(/^data:image\/\w+;base64,(.*)$/);
+      if (maskMatch) {
+        const maskBuffer = Buffer.from(maskMatch[1], 'base64');
+        
+        const formData = new FormData();
+        const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
+        formData.append('image', imageBlob, 'render.png');
+        
+        const maskBlob = new Blob([maskBuffer], { type: 'image/png' });
+        formData.append('control_image', maskBlob, 'layout.png');
+        
+        formData.append('prompt', prompt + ' photorealistic interior design with precise furniture placement matching layout guide');
+        formData.append('control_strength', validStrength.toString());
+        formData.append('output_format', 'png');
+        formData.append('negative_prompt', 'distorted furniture, wrong placement, incorrect layout, mismatched items, blurry, low quality');
+        
+        const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.STABILITY_AI_API_KEY}`,
+            'Accept': 'image/*'
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ Stability AI ControlNet failed (HTTP ${response.status}): ${errorText}`);
+          console.log('   Falling back to product-image refinement...');
+        } else {
+          const refinedImageBuffer = await response.arrayBuffer();
+          const base64Refined = Buffer.from(refinedImageBuffer).toString('base64');
+          const sizeKB = (refinedImageBuffer.byteLength / 1024).toFixed(1);
+          console.log(`✅ ControlNet refinement with layout mask SUCCESSFUL (${sizeKB}KB)`);
+          console.log('   → Layout-guided placement applied via ControlNet structure control');
+          return `data:image/png;base64,${base64Refined}`;
+        }
+      }
+    }
+    
+    // Priority 2: If product images are provided, use Sketch endpoint with reference images
     if (productImages && productImages.length > 0) {
       console.log(`📸 Using ${productImages.length} product reference images for Stability AI refinement`);
       

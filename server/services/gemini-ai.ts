@@ -2525,7 +2525,8 @@ export async function generateInteriorImage(
   floorplanUrl?: string,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>,
-  productImages?: Array<{ url: string; productName: string }>
+  productImages?: Array<{ url: string; productName: string }>,
+  layoutMask?: string
 ): Promise<string> {
   try {
     // Fetch product reference images if provided
@@ -2590,7 +2591,7 @@ export async function generateInteriorImage(
         try {
           console.log("🔄 QC enabled - applying Stability AI refinement...");
           const { applyQCRefinement } = await import('./stability-ai-qc');
-          const refinedImage = await applyQCRefinement(baseImage, prompt, productImages);
+          const refinedImage = await applyQCRefinement(baseImage, prompt, productImages, layoutMask);
           if (refinedImage) {
             console.log("✅ QC refinement successfully applied");
             return refinedImage;
@@ -2656,7 +2657,7 @@ export async function generateInteriorImage(
         try {
           console.log("🔄 QC enabled - applying Stability AI refinement...");
           const { applyQCRefinement } = await import('./stability-ai-qc');
-          const refinedImage = await applyQCRefinement(baseImage, prompt, productImages);
+          const refinedImage = await applyQCRefinement(baseImage, prompt, productImages, layoutMask);
           if (refinedImage) {
             console.log("✅ QC refinement successfully applied");
             return refinedImage;

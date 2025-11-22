@@ -93,22 +93,49 @@ export async function generateLayoutMask(
   
   // Draw each placement as a colored region
   for (const placement of placements) {
+    // Skip placements with invalid or missing data
+    if (!placement.position || !placement.zoneId) {
+      console.warn('Skipping placement with missing position or zoneId');
+      continue;
+    }
+    
     const color = getCategoryColor(placement.zoneId);
     const rgb = hexToRgb(color);
     
     // Calculate pixel coordinates from normalized position (0-1)
-    const centerX = Math.floor(placement.position.x * width);
-    const centerY = Math.floor(placement.position.y * height);
+    // Ensure position exists and is valid
+    const posX = placement.position.x ?? 0.5;
+    const posY = placement.position.y ?? 0.5;
+    
+    // Validate position is in valid range [0, 1]
+    if (posX < 0 || posX > 1 || posY < 0 || posY > 1) {
+      console.warn(`Skipping placement with invalid position: (${posX}, ${posY})`);
+      continue;
+    }
+    
+    const centerX = Math.floor(posX * width);
+    const centerY = Math.floor(posY * height);
     
     // Calculate region size based on spacing (approximate furniture footprint)
     // Spacing is in normalized units (0-1), convert to pixels
-    const regionWidth = Math.floor(placement.spacing.sides * width * 2);
-    const regionHeight = Math.floor(placement.spacing.front * height * 2);
+    // Use defaults if spacing is missing or invalid
+    const defaultSpacing = 0.05; // 5% of room size as default
+    const spacingSides = Math.max(0, Math.min(0.5, placement.spacing?.sides ?? defaultSpacing));
+    const spacingFront = Math.max(0, Math.min(0.5, placement.spacing?.front ?? defaultSpacing));
+    
+    const regionWidth = Math.floor(spacingSides * width * 2);
+    const regionHeight = Math.floor(spacingFront * height * 2);
     
     // Ensure minimum region size for visibility
     const minSize = 50;
     const finalWidth = Math.max(regionWidth, minSize);
     const finalHeight = Math.max(regionHeight, minSize);
+    
+    // Skip if dimensions are invalid (shouldn't happen with clamping, but safety check)
+    if (finalWidth <= 0 || finalHeight <= 0) {
+      console.warn(`Skipping placement with invalid dimensions: ${finalWidth}x${finalHeight}`);
+      continue;
+    }
     
     // Calculate bounding box
     const x1 = Math.max(0, centerX - Math.floor(finalWidth / 2));
@@ -116,8 +143,16 @@ export async function generateLayoutMask(
     const x2 = Math.min(width - 1, centerX + Math.floor(finalWidth / 2));
     const y2 = Math.min(height - 1, centerY + Math.floor(finalHeight / 2));
     
+    // Validate bounding box
+    if (x2 <= x1 || y2 <= y1) {
+      console.warn(`Skipping placement with invalid bounding box: (${x1},${y1}) to (${x2},${y2})`);
+      continue;
+    }
+    
     // Apply confidence as opacity (0-1 confidence maps to 128-255 alpha)
-    const alpha = Math.floor(128 + (placement.confidence * 127));
+    // Default confidence to 0.5 if missing
+    const confidence = Math.max(0, Math.min(1, placement.confidence ?? 0.5));
+    const alpha = Math.floor(128 + (confidence * 127));
     
     // Draw filled rectangle for this placement
     for (let y = y1; y <= y2; y++) {

@@ -26,7 +26,13 @@ Preferred communication style: Simple, everyday language.
 - **Direct Browser-to-S3 Upload Optimization**: Uses a presigned URL flow for direct, secure, and faster browser-to-S3 uploads, including duplicate detection.
 - **Render Ingestion Pipeline**: Production-ready pipeline with staged lifecycle events, atomic snapshots, performance optimization, SKU coverage validation, metadata enrichment, and idempotency for robust render data processing.
 - **Zone-Based Placement System**: Configurable room zones with `ROOM_ZONES` definitions, `assignItemsToZones()` for product-to-zone assignment based on functional categories and design rules, and `generateZoneBasedPlacementMatrix()` to create explicit spatial instructions for AI prompts.
-- **Product Fidelity System**: Condensed product descriptions (40-50 tokens) for precise AI control, real-world scale enforcement using product dimensions, post-render QA validation with Gemini Vision checking product appearance/scale/placement accuracy, and regeneration recommendations when quality thresholds are not met.
+- **Product Fidelity System**: Multi-modal approach combining text and visual inputs for AI generation:
+  - **Condensed Descriptions**: 40-50 token generation-ready prompts (vs 300-400 word paragraphs) extracting key visual attributes
+  - **Real-World Scale**: Automatic dimension extraction and enforcement, comparative ratios between products, human-scale references
+  - **Multi-Modal Generation**: Product catalog images (Front View priority) passed to both Gemini and Stability AI as visual references
+  - **Layout Mask System**: Zone-based placements converted to visual masks for ControlNet-guided furniture placement
+  - **Post-Render QA**: Gemini Vision validation checking product presence/appearance/scale/placement, regeneration recommendations for quality thresholds
+  - **Refinement Pipeline**: Three-tier Stability AI QC (ControlNet mask → product images → structure-only) with graceful fallbacks
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM.

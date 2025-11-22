@@ -1989,23 +1989,38 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
+          // Generate layout mask from zone-based placements for ControlNet
+          let layoutMask: string | undefined;
+          if (placements && placements.length > 0) {
+            try {
+              const { generateLayoutMask } = await import('./services/layout-mask-generator');
+              layoutMask = await generateLayoutMask(placements);
+              console.log(`🎭 Generated layout mask from ${placements.length} zone placements for ControlNet guidance`);
+            } catch (error) {
+              console.warn('⚠️ Failed to generate layout mask (non-blocking):', error);
+              layoutMask = undefined;
+            }
+          }
+          
           // Generate AI image with detailed product descriptions embedded in prompt
           // Products include rich Gemini Vision analysis (300-400 word descriptions)
           // AI generates furniture matching real products based on these visual specifications
           // NOW ALSO INCLUDES: actual product images as visual references for improved fidelity
+          // AND: layout masks for ControlNet-guided furniture placement
           if (floorplanUrl) {
-            console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo + ${productImages.length} product images`);
+            console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo + ${productImages.length} product images + ${layoutMask ? 'layout mask' : 'no mask'}`);
           } else {
-            console.log(`🎨 Using Gemini text-to-image mode (no space photo) + ${productImages.length} product images`);
+            console.log(`🎨 Using Gemini text-to-image mode (no space photo) + ${productImages.length} product images + ${layoutMask ? 'layout mask' : 'no mask'}`);
           }
           const imageDataUrl = await generateInteriorImage(
             prompt,
             floorplanUrl,
             roomAnalysis,
             floorPlanAnalysis,
-            productImages.length > 0 ? productImages : undefined
+            productImages.length > 0 ? productImages : undefined,
+            layoutMask
           );
-          console.log(`✅ AI-generated room rendering complete with ${productImages.length} product visual references`);
+          console.log(`✅ AI-generated room rendering complete with ${productImages.length} product visual references${layoutMask ? ' and layout mask guidance' : ''}`);
           
           // Extract base64 data and MIME type from data URL (format: data:image/png;base64,...)
           const base64Match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
