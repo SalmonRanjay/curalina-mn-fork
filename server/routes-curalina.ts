@@ -1511,15 +1511,25 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       console.log('\n🎨 Starting batch visual description regeneration...');
       
-      const { targetFilter, specificSkus } = req.body;
+      // Support both 'mode' (from frontend) and 'targetFilter' (legacy)
+      const { mode, targetFilter: legacyFilter, specificSkus, skus } = req.body;
+      
+      // Map frontend mode to backend filter
+      let targetFilter = mode || legacyFilter;
+      if (targetFilter === 'front-view') {
+        targetFilter = 'front-view-only';
+      }
+      
+      // Support both 'skus' and 'specificSkus'
+      const skuList = skus || specificSkus;
       
       // Get products to process
       const allProducts = await curalinaStorage.getAllProducts();
       let productsToProcess: any[] = [];
       
-      if (specificSkus && Array.isArray(specificSkus) && specificSkus.length > 0) {
+      if (skuList && Array.isArray(skuList) && skuList.length > 0) {
         // Process specific SKUs
-        productsToProcess = allProducts.filter(p => specificSkus.includes(p.sku));
+        productsToProcess = allProducts.filter(p => skuList.includes(p.sku));
         console.log(`📌 Processing ${productsToProcess.length} specific products`);
       } else if (targetFilter === 'all') {
         // Process all products with images
