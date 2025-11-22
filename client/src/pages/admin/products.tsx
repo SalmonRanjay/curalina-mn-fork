@@ -863,9 +863,15 @@ export default function AdminProducts() {
         return false;
       }
       
+      // Price range filter
+      const productPrice = parseFloat(product.price || "0");
+      if (productPrice < priceRange[0] || productPrice > priceRange[1]) {
+        return false;
+      }
+      
       return true;
     });
-  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter, analysisFilter, imageHealthFilter]);
+  }, [products, searchQuery, categoryFilter, supplierFilter, imageFilter, availabilityFilter, analysisFilter, imageHealthFilter, priceRange]);
 
   const clearFilters = () => {
     setSearchQuery("");
