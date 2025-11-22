@@ -7,8 +7,6 @@ interface ProductWithPlacement {
   name: string;
   placement?: string;
   reasoning?: string;
-  visualDescriptionFrontView?: string;
-  visualDescriptionGemini?: string;
   visualDescription?: string;
   placementData?: {
     position?: { x: number; y: number };
@@ -56,16 +54,8 @@ export async function buildRenderProductSnapshots(
       throw new Error(`Product ${productWithPlacement.sku} not found in catalog - cannot create snapshot. This indicates data inconsistency.`);
     }
     
-    // Determine visual description source
-    let visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'Legacy' | 'None' = 'None';
-    
-    if (productWithPlacement.visualDescriptionFrontView) {
-      visualDescriptionSource = 'Front View';
-    } else if (productWithPlacement.visualDescriptionGemini) {
-      visualDescriptionSource = 'Gemini Vision';
-    } else if (productWithPlacement.visualDescription) {
-      visualDescriptionSource = 'Legacy';
-    }
+    // Check if visual description exists
+    const hasVisualDescription = !!productWithPlacement.visualDescription;
     
     // Build placement data object if placement information exists
     const placementData = productWithPlacement.placementData ? {
@@ -96,17 +86,13 @@ export async function buildRenderProductSnapshots(
       priceAtRender: fullProduct.price,
       availability: fullProduct.availability || 'available',
       imageHealth: fullProduct.imageHealth || 'unknown',
-      visualDescriptionSource: visualDescriptionSource !== 'None' ? visualDescriptionSource : null,
+      visualDescriptionSource: hasVisualDescription ? 'Gemini Vision' : null,
       dimensions: fullProduct.dimensions as any || null,
       placementData: placementData as any,
       primaryImageUrl: fullProduct.images && fullProduct.images.length > 0 ? fullProduct.images[0] : null,
       metadata: {
         reasoning: productWithPlacement.reasoning || null,
-        visualDescriptions: {
-          frontView: productWithPlacement.visualDescriptionFrontView || null,
-          gemini: productWithPlacement.visualDescriptionGemini || null,
-          legacy: productWithPlacement.visualDescription || null,
-        },
+        visualDescription: productWithPlacement.visualDescription || null,
         quizContext: {
           roomType: quizContext.roomType,
           style: quizContext.style,

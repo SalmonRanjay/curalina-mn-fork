@@ -45,11 +45,7 @@ export function createCandidatePoolSnapshot(products: Product[]): CandidatePoolS
     price: parseFloat(p.price || '0'),
     inStock: p.availability === 'in_stock',
     hasValidImage: !!(p.images && p.images.length > 0),
-    hasVisualDescription: !!(
-      p.synthesizedFrontView || 
-      p.visualDescriptionGemini || 
-      p.visualDescription
-    ),
+    hasVisualDescription: !!p.visualDescription,
   }));
 }
 

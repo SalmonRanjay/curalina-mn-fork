@@ -173,9 +173,7 @@ function synthesizeMultipleAnalyses(analyses: string[]): string {
 }
 
 export interface GeminiAnalysisResult {
-  visualDescriptionGemini: string;
-  visualDescriptionFrontViewGemini: string;
-  synthesizedDescription: string;
+  visualDescription: string;
   success: boolean;
   error?: string;
 }
@@ -192,13 +190,11 @@ export async function analyzeProductWithGemini(
   productName: string,
   imageUrls: string[]
 ): Promise<GeminiAnalysisResult> {
-  console.log(`\n🎨 Gemini-only analysis for: ${productName}`);
+  console.log(`\n🎨 Gemini analysis for: ${productName}`);
   console.log(`  📸 ${imageUrls.length} image(s) available`);
   
   const result: GeminiAnalysisResult = {
-    visualDescriptionGemini: '',
-    visualDescriptionFrontViewGemini: '',
-    synthesizedDescription: '',
+    visualDescription: '',
     success: false,
   };
   
@@ -208,28 +204,8 @@ export async function analyzeProductWithGemini(
   }
   
   try {
-    const frontViewImage = getFrontViewImage(imageUrls);
-    
-    // STEP 1: Analyze front view specifically (if exists)
-    if (frontViewImage) {
-      console.log(`  🎯 Analyzing FRONT VIEW separately...`);
-      try {
-        const frontViewDescription = await analyzeImageWithGemini(
-          frontViewImage,
-          'Front View'
-        );
-        result.visualDescriptionFrontViewGemini = frontViewDescription;
-      } catch (error: any) {
-        console.error(`  ⚠️  Front view analysis failed:`, error.message);
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } else {
-      console.log(`  ℹ️  No front view image found`);
-    }
-    
-    // STEP 2: Analyze all images for combined description
-    console.log(`  🔄 Analyzing ALL images for combined description...`);
+    // Analyze all images for comprehensive description
+    console.log(`  🔄 Analyzing ALL images for comprehensive description...`);
     const allAnalyses: string[] = [];
     
     for (let i = 0; i < imageUrls.length; i++) {
@@ -250,24 +226,18 @@ export async function analyzeProductWithGemini(
       }
     }
     
-    // STEP 3: Create combined/synthesized description
+    // Create synthesized description from all analyses
     if (allAnalyses.length > 0) {
-      result.visualDescriptionGemini = synthesizeMultipleAnalyses(allAnalyses);
-      result.synthesizedDescription = result.visualDescriptionGemini;
-      console.log(`  ✅ Combined analysis complete (${result.visualDescriptionGemini.length} chars)`);
+      result.visualDescription = synthesizeMultipleAnalyses(allAnalyses);
+      console.log(`  ✅ Analysis complete (${result.visualDescription.length} chars)`);
     }
     
-    // Mark as successful if we got at least one description
-    result.success = !!(result.visualDescriptionGemini || result.visualDescriptionFrontViewGemini);
+    // Mark as successful if we got a description
+    result.success = !!result.visualDescription;
     
     if (result.success) {
       console.log(`✅ Analysis complete for ${productName}`);
-      if (result.visualDescriptionFrontViewGemini) {
-        console.log(`  📊 Front View: ${result.visualDescriptionFrontViewGemini.length} chars`);
-      }
-      if (result.visualDescriptionGemini) {
-        console.log(`  📊 Combined: ${result.visualDescriptionGemini.length} chars`);
-      }
+      console.log(`  📊 Description: ${result.visualDescription.length} chars`);
     } else {
       result.error = 'All analyses failed';
       console.error(`❌ Analysis failed for ${productName}`);
@@ -288,17 +258,15 @@ export async function batchAnalyzeProductsWithGemini(
   products: Array<{ sku: string; name: string; images: string[] }>
 ): Promise<Array<{
   sku: string;
-  visualDescriptionGemini: string;
-  visualDescriptionFrontViewGemini: string;
+  visualDescription: string;
   success: boolean;
   error?: string;
 }>> {
-  console.log(`\n🚀 Starting Gemini-only batch analysis of ${products.length} products...`);
+  console.log(`\n🚀 Starting Gemini batch analysis of ${products.length} products...`);
   
   const results: Array<{
     sku: string;
-    visualDescriptionGemini: string;
-    visualDescriptionFrontViewGemini: string;
+    visualDescription: string;
     success: boolean;
     error?: string;
   }> = [];
@@ -311,8 +279,7 @@ export async function batchAnalyzeProductsWithGemini(
     
     results.push({
       sku: product.sku,
-      visualDescriptionGemini: analysis.visualDescriptionGemini,
-      visualDescriptionFrontViewGemini: analysis.visualDescriptionFrontViewGemini,
+      visualDescription: analysis.visualDescription,
       success: analysis.success,
       error: analysis.error,
     });
