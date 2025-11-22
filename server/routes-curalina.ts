@@ -3668,6 +3668,44 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Cleanup products with no valid images
+  app.post('/api/admin/products/cleanup/identify', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { validateImages = false } = req.body;
+      const { identifyProductsToCleanup } = await import('./services/product-cleanup-service');
+      const results = await identifyProductsToCleanup(curalinaStorage, { validateImages });
+      
+      res.json({
+        success: true,
+        ...results
+      });
+    } catch (error) {
+      console.error("Error identifying products for cleanup:", error);
+      res.status(500).json({ error: "Failed to identify products for cleanup" });
+    }
+  });
+
+  app.post('/api/admin/products/cleanup/execute', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { productIds } = req.body;
+      
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ error: "productIds array required" });
+      }
+
+      const { executeCleanup } = await import('./services/product-cleanup-service');
+      const results = await executeCleanup(curalinaStorage, productIds);
+      
+      res.json({
+        success: true,
+        ...results
+      });
+    } catch (error) {
+      console.error("Error executing cleanup:", error);
+      res.status(500).json({ error: "Failed to execute cleanup" });
+    }
+  });
+
   // Export all products as CSV
   app.get('/api/admin/products/export/all', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
