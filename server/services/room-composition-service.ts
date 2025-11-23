@@ -1,5 +1,11 @@
 import { curalinaStorage } from '../storage-curalina';
 import type { Product, QuizResponse, FunctionalCategory, RoomTemplate, TemplateCategoryRule } from '../../shared/schema';
+import { 
+  calculateBudgetAllocation, 
+  calculateBudgetFitScore,
+  mapProductCategoryToBudgetCategory,
+  type BudgetAllocation 
+} from './budget-allocation';
 
 // Zone-based placement system for natural furniture arrangement
 interface ZoneBlueprint {
@@ -634,6 +640,31 @@ export async function selectProductsWithComposition(
     };
   }
   
+  // Calculate budget allocation if quiz response is provided
+  let budgetAllocation: BudgetAllocation | null = null;
+  if (quizResponse?.budgetRange) {
+    try {
+      budgetAllocation = calculateBudgetAllocation(roomType, quizResponse.budgetRange);
+      console.log(`💰 Budget allocation for ${roomType}:`, {
+        total: budgetAllocation.totalBudget,
+        categories: budgetAllocation.categoryBudgets.map(cb => ({
+          category: cb.category,
+          allocated: cb.allocatedBudget,
+          priority: cb.priority
+        }))
+      });
+    } catch (error) {
+      console.warn(`Failed to calculate budget allocation: ${error}`);
+    }
+  }
+  
+  // Fetch category information for products to enable budget mapping
+  const categoryMap = new Map<string, string>();
+  const categories = await curalinaStorage.getAllCategories();
+  categories.forEach(cat => {
+    categoryMap.set(cat.id, cat.name);
+  });
+  
   // Categorize all candidate products
   const productsByCategory: Record<string, Product[]> = {};
   const uncategorized: Product[] = [];
@@ -693,11 +724,15 @@ export async function selectProductsWithComposition(
       
       // Match quiz preferences if available
       if (quizResponse) {
-        // Match style
-        if (quizResponse.style && product.designStyle?.some(s => 
-          s.toLowerCase().includes(quizResponse.style.toLowerCase())
-        )) {
-          score += 30;
+        // Match styles
+        if (quizResponse.styles && quizResponse.styles.length > 0 && product.designStyle) {
+          const hasStyleMatch = quizResponse.styles.some(quizStyle =>
+            product.designStyle?.some(s => 
+              s.toLowerCase().includes(quizStyle.toLowerCase()) ||
+              quizStyle.toLowerCase().includes(s.toLowerCase())
+            )
+          );
+          if (hasStyleMatch) score += 30;
         }
         
         // Match colors
@@ -709,6 +744,31 @@ export async function selectProductsWithComposition(
             )
           );
           if (hasMatchingColor) score += 20;
+        }
+      }
+      
+      // Budget fit scoring (NEW)
+      if (budgetAllocation && product.categoryId) {
+        const productCategoryName = categoryMap.get(product.categoryId);
+        
+        if (productCategoryName) {
+          const budgetCategory = mapProductCategoryToBudgetCategory(productCategoryName, roomType);
+          const categoryBudget = budgetAllocation.categoryBudgets.find(cb => cb.category === budgetCategory);
+          
+          if (categoryBudget) {
+            const productPrice = parseFloat(product.price);
+            const budgetFitRatio = calculateBudgetFitScore(productPrice, categoryBudget);
+            // Budget fit contributes up to 30 points (significant weight)
+            const budgetFitPoints = budgetFitRatio * 30;
+            score += budgetFitPoints;
+            
+            // Log budget scoring for debugging
+            console.log(`💰 Budget fit for ${product.name}: $${productPrice} → ${budgetCategory} (allocated: $${categoryBudget.allocatedBudget.toFixed(0)}) → ${budgetFitPoints.toFixed(1)} pts (${budgetFitRatio.toFixed(2)})`);
+          } else {
+            console.log(`⚠️ No budget category found for ${productCategoryName} → ${budgetCategory || 'null'}`);
+          }
+        } else {
+          console.log(`⚠️ No category name found for product ${product.name} (categoryId: ${product.categoryId})`);
         }
       }
       
@@ -764,6 +824,60 @@ export async function selectProductsWithComposition(
     const remainingSlots = maxProducts - selectedProducts.length;
     const toAdd = uncategorized.slice(0, Math.min(remainingSlots, 3));
     selectedProducts.push(...toAdd);
+  }
+  
+  // Budget compliance validation
+  if (budgetAllocation) {
+    const totalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+    const budgetWithFlex = budgetAllocation.totalBudget + budgetAllocation.flexiblePool;
+    
+    console.log(`💰 Budget compliance check:`, {
+      totalCost: `$${totalCost.toFixed(2)}`,
+      budgetLimit: `$${budgetWithFlex.toFixed(2)}`,
+      isCompliant: totalCost <= budgetWithFlex,
+      overage: totalCost > budgetWithFlex ? `$${(totalCost - budgetWithFlex).toFixed(2)}` : '$0'
+    });
+    
+    // If over budget, remove least essential items until within budget
+    if (totalCost > budgetWithFlex) {
+      console.warn(`⚠️ Selection exceeds budget by $${(totalCost - budgetWithFlex).toFixed(2)}, removing optional items...`);
+      
+      // Sort by priority (remove complementary items first)
+      const sortedByPriority = [...selectedProducts].map(p => {
+        const pCats = detectFunctionalCategory(p);
+        const isEssential = pCats.some(cat => (template.essentials as any)[cat]);
+        return { product: p, essential: isEssential, price: parseFloat(p.price) };
+      }).sort((a, b) => {
+        // Sort by essential status first, then by price (remove expensive optional items first)
+        if (a.essential === b.essential) return b.price - a.price;
+        return a.essential ? 1 : -1;
+      });
+      
+      // Remove products until within budget
+      let currentCost = totalCost;
+      const toRemove = new Set<string>();
+      
+      for (const item of sortedByPriority) {
+        if (currentCost <= budgetWithFlex) break;
+        if (!item.essential) {
+          toRemove.add(item.product.id);
+          currentCost -= item.price;
+          console.log(`  Removing ${item.product.name} ($${item.price.toFixed(2)})`);
+        }
+      }
+      
+      // Update selected products
+      const filteredProducts = selectedProducts.filter(p => !toRemove.has(p.id));
+      selectedProducts.length = 0;
+      selectedProducts.push(...filteredProducts);
+      
+      const finalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+      console.log(`✅ After budget adjustment: ${selectedProducts.length} products, total: $${finalCost.toFixed(2)}`);
+      
+      if (finalCost > budgetWithFlex) {
+        warnings.push(`Could not fit selection within budget of $${budgetWithFlex.toFixed(0)} (final cost: $${finalCost.toFixed(0)})`);
+      }
+    }
   }
   
   // Generate zone-based placements
