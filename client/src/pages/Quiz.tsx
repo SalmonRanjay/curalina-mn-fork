@@ -859,6 +859,27 @@ export default function Quiz() {
             </Dropzone>
           </div>
         </div>
+
+        {/* Room Description - Natural Language Input */}
+        <div className="max-w-4xl mx-auto mt-8">
+          <div className="stack-base flex flex-col">
+            <h3 className="font-semibold text-foreground" 
+                style={{ fontSize: 'var(--font-size-lg)' }}>
+              Describe your space
+            </h3>
+            <p className="text-muted-foreground mb-4" style={{ fontSize: 'var(--font-size-sm)' }}>
+              Tell us about your room dimensions, doorway size, and any preferences. For example: "My living room is 15 feet by 12 feet with 8-foot ceilings. Standard 32-inch doorway. I want a modern look with light wood tones."
+            </p>
+            <textarea
+              value={quizData.roomDescription}
+              onChange={(e) => updateQuizData("roomDescription", e.target.value)}
+              placeholder="Example: Living room is 15x12 feet with 8ft ceilings. Doorway is 32 inches wide. I love cozy, warm vibes with natural materials..."
+              className="w-full min-h-32 p-4 rounded-lg border-2 border-border bg-background text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+              style={{ fontSize: 'var(--font-size-base)' }}
+              data-testid="input-room-description"
+            />
+          </div>
+        </div>
       </div>
     );
   };

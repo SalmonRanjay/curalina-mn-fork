@@ -1562,10 +1562,31 @@ export function registerCuralinaRoutes(app: Express) {
         }
       }
       
-      // Create quiz response with vibe preferences
+      // Parse room description if provided (natural language dimension extraction)
+      let parsedRoomData = null;
+      if (validatedData.roomDescription && validatedData.roomDescription.trim().length > 0) {
+        console.log(`📏 Parsing room description: "${validatedData.roomDescription.substring(0, 50)}..."`);
+        const { parseRoomDescription } = await import('./services/room-parser-service');
+        
+        try {
+          parsedRoomData = await parseRoomDescription(validatedData.roomDescription);
+          console.log(`✅ Room parsing complete:`, {
+            confidence: parsedRoomData.confidence,
+            dimensions: parsedRoomData.dimensions,
+            doorway: parsedRoomData.doorway,
+            warnings: parsedRoomData.warnings
+          });
+        } catch (error) {
+          console.error("Error parsing room description:", error);
+          // Continue without parsed room data if parsing fails
+        }
+      }
+      
+      // Create quiz response with vibe preferences and parsed room data
       const quiz = await curalinaStorage.createQuizResponse({
         ...validatedData,
-        ...vibePreferences
+        ...vibePreferences,
+        parsedRoomData: parsedRoomData || undefined,
       });
       
       res.json(quiz);

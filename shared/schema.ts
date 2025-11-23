@@ -267,6 +267,26 @@ export const insertProductSchema = createInsertSchema(products).omit({
 });
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 
+// Room measurement data structure (extracted from user's natural language input)
+export type ParsedRoomData = {
+  dimensions?: {
+    width?: number;
+    depth?: number;
+    height?: number;
+    unit: string; // 'feet', 'meters', 'inches'
+  };
+  doorway?: {
+    width?: number;
+    height?: number;
+    unit: string;
+  };
+  ceilingHeight?: number;
+  confidence: number; // 0-100, AI confidence in extraction
+  extractedPreferences?: string[]; // Style preferences found in description
+  warnings?: string[]; // Any issues with parsing
+  rawText: string; // Original user input for reference
+};
+
 // Quiz Responses - User design preferences
 export const quizResponses = pgTable("quiz_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -288,6 +308,11 @@ export const quizResponses = pgTable("quiz_responses", {
   vibeLightingTone: text("vibe_lighting_tone"), // 'warm', 'cool', 'natural', 'dramatic'
   vibeDensity: text("vibe_density"), // 'minimal', 'moderate', 'layered'
   vibeOverallDescription: text("vibe_overall_description"), // Overall vibe/aesthetic description
+  
+  // Room measurements and spatial validation
+  roomDescription: text("room_description"), // User's natural language description of space (dimensions, doorways, preferences)
+  parsedRoomData: jsonb("parsed_room_data"), // AI-extracted room measurements: { dimensions: { width, depth, height, unit }, doorway: { width, height, unit }, ceilingHeight, confidence, extractedPreferences, rawText }
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -11,6 +11,7 @@ export interface QuizData {
   preferences: string;
   roomPhoto: string;
   floorplanUrl: string;
+  roomDescription: string; // Natural language description of room dimensions and preferences
 }
 
 interface QuizContextType {
@@ -38,6 +39,7 @@ const INITIAL_QUIZ_DATA: QuizData = {
   preferences: "",
   roomPhoto: "",
   floorplanUrl: "",
+  roomDescription: "",
 };
 
 const TOTAL_STEPS = 7;
