@@ -1253,7 +1253,7 @@ export function registerCuralinaRoutes(app: Express) {
 
   // FAST Visual Description Analysis - ONLY ENDPOINT (40 concurrent workers, real-time saves)
   // Replaces all other slow sequential analysis endpoints
-  app.post('/api/admin/products/visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       console.log('\n🚀 Starting FAST concurrent visual description analysis (40 parallel workers)...');
       
