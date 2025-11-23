@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, HeadObjectCommand, CopyObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 
@@ -197,4 +197,65 @@ export async function generatePresignedUploadUrl(
   });
 
   return { url, fields, key };
+}
+
+/**
+ * Normalize S3 key by replacing spaces and plus signs with dashes
+ * Note: Input should already be decoded to canonical form
+ * @param key - The canonical S3 key (already decoded)
+ * @returns The normalized key with dashes instead of spaces and plus signs
+ */
+export function normalizeS3Key(key: string): string {
+  // Replace spaces and + with dashes
+  return key.replace(/[\s+]+/g, '-');
+}
+
+/**
+ * Copy an S3 object to a new key
+ * @param sourceKey - The source object key
+ * @param destinationKey - The destination object key
+ * @returns The destination key
+ */
+export async function copyS3Object(sourceKey: string, destinationKey: string): Promise<string> {
+  // URL-encode the source key to handle spaces and special characters
+  const encodedSourceKey = encodeURIComponent(sourceKey).replace(/%2F/g, '/');
+  
+  const command = new CopyObjectCommand({
+    Bucket: BUCKET_NAME,
+    CopySource: `${BUCKET_NAME}/${encodedSourceKey}`,
+    Key: destinationKey,
+    ACL: "public-read",
+  });
+
+  await s3Client.send(command);
+  return destinationKey;
+}
+
+/**
+ * Delete an S3 object
+ * @param key - The object key to delete
+ */
+export async function deleteS3Object(key: string): Promise<void> {
+  const command = new DeleteObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+  });
+
+  await s3Client.send(command);
+}
+
+/**
+ * Rename an S3 object by copying to new key and deleting the old one
+ * @param oldKey - The current object key
+ * @param newKey - The new object key
+ * @returns The new key
+ */
+export async function renameS3Object(oldKey: string, newKey: string): Promise<string> {
+  // Copy to new location
+  await copyS3Object(oldKey, newKey);
+  
+  // Delete old object
+  await deleteS3Object(oldKey);
+  
+  return newKey;
 }

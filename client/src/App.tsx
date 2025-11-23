@@ -36,6 +36,7 @@ import AdminBulkUpload from "@/pages/admin/bulk-upload";
 import AdminCsvImport from "@/pages/admin/csv-import";
 import AdminFrontViewUpload from "@/pages/admin/front-view-upload";
 import AdminS3Sync from "@/pages/admin/s3-sync";
+import AdminS3ImageRenamer from "@/pages/admin/s3-image-renamer";
 import AdminRendersStorage from "@/pages/admin/renders-storage";
 import AdminDocumentation from "@/pages/admin/documentation";
 import AdminMappingAnalysis from "@/pages/admin/mapping-analysis";
@@ -103,6 +104,7 @@ function Router() {
         <Route path="/admin/products/bulk-upload" component={() => <AdminLayout><AdminBulkUpload /></AdminLayout>} />
         <Route path="/admin/products/front-view-upload" component={() => <AdminLayout><AdminFrontViewUpload /></AdminLayout>} />
         <Route path="/admin/products/s3-sync" component={() => <AdminLayout><AdminS3Sync /></AdminLayout>} />
+        <Route path="/admin/products/s3-image-renamer" component={() => <AdminLayout><AdminS3ImageRenamer /></AdminLayout>} />
         <Route path="/admin/products/visual-descriptions" component={() => <AdminLayout><AdminVisualDescriptions /></AdminLayout>} />
         <Route path="/admin/suppliers" component={() => <AdminLayout><AdminSuppliers /></AdminLayout>} />
         <Route path="/admin/orders" component={() => <AdminLayout><AdminOrders /></AdminLayout>} />

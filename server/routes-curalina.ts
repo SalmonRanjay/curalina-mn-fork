@@ -28,6 +28,7 @@ import { isAdmin } from "./routes";
 import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
 import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
 import type { PlacementInstruction } from "./services/room-composition-service";
+import { renameAllProductImages, previewImageRenames } from "./services/s3-image-renamer";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
@@ -51,56 +52,24 @@ function parseObjectPath(path: string): { bucketName: string; objectName: string
   return { bucketName, objectName };
 }
 
-// Helper to convert image filenames/paths to full S3 URLs with proper URL encoding
-// This function is idempotent: running it multiple times produces the same result
+// Helper to convert image filenames/paths to full S3 URLs
+// Assumes filenames use dashes instead of spaces (normalized)
 function transformProductImages(product: any) {
   if (!product.images || product.images.length === 0) return product;
   
   const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
   const BUCKET_NAME = "curalina";
   
-  // Transform images array to full S3 URLs with proper encoding
+  // Transform images array to full S3 URLs
   const transformedImages = product.images.map((imageUrl: string) => {
-    let fullUrl: string;
-    
-    // If already a full URL, use it
+    // If already a full URL, return as-is
     if (imageUrl.startsWith('https://')) {
-      fullUrl = imageUrl;
-    } else {
-      // Construct full S3 URL from filename
-      fullUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
+      return imageUrl;
     }
     
-    try {
-      const urlObj = new URL(fullUrl);
-      
-      // Idempotent encoding: decode first (to handle already-encoded or mixed states),
-      // then encode to ensure consistent output
-      const pathSegments = urlObj.pathname.split('/');
-      const encodedSegments = pathSegments.map(segment => {
-        if (!segment) return segment;
-        
-        try {
-          // Try to decode - this handles already-encoded, partially-encoded, or unencoded segments
-          const decoded = decodeURIComponent(segment);
-          // Check if decoding changed the segment (meaning it was encoded)
-          // or if decoding returned the same value (meaning it wasn't encoded)
-          // Either way, we encode the decoded result for consistency
-          return encodeURIComponent(decoded);
-        } catch (e) {
-          // If decode fails (malformed encoding), encode the original segment as-is
-          // This handles edge cases with invalid % sequences
-          return encodeURIComponent(segment);
-        }
-      });
-      
-      urlObj.pathname = encodedSegments.join('/');
-      return urlObj.toString();
-    } catch (e) {
-      // If URL parsing fails, log error and return original
-      console.error(`[IMAGE_TRANSFORM] Failed to process URL: ${fullUrl}`, e);
-      return fullUrl;
-    }
+    // Construct full S3 URL from filename
+    // Filenames are expected to be normalized (dashes instead of spaces)
+    return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
   });
   
   return { ...product, images: transformedImages };
@@ -298,6 +267,29 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error running image validation:", error);
       res.status(500).json({ error: error.message || "Failed to run validation" });
+    }
+  });
+
+  // S3 image renaming endpoints - Replace spaces with dashes
+  app.post('/api/admin/products/s3-images/preview-rename', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('[S3-RENAME] Starting preview of S3 image renaming...');
+      const summary = await previewImageRenames(curalinaStorage);
+      res.json(summary);
+    } catch (error) {
+      console.error('Error previewing S3 image renames:', error);
+      res.status(500).json({ error: 'Failed to preview S3 image renames' });
+    }
+  });
+
+  app.post('/api/admin/products/s3-images/execute-rename', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('[S3-RENAME] Starting S3 image renaming execution...');
+      const summary = await renameAllProductImages(curalinaStorage, false);
+      res.json(summary);
+    } catch (error) {
+      console.error('Error executing S3 image renames:', error);
+      res.status(500).json({ error: 'Failed to execute S3 image renames' });
     }
   });
 
