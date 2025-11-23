@@ -64,4 +64,4 @@ integrations = ["javascript_database:1.0.0", "javascript_object_storage:1.0.0", 
 [userenv]
 
 [userenv.shared]
-ENABLE_STABILITY_QC = "true"
+ENABLE_STABILITY_QC = "false"
