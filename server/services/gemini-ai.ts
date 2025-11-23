@@ -787,7 +787,7 @@ Return a JSON array with this structure:
       quiz.roomType,
       products, // Pass all available products for better selection
       quiz,
-      15 // Max products
+      8 // Max 7-8 products (matches successful "Nano Banana" approach in Google AI Studio)
     );
     
     // Log composition warnings if any
