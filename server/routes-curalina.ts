@@ -1259,7 +1259,6 @@ export function registerCuralinaRoutes(app: Express) {
       
       let allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
-      const { Product } = await import('@shared/schema');
       
       // Resume mode: skip products that already have visualDescription
       let alreadyCompleted = 0;

@@ -23,6 +23,7 @@ export default function VisualDescriptionsPage() {
   const [targetFilter, setTargetFilter] = useState<string>("all");
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<RegenerationResult | null>(null);
+  const [resumeMode, setResumeMode] = useState(false);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -31,7 +32,8 @@ export default function VisualDescriptionsPage() {
   const regenerateMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/admin/products/regenerate-visual-descriptions', {
-        targetFilter
+        targetFilter,
+        resume: resumeMode
       });
       return await response.json() as RegenerationResult;
     },
@@ -189,25 +191,52 @@ export default function VisualDescriptionsPage() {
               </p>
             </div>
 
-            <Button
-              onClick={() => regenerateMutation.mutate()}
-              disabled={isProcessing || regenerateMutation.isPending}
-              className="w-full"
-              size="lg"
-              data-testid="button-start-regeneration"
-            >
-              {isProcessing || regenerateMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Start Reanalysis
-                </>
-              )}
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => {
+                  setResumeMode(false);
+                  regenerateMutation.mutate();
+                }}
+                disabled={isProcessing || regenerateMutation.isPending}
+                size="lg"
+                data-testid="button-start-regeneration"
+              >
+                {isProcessing || regenerateMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Start Fresh
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  setResumeMode(true);
+                  regenerateMutation.mutate();
+                }}
+                disabled={isProcessing || regenerateMutation.isPending || stats.missing === 0}
+                variant="outline"
+                size="lg"
+                data-testid="button-resume-regeneration"
+              >
+                {isProcessing || regenerateMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Resuming...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Resume ({stats.missing} left)
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {result && (
