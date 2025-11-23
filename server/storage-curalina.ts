@@ -454,7 +454,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       .update(products)
       .set({
         structuredAnalysis: analysis,
-        structuredAnalysisQuality: quality,
+        structuredAnalysisQuality: quality.toString(),
         structuredAnalysisUpdatedAt: new Date(),
       })
       .where(eq(products.id, id))
@@ -1198,14 +1198,19 @@ export class CuralinaStorage implements ICuralinaStorage {
             set: {
               sku: sql`EXCLUDED.sku`,
               name: sql`EXCLUDED.name`,
-              quantity: sql`EXCLUDED.quantity`,
-              retailPrice: sql`EXCLUDED.retail_price`,
-              totalPrice: sql`EXCLUDED.total_price`,
-              visualDescription: sql`EXCLUDED.visual_description`,
-              condensedDescription: sql`EXCLUDED.condensed_description`,
-              imageUrls: sql`EXCLUDED.image_urls`,
+              supplierName: sql`EXCLUDED.supplier_name`,
+              categoryName: sql`EXCLUDED.category_name`,
+              roomType: sql`EXCLUDED.room_type`,
+              designStyle: sql`EXCLUDED.design_style`,
+              styleTags: sql`EXCLUDED.style_tags`,
+              priceAtRender: sql`EXCLUDED.price_at_render`,
+              availability: sql`EXCLUDED.availability`,
+              imageHealth: sql`EXCLUDED.image_health`,
+              visualDescriptionSource: sql`EXCLUDED.visual_description_source`,
               dimensions: sql`EXCLUDED.dimensions`,
-              placement: sql`EXCLUDED.placement`
+              placementData: sql`EXCLUDED.placement_data`,
+              primaryImageUrl: sql`EXCLUDED.primary_image_url`,
+              metadata: sql`EXCLUDED.metadata`
             }
           });
       }

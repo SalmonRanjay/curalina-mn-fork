@@ -118,6 +118,12 @@ export async function generateAccurateVisualDescription(
       }
     }
     
+    // Check if response was successfully generated
+    if (!response) {
+      console.error(`  ⚠️ No response received after ${MAX_RETRIES} retries`);
+      return null;
+    }
+    
     // Extract text from response
     let description = (response.text || '').trim();
     
