@@ -46,7 +46,16 @@ export async function buildRenderProductSnapshots(
   // Create product catalog index for fast lookup
   const productCatalog = new Map(allProducts.map(p => [p.sku, p]));
   
-  for (const productWithPlacement of productsWithPlacement) {
+  // Deduplicate products by SKU (keep first occurrence to preserve original placement metadata)
+  const deduplicatedProducts = Array.from(
+    new Map(productsWithPlacement.map(p => [p.sku, p])).values()
+  );
+  
+  if (deduplicatedProducts.length < productsWithPlacement.length) {
+    console.warn(`⚠️ Deduplication: ${productsWithPlacement.length} → ${deduplicatedProducts.length} products (removed ${productsWithPlacement.length - deduplicatedProducts.length} duplicates)`);
+  }
+  
+  for (const productWithPlacement of deduplicatedProducts) {
     // Lookup full product from catalog
     const fullProduct = productCatalog.get(productWithPlacement.sku);
     
