@@ -1819,15 +1819,13 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // Log rendering mode
-          if (placementInstructions) {
-            console.log(`🏗️  ZONE-BASED PLACEMENT: ${selectedProducts.length} products with spatial instructions`);
-          } else {
-            console.log(`⚠️  FALLBACK MODE: ${selectedProducts.length} products without spatial instructions`);
-          }
-          
+          // SPACE IMAGE PRESERVATION: When user provides a space image, use pure image-only mode
+          // Text-based placement instructions interfere with visual preservation
+          // The AI can SEE the space and preserve it better without conflicting text instructions
           if (floorplanUrl) {
-            console.log(`🖼️  IMAGE MODE: Room photo + ${selectedProducts.length} product images → Gemini`);
+            console.log(`🖼️  SPACE IMAGE MODE: Pure visual preservation (no text placement instructions)`);
+            console.log(`   Room photo + ${selectedProducts.length} product images → Gemini`);
+            placementInstructions = undefined; // Clear any generated instructions for space image mode
           } else {
             console.log(`🎨 TEXT-TO-IMAGE MODE: ${selectedProducts.length} product images (no room) → Gemini`);
           }

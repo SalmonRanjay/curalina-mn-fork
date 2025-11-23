@@ -195,33 +195,17 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
-    // Step 3: Build prompt with spatial guidance for better space preservation
+    // Step 3: Use the EXACT simple prompt that worked perfectly in AI Studio
+    // For space images: Keep it minimal - let the AI preserve the space visually
     let prompt: string;
     
     if (roomImage) {
-      // Image-to-image mode with spatial instructions
-      prompt = `This is my space image. Please furnish it with the Furniture and product images I provide.`;
-      
-      // Add placement instructions for better space preservation
-      if (placementInstructions) {
-        prompt += `\n\n${placementInstructions}`;
-      } else {
-        // Fallback spatial guidance if no specific instructions provided
-        prompt += `\n\nIMPORTANT SPATIAL RULES:
-- Maintain proper scale and proportions relative to the room
-- Keep appropriate clearances between furniture (36-48" walkways)
-- Don't overlap furniture or place items unrealistically
-- Respect the room's architectural features (windows, doors, walls)
-- Create functional zones (seating area, circulation paths)
-- Place each product exactly once - no duplicates`;
-      }
+      // Image-to-image mode: use the exact prompt from AI Studio that preserved space perfectly
+      // DO NOT add placement instructions - they confuse the AI and break space preservation
+      prompt = `This is my space image. Please furnish it with the Furniture and product images I provide`;
     } else {
       // Text-to-image mode: create a new room scene
-      prompt = `Please create a beautifully designed ${roomType || 'interior'} space in ${stylePreference || 'modern'} style with the Furniture and products images I provide.`;
-      
-      if (placementInstructions) {
-        prompt += `\n\n${placementInstructions}`;
-      }
+      prompt = `Please create a beautifully designed ${roomType || 'interior'} space in ${stylePreference || 'modern'} style with the Furniture and products images I provide`;
     }
     
     // Step 4: Build parts array - INTERLEAVE text + image per product
