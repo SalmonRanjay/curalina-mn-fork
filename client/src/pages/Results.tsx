@@ -88,14 +88,16 @@ export default function Results() {
   });
 
 
-  // Fetch all products
-  const { data: allProducts, isLoading: productsLoading } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+  // Fetch products for this specific render (Shop the Look)
+  const { data: renderProducts, isLoading: productsLoading } = useQuery<Product[]>({
+    queryKey: ["/api/render", render?.id, "products"],
     queryFn: async () => {
-      const res = await fetch("/api/products");
-      if (!res.ok) throw new Error("Failed to fetch products");
+      if (!render?.id) throw new Error("No render ID");
+      const res = await fetch(`/api/render/${render.id}/products`);
+      if (!res.ok) throw new Error("Failed to fetch render products");
       return res.json();
     },
+    enabled: !!render?.id,
   });
 
   // Fetch selection ledger for composition order (Task 7)
@@ -114,74 +116,48 @@ export default function Results() {
     enabled: !!render?.id,
   });
 
-  // Build ordered products list
-  // Priority: 1) Selection ledger composition order, 2) Fallback to render.productSkus
-  const productSkuOrder = selectionLedger?.compositionOrder || render?.productSkus || [];
+  // Fetch swapped product details when needed
+  const swappedProductIds = Object.values(swappedProducts).filter(Boolean);
+  const { data: swappedProductDetails } = useQuery<Product[]>({
+    queryKey: ["/api/products/by-ids", swappedProductIds],
+    queryFn: async () => {
+      if (swappedProductIds.length === 0) return [];
+      // Fetch each swapped product individually and combine results
+      const promises = swappedProductIds.map(id => 
+        fetch(`/api/products/${id}`).then(res => res.ok ? res.json() : null)
+      );
+      const results = await Promise.all(promises);
+      return results.filter(Boolean);
+    },
+    enabled: swappedProductIds.length > 0,
+  });
+
+  // Build products list from renderProducts, merging in swapped alternatives
   const products: Product[] = useMemo(() => {
-    return productSkuOrder.map((sku) => {
-      // If this SKU has been swapped, use the replacement product ID
-      const targetId = swappedProducts[sku] || null;
+    if (!renderProducts) return [];
+    
+    // Create a map of swapped product details for quick lookup
+    const swappedMap = new Map<string, Product>();
+    swappedProductDetails?.forEach(p => swappedMap.set(p.id, p));
+    
+    // Map products to handle swaps
+    return renderProducts.map((product) => {
+      // If this product's SKU has been swapped, use the replacement product
+      const targetId = swappedProducts[product.sku] || null;
       
-      if (targetId) {
-        // Find the swapped product by ID
-        const swappedProduct = allProducts?.find(p => p.id === targetId);
+      if (targetId && targetId !== product.id) {
+        // Try to find the swapped product from our fetched details
+        const swappedProduct = swappedMap.get(targetId);
         if (swappedProduct) return swappedProduct;
-        // If swapped product not found, fall through to create placeholder
+        
+        // Fallback: check if it's in the renderProducts
+        const fallbackProduct = renderProducts.find(p => p.id === targetId);
+        if (fallbackProduct) return fallbackProduct;
       }
       
-      // Otherwise, find the original product by SKU
-      const originalProduct = allProducts?.find(p => p.sku === sku);
-      
-      // If product not found, create a placeholder
-      if (!originalProduct) {
-        return {
-          id: `placeholder-${sku}`,
-          sku: sku,
-          name: "Product Unavailable",
-          description: "This product is no longer available",
-          price: "0",
-          images: null,
-          categoryId: "unknown",
-          supplierId: "unknown",
-          tradePrice: null,
-          discount: "0",
-          roomType: null,
-          designStyle: null,
-          styleTags: null,
-          keyFeatures: null,
-          storageSolutions: null,
-          colors: null,
-          materials: null,
-          dimensions: null,
-          weight: null,
-          seating: null,
-          assembly: null,
-          inventory: null,
-          leadTime: null,
-          availability: "out_of_stock",
-          shipping: null,
-          asset3dUrl: null,
-          visualDescription: null,
-          visualDescriptionGemini: null,
-          visualDescriptionFrontView: null,
-          visualDescriptionFrontViewGemini: null,
-          imageAnalyses: null,
-          synthesizedFrontView: null,
-          completeProductDescription: null,
-          tags: null,
-          sourceFile: null,
-          seoMeta: null,
-          slug: `unavailable-${sku}`,
-          createdAt: null,
-          updatedAt: null,
-          imageHealth: "healthy",
-          lastValidatedAt: null,
-        } as unknown as Product;
-      }
-      
-      return originalProduct;
+      return product;
     });
-  }, [productSkuOrder, allProducts, swappedProducts]);
+  }, [renderProducts, swappedProducts, swappedProductDetails]);
 
   // Fetch alternative products for swap
   const { data: alternatives } = useQuery<Product[]>({

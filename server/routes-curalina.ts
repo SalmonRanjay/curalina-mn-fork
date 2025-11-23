@@ -2101,6 +2101,25 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Batch fetch products by IDs (for swapped products)
+  app.post('/api/products/batch', async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "ids array required" });
+      }
+
+      // Get all products and filter by requested IDs
+      const allProducts = await curalinaStorage.getAllProducts();
+      const requestedProducts = allProducts.filter(p => ids.includes(p.id));
+
+      res.json(requestedProducts);
+    } catch (error) {
+      console.error("Error fetching products batch:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
   // Get selection ledger for a render (Task 7: Shop the Look composition order)
   app.get('/api/render/:renderId/ledger', async (req, res) => {
     try {
