@@ -2360,8 +2360,8 @@ export function registerCuralinaRoutes(app: Express) {
         (async () => {
           const startTime = Date.now();
           try {
-            const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
-            const result = await generateImageOnlyRender(baseParams);
+            const { generateStabilityRender } = await import('./services/stability-ai-render');
+            const result = await generateStabilityRender(baseParams);
             
             if (!result.success || !result.imageBase64) {
               throw new Error(result.error || 'Generation failed');
