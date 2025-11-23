@@ -1577,7 +1577,7 @@ function getAnchorDescription(anchorPoint: 'center' | 'wall' | 'corner'): string
 /**
  * Generate structured placement matrix with explicit spatial instructions
  */
-function generatePlacementMatrix(
+export function generatePlacementMatrix(
   selectedProducts: Array<{ 
     sku: string; 
     name: string; 

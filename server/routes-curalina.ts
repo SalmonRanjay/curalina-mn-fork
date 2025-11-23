@@ -1685,8 +1685,16 @@ export function registerCuralinaRoutes(app: Express) {
           console.log(`Found ${allProducts.length} total products`);
           
           // Step 2: Check if specific products were requested (for regeneration with swaps)
-          const { filterProductsByQuiz, selectProductsWithAI, analyzeRoomImage, analyzeFloorPlan } = await import('./services/gemini-ai');
-          let selectedProducts: Array<{ sku: string; name: string }> = [];
+          const { filterProductsByQuiz, selectProductsWithAI, analyzeRoomImage, analyzeFloorPlan, generatePlacementMatrix } = await import('./services/gemini-ai');
+          let selectedProducts: Array<{ 
+            sku: string; 
+            name: string;
+            placement?: string;
+            reasoning?: string;
+            functionalCategory?: string;
+            priority?: number;
+          }> = [];
+          let placementInstructions: string | undefined = undefined;
           
           if (req.body.productSkus && req.body.productSkus.length > 0) {
             // Use specific product SKUs (from swap/regeneration)
@@ -1699,17 +1707,49 @@ export function registerCuralinaRoutes(app: Express) {
               };
             });
           } else {
-            // AI-driven product selection (simplified - no placements/composition)
+            // AI-driven product selection with zone-based composition
             const filteredProducts = filterProductsByQuiz(allProducts, quiz);
             console.log(`Filtered to ${filteredProducts.length} matching products`);
             
             if (filteredProducts.length > 0) {
-              const selectionResult = await selectProductsWithAI(filteredProducts, quiz);
-              selectedProducts = selectionResult.products.map(p => ({
+              const { selectProductsWithComposition } = await import('./services/room-composition-service');
+              const compositionResult = await selectProductsWithComposition(
+                quiz.roomType,
+                filteredProducts,
+                quiz,
+                15 // max products
+              );
+              
+              selectedProducts = compositionResult.selectedProducts.map(p => ({
                 sku: p.sku,
-                name: p.name
+                name: p.name,
+                placement: '', // Will be provided by zone placements
+                reasoning: '', // Will be provided by zone placements
+                functionalCategory: undefined, // Will be detected by placement matrix
+                priority: undefined
               }));
-              console.log(`AI selected ${selectedProducts.length} products (image-only mode - no placements)`);
+              console.log(`AI selected ${selectedProducts.length} products with zone-based composition`);
+              
+              // Generate zone-based placement instructions if placements are available
+              if (compositionResult.placements && compositionResult.placements.length > 0) {
+                console.log(`📍 Generating zone-based placement instructions for ${compositionResult.placements.length} items`);
+                // Cast to required type for placement matrix
+                const productsForMatrix = selectedProducts.map(p => ({
+                  sku: p.sku,
+                  name: p.name,
+                  placement: p.placement || '',
+                  reasoning: p.reasoning || '',
+                  functionalCategory: p.functionalCategory,
+                  priority: p.priority
+                }));
+                placementInstructions = generatePlacementMatrix(
+                  productsForMatrix,
+                  quiz.roomType,
+                  undefined, // roomAnalysis - will be set later
+                  undefined, // floorPlanAnalysis - will be set later
+                  compositionResult.placements
+                );
+              }
             } else {
               console.warn("No matching products found, generating room without specific products");
             }
@@ -1743,33 +1783,53 @@ export function registerCuralinaRoutes(app: Express) {
               console.log(`🔍 Analyzing floor plan with Gemini Vision...`);
               floorPlanAnalysis = await analyzeFloorPlan(floorplanUrl);
               console.log(`✅ Floor plan analysis complete: ${floorPlanAnalysis.roomDimensions}`);
+              
+              // Regenerate placement instructions with floor plan context if we have placements
+              if (placementInstructions && selectedProducts.length > 0) {
+                const { selectProductsWithComposition } = await import('./services/room-composition-service');
+                // Re-fetch composition to get placements with floor plan context
+                const filteredProducts = filterProductsByQuiz(allProducts, quiz);
+                const compositionResult = await selectProductsWithComposition(
+                  quiz.roomType,
+                  filteredProducts,
+                  quiz,
+                  15
+                );
+                
+                if (compositionResult.placements && compositionResult.placements.length > 0) {
+                  // Update selectedProducts with empty placement/reasoning fields
+                  const productsForMatrix = selectedProducts.map(p => ({
+                    ...p,
+                    placement: '',
+                    reasoning: ''
+                  }));
+                  
+                  placementInstructions = generatePlacementMatrix(
+                    productsForMatrix,
+                    quiz.roomType,
+                    roomAnalysis,
+                    floorPlanAnalysis,
+                    compositionResult.placements
+                  );
+                  console.log(`✅ Updated placement instructions with floor plan context`);
+                }
+              }
             } catch (error) {
               console.error("Floor plan analysis error:", error);
             }
           }
           
-          // IMAGE-ONLY MODE: Skip composition and placement logic
-          console.log(`⚡ Skipping composition order and zone-based placement (image-only mode)`);
-          
-          // IMAGE-ONLY MODE: Skip all text-based prompt building
-          // We'll send images directly to Gemini without text descriptions
-          console.log(`⚡ Skipping text-based prompt building - using pure image-only mode`);
-          
-          // Set simple prompt for image-only mode (used for QA/logging only)
-          const prompt = floorplanUrl 
-            ? `This is my space image. Please furnish it with the Furniture and product images I provide`
-            : `Please create a beautifully designed interior space with Furniture and products images I provide`;
-          
-          // No product metadata in image-only mode
-          const productMetadata: Record<string, any> = {};
-          
-          // IMAGE-ONLY MODE: Let Gemini see the images directly with minimal text
-          // This approach preserves the room structure better than text-heavy prompts
-          // Product images guide what furniture to add without confusing text descriptions
-          if (floorplanUrl) {
-            console.log(`🖼️  IMAGE-ONLY MODE: Room photo + ${selectedProducts.length} product images → Gemini`);
+          // Log rendering mode
+          if (placementInstructions) {
+            console.log(`🏗️  ZONE-BASED PLACEMENT: ${selectedProducts.length} products with spatial instructions`);
           } else {
-            console.log(`🎨 IMAGE-ONLY MODE: ${selectedProducts.length} product images (no room) → Gemini`);
+            console.log(`⚠️  FALLBACK MODE: ${selectedProducts.length} products without spatial instructions`);
+          }
+          
+          if (floorplanUrl) {
+            console.log(`🖼️  IMAGE MODE: Room photo + ${selectedProducts.length} product images → Gemini`);
+          } else {
+            console.log(`🎨 TEXT-TO-IMAGE MODE: ${selectedProducts.length} product images (no room) → Gemini`);
           }
           
           // Get full product objects from database for image-only rendering
@@ -1782,7 +1842,8 @@ export function registerCuralinaRoutes(app: Express) {
             products: fullSelectedProducts, // Full product objects from database for image extraction
             roomType: quiz.roomType,
             stylePreference: quiz.styles?.[0] || 'modern',
-            floorPlanAnalysis // Pass floor plan analysis for detailed space preservation
+            floorPlanAnalysis, // Pass floor plan analysis for detailed space preservation
+            placementInstructions // Pass zone-based placement instructions for better space preservation
           });
           
           if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
@@ -1834,10 +1895,14 @@ export function registerCuralinaRoutes(app: Express) {
           console.log(`⚡ Visibility detection skipped (image-only mode)`);
           
           // Update render with completed data (only visible products + QA results)
+          const prompt = placementInstructions 
+            ? `Zone-based placement with ${selectedProducts.length} products`
+            : `Image-only render with ${selectedProducts.length} products`;
+          
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
             productSkus: productsForShopTheLook,
-            productMetadata,
+            productMetadata: {}, // Empty metadata for image-only mode
             qaResults,
             prompt,
             status: 'completed',
