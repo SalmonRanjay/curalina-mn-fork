@@ -51,7 +51,7 @@ function parseObjectPath(path: string): { bucketName: string; objectName: string
   return { bucketName, objectName };
 }
 
-// Helper to convert image filenames/paths to full S3 URLs and encode them properly
+// Helper to convert image filenames/paths to full S3 URLs with proper URL encoding
 function transformProductImages(product: any) {
   if (!product.images || product.images.length === 0) return product;
   
@@ -62,7 +62,7 @@ function transformProductImages(product: any) {
   const transformedImages = product.images.map((imageUrl: string) => {
     let fullUrl: string;
     
-    // If already a full URL, we still need to encode it properly
+    // If already a full URL, we need to properly encode it
     if (imageUrl.startsWith('https://')) {
       fullUrl = imageUrl;
     } else {
@@ -72,20 +72,28 @@ function transformProductImages(product: any) {
     
     try {
       const urlObj = new URL(fullUrl);
-      // Decode first to handle any existing encoding, then split and encode each segment
-      const decodedPath = decodeURIComponent(urlObj.pathname);
-      const pathSegments = decodedPath.split('/');
-      // Encode each non-empty segment properly
+      
+      // Split path into segments and properly encode each segment
+      // This handles spaces, special characters, etc.
+      const pathSegments = urlObj.pathname.split('/');
       const encodedSegments = pathSegments.map(segment => {
-        // Skip empty segments (from leading/trailing slashes)
-        if (!segment) return segment;
-        // Encode the segment - this handles spaces, parentheses, apostrophes, etc.
-        return encodeURIComponent(segment);
+        if (!segment) return segment; // Skip empty segments
+        
+        // Decode first in case it's already partially encoded
+        try {
+          const decoded = decodeURIComponent(segment);
+          // Then encode it properly
+          return encodeURIComponent(decoded);
+        } catch {
+          // If decode fails, just encode the original
+          return encodeURIComponent(segment);
+        }
       });
+      
       urlObj.pathname = encodedSegments.join('/');
       return urlObj.toString();
     } catch (e) {
-      // If URL parsing or decoding fails, return original
+      // If URL parsing fails, log error and return original
       console.error(`[IMAGE_TRANSFORM] Failed to encode URL: ${fullUrl}`, e);
       return fullUrl;
     }
