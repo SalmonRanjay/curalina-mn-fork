@@ -194,43 +194,13 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
-    // Step 3: Build detailed prompt with floor plan analysis for space preservation
+    // Step 3: Build simple, clear prompt (matching Google AI Studio's success)
+    // Simple prompts work better - don't over-specify details that confuse the model
     let prompt: string;
     
-    if (roomImage && floorPlanAnalysis) {
-      // Image-to-image mode with detailed space preservation
-      prompt = `CRITICAL STRUCTURE PRESERVATION REQUIREMENT:
-This is a REDESIGN of an existing space, not a new room. You must preserve the exact architectural structure while adding furniture.
-
-PRESERVE THESE EXACT FEATURES:
-${floorPlanAnalysis.windowLocations && floorPlanAnalysis.windowLocations.length > 0 ? `
-WINDOWS (DO NOT MOVE, REMOVE, OR CHANGE):
-${floorPlanAnalysis.windowLocations.map((w, i) => `${i + 1}. ${w}`).join('\n')}
-- Maintain exact window positions and sizes
-- Keep all window architectural details (frames, mullions, arches)
-` : ''}
-${floorPlanAnalysis.doorLocations && floorPlanAnalysis.doorLocations.length > 0 ? `
-DOORS & OPENINGS (DO NOT MOVE, REMOVE, OR CHANGE):
-${floorPlanAnalysis.doorLocations.map((d, i) => `${i + 1}. ${d}`).join('\n')}
-- Doors are permanent architectural features
-` : ''}
-${floorPlanAnalysis.ceilingRoofDesign && floorPlanAnalysis.ceilingRoofDesign !== "Unable to analyze ceiling/roof design" ? `
-CEILING DESIGN (PRESERVE EXACTLY):
-${floorPlanAnalysis.ceilingRoofDesign}
-- Maintain all beams, height, and architectural details
-` : ''}
-${floorPlanAnalysis.builtInFeatures && floorPlanAnalysis.builtInFeatures.length > 0 ? `
-BUILT-IN FEATURES (PRESERVE):
-${floorPlanAnalysis.builtInFeatures.join(', ')}
-` : ''}
-
-FLOOR LAYOUT:
-${floorPlanAnalysis.overallDescription || floorPlanAnalysis.layoutNotes}
-
-YOUR TASK: Add the furniture products I provide while preserving ALL architectural features above.`;
-    } else if (roomImage) {
-      // Image-to-image mode without floor plan analysis
-      prompt = `This is my space image. PRESERVE this exact room structure (walls, windows, floor, ceiling, architectural details). Only add the furniture and products I provide - do NOT change the room itself.`;
+    if (roomImage) {
+      // Image-to-image mode: use the simple prompt that worked in Google AI Studio
+      prompt = `This is my space image. Please furnish it with the Furniture and product images I provide`;
     } else {
       // Text-to-image mode: create a new room scene
       prompt = `Please create a beautifully designed interior space with Furniture and products images I provide`;
