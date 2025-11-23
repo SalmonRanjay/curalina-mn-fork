@@ -33,6 +33,16 @@ Preferred communication style: Simple, everyday language.
   - **Layout Mask System**: Zone-based placements converted to visual masks for ControlNet-guided furniture placement
   - **Post-Render QA**: Gemini Vision validation checking product presence/appearance/scale/placement, regeneration recommendations for quality thresholds
   - **Refinement Pipeline**: Three-tier Stability AI QC (ControlNet mask → product images → structure-only) with graceful fallbacks
+  - **Comprehensive Product Specifications**: All database fields passed to AI prompts including:
+    - Materials (deduplicated, filter falsy values)
+    - Colors (deduplicated, filter falsy values)
+    - All dimension fields (w, d, h, armWidth, seatDepth, etc.) with units
+    - Seating capacity
+    - Weight (with unit normalization)
+    - Trade and retail prices (Drizzle decimal handling)
+    - Shipping metadata (delivery options, location, policy, cost, ETA) with deep serialization to prevent [object Object]
+    - Tags (deduplicated, trimmed)
+  - **Deep Serialization Helper**: `serializeValue()` function recursively serializes nested objects/arrays to prevent [object Object] in prompts, with JSON.stringify fallback for very deep structures (depth > 5)
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM.
