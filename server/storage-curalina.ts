@@ -454,7 +454,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       .update(products)
       .set({
         structuredAnalysis: analysis,
-        structuredAnalysisQuality: quality.toString(),
+        structuredAnalysisQuality: quality,
         structuredAnalysisUpdatedAt: new Date(),
       })
       .where(eq(products.id, id))
@@ -1190,29 +1190,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       await tx.delete(renderEvents).where(eq(renderEvents.renderId, renderId));
       
       if (productsData.length > 0) {
-        // Use ON CONFLICT to handle duplicate (render_id, product_id) pairs
-        await tx.insert(renderProducts)
-          .values(productsData)
-          .onConflictDoUpdate({
-            target: [renderProducts.renderId, renderProducts.productId],
-            set: {
-              sku: sql`EXCLUDED.sku`,
-              name: sql`EXCLUDED.name`,
-              supplierName: sql`EXCLUDED.supplier_name`,
-              categoryName: sql`EXCLUDED.category_name`,
-              roomType: sql`EXCLUDED.room_type`,
-              designStyle: sql`EXCLUDED.design_style`,
-              styleTags: sql`EXCLUDED.style_tags`,
-              priceAtRender: sql`EXCLUDED.price_at_render`,
-              availability: sql`EXCLUDED.availability`,
-              imageHealth: sql`EXCLUDED.image_health`,
-              visualDescriptionSource: sql`EXCLUDED.visual_description_source`,
-              dimensions: sql`EXCLUDED.dimensions`,
-              placementData: sql`EXCLUDED.placement_data`,
-              primaryImageUrl: sql`EXCLUDED.primary_image_url`,
-              metadata: sql`EXCLUDED.metadata`
-            }
-          });
+        await tx.insert(renderProducts).values(productsData);
       }
       
       if (eventsData.length > 0) {

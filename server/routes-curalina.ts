@@ -1254,20 +1254,11 @@ export function registerCuralinaRoutes(app: Express) {
   // Visual Description Regeneration - Uses trained analyzer with word count validation (30-40 words)
   app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const { resume = false } = req.body;
-      console.log(`\n🎨 Starting visual description regeneration (word count validated: 30-40 words)${resume ? ' [RESUME MODE]' : ''}...`);
+      console.log('\n🎨 Starting visual description regeneration (word count validated: 30-40 words)...');
       
-      let allProducts = await curalinaStorage.getAllProducts();
+      const allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
-      
-      // Resume mode: skip products that already have visualDescription
-      let alreadyCompleted = 0;
-      if (resume) {
-        const originalCount = allProducts.length;
-        allProducts = allProducts.filter(p => !p.visualDescription || p.visualDescription.trim() === '');
-        alreadyCompleted = originalCount - allProducts.length;
-        console.log(`📊 Resume stats: ${alreadyCompleted} already completed, ${allProducts.length} remaining`);
-      }
+      const { Product } = await import('@shared/schema');
       
       // Callback to save each product immediately as it's analyzed
       const onProductUpdated = async (product: any) => {
@@ -1281,12 +1272,11 @@ export function registerCuralinaRoutes(app: Express) {
       
       res.json({
         success: true,
-        message: `✅ Visual description regeneration complete (word count validated)${resume ? ' - resumed from checkpoint' : ''}`,
+        message: '✅ Visual description regeneration complete (word count validated)',
         totalProducts: finalProgress.total,
         successful: finalProgress.successful,
         failed: finalProgress.failed,
-        skipped: finalProgress.skipped,
-        alreadyCompleted: resume ? alreadyCompleted : 0
+        skipped: finalProgress.skipped
       });
       
     } catch (error) {

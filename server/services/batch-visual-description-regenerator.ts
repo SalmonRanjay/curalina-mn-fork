@@ -95,7 +95,7 @@ export async function generateAccurateVisualDescription(
     while (retries <= MAX_RETRIES) {
       try {
         response = await genAI.models.generateContent({
-          model: "gemini-3.0-flash",
+          model: "gemini-2.5-flash",
           contents: [{
             role: "user",
             parts: [
@@ -116,12 +116,6 @@ export async function generateAccurateVisualDescription(
           throw error; // Not a rate limit error or max retries reached
         }
       }
-    }
-    
-    // Check if response was successfully generated
-    if (!response) {
-      console.error(`  ⚠️ No response received after ${MAX_RETRIES} retries`);
-      return null;
     }
     
     // Extract text from response
