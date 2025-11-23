@@ -475,7 +475,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       .update(products)
       .set({
         structuredAnalysis: analysis,
-        structuredAnalysisQuality: quality,
+        structuredAnalysisQuality: quality.toString(),
         structuredAnalysisUpdatedAt: new Date(),
       })
       .where(eq(products.id, id))
