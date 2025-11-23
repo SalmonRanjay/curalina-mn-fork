@@ -51,6 +51,31 @@ function parseObjectPath(path: string): { bucketName: string; objectName: string
   return { bucketName, objectName };
 }
 
+// Helper to convert image filenames/paths to full S3 URLs
+function transformProductImages(product: any) {
+  if (!product.images || product.images.length === 0) return product;
+  
+  const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
+  const BUCKET_NAME = "curalina";
+  
+  // Transform images array to full S3 URLs
+  const transformedImages = product.images.map((imageUrl: string) => {
+    // If already a full URL (starts with https://), return as-is
+    if (imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // Otherwise, construct full S3 URL from filename
+    return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
+  });
+  
+  return { ...product, images: transformedImages };
+}
+
+// Helper to transform an array of products
+function transformProductsImages(products: any[]) {
+  return products.map(transformProductImages);
+}
+
 export function registerCuralinaRoutes(app: Express) {
   // Admin endpoints for categories, suppliers, products (protected)
   
@@ -128,7 +153,8 @@ export function registerCuralinaRoutes(app: Express) {
   app.get('/api/admin/products', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const products = await curalinaStorage.getAllProducts();
-      res.json(products);
+      const transformedProducts = transformProductsImages(products);
+      res.json(transformedProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ error: "Failed to fetch products" });
@@ -153,7 +179,8 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       const validatedData = insertProductSchema.partial().parse(req.body);
       const product = await curalinaStorage.updateProduct(req.params.id, validatedData);
-      res.json(product);
+      const transformedProduct = transformProductImages(product);
+      res.json(transformedProduct);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid product data", details: error.errors });
@@ -167,7 +194,8 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       const validatedData = insertProductSchema.partial().parse(req.body);
       const product = await curalinaStorage.updateProduct(req.params.id, validatedData);
-      res.json(product);
+      const transformedProduct = transformProductImages(product);
+      res.json(transformedProduct);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid product data", details: error.errors });
@@ -1106,7 +1134,8 @@ export function registerCuralinaRoutes(app: Express) {
       }
       
       const products = await curalinaStorage.getAllProducts(filters);
-      res.json(products);
+      const transformedProducts = transformProductsImages(products);
+      res.json(transformedProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ error: "Failed to fetch products" });
@@ -1119,7 +1148,8 @@ export function registerCuralinaRoutes(app: Express) {
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
-      res.json(product);
+      const transformedProduct = transformProductImages(product);
+      res.json(transformedProduct);
     } catch (error) {
       console.error("Error fetching product:", error);
       res.status(500).json({ error: "Failed to fetch product" });
