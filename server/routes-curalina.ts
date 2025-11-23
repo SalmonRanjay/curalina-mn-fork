@@ -1833,24 +1833,162 @@ export function registerCuralinaRoutes(app: Express) {
           const selectedSkus = selectedProducts.map(p => p.sku);
           const fullSelectedProducts = allProducts.filter(p => selectedSkus.includes(p.sku));
           
-          const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
-          const imageOnlyResult = await generateImageOnlyRender({
-            roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
-            products: fullSelectedProducts, // Full product objects from database for image extraction
-            roomType: quiz.roomType,
-            stylePreference: quiz.styles?.[0] || 'modern',
-            floorPlanAnalysis, // Pass floor plan analysis for detailed space preservation
-            placementInstructions // Pass zone-based placement instructions for better space preservation
-          });
+          // AUTO-REGENERATION LOOP: Retry up to MAX_REGENERATION_ATTEMPTS for quality
+          const { QA_THRESHOLDS } = await import('./services/render-qa');
+          const MAX_ATTEMPTS = 1 + QA_THRESHOLDS.MAX_REGENERATION_ATTEMPTS; // Initial + retries
+          let imageDataUrl: string | null = null;
+          let finalQaResults: any = null;
+          let bestAttempt: { imageDataUrl: string; qaResults: any; score: number } | null = null;
           
-          if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
-            throw new Error(imageOnlyResult.error || 'Image-only generation failed');
+          for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            if (attempt > 1) {
+              console.log(`\n🔄 REGENERATION ATTEMPT ${attempt}/${MAX_ATTEMPTS} - Retrying for better quality...`);
+            }
+            
+            const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+            const imageOnlyResult = await generateImageOnlyRender({
+              roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
+              products: fullSelectedProducts, // Full product objects from database for image extraction
+              roomType: quiz.roomType,
+              stylePreference: quiz.styles?.[0] || 'modern',
+              floorPlanAnalysis, // Pass floor plan analysis for detailed space preservation
+              placementInstructions // Pass zone-based placement instructions for better space preservation
+            });
+            
+            if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
+              console.error(`❌ Attempt ${attempt} failed: ${imageOnlyResult.error || 'Image-only generation failed'}`);
+              if (attempt === MAX_ATTEMPTS) {
+                throw new Error(imageOnlyResult.error || 'Image-only generation failed after all retries');
+              }
+              continue; // Try again
+            }
+            
+            console.log(`✅ Attempt ${attempt}: AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images`);
+            
+            // Quick QA validation to check quality
+            const attemptImageDataUrl = imageOnlyResult.imageBase64;
+            const base64Match = attemptImageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+            
+            if (!base64Match) {
+              console.error(`❌ Attempt ${attempt}: Invalid image format`);
+              continue;
+            }
+            
+            const mimeType = base64Match[1];
+            const base64Data = base64Match[2];
+            
+            // Run QA validation on this attempt
+            try {
+              const { validateRenderQuality, shouldRegenerateRender } = await import('./services/render-qa');
+              
+              const productsForValidation = fullSelectedProducts.map(p => {
+                const dims = p.dimensions as any || {};
+                return {
+                  sku: p.sku,
+                  name: p.name,
+                  visualDescription: p.visualDescription || undefined,
+                  dimensions: {
+                    width: dims.w,
+                    depth: dims.d,
+                    height: dims.h,
+                    unit: dims.unit || 'in'
+                  },
+                  placement: placementInstructions || undefined
+                };
+              });
+              
+              const renderPrompt = floorPlanAnalysis 
+                ? `Image-to-image render preserving space: ${floorPlanAnalysis.overallDescription}`
+                : `Image-only render with ${selectedProducts.length} products`;
+              
+              const qaResults = await validateRenderQuality(
+                base64Data,
+                mimeType,
+                productsForValidation,
+                renderPrompt
+              );
+              
+              console.log(`📊 Attempt ${attempt} QA: Score ${qaResults.overallScore}/100, Dimension ${qaResults.dimensionAccuracy}/100`);
+              
+              // Track best attempt
+              if (!bestAttempt || qaResults.overallScore > bestAttempt.score) {
+                bestAttempt = {
+                  imageDataUrl: attemptImageDataUrl,
+                  qaResults,
+                  score: qaResults.overallScore
+                };
+              }
+              
+              // Check if quality is acceptable
+              const needsRegeneration = shouldRegenerateRender(qaResults);
+              
+              if (!needsRegeneration) {
+                console.log(`✅ QUALITY CHECK PASSED on attempt ${attempt} - Render meets all strict thresholds`);
+                imageDataUrl = attemptImageDataUrl;
+                finalQaResults = qaResults;
+                break; // Success! Use this render
+              } else {
+                console.warn(`⚠️  QUALITY CHECK FAILED on attempt ${attempt}`);
+                if (attempt < MAX_ATTEMPTS) {
+                  console.warn(`   Will retry... (${MAX_ATTEMPTS - attempt} attempts remaining)`);
+                } else {
+                  console.warn(`   ⚠️  MAX ATTEMPTS REACHED - ALL RENDERS FAILED STRICT QA THRESHOLDS`);
+                  console.warn(`   Using best available attempt (score: ${bestAttempt.score})`);
+                  console.warn(`   NOTE: This render does NOT meet strict quality standards`);
+                  imageDataUrl = bestAttempt.imageDataUrl;
+                  finalQaResults = bestAttempt.qaResults;
+                  
+                  // Add critical issue to QA results
+                  if (finalQaResults && finalQaResults.issues) {
+                    finalQaResults.issues.push({
+                      severity: 'critical',
+                      category: 'appearance',
+                      description: `Render failed to meet strict thresholds after ${MAX_ATTEMPTS} attempts. Best score: ${bestAttempt.score}/${QA_THRESHOLDS.MIN_OVERALL_SCORE}`,
+                      affectedProduct: 'All products',
+                    });
+                  }
+                }
+              }
+            } catch (qaError) {
+              console.error(`❌ Attempt ${attempt} QA validation failed:`, qaError);
+              // Continue without QA for this attempt
+              if (attempt === MAX_ATTEMPTS && !bestAttempt) {
+                imageDataUrl = attemptImageDataUrl;
+              }
+            }
           }
           
-          console.log(`✅ AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images (image-only mode)`);
-          const imageDataUrl = imageOnlyResult.imageBase64;
+          if (!imageDataUrl) {
+            throw new Error('Failed to generate render after all attempts');
+          }
           
-          // Extract base64 data and MIME type from data URL (format: data:image/png;base64,...)
+          console.log(`\n🎨 Final render selected after ${MAX_ATTEMPTS} attempt(s)`);
+          
+          // Use finalQaResults from the loop (already validated)
+          const qaResults = finalQaResults;
+          
+          // Determine quality status for render
+          let qualityStatus: 'passed' | 'warning' | 'unknown' = 'unknown';
+          if (qaResults) {
+            const { shouldRegenerateRender } = await import('./services/render-qa');
+            const meetsThresholds = !shouldRegenerateRender(qaResults);
+            
+            if (meetsThresholds) {
+              qualityStatus = 'passed';
+              console.log(`✅ QUALITY STATUS: PASSED - Render meets ALL strict thresholds`);
+            } else {
+              qualityStatus = 'warning';
+              console.warn(`⚠️⚠️⚠️  QUALITY STATUS: WARNING - BELOW STRICT THRESHOLDS  ⚠️⚠️⚠️`);
+              console.warn(`   This render is delivered but does NOT meet strict quality standards`);
+              console.warn(`   Overall Score: ${qaResults.overallScore}/${QA_THRESHOLDS.MIN_OVERALL_SCORE}`);
+              console.warn(`   ❗ RECOMMEND MANUAL REVIEW before showing to customers`);
+              console.warn(`   QA Results will include detailed failure information`);
+            }
+          } else {
+            console.warn(`⚠️  QUALITY STATUS: UNKNOWN - No QA results available`);
+          }
+          
+          // Extract base64 data and MIME type from final selected render
           const base64Match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
           if (!base64Match) {
             throw new Error("Invalid image data format");
@@ -1881,106 +2019,33 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // ENABLE FULL QA VALIDATION: Comprehensive quality control using Gemini Vision
-          // Analyzes product appearance, scale, placement, and space image fidelity
-          console.log(`🔍 Running comprehensive QA validation on render...`);
-          
+          // Extract visible products from QA results (already validated in loop)
           let productsForShopTheLook: string[] = [];
-          let qaResults = null;
           
-          try {
-            // Import the full QA validation system
-            const { validateRenderQuality } = await import('./services/render-qa');
-            
-            // Prepare products with visual descriptions and dimensions for validation
-            const productsForValidation = fullSelectedProducts.map(p => {
-              const dims = p.dimensions as any || {};
-              return {
-                sku: p.sku,
-                name: p.name,
-                visualDescription: p.visualDescription || undefined,
-                dimensions: {
-                  width: dims.w,
-                  depth: dims.d,
-                  height: dims.h,
-                  unit: dims.unit || 'in'
-                },
-                placement: placementInstructions || undefined
-              };
-            });
-            
-            // Run full QA validation
-            const renderPrompt = floorPlanAnalysis 
-              ? `Image-to-image render preserving space: ${floorPlanAnalysis.overallDescription}`
-              : `Image-only render with ${selectedProducts.length} products`;
-            
-            qaResults = await validateRenderQuality(
-              base64Data, // Raw base64 without data URI prefix
-              mimeType,
-              productsForValidation,
-              renderPrompt
-            );
-            
-            console.log(`📊 QA Validation Complete:`);
-            console.log(`   Overall Score: ${qaResults.overallScore}/100`);
-            console.log(`   Dimension Accuracy: ${qaResults.dimensionAccuracy}/100`);
-            console.log(`   Issues Found: ${qaResults.issues.length}`);
-            
-            // Check if render meets STRICT quality thresholds
-            const { shouldRegenerateRender, QA_THRESHOLDS } = await import('./services/render-qa');
-            const needsRegeneration = shouldRegenerateRender(qaResults);
-            
-            if (needsRegeneration) {
-              console.warn('⚠️  QUALITY CHECK FAILED - Render does not meet strict thresholds');
-              console.warn(`   Thresholds: Appearance≥${QA_THRESHOLDS.MIN_APPEARANCE_SCORE}, Scale≥${QA_THRESHOLDS.MIN_SCALE_SCORE}, Overall≥${QA_THRESHOLDS.MIN_OVERALL_SCORE}`);
-              console.warn(`   🔄 Auto-regeneration loop (max ${QA_THRESHOLDS.MAX_REGENERATION_ATTEMPTS} retries) will be implemented in next iteration`);
-            } else {
-              console.log('✅ QUALITY CHECK PASSED - Render meets all strict thresholds');
-            }
-            
+          if (qaResults && qaResults.productChecks) {
             // Extract visible products from QA results (products that were found)
             const visibleProducts = Object.entries(qaResults.productChecks)
-              .filter(([_, check]) => check.found)
+              .filter(([_, check]: [string, any]) => check.found)
               .map(([sku, _]) => sku);
             
             if (visibleProducts.length > 0) {
               productsForShopTheLook = visibleProducts;
-              console.log(`✅ QA Detected: ${visibleProducts.length}/${selectedProducts.length} products visible in render`);
+              console.log(`✅ Final QA: ${visibleProducts.length}/${selectedProducts.length} products visible in render`);
               
               // Log which products are missing from render
               const missingProducts = fullSelectedProducts.filter(p => !visibleProducts.includes(p.sku));
               if (missingProducts.length > 0) {
                 console.log(`⚠️  Missing from render: ${missingProducts.map(p => p.name).join(', ')}`);
               }
-              
-              // Log quality issues
-              if (qaResults.issues.length > 0) {
-                console.log(`⚠️  Quality Issues:`);
-                qaResults.issues.forEach(issue => {
-                  console.log(`   [${issue.severity.toUpperCase()}] ${issue.category}: ${issue.description}`);
-                });
-              }
             } else {
               // Fallback: show all selected products if no products detected
               productsForShopTheLook = selectedProducts.map(p => p.sku);
               console.log(`⚠️  QA detected no products, showing all ${productsForShopTheLook.length} selected products as fallback`);
             }
-          } catch (error) {
-            console.error(`❌ QA validation error:`, error);
-            // Fallback: Use simple visibility detection
-            try {
-              console.log('🔄 Falling back to simple visibility detection...');
-              const visibleSkus = await detectVisibleProducts(imageDataUrl, fullSelectedProducts);
-              if (visibleSkus && visibleSkus.length > 0) {
-                productsForShopTheLook = visibleSkus;
-                console.log(`✅ Fallback Detection: ${visibleSkus.length}/${selectedProducts.length} products visible`);
-              } else {
-                productsForShopTheLook = selectedProducts.map(p => p.sku);
-              }
-            } catch (fallbackError) {
-              console.error(`❌ Fallback detection also failed:`, fallbackError);
-              productsForShopTheLook = selectedProducts.map(p => p.sku);
-            }
+          } else {
+            // No QA results (all attempts failed QA) - use all selected products
+            productsForShopTheLook = selectedProducts.map(p => p.sku);
+            console.log(`⚠️  No QA results available, showing all ${productsForShopTheLook.length} selected products`);
           }
           
           console.log(`🛍️ Shop the Look: ${productsForShopTheLook.length} visible products`);
@@ -1993,7 +2058,9 @@ export function registerCuralinaRoutes(app: Express) {
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
             productSkus: productsForShopTheLook,
-            productMetadata: {}, // Empty metadata for image-only mode
+            productMetadata: {
+              qualityStatus, // Track if render met strict QA thresholds
+            },
             qaResults,
             prompt,
             status: 'completed',
