@@ -577,10 +577,34 @@ export default function Results() {
                 if (render && quizResponse) {
                   // Get room image from quiz response floorplan
                   const roomImageUrl = quizResponse.floorplanUrl || "";
+                  
+                  // Get product SKUs from render.productSkus OR from renderProducts
+                  const productSkus = render.productSkus && render.productSkus.length > 0 
+                    ? render.productSkus 
+                    : (renderProducts || []).map(p => p.sku);
+                  
+                  console.log("Saving comparison data to localStorage:", {
+                    roomImageUrl,
+                    productSkus,
+                    renderProductSkus: render.productSkus,
+                    renderProducts: renderProducts?.length,
+                    roomType: quizResponse.roomType,
+                    style: quizResponse.styles?.[0],
+                  });
+                  
                   localStorage.setItem("roomImageUrl", roomImageUrl);
-                  localStorage.setItem("selectedProductSkus", JSON.stringify(render.productSkus || []));
+                  localStorage.setItem("selectedProductSkus", JSON.stringify(productSkus));
                   localStorage.setItem("roomType", quizResponse.roomType || "");
                   localStorage.setItem("style", quizResponse.styles?.[0] || "modern");
+                  
+                  if (productSkus.length === 0) {
+                    toast({
+                      title: "No Products",
+                      description: "Please wait for products to load before comparing",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                 }
                 setLocation("/comparison");
               }}
