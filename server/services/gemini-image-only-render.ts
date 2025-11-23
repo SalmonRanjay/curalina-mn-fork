@@ -230,41 +230,16 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     console.log(`   Images: ${roomImage ? '1 room + ' : ''}${productImageParts.length} products`);
     
     // Step 5: Call Gemini with multimodal inputs
-    // Try to use thinking model (Gemini 2.0 Flash Thinking) like Google AI Studio "Nano Banana Pro"
-    // If not available, fall back to gemini-2.5-flash-image
-    let modelName = "gemini-2.0-flash-thinking-exp-1219";
+    // Use gemini-2.5-flash-image (same as Google AI Studio "Nano Banana")
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
     
-    // Check if thinking model is available, otherwise use flash-image
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [{ role: "user", parts }],
-        config: {
-          responseModalities: [Modality.TEXT, Modality.IMAGE],
-        },
-      });
-      
-      console.log(`✅ Using thinking model: ${modelName}`);
-      return await processGeminiResponse(response, fetchedCount);
-    } catch (error: any) {
-      // If thinking model fails, fall back to flash-image
-      if (error?.message?.includes('not found') || error?.message?.includes('not supported')) {
-        console.warn(`⚠️ Thinking model ${modelName} not available, falling back to gemini-2.5-flash-image`);
-        modelName = "gemini-2.5-flash-image";
-        
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: [{ role: "user", parts }],
-          config: {
-            responseModalities: [Modality.TEXT, Modality.IMAGE],
-          },
-        });
-        
-        return await processGeminiResponse(response, fetchedCount);
-      } else {
-        throw error;
-      }
-    }
+    return await processGeminiResponse(response, fetchedCount);
   } catch (error) {
     console.error('❌ Image generation error:', error);
     return {
