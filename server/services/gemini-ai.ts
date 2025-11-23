@@ -1280,30 +1280,36 @@ function condenseVisualDescription(
 
 /**
  * Get the best available visual description for a product
- * Priority: Actual Front View → Synthesized Front View → Gemini → OpenAI → Complete Description → Legacy
+ * Priority: Regenerated Description (trained analyzer with word count validation) → Front View → Synthesized Front View → Gemini → OpenAI → Complete Description
  */
 function getBestVisualDescription(product: any): { description: string; source: string } {
-  // First priority: Actual front view from direct image analysis
+  // FIRST PRIORITY: Regenerated visual description from trained analyzer with word count validation (30-40 words)
+  // This is set by the regenerateAllVisualDescriptions endpoint and is the authoritative source
+  if (product.visualDescription && product.visualDescription.trim().length > 0) {
+    return { description: product.visualDescription, source: 'Regenerated Analysis' };
+  }
+  
+  // Second priority: Actual front view from direct image analysis
   if (product.visualDescriptionFrontView && product.visualDescriptionFrontView.trim().length > 0) {
     return { description: product.visualDescriptionFrontView, source: 'Front View' };
   }
   
-  // Second priority: Synthesized front view from multi-angle analysis
+  // Third priority: Synthesized front view from multi-angle analysis
   if (product.synthesizedFrontView && product.synthesizedFrontView.trim().length > 0) {
     return { description: product.synthesizedFrontView, source: 'Synthesized Front View' };
   }
   
-  // Third priority: Gemini Vision analysis
+  // Fourth priority: Gemini Vision analysis
   if (product.visualDescriptionGemini && product.visualDescriptionGemini.trim().length > 0) {
     return { description: product.visualDescriptionGemini, source: 'Gemini Vision' };
   }
   
-  // Fourth priority: OpenAI Vision analysis
+  // Fifth priority: OpenAI Vision analysis
   if (product.visualDescriptionOpenAI && product.visualDescriptionOpenAI.trim().length > 0) {
     return { description: product.visualDescriptionOpenAI, source: 'OpenAI Vision' };
   }
   
-  // Fifth priority: Complete product description from all angles
+  // Sixth priority: Complete product description from all angles
   if (product.completeProductDescription && product.completeProductDescription.trim().length > 0) {
     // Extract just the front view or overall section if available
     const lines = product.completeProductDescription.split('\n');
@@ -1316,11 +1322,6 @@ function getBestVisualDescription(product: any): { description: string; source: 
     if (firstParagraph) {
       return { description: firstParagraph, source: 'Multi-Angle Analysis' };
     }
-  }
-  
-  // Sixth priority: Legacy visual description
-  if (product.visualDescription && product.visualDescription.trim().length > 0) {
-    return { description: product.visualDescription, source: 'Legacy' };
   }
   
   return { description: '', source: 'None' };
