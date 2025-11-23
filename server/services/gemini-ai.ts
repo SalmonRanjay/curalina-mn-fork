@@ -1006,11 +1006,31 @@ function generateScaleConstraints(products: Array<{ name: string; dimensions?: a
 /**
  * Condense a long visual description into a short, generation-ready format
  * CRITICAL: Preserves color and material information with explicit labels to prevent AI drift
+ * Falls back to database fields (materials, colors) when visual description is incomplete
  * Format: COLOR: [exact color] | MATERIAL: [material] | SHAPE: [shape] | SIZE: [dimensions]
  * Target: 40-50 tokens max for precise AI control
  */
-function condenseVisualDescription(fullDescription: string, productName: string): string {
+function condenseVisualDescription(
+  fullDescription: string, 
+  productName: string,
+  product?: { materials?: string[]; colors?: string[]; dimensions?: any }
+): string {
   if (!fullDescription || fullDescription.trim().length === 0) {
+    // Use database fields as fallback when visual description is missing
+    const dbParts: string[] = [];
+    
+    if (product?.colors && product.colors.length > 0) {
+      dbParts.push(`COLOR: ${product.colors.join(', ')}`);
+    }
+    
+    if (product?.materials && product.materials.length > 0) {
+      dbParts.push(`MATERIAL: ${product.materials.join(', ')}`);
+    }
+    
+    if (dbParts.length > 0) {
+      return `${productName} | ${dbParts.join(' | ')} - match catalog exactly`;
+    }
+    
     return `${productName} - exact appearance from catalog`;
   }
   
@@ -1056,12 +1076,18 @@ function condenseVisualDescription(fullDescription: string, productName: string)
   // Build structured condensed description with explicit labels
   const parts: string[] = [];
   
+  // Use extracted color or fall back to database colors
   if (colorDescriptor) {
     parts.push(`COLOR: ${colorDescriptor}`);
+  } else if (product?.colors && product.colors.length > 0) {
+    parts.push(`COLOR: ${product.colors.join(', ')}`);
   }
   
+  // Use extracted material or fall back to database materials
   if (materialDescriptor) {
     parts.push(`MATERIAL: ${materialDescriptor}`);
+  } else if (product?.materials && product.materials.length > 0) {
+    parts.push(`MATERIAL: ${product.materials.join(', ')}`);
   }
   
   if (shapes.length > 0) {
@@ -1726,7 +1752,19 @@ function getRelativePosition(
  */
 export function buildPromptFromQuiz(
   quiz: QuizResponse, 
-  selectedProducts?: Array<{ sku: string; name: string; placement: string; reasoning: string; visualDescription?: string; visualDescriptionSource?: string; functionalCategory?: string; priority?: number }>,
+  selectedProducts?: Array<{ 
+    sku: string; 
+    name: string; 
+    placement: string; 
+    reasoning: string; 
+    visualDescription?: string; 
+    visualDescriptionSource?: string; 
+    functionalCategory?: string; 
+    priority?: number;
+    materials?: string[];
+    colors?: string[];
+    dimensions?: any;
+  }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>,
   placements?: PlacementInstruction[]
@@ -1875,9 +1913,18 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
       
       if (fullDescription && fullDescription !== "No visual description available - use product name and materials to approximate appearance") {
         // Condense the description for generation (40-50 tokens max)
-        const condensedDesc = condenseVisualDescription(fullDescription, product.name);
+        // Pass full product object to enable fallback to database materials/colors
+        const condensedDesc = condenseVisualDescription(fullDescription, product.name, product);
         console.log(`   📸 Using condensed ${source} description for: ${product.name}`);
         console.log(`   🔍 Condensed: "${condensedDesc}"`);
+        
+        // Log database fields being used if available
+        if (product.materials && product.materials.length > 0) {
+          console.log(`   🏗️ Materials from DB: ${product.materials.join(', ')}`);
+        }
+        if (product.colors && product.colors.length > 0) {
+          console.log(`   🎨 Colors from DB: ${product.colors.join(', ')}`);
+        }
         
         prompt += `   
    COPY THIS EXACTLY:
@@ -1887,11 +1934,35 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
    
 `;
       } else {
-        console.log(`   ⚠️ No visual description available for: ${product.name} - AI will approximate based on name and style`);
-        prompt += `   
+        // Use database fields if visual description is missing
+        const dbInfo: string[] = [];
+        
+        if (product.materials && product.materials.length > 0) {
+          dbInfo.push(`MATERIAL: ${product.materials.join(', ')}`);
+        }
+        if (product.colors && product.colors.length > 0) {
+          dbInfo.push(`COLOR: ${product.colors.join(', ')}`);
+        }
+        
+        if (dbInfo.length > 0) {
+          const dbDescription = `${product.name} | ${dbInfo.join(' | ')}`;
+          console.log(`   📦 Using database fields for: ${product.name}`);
+          console.log(`   🔍 DB Info: "${dbDescription}"`);
+          
+          prompt += `   
+   COPY THIS EXACTLY:
+   ${dbDescription}
+   
+   ⚠️ CRITICAL: Use the specified materials and colors exactly as listed.
+   
+`;
+        } else {
+          console.log(`   ⚠️ No visual description OR database fields available for: ${product.name} - AI will approximate based on name and style`);
+          prompt += `   
    VISUAL NOTE: No specific visual description available. Use product name and room style to determine appropriate appearance.
    
 `;
+        }
       }
       
       // Add dimension information if available
