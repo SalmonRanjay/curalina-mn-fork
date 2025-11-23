@@ -2086,13 +2086,18 @@ export function registerCuralinaRoutes(app: Express) {
         return res.status(404).json({ error: "Render not found" });
       }
 
+      // Deduplicate productSkus (remove duplicate SKUs from array)
+      const uniqueSkus = render.productSkus 
+        ? Array.from(new Set(render.productSkus))
+        : [];
+
       // Get all products from database
       const allProducts = await curalinaStorage.getAllProducts();
       
-      // Filter to only the products in this render's productSkus
-      const renderProducts = allProducts.filter(p => 
-        render.productSkus && render.productSkus.includes(p.sku)
-      );
+      // Filter to only the unique products in this render
+      const renderProducts = allProducts.filter(p => uniqueSkus.includes(p.sku));
+
+      console.log(`[Shop the Look] Render ${req.params.renderId}: ${render.productSkus?.length || 0} total → ${uniqueSkus.length} unique products`);
 
       res.json(renderProducts);
     } catch (error) {

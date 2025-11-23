@@ -194,72 +194,13 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
-    // Step 3: Build prompt with floor plan preservation instructions
-    // Keep it simple but add key architectural details to preserve the space
+    // Step 3: Use the EXACT simple prompt that worked in AI Studio
+    // Complex instructions confuse the model - keep it minimal
     let prompt: string;
     
     if (roomImage) {
-      // Image-to-image mode: preserve the existing space structure
-      // Build architectural summary safely from all available fields
-      let architecturalSummary = '';
-      if (floorPlanAnalysis) {
-        const summaryParts: string[] = [];
-        
-        // Room dimensions
-        if (floorPlanAnalysis.roomDimensions) {
-          summaryParts.push(floorPlanAnalysis.roomDimensions);
-        }
-        
-        // Ceiling/roof design
-        if (floorPlanAnalysis.ceilingRoofDesign) {
-          summaryParts.push(floorPlanAnalysis.ceilingRoofDesign);
-        }
-        
-        // Windows (limit to first 2 to avoid bloat)
-        if (floorPlanAnalysis.windowLocations?.length > 0) {
-          const windowDesc = floorPlanAnalysis.windowLocations.slice(0, 2).join('. ');
-          summaryParts.push(windowDesc);
-        }
-        
-        // Doors (limit to first 2)
-        if (floorPlanAnalysis.doorLocations?.length > 0) {
-          const doorDesc = floorPlanAnalysis.doorLocations.slice(0, 2).join('. ');
-          summaryParts.push(doorDesc);
-        }
-        
-        // Built-in features (limit to first 2)
-        if (floorPlanAnalysis.builtInFeatures?.length > 0) {
-          const featureDesc = floorPlanAnalysis.builtInFeatures.slice(0, 2).join('. ');
-          summaryParts.push(featureDesc);
-        }
-        
-        // Layout notes (first 100 chars)
-        if (floorPlanAnalysis.layoutNotes) {
-          const layoutDesc = floorPlanAnalysis.layoutNotes.length > 100 
-            ? floorPlanAnalysis.layoutNotes.substring(0, 97) + '...'
-            : floorPlanAnalysis.layoutNotes;
-          summaryParts.push(layoutDesc);
-        }
-        
-        // Combine into concise summary (max 300 chars total)
-        const combined = summaryParts.join('. ');
-        architecturalSummary = combined.length > 300 
-          ? combined.substring(0, combined.lastIndexOf('.', 300)) + '.'
-          : combined;
-      }
-      
-      // Fallback if no analysis available
-      const features = architecturalSummary || 'existing ceiling, windows, doors, and architectural details';
-      
-      prompt = `This is my space image. Please furnish it with the Furniture and product images I provide.
-
-CRITICAL INSTRUCTIONS - Space Preservation:
-- PRESERVE the exact room architecture, walls, and layout from the space image
-- MAINTAIN: ${features}
-- KEEP the original flooring pattern and material visible
-- DO NOT change wall colors, ceiling, or architectural elements
-- ONLY add the furniture products I provide - nothing else
-- Place products naturally in the space while keeping all room features intact`;
+      // Image-to-image mode: use the exact prompt from AI Studio that worked perfectly
+      prompt = `This is my space image. Please furnish it with the Furniture and product images I provide`;
     } else {
       // Text-to-image mode: create a new room scene
       prompt = `Please create a beautifully designed ${roomType || 'interior'} space in ${stylePreference || 'modern'} style with the Furniture and products images I provide`;
