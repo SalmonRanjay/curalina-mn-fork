@@ -1,0 +1,30 @@
+CREATE TABLE "comparison_renders" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"quiz_response_id" varchar,
+	"session_id" varchar NOT NULL,
+	"gemini_image_url" text,
+	"gemini_generation_time" integer,
+	"gemini_qa_score" integer,
+	"gemini_product_count" integer,
+	"gemini_status" varchar(20) DEFAULT 'pending',
+	"gemini_error" text,
+	"openai_image_url" text,
+	"openai_generation_time" integer,
+	"openai_qa_score" integer,
+	"openai_product_count" integer,
+	"openai_status" varchar(20) DEFAULT 'pending',
+	"openai_error" text,
+	"stability_image_url" text,
+	"stability_generation_time" integer,
+	"stability_qa_score" integer,
+	"stability_product_count" integer,
+	"stability_status" varchar(20) DEFAULT 'pending',
+	"stability_error" text,
+	"selected_service" varchar(20),
+	"selection_reason" text,
+	"product_skus" text[],
+	"prompt" text,
+	"created_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+ALTER TABLE "comparison_renders" ADD CONSTRAINT "comparison_renders_quiz_response_id_quiz_responses_id_fk" FOREIGN KEY ("quiz_response_id") REFERENCES "public"."quiz_responses"("id") ON DELETE no action ON UPDATE no action;

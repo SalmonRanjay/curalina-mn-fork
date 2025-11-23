@@ -224,3 +224,58 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
   id: true,
 });
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+
+// Comparison Renders - Side-by-side AI service comparison
+export const comparisonRenders = pgTable("comparison_renders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quizResponseId: varchar("quiz_response_id").references(() => quizResponses.id),
+  sessionId: varchar("session_id").notNull(),
+  
+  // Gemini render
+  geminiImageUrl: text("gemini_image_url"),
+  geminiGenerationTime: integer("gemini_generation_time"), // milliseconds
+  geminiQaScore: integer("gemini_qa_score"), // 0-100
+  geminiProductCount: integer("gemini_product_count"),
+  geminiStatus: varchar("gemini_status", { length: 20 }).default("pending"), // 'pending', 'success', 'failed'
+  geminiError: text("gemini_error"),
+  
+  // OpenAI render
+  openaiImageUrl: text("openai_image_url"),
+  openaiGenerationTime: integer("openai_generation_time"), // milliseconds
+  openaiQaScore: integer("openai_qa_score"), // 0-100
+  openaiProductCount: integer("openai_product_count"),
+  openaiStatus: varchar("openai_status", { length: 20 }).default("pending"),
+  openaiError: text("openai_error"),
+  
+  // Stability AI render
+  stabilityImageUrl: text("stability_image_url"),
+  stabilityGenerationTime: integer("stability_generation_time"), // milliseconds
+  stabilityQaScore: integer("stability_qa_score"), // 0-100
+  stabilityProductCount: integer("stability_product_count"),
+  stabilityStatus: varchar("stability_status", { length: 20 }).default("pending"),
+  stabilityError: text("stability_error"),
+  
+  // User selection
+  selectedService: varchar("selected_service", { length: 20 }), // 'gemini', 'openai', 'stability'
+  selectionReason: text("selection_reason"), // Why user chose this one
+  
+  // Shared metadata
+  productSkus: text("product_skus").array(), // Products requested
+  prompt: text("prompt"), // Original prompt
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const comparisonRenderRelations = relations(comparisonRenders, ({ one }) => ({
+  quizResponse: one(quizResponses, {
+    fields: [comparisonRenders.quizResponseId],
+    references: [quizResponses.id],
+  }),
+}));
+
+export type ComparisonRender = typeof comparisonRenders.$inferSelect;
+export const insertComparisonRenderSchema = createInsertSchema(comparisonRenders).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertComparisonRender = z.infer<typeof insertComparisonRenderSchema>;
