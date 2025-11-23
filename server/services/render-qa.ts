@@ -63,6 +63,7 @@ export async function validateRenderQuality(
   expectedProducts: Array<{
     sku: string;
     name: string;
+    colors?: string[]; // CRITICAL: Colors to distinguish variants with same name
     visualDescription?: string;
     dimensions?: any;
     placement?: string;
@@ -199,6 +200,7 @@ function buildValidationPrompt(
   expectedProducts: Array<{
     sku: string;
     name: string;
+    colors?: string[]; // CRITICAL: Colors to distinguish variants
     visualDescription?: string;
     dimensions?: any;
     placement?: string;
@@ -215,6 +217,12 @@ EXPECTED PRODUCTS (${expectedProducts.length} items):
 
   expectedProducts.forEach((product, index) => {
     prompt += `${index + 1}. ${product.name} (SKU: ${product.sku})\n`;
+    
+    // CRITICAL: Show color information to distinguish variants with same name
+    if (product.colors && product.colors.length > 0) {
+      const colorList = product.colors.join(', ');
+      prompt += `   ⚠️ EXPECTED COLOR: ${colorList} (MUST MATCH EXACTLY)\n`;
+    }
     
     if (product.visualDescription) {
       prompt += `   Visual Specs: ${product.visualDescription}\n`;
@@ -359,23 +367,85 @@ Provide your analysis as a JSON object with the following structure:
 }
 
 /**
+ * Extract color keywords from Gemini's notes (simple heuristic)
+ */
+function extractColorsFromNotes(notes: string): string[] {
+  const commonColors = [
+    'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown',
+    'black', 'white', 'gray', 'grey', 'beige', 'cream', 'tan', 'navy',
+    'charcoal', 'ivory', 'taupe', 'sage', 'teal', 'burgundy', 'olive'
+  ];
+  
+  const notesLower = notes.toLowerCase();
+  return commonColors.filter(color => notesLower.includes(color));
+}
+
+/**
  * Parse Gemini's JSON response into structured QA results
  */
 function parseJSONQAResponse(
   analysisText: string,
-  expectedProducts: Array<{ sku: string; name: string }>
+  expectedProducts: Array<{ sku: string; name: string; colors?: string[] }>
 ): QAResults {
   try {
     const parsed = JSON.parse(analysisText);
     
-    // Create lookup maps for case-insensitive matching
-    const skuToProduct = new Map<string, { sku: string; name: string }>();
-    const nameToProduct = new Map<string, { sku: string; name: string }>();
+    // Create lookup map for SKU-based matching (SKUs are unique)
+    const skuToProduct = new Map<string, { sku: string; name: string; colors?: string[] }>();
     
     expectedProducts.forEach(product => {
       skuToProduct.set(product.sku.toLowerCase(), product);
-      nameToProduct.set(product.name.toLowerCase(), product);
     });
+    
+    // Helper function to find best name match considering colors
+    // CRITICAL FIX: Handles multiple products with same name but different colors
+    const findProductByName = (
+      productName: string, 
+      productColors?: string[]
+    ): { sku: string; name: string; colors?: string[] } | undefined => {
+      const nameLower = productName.toLowerCase();
+      
+      // Find all products matching the name
+      const nameMatches = expectedProducts.filter(p => 
+        p.name.toLowerCase() === nameLower
+      );
+      
+      if (nameMatches.length === 0) return undefined;
+      
+      // If only one match, return it
+      if (nameMatches.length === 1) return nameMatches[0];
+      
+      // CRITICAL: Multiple products with same name (different color variants)
+      // Try to match by color if available
+      if (productColors && productColors.length > 0) {
+        console.warn(`⚠️  Multiple "${productName}" variants found - attempting color match`);
+        
+        // Try to find product with matching color
+        const colorMatch = nameMatches.find(p => {
+          if (!p.colors || p.colors.length === 0) return false;
+          
+          // Check if any colors overlap (case-insensitive)
+          return p.colors.some(pColor => 
+            productColors.some(checkColor => 
+              pColor.toLowerCase().includes(checkColor.toLowerCase()) ||
+              checkColor.toLowerCase().includes(pColor.toLowerCase())
+            )
+          );
+        });
+        
+        if (colorMatch) {
+          console.log(`  ✅ Matched by color: ${colorMatch.sku} (${colorMatch.colors?.join(', ')})`);
+          return colorMatch;
+        }
+        
+        console.warn(`  ⚠️  No color match found - using first variant: ${nameMatches[0].sku}`);
+      } else {
+        console.warn(`  ⚠️  No color info from Gemini - using first variant: ${nameMatches[0].sku}`);
+      }
+      
+      // Fallback: return first match (but log warning)
+      return nameMatches[0];
+    };
     
     // Convert product checks array to SKU-keyed object
     const productChecks: Record<string, any> = {};
@@ -385,18 +455,41 @@ function parseJSONQAResponse(
       console.log(`📋 Processing ${parsed.productChecks.length} product checks from Gemini...`);
       
       parsed.productChecks.forEach((check: any) => {
-        // Try to match by SKU (case-insensitive)
+        // STRICT: Prefer SKU-based matching (SKUs are unique and authoritative)
         let matchedProduct = skuToProduct.get(check.sku?.toLowerCase() || '');
+        let matchMethod: 'sku' | 'name' | 'none' = matchedProduct ? 'sku' : 'none';
         
-        // If no SKU match, try by product name (case-insensitive)
+        // FALLBACK: Try name-based matching ONLY if SKU match failed
+        // This is risky for same-name products with different colors
         if (!matchedProduct && check.productName) {
-          matchedProduct = nameToProduct.get(check.productName.toLowerCase());
+          console.warn(`⚠️  SKU match failed for "${check.productName}" (SKU: ${check.sku || 'not provided'})`);
+          console.warn(`   Attempting FALLBACK name-based matching (may be inaccurate for color variants)`);
+          
+          // Extract color info from check if available
+          const checkColors = check.notes ? 
+            extractColorsFromNotes(check.notes) : 
+            [];
+          
+          matchedProduct = findProductByName(check.productName, checkColors);
+          matchMethod = matchedProduct ? 'name' : 'none';
+          
+          if (matchedProduct) {
+            console.warn(`   🔶 MATCHED BY NAME: ${matchedProduct.name} (${matchedProduct.sku})`);
+            console.warn(`   ⚠️  WARNING: This may be the WRONG color variant if multiple exist!`);
+          }
         }
         
         if (matchedProduct) {
+          const isSkuMatch = matchMethod === 'sku';
           // STRICT: Default colorMatch to FALSE if missing (zero-tolerance)
           // Gemini MUST explicitly confirm color match = true
           const colorMatch = check.colorMatch === true;
+          
+          // Add notes about match method for debugging
+          let matchNotes = check.notes || '';
+          if (!isSkuMatch) {
+            matchNotes = `[WARN: Matched by NAME not SKU - may be wrong color variant] ` + matchNotes;
+          }
           
           productChecks[matchedProduct.sku] = {
             found: check.found || false,
@@ -405,12 +498,15 @@ function parseJSONQAResponse(
             scaleAccuracy: check.scaleAccuracy || 0,
             dimensionAccuracy: check.dimensionAccuracy || 0,
             placementCorrect: check.placementCorrect !== undefined ? check.placementCorrect : false,
-            notes: check.notes || '',
+            notes: matchNotes,
           };
           matchedCount++;
-          console.log(`  ✅ Matched: ${matchedProduct.name} (SKU: ${matchedProduct.sku}) - Found: ${check.found}, Color: ${colorMatch ? 'MATCH' : 'FAIL'}`);
+          
+          const matchIcon = isSkuMatch ? '✅' : '🔶';
+          const matchLabel = isSkuMatch ? 'SKU match' : 'NAME match (risky)';
+          console.log(`  ${matchIcon} [${matchLabel}] ${matchedProduct.name} (SKU: ${matchedProduct.sku}) - Found: ${check.found}, Color: ${colorMatch ? 'MATCH' : 'FAIL'}`);
         } else {
-          console.warn(`  ⚠️  Could not match product from Gemini: SKU=${check.sku}, Name=${check.productName}`);
+          console.warn(`  ❌ Could not match product from Gemini: SKU=${check.sku}, Name=${check.productName}`);
         }
       });
       

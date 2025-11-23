@@ -1886,6 +1886,7 @@ export function registerCuralinaRoutes(app: Express) {
                 return {
                   sku: p.sku,
                   name: p.name,
+                  colors: p.colors || [], // CRITICAL: Include colors to distinguish variants with same name
                   visualDescription: p.visualDescription || undefined,
                   dimensions: {
                     width: dims.w,

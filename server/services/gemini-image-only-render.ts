@@ -259,9 +259,22 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       });
     }
     
-    // Add each product image directly - NO TEXT DESCRIPTIONS
-    // Pure image-only mode: Gemini uses visual features from the images themselves
+    // Add each product image with CRITICAL metadata (SKU + color)
+    // This ensures Gemini uses the EXACT color variant specified
     for (let i = 0; i < productImageParts.length; i++) {
+      const productRef = productImageRefs[i];
+      const product = products.find(p => p.sku === productRef.sku);
+      
+      // CRITICAL: Add product metadata BEFORE each image to bind them together
+      // This tells Gemini which exact color variant to use
+      let productMeta = `Product ${i + 1}: ${productRef.productName} (SKU: ${productRef.sku})`;
+      
+      if (product && product.colors && product.colors.length > 0) {
+        const colorList = product.colors.join(', ');
+        productMeta += ` - ⚠️ REQUIRED COLOR: ${colorList}`;
+      }
+      
+      parts.push({ text: productMeta });
       parts.push(productImageParts[i]);
     }
     
