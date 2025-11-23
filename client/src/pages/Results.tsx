@@ -116,6 +116,18 @@ export default function Results() {
     enabled: !!render?.id,
   });
 
+  // Fetch quiz response for comparison data
+  const { data: quizResponse } = useQuery<QuizResponse>({
+    queryKey: ["/api/quiz-response", render?.quizResponseId],
+    queryFn: async () => {
+      if (!render?.quizResponseId) throw new Error("No quiz response ID");
+      const res = await fetch(`/api/quiz-response/${render.quizResponseId}`);
+      if (!res.ok) throw new Error("Failed to fetch quiz response");
+      return res.json();
+    },
+    enabled: !!render?.quizResponseId,
+  });
+
   // Fetch swapped product details when needed
   const swappedProductIds = Object.values(swappedProducts).filter(Boolean);
   const { data: swappedProductDetails } = useQuery<Product[]>({
@@ -560,7 +572,18 @@ export default function Results() {
             </Button>
             <Button
               variant="secondary"
-              onClick={() => setLocation("/comparison")}
+              onClick={() => {
+                // Save render data to localStorage for comparison page
+                if (render && quizResponse) {
+                  // Get room image from quiz response floorplan
+                  const roomImageUrl = quizResponse.floorplanUrl || "";
+                  localStorage.setItem("roomImageUrl", roomImageUrl);
+                  localStorage.setItem("selectedProductSkus", JSON.stringify(render.productSkus || []));
+                  localStorage.setItem("roomType", quizResponse.roomType || "");
+                  localStorage.setItem("style", quizResponse.styles?.[0] || "modern");
+                }
+                setLocation("/comparison");
+              }}
               data-testid="button-compare-ai"
             >
               <Sparkles className="w-4 h-4 mr-2" />
