@@ -25,7 +25,7 @@ import {
 import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
-import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "./services/gemini-ai";
+import { buildPromptFromQuiz, extractProductSkus } from "./services/gemini-ai";
 import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
 import type { PlacementInstruction } from "./services/room-composition-service";
 import { renameAllProductImages, previewImageRenames } from "./services/s3-image-renamer";
@@ -1940,18 +1940,12 @@ export function registerCuralinaRoutes(app: Express) {
           }
           
           const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
-          const imageOnlyResult = await generateImageOnlyRender(
-            floorplanUrl || '', // Room image URL (empty if text-to-image mode)
-            productsWithPlacement.map((p: any) => ({
-              sku: p.sku,
-              name: p.name,
-              images: p.images || []
-            })),
-            {
-              roomType: quiz.roomType,
-              style: quiz.styles?.[0] || 'modern'
-            }
-          );
+          const imageOnlyResult = await generateImageOnlyRender({
+            roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
+            products: productsWithPlacement, // Full product objects needed for image extraction
+            roomType: quiz.roomType,
+            stylePreference: quiz.styles?.[0] || 'modern'
+          });
           
           if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
             throw new Error(imageOnlyResult.error || 'Image-only generation failed');

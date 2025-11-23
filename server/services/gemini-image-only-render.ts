@@ -135,20 +135,24 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
   
   try {
     console.log(`\n🖼️ Starting IMAGE-ONLY render generation...`);
-    console.log(`📍 Room image: ${roomImageUrl}`);
+    console.log(`📍 Room image: ${roomImageUrl || '(none - text-to-image mode)'}`);
     console.log(`📦 Products to furnish: ${products.length}`);
     
-    // Step 1: Fetch room image
-    console.log(`📥 Fetching room image...`);
-    const roomImage = await fetchImageAsBase64(roomImageUrl);
-    if (!roomImage) {
-      return {
-        success: false,
-        error: 'Failed to fetch room image',
-        productsUsed: 0
-      };
+    // Step 1: Fetch room image (optional - skip if empty for text-to-image mode)
+    let roomImage: { data: string; mimeType: string } | null = null;
+    const hasRoomImage = roomImageUrl && roomImageUrl.trim().length > 0;
+    
+    if (hasRoomImage) {
+      console.log(`📥 Fetching room image...`);
+      roomImage = await fetchImageAsBase64(roomImageUrl);
+      if (!roomImage) {
+        console.warn(`⚠️ Failed to fetch room image, falling back to text-to-image mode`);
+      } else {
+        console.log(`✅ Room image loaded (${roomImage.mimeType})`);
+      }
+    } else {
+      console.log(`📝 Text-to-image mode (no room photo provided)`);
     }
-    console.log(`✅ Room image loaded (${roomImage.mimeType})`);
     
     // Step 2: Select and fetch product front view images
     const productImageRefs = selectProductFrontViewImages(products);
@@ -182,7 +186,15 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
     // Step 3: Build simple conversational prompt (mimics AI Studio approach)
-    let prompt = `This is my space image. Please furnish it with the furniture and product images I provide.`;
+    let prompt: string;
+    
+    if (roomImage) {
+      // Image-to-image mode: furnish the provided space
+      prompt = `This is my space image. Please furnish it with the furniture and product images I provide.`;
+    } else {
+      // Text-to-image mode: create a new room scene
+      prompt = `Please create a beautifully designed interior space using the furniture product images I provide.`;
+    }
     
     if (roomType) {
       prompt += `\n\nRoom Type: ${roomType}`;
@@ -196,21 +208,26 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     prompt += `(${fetchedCount} product images provided below)`;
     
     // Step 4: Build parts array for Gemini
-    // Order: text prompt + room image + product images
-    const parts: any[] = [
-      { text: prompt },
-      {
+    // Order: text prompt + [room image if available] + product images
+    const parts: any[] = [{ text: prompt }];
+    
+    // Add room image if available (image-to-image mode)
+    if (roomImage) {
+      parts.push({
         inlineData: {
           data: roomImage.data,
           mimeType: roomImage.mimeType
         }
-      },
-      ...productImageParts
-    ];
+      });
+    }
+    
+    // Add all product images
+    parts.push(...productImageParts);
     
     console.log(`🎨 Sending to Gemini 2.5 Flash (image-only mode)...`);
+    console.log(`   Mode: ${roomImage ? 'Image-to-image (room photo provided)' : 'Text-to-image (no room photo)'}`);
     console.log(`   Prompt: "${prompt.substring(0, 100)}..."`);
-    console.log(`   Images: 1 room + ${productImageParts.length} products`);
+    console.log(`   Images: ${roomImage ? '1 room + ' : ''}${productImageParts.length} products`);
     
     // Step 5: Call Gemini with multimodal inputs
     const response = await ai.models.generateContent({
