@@ -26,6 +26,7 @@ import {
   documentationSections,
   documentationComments,
   productFunctionalCategories,
+  comparisonRenders,
   type Category,
   type InsertCategory,
   type Supplier,
@@ -77,6 +78,8 @@ import {
   type InsertDocumentationSection,
   type DocumentationComment,
   type InsertDocumentationComment,
+  type ComparisonRender,
+  type InsertComparisonRender,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, isNull, isNotNull, or, sql } from "drizzle-orm";
@@ -122,6 +125,12 @@ export interface ICuralinaStorage {
   getRender(id: string): Promise<Render | undefined>;
   getLatestRenderBySession(sessionId: string): Promise<Render | undefined>;
   getRendersBySession(sessionId: string): Promise<Render[]>;
+  
+  // Comparison Render operations
+  createComparisonRender(comparison: InsertComparisonRender): Promise<ComparisonRender>;
+  getComparisonRender(id: string): Promise<ComparisonRender | undefined>;
+  updateComparisonRender(id: string, data: Partial<InsertComparisonRender>): Promise<ComparisonRender>;
+  getLatestComparisonRenderBySession(sessionId: string): Promise<ComparisonRender | undefined>;
   
   // Selection Ledger operations
   createSelectionLedger(ledger: InsertSelectionLedger): Promise<SelectionLedger>;
@@ -558,6 +567,36 @@ export class CuralinaStorage implements ICuralinaStorage {
       .from(renders)
       .where(eq(renders.sessionId, sessionId))
       .orderBy(desc(renders.createdAt));
+  }
+
+  // Comparison Render operations
+  async createComparisonRender(comparisonData: InsertComparisonRender): Promise<ComparisonRender> {
+    const [comparison] = await db.insert(comparisonRenders).values(comparisonData).returning();
+    return comparison;
+  }
+
+  async getComparisonRender(id: string): Promise<ComparisonRender | undefined> {
+    const [comparison] = await db.select().from(comparisonRenders).where(eq(comparisonRenders.id, id));
+    return comparison;
+  }
+
+  async updateComparisonRender(id: string, data: Partial<InsertComparisonRender>): Promise<ComparisonRender> {
+    const [comparison] = await db
+      .update(comparisonRenders)
+      .set(data)
+      .where(eq(comparisonRenders.id, id))
+      .returning();
+    return comparison;
+  }
+
+  async getLatestComparisonRenderBySession(sessionId: string): Promise<ComparisonRender | undefined> {
+    const [comparison] = await db
+      .select()
+      .from(comparisonRenders)
+      .where(eq(comparisonRenders.sessionId, sessionId))
+      .orderBy(desc(comparisonRenders.createdAt))
+      .limit(1);
+    return comparison;
   }
 
   // Selection Ledger operations

@@ -21,6 +21,7 @@ import {
   insertRenderEventSchema,
   insertDocumentationSectionSchema,
   insertDocumentationCommentSchema,
+  insertComparisonRenderSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
@@ -2352,6 +2353,274 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error creating image-only render:", error);
       res.status(500).json({ error: "Failed to create image-only render" });
+    }
+  });
+
+  // COMPARISON rendering endpoint - generates renders from all three AI services in parallel
+  app.post('/api/render/comparison', async (req, res) => {
+    try {
+      const { roomImageUrl, productSkus, quizResponseId, sessionId, roomType, style } = req.body;
+      
+      if (!roomImageUrl) {
+        return res.status(400).json({ error: "roomImageUrl is required" });
+      }
+      
+      if (!productSkus || productSkus.length === 0) {
+        return res.status(400).json({ error: "productSkus array is required" });
+      }
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: "sessionId is required" });
+      }
+      
+      console.log(`\n🔀 COMPARISON RENDER REQUEST`);
+      console.log(`   Room image: ${roomImageUrl}`);
+      console.log(`   Products: ${productSkus.length} SKUs`);
+      console.log(`   Services: Gemini, OpenAI, Stability AI`);
+      
+      // Fetch products by SKUs
+      const allProducts = await curalinaStorage.getAllProducts();
+      const selectedProducts = allProducts.filter(p => productSkus.includes(p.sku));
+      
+      if (selectedProducts.length === 0) {
+        return res.status(404).json({ error: "No matching products found for provided SKUs" });
+      }
+      
+      console.log(`✅ Found ${selectedProducts.length}/${productSkus.length} products`);
+      
+      // Create comparison record
+      const comparison = await curalinaStorage.createComparisonRender({
+        quizResponseId: quizResponseId || null,
+        sessionId,
+        productSkus,
+        prompt: `Comparison render: ${roomType || 'room'} in ${style || 'modern'} style`,
+        geminiStatus: 'pending',
+        openaiStatus: 'pending',
+        stabilityStatus: 'pending',
+      });
+      
+      console.log(`📊 Created comparison ${comparison.id}`);
+      
+      // Helper to upload image and return URL
+      const uploadImageToStorage = async (imageBase64: string, serviceName: string): Promise<string> => {
+        const base64Match = imageBase64.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!base64Match) {
+          throw new Error("Invalid image data format");
+        }
+        const mimeType = base64Match[1];
+        const base64Data = base64Match[2];
+        
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        const fileExtension = mimeType === 'image/jpeg' ? 'jpg' : 'png';
+        const imageName = `comparison-${comparison.id}-${serviceName}.${fileExtension}`;
+        
+        const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+        if (!publicPaths || publicPaths.length === 0) {
+          throw new Error("Object storage public paths not configured");
+        }
+        const publicDir = publicPaths[0];
+        const objectPath = `${publicDir}/renders/${imageName}`;
+        
+        const { bucketName, objectName } = parseObjectPath(objectPath);
+        const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        
+        await file.save(imageBuffer, {
+          metadata: { contentType: mimeType },
+        });
+        
+        return `/public-objects/renders/${imageName}`;
+      };
+      
+      // Start async parallel generation for all three services
+      (async () => {
+        const baseParams = {
+          roomImageUrl,
+          products: selectedProducts,
+          roomType,
+          stylePreference: style,
+        };
+        
+        // Gemini generation
+        (async () => {
+          const startTime = Date.now();
+          try {
+            const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+            const result = await generateImageOnlyRender(baseParams);
+            
+            if (!result.success || !result.imageBase64) {
+              throw new Error(result.error || 'Generation failed');
+            }
+            
+            const generationTime = Date.now() - startTime;
+            
+            // Try to upload, but handle storage errors gracefully
+            let imageUrl: string | null = null;
+            try {
+              imageUrl = await uploadImageToStorage(result.imageBase64, 'gemini');
+            } catch (uploadError) {
+              console.error("Gemini upload error:", uploadError);
+              throw new Error(`Image generation succeeded but upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown upload error'}`);
+            }
+            
+            await curalinaStorage.updateComparisonRender(comparison.id, {
+              geminiImageUrl: imageUrl,
+              geminiGenerationTime: generationTime,
+              geminiProductCount: result.productsUsed || 0,
+              geminiStatus: 'success',
+            });
+            
+            console.log(`✅ Gemini render completed in ${generationTime}ms`);
+          } catch (error) {
+            const generationTime = Date.now() - startTime;
+            console.error("Gemini generation error:", error);
+            await curalinaStorage.updateComparisonRender(comparison.id, {
+              geminiGenerationTime: generationTime,
+              geminiStatus: 'failed',
+              geminiError: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        })();
+        
+        // OpenAI generation
+        (async () => {
+          const startTime = Date.now();
+          try {
+            const { generateOpenAIRender } = await import('./services/openai-render');
+            // Map products to match OpenAI service interface (convert null to undefined)
+            const openaiParams = {
+              ...baseParams,
+              products: baseParams.products.map(p => ({
+                sku: p.sku,
+                name: p.name,
+                visualDescription: p.visualDescription || undefined,
+                colors: p.colors || undefined,
+                dimensions: p.dimensions,
+              }))
+            };
+            const result = await generateOpenAIRender(openaiParams);
+            
+            if (!result.success || !result.imageBase64) {
+              throw new Error(result.error || 'Generation failed');
+            }
+            
+            const generationTime = Date.now() - startTime;
+            
+            // Try to upload, but handle storage errors gracefully
+            let imageUrl: string | null = null;
+            try {
+              imageUrl = await uploadImageToStorage(result.imageBase64, 'openai');
+            } catch (uploadError) {
+              console.error("OpenAI upload error:", uploadError);
+              throw new Error(`Image generation succeeded but upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown upload error'}`);
+            }
+            
+            await curalinaStorage.updateComparisonRender(comparison.id, {
+              openaiImageUrl: imageUrl,
+              openaiGenerationTime: generationTime,
+              openaiProductCount: result.productsUsed || 0,
+              openaiStatus: 'success',
+            });
+            
+            console.log(`✅ OpenAI render completed in ${generationTime}ms`);
+          } catch (error) {
+            const generationTime = Date.now() - startTime;
+            console.error("OpenAI generation error:", error);
+            await curalinaStorage.updateComparisonRender(comparison.id, {
+              openaiGenerationTime: generationTime,
+              openaiStatus: 'failed',
+              openaiError: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        })();
+        
+        // Stability AI generation
+        (async () => {
+          const startTime = Date.now();
+          try {
+            const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+            const result = await generateImageOnlyRender(baseParams);
+            
+            if (!result.success || !result.imageBase64) {
+              throw new Error(result.error || 'Generation failed');
+            }
+            
+            const generationTime = Date.now() - startTime;
+            
+            // Try to upload, but handle storage errors gracefully
+            let imageUrl: string | null = null;
+            try {
+              imageUrl = await uploadImageToStorage(result.imageBase64, 'stability');
+            } catch (uploadError) {
+              console.error("Stability upload error:", uploadError);
+              throw new Error(`Image generation succeeded but upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown upload error'}`);
+            }
+            
+            await curalinaStorage.updateComparisonRender(comparison.id, {
+              stabilityImageUrl: imageUrl,
+              stabilityGenerationTime: generationTime,
+              stabilityProductCount: result.productsUsed || 0,
+              stabilityStatus: 'success',
+            });
+            
+            console.log(`✅ Stability AI render completed in ${generationTime}ms`);
+          } catch (error) {
+            const generationTime = Date.now() - startTime;
+            console.error("Stability AI generation error:", error);
+            await curalinaStorage.updateComparisonRender(comparison.id, {
+              stabilityGenerationTime: generationTime,
+              stabilityStatus: 'failed',
+              stabilityError: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        })();
+      })();
+      
+      // Return comparison immediately (generation happens async)
+      res.json(comparison);
+      
+    } catch (error) {
+      console.error("Error creating comparison render:", error);
+      res.status(500).json({ error: "Failed to create comparison render" });
+    }
+  });
+
+  app.get('/api/render/comparison/:id', async (req, res) => {
+    try {
+      const comparison = await curalinaStorage.getComparisonRender(req.params.id);
+      if (!comparison) {
+        return res.status(404).json({ error: "Comparison not found" });
+      }
+      res.json(comparison);
+    } catch (error) {
+      console.error("Error fetching comparison:", error);
+      res.status(500).json({ error: "Failed to fetch comparison" });
+    }
+  });
+
+  app.patch('/api/render/comparison/:id', async (req, res) => {
+    try {
+      const { selectedService, selectionReason } = req.body;
+      
+      if (!selectedService) {
+        return res.status(400).json({ error: "selectedService is required" });
+      }
+      
+      // Build update object with only the fields we want to change
+      const updateData: any = {
+        selectedService,
+      };
+      
+      if (selectionReason !== undefined) {
+        updateData.selectionReason = selectionReason;
+      }
+      
+      const comparison = await curalinaStorage.updateComparisonRender(req.params.id, updateData);
+      
+      res.json(comparison);
+    } catch (error) {
+      console.error("Error updating comparison:", error);
+      res.status(500).json({ error: "Failed to update comparison" });
     }
   });
 

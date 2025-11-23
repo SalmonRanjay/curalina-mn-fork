@@ -17,6 +17,7 @@ import Register from "@/pages/register";
 import Quiz from "@/pages/Quiz";
 import Loading from "@/pages/Loading";
 import Results from "@/pages/Results";
+import ComparisonRender from "@/pages/ComparisonRender";
 import Cart from "@/pages/Cart";
 import Styles from "@/pages/styles";
 import Pricing from "@/pages/pricing";
@@ -104,6 +105,7 @@ function Router() {
           <Route path="/quiz" component={Quiz} />
           <Route path="/loading" component={Loading} />
           <Route path="/results" component={Results} />
+          <Route path="/comparison" component={ComparisonRender} />
           <Route path="/cart" component={Cart} />
           <Route component={isLoading ? Landing : NotFound} />
         </Switch>
@@ -165,6 +167,7 @@ function Router() {
             <Route path="/quiz" component={Quiz} />
             <Route path="/loading" component={Loading} />
             <Route path="/results" component={Results} />
+            <Route path="/comparison" component={ComparisonRender} />
             <Route path="/cart" component={Cart} />
             <Route path="/portal" component={PortalDashboard} />
             <Route path="/portal/settings" component={PortalSettings} />
@@ -199,6 +202,7 @@ function Router() {
           <Route path="/quiz" component={Quiz} />
           <Route path="/loading" component={Loading} />
           <Route path="/results" component={Results} />
+          <Route path="/comparison" component={ComparisonRender} />
           <Route path="/cart" component={Cart} />
           <Route path="/portal" component={PortalDashboard} />
           <Route path="/portal/settings" component={PortalSettings} />
