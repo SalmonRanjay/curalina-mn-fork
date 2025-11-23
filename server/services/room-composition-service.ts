@@ -354,8 +354,18 @@ function detectFunctionalCategory(product: Product): string[] {
     categories.add('primary_seating');
   }
   
-  // Bed detection
-  if (text.includes('bed') && !text.includes('bedside') && !text.includes('bedroom')) {
+  // Bed detection - STRICT: Only match actual beds, not trunks/benches/storage
+  // Check product NAME only (not description) to avoid false positives
+  const isBed = productName.includes(' bed') || 
+                productName.startsWith('bed ') || 
+                productName.endsWith(' bed') ||
+                productName === 'bed';
+  const isNotBed = productName.includes('bedside') || 
+                   productName.includes('bedroom') ||
+                   productName.includes('trunk') ||
+                   productName.includes('bench');
+  
+  if (isBed && !isNotBed) {
     categories.add('bed');
   }
   
