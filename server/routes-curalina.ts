@@ -1732,11 +1732,37 @@ export function registerCuralinaRoutes(app: Express) {
             const filteredProducts = filterProductsByQuiz(allProducts, quiz);
             console.log(`Filtered to ${filteredProducts.length} matching products`);
             
-            if (filteredProducts.length > 0) {
+            // Apply spatial validation to filter out products that won't fit
+            let spatiallyFittingProducts = filteredProducts;
+            if (quiz.parsedRoomData && typeof quiz.parsedRoomData === 'object' && Object.keys(quiz.parsedRoomData).length > 0) {
+              console.log(`📏 Applying spatial validation with room dimensions...`);
+              const { filterFittingProducts } = await import('./services/spatial-fit-validator');
+              
+              const validationResult = await filterFittingProducts(filteredProducts, quiz.parsedRoomData as any);
+              spatiallyFittingProducts = validationResult.fitting;
+              
+              if (validationResult.blocked.length > 0) {
+                console.log(`🚫 Blocked ${validationResult.blocked.length} products that won't fit:`);
+                validationResult.blocked.forEach(({ product, reason }) => {
+                  console.log(`   - ${product.name}: ${reason}`);
+                });
+              }
+              
+              if (validationResult.warnings.length > 0) {
+                console.log(`⚠️  ${validationResult.warnings.length} products have tight fit warnings (will include but flag):`);
+                validationResult.warnings.forEach(({ product, messages }) => {
+                  console.log(`   - ${product.name}: ${messages.join('; ')}`);
+                });
+              }
+              
+              console.log(`✅ ${spatiallyFittingProducts.length} products pass spatial validation`);
+            }
+            
+            if (spatiallyFittingProducts.length > 0) {
               const { selectProductsWithComposition } = await import('./services/room-composition-service');
               const compositionResult = await selectProductsWithComposition(
                 quiz.roomType,
-                filteredProducts,
+                spatiallyFittingProducts,
                 quiz,
                 15 // max products
               );

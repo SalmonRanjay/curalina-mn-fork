@@ -4,12 +4,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle, AlertTriangle } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { getOrCreateSessionId } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
 import { useQuiz } from "@/contexts/QuizContext";
 import Dropzone from "react-dropzone";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import colorPalette from "@assets/image001_1762335467188.png";
 import RoomTypeStep from "@/components/quiz/RoomTypeStep";
 
@@ -144,6 +151,8 @@ export default function Quiz() {
   const [expandedStyles, setExpandedStyles] = useState<string[]>([]);
   const [uploadingVibe, setUploadingVibe] = useState(false);
   const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
+  const [showDimensionConfirmation, setShowDimensionConfirmation] = useState(false);
+  const [parsedDimensions, setParsedDimensions] = useState<any>(null);
 
   const submitQuizMutation = useMutation({
     mutationFn: async (data: typeof quizData) => {
@@ -162,6 +171,7 @@ export default function Quiz() {
         preferences: data.preferences ? [data.preferences] : [], // Convert string to array
         roomPhoto: data.roomPhoto || null,
         floorplanUrl: data.floorplanUrl || null,
+        roomDescription: data.roomDescription || null,
       };
 
       // Step 1: Submit quiz
@@ -197,8 +207,15 @@ export default function Quiz() {
       
       return quiz;
     },
-    onSuccess: () => {
-      setLocation("/loading");
+    onSuccess: (quiz) => {
+      // If room dimensions were parsed, show confirmation dialog
+      if (quiz.parsedRoomData && typeof quiz.parsedRoomData === 'object' && Object.keys(quiz.parsedRoomData).length > 0) {
+        setParsedDimensions(quiz.parsedRoomData);
+        setShowDimensionConfirmation(true);
+      } else {
+        // No dimensions to confirm, proceed directly
+        setLocation("/loading");
+      }
     },
     onError: (error: any) => {
       toast({
@@ -978,6 +995,122 @@ export default function Quiz() {
           </Button>
         </div>
       </div>
+
+      {/* Room Dimensions Confirmation Dialog */}
+      <Dialog open={showDimensionConfirmation} onOpenChange={setShowDimensionConfirmation}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-dimension-confirmation">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-accent" />
+              We understood your room
+            </DialogTitle>
+            <DialogDescription>
+              Based on your description, here's what we understood about your space:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Room Dimensions */}
+            {parsedDimensions?.dimensions && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-foreground">Room Dimensions</h4>
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  {parsedDimensions.dimensions.width && parsedDimensions.dimensions.depth ? (
+                    <p>
+                      {parsedDimensions.dimensions.width}' × {parsedDimensions.dimensions.depth}' 
+                      {parsedDimensions.dimensions.height && ` with ${parsedDimensions.dimensions.height}' height`}
+                    </p>
+                  ) : (
+                    <p>Dimensions partially detected</p>
+                  )}
+                  {parsedDimensions.dimensions.confidence < 80 && (
+                    <div className="flex items-center gap-1 mt-2 text-amber-600 dark:text-amber-500">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span className="text-xs">Low confidence ({parsedDimensions.dimensions.confidence}%)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Doorway */}
+            {parsedDimensions?.doorway && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-foreground">Doorway</h4>
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  <p>
+                    {parsedDimensions.doorway.width}" wide
+                    {parsedDimensions.doorway.height && ` × ${parsedDimensions.doorway.height}" tall`}
+                  </p>
+                  {parsedDimensions.doorway.confidence < 80 && (
+                    <div className="flex items-center gap-1 mt-2 text-amber-600 dark:text-amber-500">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span className="text-xs">Low confidence ({parsedDimensions.doorway.confidence}%)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Ceiling Height */}
+            {parsedDimensions?.ceilingHeight && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-foreground">Ceiling Height</h4>
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  <p>{parsedDimensions.ceilingHeight.height}' high</p>
+                  {parsedDimensions.ceilingHeight.confidence < 80 && (
+                    <div className="flex items-center gap-1 mt-2 text-amber-600 dark:text-amber-500">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span className="text-xs">Low confidence ({parsedDimensions.ceilingHeight.confidence}%)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Warnings */}
+            {parsedDimensions?.warnings && parsedDimensions.warnings.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                  Notes
+                </h4>
+                <ul className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md space-y-1">
+                  {parsedDimensions.warnings.map((warning: string, idx: number) => (
+                    <li key={idx}>• {warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDimensionConfirmation(false);
+                setParsedDimensions(null);
+                // Don't navigate, let user edit the description
+              }}
+              className="flex-1"
+              data-testid="button-edit-dimensions"
+            >
+              Edit Description
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDimensionConfirmation(false);
+                setParsedDimensions(null);
+                setLocation("/loading");
+              }}
+              className="flex-1"
+              data-testid="button-confirm-dimensions"
+            >
+              Looks Good!
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

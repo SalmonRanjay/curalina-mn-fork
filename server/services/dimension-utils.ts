@@ -385,3 +385,24 @@ export function hasAdequateDimensionData(product: Partial<Product> | { dimension
   // At minimum, should have overall width, depth, and height
   return !!(normalized.width && normalized.depth && normalized.height);
 }
+
+/**
+ * Extract basic product dimensions (w, d, h) for spatial validation
+ * Returns dimensions with unit or null if not available
+ */
+export function normalizeProductDimensions(product: Product): { w: number; d: number; h: number; unit: string } | null {
+  const normalized = normalizeDimensions(product);
+  if (!normalized) return null;
+  
+  // Must have at least width, depth, and height for spatial validation
+  if (!normalized.width || !normalized.depth || !normalized.height) {
+    return null;
+  }
+  
+  return {
+    w: normalized.width,
+    d: normalized.depth,
+    h: normalized.height,
+    unit: normalized.unit
+  };
+}
