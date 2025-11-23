@@ -95,7 +95,7 @@ export async function generateAccurateVisualDescription(
     while (retries <= MAX_RETRIES) {
       try {
         response = await genAI.models.generateContent({
-          model: "gemini-3.0-flash",
+          model: "gemini-2.5-flash",
           contents: [{
             role: "user",
             parts: [
