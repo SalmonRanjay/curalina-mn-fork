@@ -195,14 +195,43 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
-    // Step 3: Use the EXACT simple prompt that worked perfectly in AI Studio
-    // For space images: Keep it minimal - let the AI preserve the space visually
+    // Step 3: Build prompt with architectural context from floor plan analysis
+    // The floor plan analysis provides hard constraints (windows, doors, dimensions) that prevent
+    // the AI from redrawing walls/windows and ensures space preservation
     let prompt: string;
     
     if (roomImage) {
-      // Image-to-image mode: use the exact prompt from AI Studio that preserved space perfectly
-      // DO NOT add placement instructions - they confuse the AI and break space preservation
+      // Image-to-image mode: start with simple base prompt
       prompt = `This is my space image. Please furnish it with the Furniture and product images I provide`;
+      
+      // CRITICAL: Add architectural context from Vision analysis to preserve space features
+      // Without this, Gemini redraws walls/windows instead of preserving them
+      if (floorPlanAnalysis) {
+        prompt += `\n\n📐 ARCHITECTURAL CONTEXT (Preserve these features):`;
+        prompt += `\nRoom Dimensions: ${floorPlanAnalysis.roomDimensions}`;
+        
+        if (floorPlanAnalysis.windowLocations && floorPlanAnalysis.windowLocations.length > 0) {
+          prompt += `\nWindows: ${floorPlanAnalysis.windowLocations.join(', ')}`;
+        }
+        
+        if (floorPlanAnalysis.doorLocations && floorPlanAnalysis.doorLocations.length > 0) {
+          prompt += `\nDoors/Openings: ${floorPlanAnalysis.doorLocations.join(', ')}`;
+        }
+        
+        if (floorPlanAnalysis.builtInFeatures && floorPlanAnalysis.builtInFeatures.length > 0) {
+          prompt += `\nBuilt-in Features: ${floorPlanAnalysis.builtInFeatures.join(', ')}`;
+        }
+        
+        if (floorPlanAnalysis.ceilingRoofDesign) {
+          prompt += `\nCeiling: ${floorPlanAnalysis.ceilingRoofDesign}`;
+        }
+        
+        if (floorPlanAnalysis.layoutNotes) {
+          prompt += `\nLayout Notes: ${floorPlanAnalysis.layoutNotes}`;
+        }
+        
+        prompt += `\n\nIMPORTANT: Preserve the exact room architecture shown in the space image. Do not redraw walls, windows, doors, or ceiling features.`;
+      }
     } else {
       // Text-to-image mode: create a new room scene
       prompt = `Please create a beautifully designed ${roomType || 'interior'} space in ${stylePreference || 'modern'} style with the Furniture and products images I provide`;

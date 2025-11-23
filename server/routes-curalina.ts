@@ -1819,13 +1819,12 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // SPACE IMAGE PRESERVATION: When user provides a space image, use pure image-only mode
-          // Text-based placement instructions interfere with visual preservation
-          // The AI can SEE the space and preserve it better without conflicting text instructions
+          // SPACE IMAGE PRESERVATION MODE
+          // Floor plan analysis provides architectural context (windows, doors, dimensions)
+          // This ensures the AI preserves the space structure instead of redrawing it
           if (floorplanUrl) {
-            console.log(`🖼️  SPACE IMAGE MODE: Pure visual preservation (no text placement instructions)`);
-            console.log(`   Room photo + ${selectedProducts.length} product images → Gemini`);
-            placementInstructions = undefined; // Clear any generated instructions for space image mode
+            console.log(`🖼️  SPACE IMAGE MODE: Room photo + architectural context + ${selectedProducts.length} products`);
+            console.log(`   Floor plan analyzed: ${floorPlanAnalysis ? 'YES' : 'NO'}`);
           } else {
             console.log(`🎨 TEXT-TO-IMAGE MODE: ${selectedProducts.length} product images (no room) → Gemini`);
           }
