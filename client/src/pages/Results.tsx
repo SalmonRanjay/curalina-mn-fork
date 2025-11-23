@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } from "@shared/schema";
@@ -507,7 +507,7 @@ export default function Results() {
                   // Build new product SKUs with swaps applied
                   const newProductSkus = (render.productSkus || []).map(sku => {
                     if (swappedProducts[sku]) {
-                      const swappedProduct = allProducts?.find(p => p.id === swappedProducts[sku]);
+                      const swappedProduct = renderProducts?.find((p: Product) => p.id === swappedProducts[sku]);
                       return swappedProduct?.sku || sku;
                     }
                     return sku;
@@ -550,13 +550,21 @@ export default function Results() {
             </div>
           )}
           
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 flex-wrap">
             <Button
               variant="outline"
               onClick={() => setLocation("/quiz")}
               data-testid="button-new-design"
             >
               Create New Design
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setLocation("/comparison")}
+              data-testid="button-compare-ai"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Compare AI Services
             </Button>
             <Button
               onClick={() => setLocation("/cart")}
@@ -604,8 +612,8 @@ export default function Results() {
                     className="overflow-hidden hover-elevate cursor-pointer"
                     onClick={() => {
                       // Swap the product by mapping original SKU to new product ID
-                      if (render && swapProductId && allProducts) {
-                        const currentProduct = allProducts.find(p => p.id === swapProductId);
+                      if (render && swapProductId && renderProducts) {
+                        const currentProduct = renderProducts.find((p: Product) => p.id === swapProductId);
                         
                         if (currentProduct) {
                           // Find the original SKU this product is replacing
