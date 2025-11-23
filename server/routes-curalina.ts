@@ -2112,15 +2112,22 @@ export function registerCuralinaRoutes(app: Express) {
             const fullProduct = allProducts.find(p => p.sku === sp.sku);
             if (!fullProduct) return sp;
             
-            // Include ALL product data for accurate AI generation (materials, colors, dimensions, visual description, images)
+            // Include ALL product data for accurate AI generation (materials, colors, dimensions, pricing, etc.)
             // Preserve existing images from selectedProducts (e.g., ledger overrides), fallback to fullProduct images
             return {
               ...sp,
               name: fullProduct.name,
               visualDescription: fullProduct.visualDescription || undefined,
+              // Product specifications (CRITICAL for accurate AI generation)
               materials: fullProduct.materials || undefined, // Critical for accurate material representation
               colors: fullProduct.colors || undefined, // Critical for accurate color representation
               dimensions: fullProduct.dimensions || undefined, // Critical for accurate scale and proportions
+              tradePrice: fullProduct.tradePrice || undefined, // Pricing context for quality/tier
+              price: fullProduct.price || undefined, // Retail pricing
+              seating: fullProduct.seating || undefined, // Seating capacity
+              weight: fullProduct.weight || undefined, // Weight information
+              shipping: fullProduct.shipping || undefined, // Delivery options/policy
+              tags: fullProduct.tags || undefined, // Additional product tags
               images: (sp as any).images || fullProduct.images || [], // Preserve ledger overrides, fallback to product images
             };
           });

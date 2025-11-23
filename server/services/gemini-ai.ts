@@ -1004,33 +1004,202 @@ function generateScaleConstraints(products: Array<{ name: string; dimensions?: a
 }
 
 /**
+ * Helper function to deeply serialize any value (object, array, primitive) to string
+ * Prevents [object Object] in prompts by recursively converting nested structures
+ * Uses JSON.stringify as fallback for very deep structures to guarantee no [object Object]
+ */
+function serializeValue(value: any, depth = 0): string {
+  if (value === null || value === undefined) return '';
+  
+  // Prevent infinite recursion - use JSON.stringify as safe fallback
+  if (depth > 5) {
+    try {
+      return JSON.stringify(value).replace(/[{}"]/g, '').replace(/,/g, ', ');
+    } catch {
+      return String(value);
+    }
+  }
+  
+  // Arrays: join elements
+  if (Array.isArray(value)) {
+    return value
+      .filter(v => v !== null && v !== undefined)
+      .map(v => serializeValue(v, depth + 1))
+      .filter(Boolean)
+      .join(', ');
+  }
+  
+  // Objects: serialize key-value pairs
+  if (typeof value === 'object') {
+    const entries = Object.entries(value)
+      .filter(([_, v]) => v !== null && v !== undefined)
+      .map(([k, v]) => `${k}: ${serializeValue(v, depth + 1)}`)
+      .filter(Boolean);
+    return entries.length > 0 ? entries.join('; ') : '';
+  }
+  
+  // Primitives: convert to string
+  return String(value).trim();
+}
+
+/**
+ * Build comprehensive product specifications from all available database fields
+ * Includes: materials, colors, dimensions, prices, seating, weight, shipping, tags
+ * These specifications supplement the visual description for accurate AI generation
+ */
+function buildProductSpecifications(product: any): string {
+  const specs: string[] = [];
+  
+  // Materials (critical for texture/appearance)
+  // Filter falsy values and deduplicate
+  if (product.materials && Array.isArray(product.materials)) {
+    const cleanMaterials = Array.from(new Set(product.materials.filter(Boolean)));
+    if (cleanMaterials.length > 0) {
+      specs.push(`MATERIALS: ${cleanMaterials.join(', ')}`);
+    }
+  }
+  
+  // Colors (critical for accurate color matching)
+  // Filter falsy values and deduplicate
+  if (product.colors && Array.isArray(product.colors)) {
+    const cleanColors = Array.from(new Set(product.colors.filter(Boolean)));
+    if (cleanColors.length > 0) {
+      specs.push(`COLORS: ${cleanColors.join(', ')}`);
+    }
+  }
+  
+  // Dimensions (all available dimension fields)
+  if (product.dimensions) {
+    const dims = product.dimensions;
+    const dimParts: string[] = [];
+    
+    if (dims.w) dimParts.push(`W: ${dims.w}${dims.unit || '"'}`);
+    if (dims.d) dimParts.push(`D: ${dims.d}${dims.unit || '"'}`);
+    if (dims.h) dimParts.push(`H: ${dims.h}${dims.unit || '"'}`);
+    
+    if (dimParts.length > 0) {
+      specs.push(`DIMENSIONS: ${dimParts.join(' × ')}`);
+    }
+    
+    // Additional dimension details
+    if (dims.armWidth) specs.push(`Arm Width: ${dims.armWidth}${dims.unit || '"'}`);
+    if (dims.armDepth) specs.push(`Arm Depth: ${dims.armDepth}${dims.unit || '"'}`);
+    if (dims.seatWidth) specs.push(`Seat Width: ${dims.seatWidth}${dims.unit || '"'}`);
+    if (dims.seatDepth) specs.push(`Seat Depth: ${dims.seatDepth}${dims.unit || '"'}`);
+    if (dims.seatHeight) specs.push(`Seat Height: ${dims.seatHeight}${dims.unit || '"'}`);
+    
+    if (dims.volume) specs.push(`Volume: ${dims.volume}`);
+    if (dims.doorWidth) specs.push(`Door Width: ${dims.doorWidth}${dims.unit || '"'}`);
+    if (dims.doorThickness) specs.push(`Door Thickness: ${dims.doorThickness}${dims.unit || '"'}`);
+    if (dims.doorHeight) specs.push(`Door Height: ${dims.doorHeight}${dims.unit || '"'}`);
+    
+    if (dims.legBaseDepth1) specs.push(`Leg/Base Depth: ${dims.legBaseDepth1}${dims.unit || '"'}`);
+    if (dims.legBaseHeight1) specs.push(`Leg/Base Height: ${dims.legBaseHeight1}${dims.unit || '"'}`);
+    if (dims.legBaseWidth1) specs.push(`Leg/Base Width: ${dims.legBaseWidth1}${dims.unit || '"'}`);
+    
+    if (dims.tabletopThickness) specs.push(`Tabletop Thickness: ${dims.tabletopThickness}${dims.unit || '"'}`);
+    if (dims.shapeType) specs.push(`Shape: ${dims.shapeType}`);
+  }
+  
+  // Seating capacity
+  if (product.seating) {
+    specs.push(`SEATING: ${product.seating}`);
+  }
+  
+  // Weight (normalize to ensure "lbs" suffix without duplication)
+  if (product.weight) {
+    const weightStr = String(product.weight).trim();
+    // Check if weight already has unit suffix (lbs, lb, pounds, kg, etc.)
+    const hasUnit = /\d+(\.\d+)?\s*(lbs?|pounds?|kg|kilograms?|g|grams?)\s*$/i.test(weightStr);
+    
+    if (hasUnit) {
+      // Already has unit, use as-is
+      specs.push(`WEIGHT: ${weightStr}`);
+    } else {
+      // No unit, assume pounds and add "lbs"
+      const numericMatch = weightStr.match(/\d+(\.\d+)?/);
+      if (numericMatch) {
+        specs.push(`WEIGHT: ${weightStr} lbs`);
+      } else {
+        specs.push(`WEIGHT: ${weightStr}`);
+      }
+    }
+  }
+  
+  // Pricing (for context on quality/tier)
+  // Handle Drizzle decimal objects by converting to string
+  if (product.tradePrice) {
+    const tradePriceStr = typeof product.tradePrice === 'object' && product.tradePrice.value 
+      ? product.tradePrice.value 
+      : String(product.tradePrice);
+    specs.push(`Trade Price: $${tradePriceStr}`);
+  }
+  if (product.price) {
+    const priceStr = typeof product.price === 'object' && product.price.value 
+      ? product.price.value 
+      : String(product.price);
+    specs.push(`Retail Price: $${priceStr}`);
+  }
+  
+  // Shipping/delivery information (deep serialization for nested objects/arrays)
+  if (product.shipping) {
+    const ship = typeof product.shipping === 'object' ? product.shipping : {};
+    
+    // Delivery options (deeply serialize any structure)
+    if (ship.deliveryOptions) {
+      const deliveryOpts = serializeValue(ship.deliveryOptions);
+      if (deliveryOpts) specs.push(`Delivery Options: ${deliveryOpts}`);
+    }
+    
+    // Delivery location (deeply serialize any structure)
+    if (ship.deliveryLocation) {
+      const location = serializeValue(ship.deliveryLocation);
+      if (location) specs.push(`Delivery Location: ${location}`);
+    }
+    
+    // Delivery policy (deeply serialize any structure)
+    if (ship.deliveryPolicy) {
+      const policy = serializeValue(ship.deliveryPolicy);
+      if (policy) specs.push(`Delivery Policy: ${policy}`);
+    }
+    
+    // Additional shipping fields
+    if (ship.cost) {
+      const cost = serializeValue(ship.cost);
+      if (cost) specs.push(`Shipping Cost: $${cost}`);
+    }
+    if (ship.eta) {
+      const eta = serializeValue(ship.eta);
+      if (eta) specs.push(`Delivery ETA: ${eta}`);
+    }
+  }
+  
+  // Tags (additional context)
+  // Filter falsy values, deduplicate, and clean
+  if (product.tags) {
+    const cleanTags = Array.isArray(product.tags)
+      ? Array.from(new Set(product.tags.filter(Boolean).map((t: any) => String(t).trim())))
+      : [String(product.tags).trim()].filter(Boolean);
+    
+    if (cleanTags.length > 0) {
+      specs.push(`TAGS: ${cleanTags.join(', ')}`);
+    }
+  }
+  
+  return specs.length > 0 ? specs.join(' | ') : '';
+}
+
+/**
  * Condense a long visual description into a short, generation-ready format
  * CRITICAL: Preserves color and material information with explicit labels to prevent AI drift
- * Falls back to database fields (materials, colors) when visual description is incomplete
  * Format: COLOR: [exact color] | MATERIAL: [material] | SHAPE: [shape] | SIZE: [dimensions]
  * Target: 40-50 tokens max for precise AI control
  */
 function condenseVisualDescription(
   fullDescription: string, 
-  productName: string,
-  product?: { materials?: string[]; colors?: string[]; dimensions?: any }
+  productName: string
 ): string {
   if (!fullDescription || fullDescription.trim().length === 0) {
-    // Use database fields as fallback when visual description is missing
-    const dbParts: string[] = [];
-    
-    if (product?.colors && product.colors.length > 0) {
-      dbParts.push(`COLOR: ${product.colors.join(', ')}`);
-    }
-    
-    if (product?.materials && product.materials.length > 0) {
-      dbParts.push(`MATERIAL: ${product.materials.join(', ')}`);
-    }
-    
-    if (dbParts.length > 0) {
-      return `${productName} | ${dbParts.join(' | ')} - match catalog exactly`;
-    }
-    
     return `${productName} - exact appearance from catalog`;
   }
   
@@ -1076,18 +1245,12 @@ function condenseVisualDescription(
   // Build structured condensed description with explicit labels
   const parts: string[] = [];
   
-  // Use extracted color or fall back to database colors
   if (colorDescriptor) {
     parts.push(`COLOR: ${colorDescriptor}`);
-  } else if (product?.colors && product.colors.length > 0) {
-    parts.push(`COLOR: ${product.colors.join(', ')}`);
   }
   
-  // Use extracted material or fall back to database materials
   if (materialDescriptor) {
     parts.push(`MATERIAL: ${materialDescriptor}`);
-  } else if (product?.materials && product.materials.length > 0) {
-    parts.push(`MATERIAL: ${product.materials.join(', ')}`);
   }
   
   if (shapes.length > 0) {
@@ -1764,6 +1927,12 @@ export function buildPromptFromQuiz(
     materials?: string[];
     colors?: string[];
     dimensions?: any;
+    tradePrice?: string;
+    price?: string;
+    seating?: string;
+    weight?: string;
+    shipping?: any;
+    tags?: string[];
   }>,
   roomAnalysis?: Awaited<ReturnType<typeof analyzeRoomImage>>,
   floorPlanAnalysis?: Awaited<ReturnType<typeof analyzeFloorPlan>>,
@@ -1911,65 +2080,47 @@ You MUST include ONLY these ${selectedProducts.length} specific products. Each p
       // Track the source for this product
       productMetadata[product.sku] = { visualDescriptionSource: source };
       
+      // Build comprehensive product specifications (materials, colors, dimensions, etc.)
+      const productSpecs = buildProductSpecifications(product);
+      
       if (fullDescription && fullDescription !== "No visual description available - use product name and materials to approximate appearance") {
         // Condense the description for generation (40-50 tokens max)
-        // Pass full product object to enable fallback to database materials/colors
-        const condensedDesc = condenseVisualDescription(fullDescription, product.name, product);
+        const condensedDesc = condenseVisualDescription(fullDescription, product.name);
         console.log(`   📸 Using condensed ${source} description for: ${product.name}`);
         console.log(`   🔍 Condensed: "${condensedDesc}"`);
         
-        // Log database fields being used if available
-        if (product.materials && product.materials.length > 0) {
-          console.log(`   🏗️ Materials from DB: ${product.materials.join(', ')}`);
-        }
-        if (product.colors && product.colors.length > 0) {
-          console.log(`   🎨 Colors from DB: ${product.colors.join(', ')}`);
-        }
-        
         prompt += `   
-   COPY THIS EXACTLY:
+   VISUAL DESCRIPTION:
    ${condensedDesc}
-   
-   ⚠️ CRITICAL: Reproduce this product exactly as described. Do not change its color, fabric, shape, or leg design.
    
 `;
       } else {
-        // Use database fields if visual description is missing
-        const dbInfo: string[] = [];
-        
-        if (product.materials && product.materials.length > 0) {
-          dbInfo.push(`MATERIAL: ${product.materials.join(', ')}`);
-        }
-        if (product.colors && product.colors.length > 0) {
-          dbInfo.push(`COLOR: ${product.colors.join(', ')}`);
-        }
-        
-        if (dbInfo.length > 0) {
-          const dbDescription = `${product.name} | ${dbInfo.join(' | ')}`;
-          console.log(`   📦 Using database fields for: ${product.name}`);
-          console.log(`   🔍 DB Info: "${dbDescription}"`);
-          
-          prompt += `   
-   COPY THIS EXACTLY:
-   ${dbDescription}
-   
-   ⚠️ CRITICAL: Use the specified materials and colors exactly as listed.
-   
-`;
-        } else {
-          console.log(`   ⚠️ No visual description OR database fields available for: ${product.name} - AI will approximate based on name and style`);
-          prompt += `   
-   VISUAL NOTE: No specific visual description available. Use product name and room style to determine appropriate appearance.
-   
-`;
-        }
+        console.log(`   ⚠️ No visual description available for: ${product.name} - using product specifications only`);
       }
       
-      // Add dimension information if available
+      // ALWAYS add product specifications when available (supplements visual description)
+      if (productSpecs) {
+        console.log(`   📊 Product Specifications: ${productSpecs.substring(0, 150)}...`);
+        prompt += `   
+   PRODUCT SPECIFICATIONS (CRITICAL - MATCH THESE EXACTLY):
+   ${productSpecs}
+   
+   ⚠️ MANDATORY: Use these exact materials, colors, dimensions, and specifications. Do not substitute or approximate.
+   
+`;
+      } else if (!fullDescription || fullDescription === "No visual description available - use product name and materials to approximate appearance") {
+        console.log(`   ⚠️ No visual description OR product specifications available for: ${product.name} - AI will approximate based on name and style`);
+        prompt += `   
+   VISUAL NOTE: No specific visual description or specifications available. Use product name and room style to determine appropriate appearance.
+   
+`;
+      }
+      
+      // Add dimension scale references for AI context (supplements raw dimensions in specifications)
       const dimensionPrompt = buildDimensionPrompt(product);
       if (dimensionPrompt) {
-        prompt += `   ${dimensionPrompt}\n`;
-        console.log(`   📏 Added dimensions: ${dimensionPrompt}`);
+        prompt += `   SCALE REFERENCE:\n   ${dimensionPrompt}\n\n`;
+        console.log(`   📏 Added dimension scale references`);
       }
       
       prompt += `   
