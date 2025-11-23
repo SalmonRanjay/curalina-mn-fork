@@ -44,7 +44,7 @@ import AdminVisualDescriptions from "@/pages/admin/visual-descriptions";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 
-function AdminLayout() {
+function AdminLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
     "--sidebar-width": "15rem",
     "--sidebar-width-icon": "3rem",
@@ -55,28 +55,7 @@ function AdminLayout() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <main className="flex-1 overflow-auto">
-          <Switch>
-            <Route path="/admin" component={AdminDashboard} />
-            <Route path="/admin/products" component={AdminProducts} />
-            <Route path="/admin/products/csv-import" component={AdminCsvImport} />
-            <Route path="/admin/products/bulk-upload" component={AdminBulkUpload} />
-            <Route path="/admin/products/front-view-upload" component={AdminFrontViewUpload} />
-            <Route path="/admin/products/s3-sync" component={AdminS3Sync} />
-            <Route path="/admin/products/visual-descriptions" component={AdminVisualDescriptions} />
-            <Route path="/admin/suppliers" component={AdminSuppliers} />
-            <Route path="/admin/orders" component={AdminOrders} />
-            <Route path="/admin/users" component={AdminUsers} />
-            <Route path="/admin/settings" component={AdminSettings} />
-            <Route path="/admin/training" component={AdminTraining} />
-            <Route path="/admin/analytics" component={AdminAnalytics} />
-            <Route path="/admin/blog" component={AdminBlog} />
-            <Route path="/admin/content" component={AdminContent} />
-            <Route path="/admin/renders-storage" component={AdminRendersStorage} />
-            <Route path="/admin/documentation" component={AdminDocumentation} />
-            <Route path="/admin/mapping-analysis" component={AdminMappingAnalysis} />
-            <Route path="/admin/analysis" component={AnalysisDashboard} />
-            <Route component={NotFound} />
-          </Switch>
+          {children}
         </main>
       </div>
     </SidebarProvider>
@@ -111,18 +90,33 @@ function Router() {
     return publicRoutes;
   }
 
-  // Admin users - wrap only /admin/* routes with sidebar
+  // Admin users - show all routes with admin routes wrapped in sidebar layout
   if (isAdmin) {
     // Check if current path is an admin route
     const isAdminRoute = location.startsWith('/admin');
     
-    if (isAdminRoute) {
-      return <AdminLayout />;
-    }
-    
-    // Non-admin routes for admin users (no sidebar)
     return (
       <Switch>
+        <Route path="/admin" component={() => <AdminLayout><AdminDashboard /></AdminLayout>} />
+        <Route path="/admin/products" component={() => <AdminLayout><AdminProducts /></AdminLayout>} />
+        <Route path="/admin/products/csv-import" component={() => <AdminLayout><AdminCsvImport /></AdminLayout>} />
+        <Route path="/admin/products/bulk-upload" component={() => <AdminLayout><AdminBulkUpload /></AdminLayout>} />
+        <Route path="/admin/products/front-view-upload" component={() => <AdminLayout><AdminFrontViewUpload /></AdminLayout>} />
+        <Route path="/admin/products/s3-sync" component={() => <AdminLayout><AdminS3Sync /></AdminLayout>} />
+        <Route path="/admin/products/visual-descriptions" component={() => <AdminLayout><AdminVisualDescriptions /></AdminLayout>} />
+        <Route path="/admin/suppliers" component={() => <AdminLayout><AdminSuppliers /></AdminLayout>} />
+        <Route path="/admin/orders" component={() => <AdminLayout><AdminOrders /></AdminLayout>} />
+        <Route path="/admin/users" component={() => <AdminLayout><AdminUsers /></AdminLayout>} />
+        <Route path="/admin/settings" component={() => <AdminLayout><AdminSettings /></AdminLayout>} />
+        <Route path="/admin/training" component={() => <AdminLayout><AdminTraining /></AdminLayout>} />
+        <Route path="/admin/analytics" component={() => <AdminLayout><AdminAnalytics /></AdminLayout>} />
+        <Route path="/admin/blog" component={() => <AdminLayout><AdminBlog /></AdminLayout>} />
+        <Route path="/admin/content" component={() => <AdminLayout><AdminContent /></AdminLayout>} />
+        <Route path="/admin/renders-storage" component={() => <AdminLayout><AdminRendersStorage /></AdminLayout>} />
+        <Route path="/admin/documentation" component={() => <AdminLayout><AdminDocumentation /></AdminLayout>} />
+        <Route path="/admin/mapping-analysis" component={() => <AdminLayout><AdminMappingAnalysis /></AdminLayout>} />
+        <Route path="/admin/analysis" component={() => <AdminLayout><AnalysisDashboard /></AdminLayout>} />
+        
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
