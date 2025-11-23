@@ -1838,7 +1838,8 @@ export function registerCuralinaRoutes(app: Express) {
           const MAX_ATTEMPTS = 1 + QA_THRESHOLDS.MAX_REGENERATION_ATTEMPTS; // Initial + retries
           let imageDataUrl: string | null = null;
           let finalQaResults: any = null;
-          let bestAttempt: { imageDataUrl: string; qaResults: any; score: number } | null = null;
+          let bestAttempt: { imageDataUrl: string; qaResults: any; score: number; productsSentToAI: string[] } | null = null;
+          let productsSentToAI: string[] = []; // Track products actually sent to AI (after image filtering)
           
           for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             if (attempt > 1) {
@@ -1864,6 +1865,7 @@ export function registerCuralinaRoutes(app: Express) {
             }
             
             console.log(`✅ Attempt ${attempt}: AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images`);
+            console.log(`   Products sent to AI: ${imageOnlyResult.productsSentToAI?.length || 0}/${fullSelectedProducts.length}`);
             
             // Quick QA validation to check quality
             const attemptImageDataUrl = imageOnlyResult.imageBase64;
@@ -1911,12 +1913,13 @@ export function registerCuralinaRoutes(app: Express) {
               
               console.log(`📊 Attempt ${attempt} QA: Score ${qaResults.overallScore}/100, Dimension ${qaResults.dimensionAccuracy}/100`);
               
-              // Track best attempt
+              // Track best attempt (with its specific productsSentToAI list)
               if (!bestAttempt || qaResults.overallScore > bestAttempt.score) {
                 bestAttempt = {
                   imageDataUrl: attemptImageDataUrl,
                   qaResults,
-                  score: qaResults.overallScore
+                  score: qaResults.overallScore,
+                  productsSentToAI: imageOnlyResult.productsSentToAI || []
                 };
               }
               
@@ -1927,6 +1930,7 @@ export function registerCuralinaRoutes(app: Express) {
                 console.log(`✅ QUALITY CHECK PASSED on attempt ${attempt} - Render meets all strict thresholds`);
                 imageDataUrl = attemptImageDataUrl;
                 finalQaResults = qaResults;
+                productsSentToAI = imageOnlyResult.productsSentToAI || []; // Use this attempt's product list
                 break; // Success! Use this render
               } else {
                 console.warn(`⚠️  QUALITY CHECK FAILED on attempt ${attempt}`);
@@ -1938,6 +1942,7 @@ export function registerCuralinaRoutes(app: Express) {
                   console.warn(`   NOTE: This render does NOT meet strict quality standards`);
                   imageDataUrl = bestAttempt.imageDataUrl;
                   finalQaResults = bestAttempt.qaResults;
+                  productsSentToAI = bestAttempt.productsSentToAI; // Use best attempt's product list
                   
                   // Add critical issue to QA results
                   if (finalQaResults && finalQaResults.issues) {
@@ -1969,7 +1974,7 @@ export function registerCuralinaRoutes(app: Express) {
           const qaResults = finalQaResults;
           
           // Determine quality status for render
-          let qualityStatus: 'passed' | 'warning' | 'unknown' = 'unknown';
+          let qualityStatus: 'passed' | 'warning' | 'unknown' | 'qa_zero_products' | 'qa_unavailable' = 'unknown';
           if (qaResults) {
             const { shouldRegenerateRender } = await import('./services/render-qa');
             const meetsThresholds = !shouldRegenerateRender(qaResults);
@@ -2020,8 +2025,15 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // Extract visible products from QA results (already validated in loop)
+          // CRITICAL FIX: Shop the Look must show ONLY products that:
+          // 1. Were actually SENT to AI (after image filtering)
+          // 2. Were VALIDATED by QA as present in render
           let productsForShopTheLook: string[] = [];
+          let shopTheLookValidated = false; // Track if list is QA-validated or fallback
+          
+          // Get products that were actually sent to AI (after image filtering)
+          // Note: productsSentToAI was populated during the generation loop
+          console.log(`📤 Products sent to AI: ${productsSentToAI.length}/${fullSelectedProducts.length}`);
           
           if (qaResults && qaResults.productChecks) {
             // Extract visible products from QA results (products that were found)
@@ -2030,23 +2042,55 @@ export function registerCuralinaRoutes(app: Express) {
               .map(([sku, _]) => sku);
             
             if (visibleProducts.length > 0) {
-              productsForShopTheLook = visibleProducts;
-              console.log(`✅ Final QA: ${visibleProducts.length}/${selectedProducts.length} products visible in render`);
+              // STRICT: Only show products that were BOTH sent to AI AND found by QA
+              productsForShopTheLook = visibleProducts.filter((sku: string) => productsSentToAI.includes(sku));
+              shopTheLookValidated = true; // ✅ QA validated these products
+              console.log(`✅ Final QA: ${visibleProducts.length} products visible, ${productsForShopTheLook.length} in Shop the Look`);
               
-              // Log which products are missing from render
-              const missingProducts = fullSelectedProducts.filter(p => !visibleProducts.includes(p.sku));
-              if (missingProducts.length > 0) {
-                console.log(`⚠️  Missing from render: ${missingProducts.map(p => p.name).join(', ')}`);
+              // Log which products were sent but not found
+              const sentButNotFound = productsSentToAI.filter(sku => !visibleProducts.includes(sku));
+              if (sentButNotFound.length > 0) {
+                const missingProducts = fullSelectedProducts.filter(p => sentButNotFound.includes(p.sku));
+                console.log(`⚠️  Sent to AI but missing from render: ${missingProducts.map(p => p.name).join(', ')}`);
+              }
+              
+              // Log which products were filtered out before AI
+              const filteredOut = fullSelectedProducts.filter(p => !productsSentToAI.includes(p.sku));
+              if (filteredOut.length > 0) {
+                console.log(`⚠️  Filtered out (no valid images): ${filteredOut.map(p => p.name).join(', ')}`);
               }
             } else {
-              // Fallback: show all selected products if no products detected
-              productsForShopTheLook = selectedProducts.map(p => p.sku);
-              console.log(`⚠️  QA detected no products, showing all ${productsForShopTheLook.length} selected products as fallback`);
+              // CRITICAL: QA detected ZERO products - this is an error state
+              // SAFEST: Show empty list to avoid ghost listings
+              productsForShopTheLook = [];
+              shopTheLookValidated = false; // ⚠️ UNVALIDATED - QA failure
+              qualityStatus = 'qa_zero_products'; // Specific error code for frontend
+              console.error(`❌ CRITICAL: QA detected ZERO products in render`);
+              console.error(`   Possible causes:`);
+              console.error(`   1. AI failed to render any products`);
+              console.error(`   2. QA transient failure (false negative)`);
+              console.error(`   3. Render quality too poor for QA to detect products`);
+              console.error(`   👉 Shop the Look will be EMPTY to avoid showing products not in render`);
+              console.error(`   👉 ${productsSentToAI.length} products were sent to AI but cannot be validated`);
+              
+              // Add critical issue to QA results for tracking
+              if (qaResults && qaResults.issues) {
+                qaResults.issues.push({
+                  severity: 'critical',
+                  category: 'missing',
+                  description: `QA detected ZERO products in render (${productsSentToAI.length} were sent to AI)`,
+                  affectedProduct: undefined
+                });
+              }
             }
           } else {
-            // No QA results (all attempts failed QA) - use all selected products
-            productsForShopTheLook = selectedProducts.map(p => p.sku);
-            console.log(`⚠️  No QA results available, showing all ${productsForShopTheLook.length} selected products`);
+            // CRITICAL: No QA results at all - this is an error state
+            productsForShopTheLook = [];
+            shopTheLookValidated = false; // ⚠️ UNVALIDATED - no QA data
+            qualityStatus = 'qa_unavailable'; // Specific error code for frontend
+            console.error(`❌ CRITICAL: No QA results available`);
+            console.error(`   Shop the Look will be EMPTY to avoid showing unvalidated products`);
+            console.error(`   ${productsSentToAI.length} products were sent to AI but cannot be validated`);
           }
           
           console.log(`🛍️ Shop the Look: ${productsForShopTheLook.length} visible products`);
@@ -2056,12 +2100,21 @@ export function registerCuralinaRoutes(app: Express) {
             ? `Zone-based placement with ${selectedProducts.length} products`
             : `Image-only render with ${selectedProducts.length} products`;
           
+          // COMPREHENSIVE METADATA: Store diagnostics for every terminal state
+          const renderMetadata = {
+            qualityStatus, // 'passed', 'warning', 'qa_zero_products', 'qa_unavailable'
+            shopTheLookValidated, // true = QA-validated, false = error/unvalidated state
+            productsRequested: fullSelectedProducts.length, // Original selection count
+            productsSentToAI: productsSentToAI.length, // Successfully sent to AI (after image filtering)
+            productsFiltered: fullSelectedProducts.length - productsSentToAI.length, // Dropped (no images)
+            productsInShopTheLook: productsForShopTheLook.length, // Final validated count
+            productsSentToAIList: productsSentToAI, // Actual SKUs sent (for debugging)
+          };
+          
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
             productSkus: productsForShopTheLook,
-            productMetadata: {
-              qualityStatus, // Track if render met strict QA thresholds
-            },
+            productMetadata: renderMetadata,
             qaResults,
             prompt,
             status: 'completed',
