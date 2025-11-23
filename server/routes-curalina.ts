@@ -1948,7 +1948,8 @@ export function registerCuralinaRoutes(app: Express) {
             roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
             products: fullSelectedProducts, // Full product objects from database for image extraction
             roomType: quiz.roomType,
-            stylePreference: quiz.styles?.[0] || 'modern'
+            stylePreference: quiz.styles?.[0] || 'modern',
+            floorPlanAnalysis // Pass floor plan analysis for detailed space preservation
           });
           
           if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {

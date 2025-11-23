@@ -112,6 +112,15 @@ export interface ImageOnlyRenderParams {
   products: Product[];
   roomType?: string;
   stylePreference?: string;
+  floorPlanAnalysis?: {
+    roomDimensions: string;
+    windowLocations: string[];
+    doorLocations: string[];
+    builtInFeatures: string[];
+    ceilingRoofDesign: string;
+    layoutNotes: string;
+    overallDescription: string;
+  };
 }
 
 export interface ImageOnlyRenderResult {
@@ -131,7 +140,7 @@ export interface ImageOnlyRenderResult {
  * This approach bypasses all the visual description generation complexity
  */
 export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Promise<ImageOnlyRenderResult> {
-  const { roomImageUrl, products, roomType, stylePreference } = params;
+  const { roomImageUrl, products, roomType, stylePreference, floorPlanAnalysis } = params;
   
   try {
     console.log(`\n🖼️ Starting IMAGE-ONLY render generation...`);
@@ -185,12 +194,42 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
-    // Step 3: Build simple conversational prompt (mimics AI Studio approach)
+    // Step 3: Build detailed prompt with floor plan analysis for space preservation
     let prompt: string;
     
-    if (roomImage) {
-      // Image-to-image mode: PRESERVE the space structure exactly
-      // Emphasize keeping the architecture, windows, walls, floor intact
+    if (roomImage && floorPlanAnalysis) {
+      // Image-to-image mode with detailed space preservation
+      prompt = `CRITICAL STRUCTURE PRESERVATION REQUIREMENT:
+This is a REDESIGN of an existing space, not a new room. You must preserve the exact architectural structure while adding furniture.
+
+PRESERVE THESE EXACT FEATURES:
+${floorPlanAnalysis.windowLocations && floorPlanAnalysis.windowLocations.length > 0 ? `
+WINDOWS (DO NOT MOVE, REMOVE, OR CHANGE):
+${floorPlanAnalysis.windowLocations.map((w, i) => `${i + 1}. ${w}`).join('\n')}
+- Maintain exact window positions and sizes
+- Keep all window architectural details (frames, mullions, arches)
+` : ''}
+${floorPlanAnalysis.doorLocations && floorPlanAnalysis.doorLocations.length > 0 ? `
+DOORS & OPENINGS (DO NOT MOVE, REMOVE, OR CHANGE):
+${floorPlanAnalysis.doorLocations.map((d, i) => `${i + 1}. ${d}`).join('\n')}
+- Doors are permanent architectural features
+` : ''}
+${floorPlanAnalysis.ceilingRoofDesign && floorPlanAnalysis.ceilingRoofDesign !== "Unable to analyze ceiling/roof design" ? `
+CEILING DESIGN (PRESERVE EXACTLY):
+${floorPlanAnalysis.ceilingRoofDesign}
+- Maintain all beams, height, and architectural details
+` : ''}
+${floorPlanAnalysis.builtInFeatures && floorPlanAnalysis.builtInFeatures.length > 0 ? `
+BUILT-IN FEATURES (PRESERVE):
+${floorPlanAnalysis.builtInFeatures.join(', ')}
+` : ''}
+
+FLOOR LAYOUT:
+${floorPlanAnalysis.overallDescription || floorPlanAnalysis.layoutNotes}
+
+YOUR TASK: Add the furniture products I provide while preserving ALL architectural features above.`;
+    } else if (roomImage) {
+      // Image-to-image mode without floor plan analysis
       prompt = `This is my space image. PRESERVE this exact room structure (walls, windows, floor, ceiling, architectural details). Only add the furniture and products I provide - do NOT change the room itself.`;
     } else {
       // Text-to-image mode: create a new room scene
