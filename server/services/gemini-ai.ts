@@ -2667,19 +2667,19 @@ PRODUCT LIST (products that were intended for this room):
 ${productList}
 
 INSTRUCTIONS:
-1. Carefully examine the image and identify furniture and décor items that are clearly visible
+1. Carefully examine the image and identify furniture and décor items that are visible
 2. For each product in the list above, determine if it (or something very similar to it) is actually visible in the image
-3. A product is "visible" only if:
-   - You can clearly see it in the image
-   - It matches the product name/description
-   - It's not hidden, blocked, or outside the camera view
-4. Return ONLY the SKUs of products that are actually visible
+3. A product is "visible" if:
+   - You can see it in the image (even if partially visible)
+   - It matches the general product type/category (e.g., sofa, table, cabinet)
+   - The style and appearance are reasonably similar to the description
+4. Return the SKUs of all products that appear to be in the image
 
 IMPORTANT:
-- Be strict: only include products you can actually see
-- If a product type is in the image but doesn't match the specific product name, DO NOT include it
-- If you're unsure whether a product is visible, DO NOT include it
-- An empty array is acceptable if no products are clearly visible
+- Be reasonable: include products that are clearly present in the scene
+- If a product type matches and looks similar, include it (exact match not required)
+- Include products even if they're partially visible or in the background
+- Only exclude products if they're definitely NOT in the image
 
 Return your analysis as a JSON object with this format:
 {

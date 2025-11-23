@@ -87,7 +87,7 @@ export async function validateRenderQuality(
     
     // Use Gemini Vision to analyze the render
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: "user",
