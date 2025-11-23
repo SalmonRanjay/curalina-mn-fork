@@ -190,10 +190,14 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     if (roomImage) {
       // Image-to-image mode: furnish the provided space
-      prompt = `This is my space image. Please furnish it with the furniture and product images I provide.`;
+      prompt = `This is my space image. Please furnish it with ALL ${fetchedCount} furniture items whose photos I'm providing.
+      
+CRITICAL: You MUST include EVERY SINGLE product image I provide in the final design. Do not skip any products.`;
     } else {
       // Text-to-image mode: create a new room scene
-      prompt = `Please create a beautifully designed interior space using the furniture product images I provide.`;
+      prompt = `Please create a beautifully designed interior space using ALL ${fetchedCount} furniture products whose photos I'm providing.
+      
+CRITICAL: You MUST include EVERY SINGLE product image I provide in the final design. Do not skip any products.`;
     }
     
     if (roomType) {
@@ -204,8 +208,7 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       prompt += `\nStyle Preference: ${stylePreference}`;
     }
     
-    prompt += `\n\nI want my own furniture to be used. Let me provide the photos:\n`;
-    prompt += `(${fetchedCount} product images provided below)`;
+    prompt += `\n\nInclude ALL ${fetchedCount} products shown in the images below:`;
     
     // Step 4: Build parts array for Gemini
     // Order: text prompt + [room image if available] + product images

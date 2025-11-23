@@ -2055,30 +2055,24 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`   Storing error details in QA results for debugging`);
           }
           
-          // Step 6: Detect visible products for Shop the Look
-          let productsForShopTheLook: string[] = [];
+          // Step 6: Show ALL selected products in "Shop the Look"
+          // Since we intentionally selected these products for the design, show them all
+          const productsForShopTheLook: string[] = selectedProducts.map(p => p.sku);
+          console.log(`🛍️ Shop the Look: Showing all ${productsForShopTheLook.length} selected products`);
+          
+          // Optional: Run visibility detection for analytics/QA purposes only
           if (selectedProducts.length > 0) {
             try {
-              // Convert image buffer to data URL for visibility detection
               const finalImageDataUrl = `data:image/png;base64,${imageBuffer.toString('base64')}`;
               const visibleProductSkus = await identifyVisibleProducts(finalImageDataUrl, selectedProducts);
               
-              // Use detected visible products (even if empty - that's a valid result)
-              productsForShopTheLook = visibleProductSkus;
-              
-              console.log(`🛍️ Visibility analysis: ${visibleProductSkus.length}/${selectedProducts.length} products clearly identified in image`);
-              if (visibleProductSkus.length > 0) {
-                console.log(`   Visible: ${visibleProductSkus.join(', ')}`);
-              }
+              console.log(`📊 Visibility analytics: ${visibleProductSkus.length}/${selectedProducts.length} products detected in render`);
               if (visibleProductSkus.length < selectedProducts.length) {
-                const notIdentified = selectedProducts.filter(p => !visibleProductSkus.includes(p.sku)).map(p => p.sku);
-                console.log(`   Not clearly visible: ${notIdentified.join(', ')}`);
+                const notDetected = selectedProducts.filter(p => !visibleProductSkus.includes(p.sku)).map(p => p.sku);
+                console.log(`   ⚠️ Not auto-detected (but still in Shop the Look): ${notDetected.join(', ')}`);
               }
             } catch (error) {
-              console.error("Error in visibility analysis (detection failed):", error);
-              // Only fall back to all selected products if detection actually failed
-              productsForShopTheLook = selectedProducts.map(p => p.sku);
-              console.warn(`   ⚠️ Visibility detection failed - falling back to showing all ${productsForShopTheLook.length} selected products`);
+              console.warn("Visibility analytics failed (non-blocking):", error);
             }
           }
           
