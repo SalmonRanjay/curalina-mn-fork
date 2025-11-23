@@ -3089,6 +3089,19 @@ export async function generateInteriorImageWithOpenAI(
 }
 
 /**
+ * Truncate prompt to fit Stability AI's 10,000 character limit
+ * Prioritizes essential information at start of prompt
+ */
+function truncatePromptForStability(prompt: string, maxLength: number = 9500): string {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+  
+  console.warn(`⚠️ Prompt too long (${prompt.length} chars), truncating to ${maxLength}...`);
+  return prompt.substring(0, maxLength) + '...';
+}
+
+/**
  * Generate structure-preserving redesign using Stability AI
  * Uses control_strength to preserve room architecture while redesigning furniture
  */
@@ -3114,7 +3127,7 @@ async function generateWithStabilityAI(
     else if (mimeType.includes('webp')) fileExtension = 'webp';
     
     formData.append('image', imageBlob, `room.${fileExtension}`);
-    formData.append('prompt', prompt);
+    formData.append('prompt', truncatePromptForStability(prompt));
     formData.append('control_strength', '0.85'); // High value (0.7 is default) = preserve structure more
     formData.append('output_format', 'png');
     formData.append('seed', Math.floor(Math.random() * 4294967295).toString());

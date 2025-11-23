@@ -1,6 +1,18 @@
 import type { Product } from "@shared/schema";
 
 /**
+ * Truncate prompt to fit Stability AI's 10,000 character limit
+ */
+function truncatePromptForStability(prompt: string, maxLength: number = 9500): string {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+  
+  console.warn(`⚠️ Prompt too long (${prompt.length} chars), truncating to ${maxLength}...`);
+  return prompt.substring(0, maxLength) + '...';
+}
+
+/**
  * Stability AI Quality Control Service
  * Note: Uses Node.js 20+ native fetch API with FormData and Blob globals
  * Uses ControlNet Reference to enforce product accuracy in renders
@@ -125,7 +137,7 @@ export async function refineRenderWithControlNetReference(
         
         // Add prompt with product context
         const prompt = `${params.renderPrompt}. Ensure the furniture matches the reference image exactly.`;
-        formData.append('prompt', prompt);
+        formData.append('prompt', truncatePromptForStability(prompt));
         formData.append('strength', strength.toString());
         formData.append('control_strength', '1.0'); // Max control strength for reference
         formData.append('output_format', 'png');
@@ -399,7 +411,7 @@ export async function applyQCRefinement(
         const maskBlob = new Blob([maskBuffer], { type: 'image/png' });
         formData.append('control_image', maskBlob, 'layout.png');
         
-        formData.append('prompt', prompt + ' photorealistic interior design with precise furniture placement matching layout guide');
+        formData.append('prompt', truncatePromptForStability(prompt + ' photorealistic interior design with precise furniture placement matching layout guide'));
         formData.append('control_strength', validStrength.toString());
         formData.append('output_format', 'png');
         formData.append('negative_prompt', 'distorted furniture, wrong placement, incorrect layout, mismatched items, blurry, low quality');
@@ -453,7 +465,7 @@ export async function applyQCRefinement(
         const referenceBlob = new Blob([Buffer.from(productImageData[0], 'base64')], { type: 'image/png' });
         formData.append('style_image', referenceBlob, 'reference.png');
         
-        formData.append('prompt', prompt + ' photorealistic interior design with exact product matching from reference images');
+        formData.append('prompt', truncatePromptForStability(prompt + ' photorealistic interior design with exact product matching from reference images'));
         formData.append('control_strength', validStrength.toString());
         formData.append('style_strength', '0.8'); // High style strength for product fidelity
         formData.append('output_format', 'png');
@@ -486,7 +498,7 @@ export async function applyQCRefinement(
     const formData = new FormData();
     const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
     formData.append('image', imageBlob, 'render.png');
-    formData.append('prompt', prompt + ' photorealistic interior design, accurate product representation, exact furniture matching');
+    formData.append('prompt', truncatePromptForStability(prompt + ' photorealistic interior design, accurate product representation, exact furniture matching'));
     formData.append('control_strength', validStrength.toString());
     formData.append('output_format', 'png');
     formData.append('negative_prompt', 'distorted furniture, wrong products, incorrect colors, mismatched items, blurry, low quality');
