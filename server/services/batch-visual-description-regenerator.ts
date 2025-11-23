@@ -206,60 +206,81 @@ export async function regenerateAllVisualDescriptions(
     errors: []
   };
   
-  console.log(`\n🎨 Starting batch visual description regeneration for ${products.length} products...`);
+  console.log(`\n🎨 Starting batch visual description regeneration (concurrent: 5 workers) for ${products.length} products...`);
   
-  for (const product of products) {
-    progress.currentProduct = `${product.sku} - ${product.name}`;
-    console.log(`\n[${progress.processed + 1}/${progress.total}] ${progress.currentProduct}`);
+  // Process 5 products concurrently instead of sequentially
+  const CONCURRENT_WORKERS = 5;
+  const BATCH_SIZE = Math.ceil(products.length / CONCURRENT_WORKERS);
+  
+  const processingWorkers = [];
+  
+  for (let workerIdx = 0; workerIdx < CONCURRENT_WORKERS; workerIdx++) {
+    const start = workerIdx * BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, products.length);
+    const workerProducts = products.slice(start, end);
     
-    try {
-      // Select best image for analysis
-      const selectedImage = selectBestImageForAnalysis(product);
-      
-      if (!selectedImage) {
-        console.log(`  ⏭️ Skipped - no images available`);
-        progress.skipped++;
+    if (workerProducts.length === 0) continue;
+    
+    const worker = (async () => {
+      for (const product of workerProducts) {
+        progress.currentProduct = `${product.sku} - ${product.name}`;
+        console.log(`\n[W${workerIdx + 1}][${progress.processed + 1}/${progress.total}] ${progress.currentProduct}`);
+        
+        try {
+          // Select best image for analysis
+          const selectedImage = selectBestImageForAnalysis(product);
+          
+          if (!selectedImage) {
+            console.log(`  ⏭️ Skipped - no images available`);
+            progress.skipped++;
+            progress.processed++;
+            progressCallback?.(progress);
+            continue;
+          }
+          
+          console.log(`  📍 Using: ${selectedImage.source} image`);
+          
+          // Generate accurate visual description
+          const description = await generateAccurateVisualDescription(product, selectedImage.url);
+          
+          if (description) {
+            // Update product in database (will be done by caller)
+            product.visualDescription = description;
+            progress.successful++;
+            const wordCount = description.split(/\s+/).length;
+            console.log(`  ✅ Success - ${wordCount} words (${description.length} chars)`);
+          } else {
+            progress.failed++;
+            progress.errors.push({
+              sku: product.sku,
+              error: 'Failed to generate description'
+            });
+            console.log(`  ❌ Failed - could not generate description`);
+          }
+          
+        } catch (error) {
+          progress.failed++;
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          progress.errors.push({
+            sku: product.sku,
+            error: errorMessage
+          });
+          console.error(`  ❌ Error:`, errorMessage);
+        }
+        
         progress.processed++;
         progressCallback?.(progress);
-        continue;
+        
+        // Minimal delay - 100ms instead of 500ms
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-      
-      console.log(`  📍 Using: ${selectedImage.source} image`);
-      
-      // Generate accurate visual description
-      const description = await generateAccurateVisualDescription(product, selectedImage.url);
-      
-      if (description) {
-        // Update product in database (will be done by caller)
-        product.visualDescription = description;
-        progress.successful++;
-        const wordCount = description.split(/\s+/).length;
-        console.log(`  ✅ Success - ${wordCount} words (${description.length} chars)`);
-      } else {
-        progress.failed++;
-        progress.errors.push({
-          sku: product.sku,
-          error: 'Failed to generate description'
-        });
-        console.log(`  ❌ Failed - could not generate description`);
-      }
-      
-    } catch (error) {
-      progress.failed++;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      progress.errors.push({
-        sku: product.sku,
-        error: errorMessage
-      });
-      console.error(`  ❌ Error:`, errorMessage);
-    }
+    })();
     
-    progress.processed++;
-    progressCallback?.(progress);
-    
-    // Small delay to avoid rate limits
-    await new Promise(resolve => setTimeout(resolve, 500));
+    processingWorkers.push(worker);
   }
+  
+  // Wait for all workers to complete
+  await Promise.all(processingWorkers);
   
   console.log(`\n✅ Batch regeneration complete!`);
   console.log(`  📊 Total: ${progress.total}`);
