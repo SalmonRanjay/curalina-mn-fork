@@ -1,5 +1,6 @@
 import React from "react";
 import { Switch, Route, useLocation } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -67,23 +68,47 @@ function Router() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const [location] = useLocation();
 
+  // Page transition variants for smooth fade
+  const pageVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 }
+  };
+
+  const pageTransition = {
+    duration: 0.2,
+    ease: "easeInOut"
+  };
+
   // Public routes (accessible without authentication)
   const publicRoutes = (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      <Route path="/styles" component={Styles} />
-      <Route path="/pricing" component={Pricing} />
-      <Route path="/about" component={About} />
-      <Route path="/blog" component={Blog} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/quiz" component={Quiz} />
-      <Route path="/loading" component={Loading} />
-      <Route path="/results" component={Results} />
-      <Route path="/cart" component={Cart} />
-      <Route component={isLoading ? Landing : NotFound} />
-    </Switch>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="min-h-screen"
+      >
+        <Switch location={location}>
+          <Route path="/" component={Home} />
+          <Route path="/login" component={Login} />
+          <Route path="/register" component={Register} />
+          <Route path="/styles" component={Styles} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/about" component={About} />
+          <Route path="/blog" component={Blog} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/quiz" component={Quiz} />
+          <Route path="/loading" component={Loading} />
+          <Route path="/results" component={Results} />
+          <Route path="/cart" component={Cart} />
+          <Route component={isLoading ? Landing : NotFound} />
+        </Switch>
+      </motion.div>
+    </AnimatePresence>
   );
 
   // Show public routes for unauthenticated users
@@ -97,81 +122,105 @@ function Router() {
     const isAdminRoute = location.startsWith('/admin');
     
     return (
-      <Switch>
-        <Route path="/admin" component={() => <AdminLayout><AdminDashboard /></AdminLayout>} />
-        <Route path="/admin/products" component={() => <AdminLayout><AdminProducts /></AdminLayout>} />
-        <Route path="/admin/products/csv-import" component={() => <AdminLayout><AdminCsvImport /></AdminLayout>} />
-        <Route path="/admin/products/bulk-upload" component={() => <AdminLayout><AdminBulkUpload /></AdminLayout>} />
-        <Route path="/admin/products/front-view-upload" component={() => <AdminLayout><AdminFrontViewUpload /></AdminLayout>} />
-        <Route path="/admin/products/s3-sync" component={() => <AdminLayout><AdminS3Sync /></AdminLayout>} />
-        <Route path="/admin/products/s3-image-renamer" component={() => <AdminLayout><AdminS3ImageRenamer /></AdminLayout>} />
-        <Route path="/admin/products/visual-descriptions" component={() => <AdminLayout><AdminVisualDescriptions /></AdminLayout>} />
-        <Route path="/admin/suppliers" component={() => <AdminLayout><AdminSuppliers /></AdminLayout>} />
-        <Route path="/admin/orders" component={() => <AdminLayout><AdminOrders /></AdminLayout>} />
-        <Route path="/admin/users" component={() => <AdminLayout><AdminUsers /></AdminLayout>} />
-        <Route path="/admin/settings" component={() => <AdminLayout><AdminSettings /></AdminLayout>} />
-        <Route path="/admin/training" component={() => <AdminLayout><AdminTraining /></AdminLayout>} />
-        <Route path="/admin/analytics" component={() => <AdminLayout><AdminAnalytics /></AdminLayout>} />
-        <Route path="/admin/blog" component={() => <AdminLayout><AdminBlog /></AdminLayout>} />
-        <Route path="/admin/content" component={() => <AdminLayout><AdminContent /></AdminLayout>} />
-        <Route path="/admin/renders-storage" component={() => <AdminLayout><AdminRendersStorage /></AdminLayout>} />
-        <Route path="/admin/documentation" component={() => <AdminLayout><AdminDocumentation /></AdminLayout>} />
-        <Route path="/admin/mapping-analysis" component={() => <AdminLayout><AdminMappingAnalysis /></AdminLayout>} />
-        <Route path="/admin/analysis" component={() => <AdminLayout><AnalysisDashboard /></AdminLayout>} />
-        
-        <Route path="/" component={Home} />
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/styles" component={Styles} />
-        <Route path="/pricing" component={Pricing} />
-        <Route path="/about" component={About} />
-        <Route path="/blog" component={Blog} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/quiz" component={Quiz} />
-        <Route path="/loading" component={Loading} />
-        <Route path="/results" component={Results} />
-        <Route path="/cart" component={Cart} />
-        <Route path="/portal" component={PortalDashboard} />
-        <Route path="/portal/settings" component={PortalSettings} />
-        <Route component={NotFound} />
-      </Switch>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={location}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="min-h-screen"
+        >
+          <Switch location={location}>
+            <Route path="/admin" component={() => <AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/admin/products" component={() => <AdminLayout><AdminProducts /></AdminLayout>} />
+            <Route path="/admin/products/csv-import" component={() => <AdminLayout><AdminCsvImport /></AdminLayout>} />
+            <Route path="/admin/products/bulk-upload" component={() => <AdminLayout><AdminBulkUpload /></AdminLayout>} />
+            <Route path="/admin/products/front-view-upload" component={() => <AdminLayout><AdminFrontViewUpload /></AdminLayout>} />
+            <Route path="/admin/products/s3-sync" component={() => <AdminLayout><AdminS3Sync /></AdminLayout>} />
+            <Route path="/admin/products/s3-image-renamer" component={() => <AdminLayout><AdminS3ImageRenamer /></AdminLayout>} />
+            <Route path="/admin/products/visual-descriptions" component={() => <AdminLayout><AdminVisualDescriptions /></AdminLayout>} />
+            <Route path="/admin/suppliers" component={() => <AdminLayout><AdminSuppliers /></AdminLayout>} />
+            <Route path="/admin/orders" component={() => <AdminLayout><AdminOrders /></AdminLayout>} />
+            <Route path="/admin/users" component={() => <AdminLayout><AdminUsers /></AdminLayout>} />
+            <Route path="/admin/settings" component={() => <AdminLayout><AdminSettings /></AdminLayout>} />
+            <Route path="/admin/training" component={() => <AdminLayout><AdminTraining /></AdminLayout>} />
+            <Route path="/admin/analytics" component={() => <AdminLayout><AdminAnalytics /></AdminLayout>} />
+            <Route path="/admin/blog" component={() => <AdminLayout><AdminBlog /></AdminLayout>} />
+            <Route path="/admin/content" component={() => <AdminLayout><AdminContent /></AdminLayout>} />
+            <Route path="/admin/renders-storage" component={() => <AdminLayout><AdminRendersStorage /></AdminLayout>} />
+            <Route path="/admin/documentation" component={() => <AdminLayout><AdminDocumentation /></AdminLayout>} />
+            <Route path="/admin/mapping-analysis" component={() => <AdminLayout><AdminMappingAnalysis /></AdminLayout>} />
+            <Route path="/admin/analysis" component={() => <AdminLayout><AnalysisDashboard /></AdminLayout>} />
+            
+            <Route path="/" component={Home} />
+            <Route path="/login" component={Login} />
+            <Route path="/register" component={Register} />
+            <Route path="/styles" component={Styles} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/about" component={About} />
+            <Route path="/blog" component={Blog} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/quiz" component={Quiz} />
+            <Route path="/loading" component={Loading} />
+            <Route path="/results" component={Results} />
+            <Route path="/cart" component={Cart} />
+            <Route path="/portal" component={PortalDashboard} />
+            <Route path="/portal/settings" component={PortalSettings} />
+            <Route component={NotFound} />
+          </Switch>
+        </motion.div>
+      </AnimatePresence>
     );
   }
 
   // Regular user routes (no admin access)
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      <Route path="/styles" component={Styles} />
-      <Route path="/pricing" component={Pricing} />
-      <Route path="/about" component={About} />
-      <Route path="/blog" component={Blog} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/quiz" component={Quiz} />
-      <Route path="/loading" component={Loading} />
-      <Route path="/results" component={Results} />
-      <Route path="/cart" component={Cart} />
-      <Route path="/portal" component={PortalDashboard} />
-      <Route path="/portal/settings" component={PortalSettings} />
-      
-      {/* Redirect admin routes to portal for non-admin users */}
-      <Route path="/admin">
-        {() => {
-          window.location.href = "/portal";
-          return null;
-        }}
-      </Route>
-      <Route path="/admin/:rest*">
-        {() => {
-          window.location.href = "/portal";
-          return null;
-        }}
-      </Route>
-      
-      <Route component={NotFound} />
-    </Switch>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="min-h-screen"
+      >
+        <Switch location={location}>
+          <Route path="/" component={Home} />
+          <Route path="/login" component={Login} />
+          <Route path="/register" component={Register} />
+          <Route path="/styles" component={Styles} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/about" component={About} />
+          <Route path="/blog" component={Blog} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/quiz" component={Quiz} />
+          <Route path="/loading" component={Loading} />
+          <Route path="/results" component={Results} />
+          <Route path="/cart" component={Cart} />
+          <Route path="/portal" component={PortalDashboard} />
+          <Route path="/portal/settings" component={PortalSettings} />
+          
+          {/* Redirect admin routes to portal for non-admin users */}
+          <Route path="/admin">
+            {() => {
+              window.location.href = "/portal";
+              return null;
+            }}
+          </Route>
+          <Route path="/admin/:rest*">
+            {() => {
+              window.location.href = "/portal";
+              return null;
+            }}
+          </Route>
+          
+          <Route component={NotFound} />
+        </Switch>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

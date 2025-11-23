@@ -15,7 +15,7 @@ export default function HeroSection() {
           <div className="stack-roomy flex flex-col" data-testid="hero-content">
             {/* Pill Label */}
             <div className="inline-block mb-1">
-              <Badge variant="secondary" className="px-4 py-2 font-semibold uppercase tracking-wider bg-accent/20 text-accent-foreground border-none" style={{ fontSize: 'var(--font-size-xs)' }}>
+              <Badge variant="secondary" className="px-4 py-2 font-semibold uppercase tracking-wider bg-accent/15 text-foreground border border-accent/30" style={{ fontSize: 'var(--font-size-xs)' }}>
                 <Sparkles className="w-3 h-3 mr-1.5 inline" />
                 Interior Design, Made Personal
               </Badge>
