@@ -18,6 +18,15 @@ interface CartItemWithProduct {
   product: Product;
 }
 
+const encodeImageUrl = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.toString();
+  } catch {
+    return url;
+  }
+};
+
 export default function Cart() {
   const [, setLocation] = useLocation();
   const sessionId = getSessionId();
@@ -164,7 +173,7 @@ export default function Cart() {
                     <div className="w-32 h-32 flex-shrink-0 bg-stone-100 dark:bg-stone-800 rounded-md overflow-hidden">
                       {item.product.images && item.product.images.length > 0 ? (
                         <img
-                          src={item.product.images[0]}
+                          src={encodeImageUrl(item.product.images[0])}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                         />

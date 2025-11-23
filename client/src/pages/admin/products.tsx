@@ -846,12 +846,21 @@ export default function AdminProducts() {
     },
   });
 
+  const encodeImageUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.toString();
+    } catch {
+      return url;
+    }
+  };
+
   const getImageUrl = (images: string[] | null) => {
     if (!images || images.length === 0) return null;
     const firstImage = images[0];
-    // If it's already a full URL (S3 or external), return as is
+    // If it's already a full URL (S3 or external), encode it to handle spaces
     if (firstImage.startsWith("http://") || firstImage.startsWith("https://")) {
-      return firstImage;
+      return encodeImageUrl(firstImage);
     }
     // If it's a local path, return as is (will be served by the server)
     return firstImage;
