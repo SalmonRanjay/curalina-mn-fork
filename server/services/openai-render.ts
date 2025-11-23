@@ -52,27 +52,39 @@ export async function generateOpenAIRender(params: OpenAIRenderParams): Promise<
       })
       .join('\n');
     
-    // Construct comprehensive prompt
+    // Construct comprehensive prompt with STRICT preservation requirements
     const roomDescription = params.floorPlanAnalysis?.overallDescription || 
                            `A ${params.stylePreference || 'modern'} ${params.roomType || 'living room'}`;
     
-    const architecturalContext = params.floorPlanAnalysis ? 
-      `\nArchitectural features:
-- Windows: ${params.floorPlanAnalysis.windowLocations?.join(', ') || 'Standard placement'}
-- Ceiling: ${params.floorPlanAnalysis.ceilingRoofDesign || 'Standard height'}
-- Layout: ${params.floorPlanAnalysis.layoutNotes || 'Rectangular layout'}` : '';
+    // Build strict architectural context when floor plan is available
+    let architecturalContext = '';
+    if (params.floorPlanAnalysis) {
+      architecturalContext = `\n\n🔒 CRITICAL - PRESERVE THESE ARCHITECTURAL FEATURES EXACTLY:
+• Room Dimensions: ${params.floorPlanAnalysis.roomDimensions || 'As specified in the space'}
+• Windows: ${params.floorPlanAnalysis.windowLocations?.join(', ') || 'Existing window placement'} - DO NOT move, resize, or change
+• Doors/Openings: ${params.floorPlanAnalysis.doorLocations?.join(', ') || 'Existing door positions'} - DO NOT relocate or modify
+• Ceiling: ${params.floorPlanAnalysis.ceilingRoofDesign || 'Standard height'} - Keep exact height and design
+• Built-in Features: ${params.floorPlanAnalysis.builtInFeatures?.join(', ') || 'None specified'} - Must remain in place
+• Layout: ${params.floorPlanAnalysis.layoutNotes || 'Existing layout'}
+
+⚠️ STRICT REQUIREMENT: Preserve ALL walls, floors, ceiling, windows, and doors in their EXACT positions and dimensions. Only furniture is new - the room structure must remain IDENTICAL to the specification above.`;
+    }
     
     const prompt = `Create a photorealistic interior design render of ${roomDescription}.${architecturalContext}
 
-Furnish the room with these exact products:
+Furnish this space with these exact products (ONLY change furniture, preserve all room structure):
 ${productDescriptions}
 
-Requirements:
-- Photorealistic quality with professional lighting
-- All products must be clearly visible and properly scaled
-- Maintain accurate product colors and materials
-- Natural furniture placement following interior design principles
-- High-resolution, magazine-quality composition`;
+REQUIREMENTS:
+• Photorealistic quality with professional lighting and shadows
+• All products must be clearly visible, properly scaled to real-world dimensions
+• Maintain accurate product colors and materials exactly as specified
+• Natural furniture placement following interior design principles
+• High-resolution, magazine-quality composition
+• Preserve exact room dimensions, wall positions, window locations, and door placements
+• DO NOT modify any structural elements - walls, floors, ceiling, windows, doors must match specifications EXACTLY
+• Only furniture should be different - everything else must be preserved precisely`;
+
 
     console.log(`📝 Prompt length: ${prompt.length} characters`);
     console.log(`🎨 Calling OpenAI gpt-image-1...`);

@@ -135,8 +135,16 @@ export async function refineRenderWithControlNetReference(
         const productBlob = Buffer.from(productRef.imageBase64, 'base64');
         formData.append('control_image', new Blob([productBlob], { type: 'image/png' }));
         
-        // Add prompt with product context
-        const prompt = `${params.renderPrompt}. Ensure the furniture matches the reference image exactly.`;
+        // Add prompt with STRICT preservation requirements
+        const prompt = `${params.renderPrompt}. 
+
+🔒 CRITICAL REQUIREMENTS:
+• Match the reference furniture product EXACTLY - same style, color, dimensions, materials
+• Preserve ALL room structure - walls, floors, ceiling, windows, doors must remain UNCHANGED
+• Only modify the furniture shown in the reference image
+• DO NOT alter any architectural elements, wall positions, window locations, or room dimensions
+• Keep existing lighting, wall colors, floor materials exactly as shown
+• Furniture replacement only - everything else must be preserved precisely`;
         formData.append('prompt', truncatePromptForStability(prompt));
         formData.append('strength', strength.toString());
         formData.append('control_strength', '1.0'); // Max control strength for reference
