@@ -21,6 +21,7 @@ import {
   renderEvents,
   documentationSections,
   documentationComments,
+  productFunctionalCategories,
   type Category,
   type InsertCategory,
   type Supplier,
@@ -400,7 +401,27 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    await db.delete(products).where(eq(products.id, id));
+    // Delete product and all related records in a transaction to ensure data integrity
+    await db.transaction(async (tx) => {
+      // First, get all upload jobs for this product
+      const jobs = await tx.select().from(uploadJobs).where(eq(uploadJobs.productId, id));
+      
+      // Delete upload job files first (they reference upload jobs)
+      for (const job of jobs) {
+        await tx.delete(uploadJobFiles).where(eq(uploadJobFiles.jobId, job.id));
+      }
+      
+      // Delete all other related records
+      await tx.delete(uploadJobs).where(eq(uploadJobs.productId, id));
+      await tx.delete(cartItems).where(eq(cartItems.productId, id));
+      await tx.delete(renderProducts).where(eq(renderProducts.productId, id));
+      await tx.delete(orderItems).where(eq(orderItems.productId, id));
+      await tx.delete(visualAnalysisProducts).where(eq(visualAnalysisProducts.productId, id));
+      await tx.delete(productFunctionalCategories).where(eq(productFunctionalCategories.productId, id));
+      
+      // Finally delete the product itself
+      await tx.delete(products).where(eq(products.id, id));
+    });
   }
 
   async updateProductStructuredAnalysis(
