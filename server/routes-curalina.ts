@@ -25,7 +25,7 @@ import {
 import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
-import { buildPromptFromQuiz, extractProductSkus } from "./services/gemini-ai";
+import { buildPromptFromQuiz, extractProductSkus, detectVisibleProducts } from "./services/gemini-ai";
 import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
 import type { PlacementInstruction } from "./services/room-composition-service";
 import { renameAllProductImages, previewImageRenames } from "./services/s3-image-renamer";
@@ -1881,15 +1881,43 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // QA validation disabled for image-only mode - renders are generated directly from visual inputs
-          const qaResults = null;
-          console.log(`⚡ QA validation skipped (image-only mode)`);
+          // CRITICAL FIX: Re-enable QA validation to detect which products are actually visible
+          // The AI doesn't always render all products we send it
+          console.log(`🔍 Running visibility detection to find which products appear in render...`);
           
-          // Show ALL selected products in "Shop the Look"
-          // Since we intentionally selected these products for the design, show them all
-          const productsForShopTheLook: string[] = selectedProducts.map(p => p.sku);
-          console.log(`🛍️ Shop the Look: Showing all ${productsForShopTheLook.length} selected products`);
-          console.log(`⚡ Visibility detection skipped (image-only mode)`);
+          let productsForShopTheLook: string[] = [];
+          let qaResults = null;
+          
+          try {
+            // Use Gemini Vision to detect which products are actually visible in the render
+            const visibleSkus = await detectVisibleProducts(
+              imageDataUrl,
+              fullSelectedProducts
+            );
+            
+            if (visibleSkus && visibleSkus.length > 0) {
+              productsForShopTheLook = visibleSkus;
+              console.log(`✅ Visibility Detection: ${visibleSkus.length}/${selectedProducts.length} products visible in render`);
+              
+              // Log which products are missing from render
+              const visibleSet = new Set(visibleSkus);
+              const missingProducts = selectedProducts.filter(p => !visibleSet.has(p.sku));
+              if (missingProducts.length > 0) {
+                console.log(`⚠️  Missing from render: ${missingProducts.map(p => p.name).join(', ')}`);
+              }
+            } else {
+              // Fallback: show all selected products if detection fails
+              productsForShopTheLook = selectedProducts.map(p => p.sku);
+              console.log(`⚠️  Visibility detection returned no results - showing all ${productsForShopTheLook.length} selected products as fallback`);
+            }
+          } catch (error) {
+            console.error(`❌ Visibility detection error:`, error);
+            // Fallback: show all selected products if detection fails
+            productsForShopTheLook = selectedProducts.map(p => p.sku);
+            console.log(`⚠️  Visibility detection failed - showing all ${productsForShopTheLook.length} selected products as fallback`);
+          }
+          
+          console.log(`🛍️ Shop the Look: ${productsForShopTheLook.length} visible products`);
           
           // Update render with completed data (only visible products + QA results)
           const prompt = placementInstructions 

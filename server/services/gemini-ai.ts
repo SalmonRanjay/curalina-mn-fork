@@ -3299,3 +3299,101 @@ Return ONLY the JSON array, no additional text.`;
     throw new Error(`Failed to match folders: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 }
+
+/**
+ * Detect which products from a list are actually visible in a rendered image
+ * Uses Gemini Vision to analyze the render and identify visible products
+ * 
+ * @param renderImageBase64 - Base64-encoded render image (with data URI prefix like "data:image/png;base64,...")
+ * @param selectedProducts - List of products that were sent to the AI for rendering
+ * @returns Array of SKUs for products that are actually visible in the render
+ */
+export async function detectVisibleProducts(
+  renderImageBase64: string,
+  selectedProducts: Product[]
+): Promise<string[]> {
+  try {
+    console.log(`🔍 Analyzing render to detect ${selectedProducts.length} products...`);
+    
+    // Extract base64 data and MIME type from data URI
+    const matches = renderImageBase64.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      throw new Error('Invalid base64 image format');
+    }
+    
+    const mimeType = matches[1];
+    const imageData = matches[2];
+    
+    // Build product list for the prompt
+    const productList = selectedProducts.map((p, idx) => 
+      `${idx + 1}. ${p.name} (SKU: ${p.sku})`
+    ).join('\n');
+    
+    const prompt = `You are analyzing a rendered interior design image to determine which furniture products are actually visible.
+
+PRODUCTS THAT WERE SENT TO THE AI:
+${productList}
+
+TASK:
+Carefully examine the rendered image and identify which of the above products are actually visible in the scene.
+
+A product is considered VISIBLE if:
+- You can clearly see the furniture item in the image
+- It matches the product name/description
+- It's rendered as part of the final scene (not just partially visible or cut off)
+
+IMPORTANT:
+- Only list products that are CLEARLY VISIBLE in the render
+- If a product was sent but NOT rendered, do NOT include it
+- If you're uncertain whether a product appears, do NOT include it
+- Return ONLY the SKUs of visible products
+
+Return your response as a JSON array of SKU strings, for example:
+["SKU1", "SKU2", "SKU3"]
+
+If NO products are clearly visible, return an empty array: []`;
+
+    // Call Gemini Vision
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              data: imageData,
+              mimeType: mimeType
+            }
+          }
+        ]
+      }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING,
+            description: "Product SKU"
+          }
+        }
+      }
+    });
+    
+    // Parse response
+    const responseText = response.text;
+    if (!responseText) {
+      console.warn('⚠️ Empty response from Gemini Vision visibility detection');
+      return [];
+    }
+    
+    const visibleSkus: string[] = JSON.parse(responseText);
+    console.log(`✅ Detected ${visibleSkus.length}/${selectedProducts.length} visible products:`, visibleSkus);
+    
+    return visibleSkus;
+  } catch (error) {
+    console.error('❌ Error detecting visible products:', error);
+    // Return empty array on error (will trigger fallback in calling code)
+    return [];
+  }
+}
