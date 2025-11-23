@@ -17,6 +17,8 @@ import {
   uploadJobFiles,
   visualAnalysisJobs,
   visualAnalysisProducts,
+  s3RenamingJobs,
+  s3RenamingProducts,
   renderProducts,
   renderEvents,
   documentationSections,
@@ -57,6 +59,10 @@ import {
   type InsertVisualAnalysisJob,
   type VisualAnalysisProduct,
   type InsertVisualAnalysisProduct,
+  type S3RenamingJob,
+  type InsertS3RenamingJob,
+  type S3RenamingProduct,
+  type InsertS3RenamingProduct,
   type RenderProduct,
   type InsertRenderProduct,
   type RenderEvent,
@@ -206,6 +212,21 @@ export interface ICuralinaStorage {
   updateVisualAnalysisProduct(id: string, data: Partial<InsertVisualAnalysisProduct>): Promise<VisualAnalysisProduct>;
   deleteVisualAnalysisProduct(id: string): Promise<void>;
   upsertVisualAnalysisProducts(products: InsertVisualAnalysisProduct[]): Promise<void>;
+  
+  // S3 Renaming Job operations
+  createS3RenamingJob(job: InsertS3RenamingJob): Promise<S3RenamingJob>;
+  getS3RenamingJob(id: string): Promise<S3RenamingJob | undefined>;
+  getActiveS3RenamingJobs(userId?: string): Promise<S3RenamingJob[]>;
+  updateS3RenamingJob(id: string, data: Partial<InsertS3RenamingJob>): Promise<S3RenamingJob>;
+  deleteS3RenamingJob(id: string): Promise<void>;
+  
+  // S3 Renaming Product operations
+  createS3RenamingProduct(product: InsertS3RenamingProduct): Promise<S3RenamingProduct>;
+  createS3RenamingProducts(products: InsertS3RenamingProduct[]): Promise<S3RenamingProduct[]>;
+  getS3RenamingProducts(jobId: string): Promise<S3RenamingProduct[]>;
+  getPendingS3RenamingProducts(jobId: string, limit: number): Promise<S3RenamingProduct[]>;
+  updateS3RenamingProduct(id: string, data: Partial<InsertS3RenamingProduct>): Promise<S3RenamingProduct>;
+  deleteS3RenamingProduct(id: string): Promise<void>;
   
   // Render Products operations
   createRenderProduct(product: InsertRenderProduct): Promise<RenderProduct>;
@@ -1060,6 +1081,79 @@ export class CuralinaStorage implements ICuralinaStorage {
           });
       }
     });
+  }
+  
+  // S3 Renaming Job operations
+  async createS3RenamingJob(jobData: InsertS3RenamingJob): Promise<S3RenamingJob> {
+    const [job] = await db.insert(s3RenamingJobs).values(jobData).returning();
+    return job;
+  }
+
+  async getS3RenamingJob(id: string): Promise<S3RenamingJob | undefined> {
+    const [job] = await db.select().from(s3RenamingJobs).where(eq(s3RenamingJobs.id, id));
+    return job;
+  }
+
+  async getActiveS3RenamingJobs(userId?: string): Promise<S3RenamingJob[]> {
+    const conditions = [or(eq(s3RenamingJobs.status, 'pending'), eq(s3RenamingJobs.status, 'processing'))];
+    if (userId) {
+      conditions.push(eq(s3RenamingJobs.userId, userId));
+    }
+    return db.select().from(s3RenamingJobs).where(and(...conditions));
+  }
+
+  async updateS3RenamingJob(id: string, data: Partial<InsertS3RenamingJob>): Promise<S3RenamingJob> {
+    const [job] = await db
+      .update(s3RenamingJobs)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(s3RenamingJobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteS3RenamingJob(id: string): Promise<void> {
+    await db.delete(s3RenamingJobs).where(eq(s3RenamingJobs.id, id));
+  }
+  
+  // S3 Renaming Product operations
+  async createS3RenamingProduct(productData: InsertS3RenamingProduct): Promise<S3RenamingProduct> {
+    const [product] = await db.insert(s3RenamingProducts).values(productData).returning();
+    return product;
+  }
+
+  async createS3RenamingProducts(productsData: InsertS3RenamingProduct[]): Promise<S3RenamingProduct[]> {
+    if (productsData.length === 0) return [];
+    return db.insert(s3RenamingProducts).values(productsData).returning();
+  }
+
+  async getS3RenamingProducts(jobId: string): Promise<S3RenamingProduct[]> {
+    return db.select().from(s3RenamingProducts).where(eq(s3RenamingProducts.jobId, jobId));
+  }
+
+  async getPendingS3RenamingProducts(jobId: string, limit: number): Promise<S3RenamingProduct[]> {
+    return db
+      .select()
+      .from(s3RenamingProducts)
+      .where(
+        and(
+          eq(s3RenamingProducts.jobId, jobId),
+          eq(s3RenamingProducts.status, "pending")
+        )
+      )
+      .limit(limit);
+  }
+
+  async updateS3RenamingProduct(id: string, data: Partial<InsertS3RenamingProduct>): Promise<S3RenamingProduct> {
+    const [product] = await db
+      .update(s3RenamingProducts)
+      .set(data)
+      .where(eq(s3RenamingProducts.id, id))
+      .returning();
+    return product;
+  }
+
+  async deleteS3RenamingProduct(id: string): Promise<void> {
+    await db.delete(s3RenamingProducts).where(eq(s3RenamingProducts.id, id));
   }
   
   // Render Products operations
