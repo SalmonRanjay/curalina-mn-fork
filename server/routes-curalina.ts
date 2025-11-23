@@ -1251,390 +1251,11 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // Gemini-only analysis for front view + combined (Admin only)
-  app.post('/api/admin/products/analyze-with-gemini', isAuthenticated, isAdmin, async (req: any, res) => {
+  // FAST Visual Description Analysis - ONLY ENDPOINT (40 concurrent workers, real-time saves)
+  // Replaces all other slow sequential analysis endpoints
+  app.post('/api/admin/products/visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('\n🎨 Starting Gemini-only product analysis...');
-      
-      const allProducts = await curalinaStorage.getAllProducts();
-      const productsWithImages = allProducts.filter(p => 
-        p.images && p.images.length > 0 && p.images[0].startsWith('https://curalina')
-      );
-      
-      console.log(`Found ${productsWithImages.length} products with valid images`);
-      
-      if (productsWithImages.length === 0) {
-        return res.json({ 
-          success: true, 
-          message: 'No products with images found',
-          analyzed: 0
-        });
-      }
-      
-      res.json({ 
-        success: true, 
-        message: `Gemini analysis started for ${productsWithImages.length} products. Check server logs for progress.`,
-        totalProducts: productsWithImages.length
-      });
-      
-      (async () => {
-        try {
-          const { batchAnalyzeProductsWithGemini } = await import('./services/gemini-product-analyzer');
-          
-          const MAX_BATCH_SIZE = 20;
-          const productsToAnalyze = productsWithImages
-            .slice(0, MAX_BATCH_SIZE)
-            .map(p => ({
-              sku: p.sku,
-              name: p.name,
-              images: p.images || []
-            }));
-          
-          if (productsWithImages.length > MAX_BATCH_SIZE) {
-            console.log(`⚠️ Limiting to ${MAX_BATCH_SIZE} products (${productsWithImages.length} total)`);
-          }
-          
-          const results = await batchAnalyzeProductsWithGemini(productsToAnalyze);
-          
-          let updated = 0;
-          let failed = 0;
-          
-          for (const result of results) {
-            if (result.success) {
-              try {
-                const product = allProducts.find(p => p.sku === result.sku);
-                if (product) {
-                  await curalinaStorage.updateProduct(product.id, {
-                    visualDescription: result.visualDescription
-                  });
-                  updated++;
-                  console.log(`✅ Updated ${result.sku}`);
-                  if (result.visualDescription) {
-                    console.log(`   Description: ${result.visualDescription.length} chars`);
-                  }
-                }
-              } catch (error) {
-                console.error(`Failed to update ${result.sku}:`, error);
-                failed++;
-              }
-            } else {
-              failed++;
-            }
-          }
-          
-          console.log(`\n📊 Gemini-Only Analysis Complete:`);
-          console.log(`  ✅ Updated: ${updated}`);
-          console.log(`  ❌ Failed: ${failed}`);
-        } catch (error) {
-          console.error('Gemini batch analysis error:', error);
-        }
-      })();
-      
-    } catch (error) {
-      console.error("Error starting Gemini analysis:", error);
-      res.status(500).json({ error: "Failed to start Gemini analysis" });
-    }
-  });
-
-  // Legacy route - redirect to new Gemini-only endpoint
-  app.post('/api/admin/products/analyze-visuals', isAuthenticated, isAdmin, async (req: any, res) => {
-    res.status(410).json({ 
-      error: "This endpoint has been deprecated. Use '/api/admin/products/analyze-with-gemini' instead.",
-      message: "OpenAI analysis has been removed. Platform now uses Gemini AI exclusively."
-    });
-  });
-
-  // Visual Analysis Jobs API (Admin only) - NOW USES COMPREHENSIVE ANALYZER
-  app.post('/api/admin/visual-analysis/start', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { productIds = [], onlyMissingDescriptions = false } = req.body;
-      
-      console.log(`\n🎨 Comprehensive Analysis Started (${productIds.length || 'all'} products)`);
-      
-      const { analyzeProductComprehensively } = await import('./services/comprehensive-visual-analyzer');
-      const { EnhancedQualityScorer } = await import('./services/enhanced-quality-scorer');
-      
-      // Get products to analyze
-      let productsToAnalyze: any[] = [];
-      if (productIds && productIds.length > 0) {
-        productsToAnalyze = await Promise.all(
-          productIds.map((id: string) => curalinaStorage.getProduct(id))
-        ).then(results => results.filter((p): p is any => p !== null));
-      } else {
-        const allProducts = await curalinaStorage.getAllProducts();
-        productsToAnalyze = onlyMissingDescriptions 
-          ? allProducts.filter(p => !p.structuredAnalysis)
-          : allProducts;
-      }
-      
-      if (productsToAnalyze.length === 0) {
-        return res.json({ 
-          success: true,
-          analyzed: 0,
-          message: 'No products to analyze'
-        });
-      }
-      
-      // Start analysis in background
-      const results = [];
-      (async () => {
-        for (const product of productsToAnalyze) {
-          try {
-            console.log(`\n📸 Analyzing: ${product.name} (${product.sku})`);
-            
-            const analysis = await analyzeProductComprehensively(product.name, product.images);
-            if (!analysis) {
-              console.warn(`  ❌ No valid images for ${product.sku}`);
-              continue;
-            }
-            
-            const metrics = EnhancedQualityScorer.calculateMetrics(analysis.frontViewAnalysis);
-            
-            const structuredData = {
-              frontView: analysis.frontViewAnalysis,
-              multiAngle: analysis.synthesizedAnalysis,
-              analysisDate: new Date().toISOString(),
-              geminiVersion: 'gemini-2.5-flash'
-            };
-            
-            await curalinaStorage.updateProductStructuredAnalysis(
-              product.id,
-              structuredData,
-              metrics.overallScore
-            );
-            
-            console.log(`  ✅ Score: ${metrics.overallScore}/100 (${metrics.regenerationReadiness})`);
-            
-            results.push({
-              id: product.id,
-              sku: product.sku,
-              name: product.name,
-              score: metrics.overallScore,
-              readiness: metrics.regenerationReadiness
-            });
-          } catch (error) {
-            console.error(`  ❌ Failed to analyze ${product.sku}:`, error);
-            results.push({
-              id: product.id,
-              sku: product.sku,
-              name: product.name,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            });
-          }
-        }
-        console.log(`\n✅ Batch analysis complete: ${results.length}/${productsToAnalyze.length} analyzed`);
-      })();
-      
-      res.json({ 
-        success: true,
-        totalProducts: productsToAnalyze.length,
-        message: `Comprehensive analysis started for ${productsToAnalyze.length} products. Check server logs for progress.`,
-        version: 'comprehensive-v3'
-      });
-      
-    } catch (error) {
-      console.error("Error starting visual analysis job:", error);
-      res.status(500).json({ error: "Failed to start visual analysis" });
-    }
-  });
-  
-  app.get('/api/admin/visual-analysis/active', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { visualAnalysisConfig } = await import('./config/visual-analysis');
-      const servicePath = visualAnalysisConfig.useV2 
-        ? './services/visual-analysis-job-service-v2'
-        : './services/visual-analysis-job-service';
-      
-      const { getActiveVisualAnalysisJobs } = await import(servicePath);
-      const jobs = await getActiveVisualAnalysisJobs();
-      res.json(jobs);
-    } catch (error) {
-      console.error("Error fetching active visual analysis jobs:", error);
-      res.status(500).json({ error: "Failed to fetch active jobs" });
-    }
-  });
-  
-  app.get('/api/admin/visual-analysis/job/:id', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { visualAnalysisConfig } = await import('./config/visual-analysis');
-      const servicePath = visualAnalysisConfig.useV2 
-        ? './services/visual-analysis-job-service-v2'
-        : './services/visual-analysis-job-service';
-      
-      const { getVisualAnalysisJobDetails } = await import(servicePath);
-      const details = await getVisualAnalysisJobDetails(req.params.id);
-      
-      if (!details) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-      
-      res.json(details);
-    } catch (error) {
-      console.error("Error fetching visual analysis job details:", error);
-      res.status(500).json({ error: "Failed to fetch job details" });
-    }
-  });
-
-  // Bulk re-analyze products that need analysis - NOW USES COMPREHENSIVE ANALYZER
-  // Analyzes: 1) Products with Front View images, 2) Single-image products, 3) Missing structured analysis
-  app.post('/api/admin/visual-analysis/reanalyze-front-views', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      console.log('\n🎨 Comprehensive Analysis: Finding products to re-analyze...');
-      
-      const allProducts = await curalinaStorage.getAllProducts();
-      
-      // Filter products that need comprehensive analysis
-      const productsToAnalyze = allProducts.filter(product => {
-        if (!product.images || product.images.length === 0) return false;
-        
-        const hasFrontView = product.images.some(url => 
-          url.toLowerCase().includes('front')
-        );
-        const hasSingleImage = product.images.length === 1;
-        const missingAnalysis = !product.structuredAnalysis;
-        
-        return (hasFrontView || hasSingleImage) && missingAnalysis;
-      });
-      
-      console.log(`📊 Found ${productsToAnalyze.length} products needing analysis`);
-      
-      if (productsToAnalyze.length === 0) {
-        return res.json({
-          success: true,
-          message: 'No products need analysis',
-          totalProducts: 0
-        });
-      }
-      
-      const { analyzeProductComprehensively } = await import('./services/comprehensive-visual-analyzer');
-      const { EnhancedQualityScorer } = await import('./services/enhanced-quality-scorer');
-      
-      // Start analysis in background
-      const results = [];
-      (async () => {
-        for (const product of productsToAnalyze) {
-          try {
-            console.log(`  📸 ${product.name}`);
-            
-            const analysis = await analyzeProductComprehensively(product.name, product.images);
-            if (!analysis) continue;
-            
-            const metrics = EnhancedQualityScorer.calculateMetrics(analysis.frontViewAnalysis);
-            
-            const structuredData = {
-              frontView: analysis.frontViewAnalysis,
-              multiAngle: analysis.synthesizedAnalysis,
-              analysisDate: new Date().toISOString(),
-              geminiVersion: 'gemini-2.5-flash'
-            };
-            
-            await curalinaStorage.updateProductStructuredAnalysis(
-              product.id,
-              structuredData,
-              metrics.overallScore
-            );
-            
-            console.log(`    ✅ Score: ${metrics.overallScore}/100`);
-            
-            results.push({
-              id: product.id,
-              sku: product.sku,
-              score: metrics.overallScore,
-              readiness: metrics.regenerationReadiness
-            });
-          } catch (error) {
-            console.error(`    ❌ ${product.sku}:`, error);
-          }
-        }
-        console.log(`\n✅ Re-analysis complete: ${results.length} products updated`);
-      })();
-      
-      res.json({ 
-        success: true,
-        totalProducts: productsToAnalyze.length,
-        message: `Comprehensive analysis started for ${productsToAnalyze.length} products. Check server logs for progress.`,
-        version: 'comprehensive-v3'
-      });
-      
-    } catch (error) {
-      console.error("Error starting re-analysis:", error);
-      res.status(500).json({ error: "Failed to start re-analysis" });
-    }
-  });
-
-  // Generate text-based descriptions for products without visual analysis (Admin only)
-  app.post('/api/admin/products/generate-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      console.log('\n📝 Starting text-based description generation...');
-      
-      // Get all products without visualDescription
-      const allProducts = await curalinaStorage.getAllProducts();
-      const productsNeedingDescription = allProducts.filter(p => !p.visualDescription);
-      
-      console.log(`Found ${productsNeedingDescription.length} products without visual descriptions`);
-      console.log(`Total products in database: ${allProducts.length}`);
-      
-      if (productsNeedingDescription.length === 0) {
-        return res.json({ 
-          success: true, 
-          message: 'All products already have descriptions',
-          generated: 0,
-          total: allProducts.length
-        });
-      }
-      
-      // Start async generation
-      res.json({ 
-        success: true, 
-        message: `Description generation started for ${productsNeedingDescription.length} products. Check server logs for progress.`,
-        totalProducts: productsNeedingDescription.length
-      });
-      
-      // Run generation in background
-      (async () => {
-        try {
-          const { generateRichProductDescription } = await import('./services/product-text-description-generator');
-          
-          let updated = 0;
-          let failed = 0;
-          
-          for (const product of productsNeedingDescription) {
-            try {
-              const richDescription = generateRichProductDescription(product);
-              
-              await curalinaStorage.updateProduct(product.id, {
-                visualDescription: richDescription
-              });
-              
-              updated++;
-              console.log(`✅ Generated description for ${product.sku} (${updated}/${productsNeedingDescription.length})`);
-              
-            } catch (error) {
-              console.error(`Failed to generate description for ${product.sku}:`, error);
-              failed++;
-            }
-          }
-          
-          console.log(`\n📊 Text-Based Description Generation Complete:`);
-          console.log(`  ✅ Generated: ${updated}`);
-          console.log(`  ❌ Failed: ${failed}`);
-          console.log(`  📈 Coverage: ${((updated / allProducts.length) * 100).toFixed(1)}% of all products now have descriptions`);
-        } catch (error) {
-          console.error('Description generation error:', error);
-        }
-      })();
-      
-    } catch (error) {
-      console.error("Error starting text-based description generation:", error);
-      res.status(500).json({ error: "Failed to start description generation" });
-    }
-  });
-
-  // Batch regenerate visual descriptions using Gemini Vision (Admin only)
-  // NOW USES OPTIMIZED V2 CONCURRENT JOB SERVICE (40 workers, 100 batch size, minimal delays)
-  app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      console.log('\n🚀 Starting FAST concurrent visual description regeneration (V2 Optimized)...');
+      console.log('\n🚀 Starting FAST concurrent visual description analysis (40 parallel workers)...');
       
       // Support both 'mode' (from frontend) and 'targetFilter' (legacy)
       const { mode, targetFilter: legacyFilter, specificSkus, skus } = req.body;
@@ -1653,30 +1274,23 @@ export function registerCuralinaRoutes(app: Express) {
       let productsToProcess: any[] = [];
       
       if (skuList && Array.isArray(skuList) && skuList.length > 0) {
-        // Process specific SKUs
         productsToProcess = allProducts.filter(p => skuList.includes(p.sku));
         console.log(`📌 Processing ${productsToProcess.length} specific products`);
       } else if (targetFilter === 'all') {
-        // Process all products with images
         productsToProcess = allProducts.filter(p => p.images && p.images.length > 0);
         console.log(`📊 Processing all ${productsToProcess.length} products with images`);
       } else if (targetFilter === 'missing') {
-        // Process only products without visual descriptions
         productsToProcess = allProducts.filter(p => 
           (p.images && p.images.length > 0) && !p.visualDescription
         );
         console.log(`📊 Processing ${productsToProcess.length} products without descriptions`);
       } else if (targetFilter === 'front-view-only') {
-        // Process only products with front-view images
         productsToProcess = allProducts.filter(p => {
           if (!p.images || p.images.length === 0) return false;
-          return p.images.some((url: string) => 
-            url.toLowerCase().includes('front')
-          );
+          return p.images.some((url: string) => url.toLowerCase().includes('front'));
         });
         console.log(`📊 Processing ${productsToProcess.length} products with front-view images`);
       } else {
-        // Default: products without descriptions
         productsToProcess = allProducts.filter(p => 
           (p.images && p.images.length > 0) && !p.visualDescription
         );
@@ -1691,31 +1305,28 @@ export function registerCuralinaRoutes(app: Express) {
         });
       }
       
-      // Use V2 concurrent job service with optimizations
+      // Use optimized V2 concurrent job service
       const { createAndStartVisualAnalysisJob } = await import('./services/visual-analysis-job-service-v2');
-      
-      // Create job with specific product IDs
       const productIds = productsToProcess.map(p => p.id);
       const job = await createAndStartVisualAnalysisJob(productIds, {
-        priority: 100, // High priority for manual triggers
+        priority: 100,
         autoStart: true
       });
       
-      // Return immediately with job ID
       res.json({
         success: true,
-        message: `🚀 FAST concurrent visual description analysis started (40 parallel workers)`,
+        message: `🚀 FAST concurrent visual description analysis started (40 parallel workers, real-time saves)`,
         jobId: job.id,
         totalProducts: productsToProcess.length,
         targetFilter: targetFilter || 'missing'
       });
       
       console.log(`✅ V2 Job created: ${job.id} for ${productsToProcess.length} products`);
-      console.log(`📈 Expected to complete in ~${Math.ceil(productsToProcess.length / 40)} seconds (40 concurrent workers)`);
+      console.log(`📈 Expected to complete in ~${Math.ceil(productsToProcess.length / 40)} seconds`);
       
     } catch (error) {
-      console.error("Error starting visual description regeneration:", error);
-      res.status(500).json({ error: "Failed to start regeneration" });
+      console.error("Error starting visual description analysis:", error);
+      res.status(500).json({ error: "Failed to start analysis" });
     }
   });
 
