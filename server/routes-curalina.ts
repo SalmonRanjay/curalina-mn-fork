@@ -2262,12 +2262,36 @@ export function registerCuralinaRoutes(app: Express) {
           stylePreference: style,
         };
         
+        // Build shared prompt ONCE for all three services (includes GPT-5 Vision analysis)
+        console.log(`\n🔀 Building shared prompt for fair comparison...`);
+        const { buildSharedPrompt } = await import('./services/shared-prompt-builder');
+        const sharedPrompt = await buildSharedPrompt({
+          roomImageUrl,
+          products: selectedProducts.map(p => ({
+            sku: p.sku,
+            name: p.name,
+            visualDescription: p.visualDescription || undefined,
+            condensedDescription: (p as any).condensedDescription || undefined,
+            colors: p.colors || undefined,
+            dimensions: p.dimensions,
+          })),
+          roomType,
+          stylePreference: style,
+        });
+        console.log(`✅ Shared prompt built - will be used identically by all three services`);
+        
+        // Pass the SAME prompt to all three services
+        const paramsWithSharedPrompt = {
+          ...baseParams,
+          sharedPrompt: sharedPrompt.mainPrompt,
+        };
+        
         // Gemini generation
         (async () => {
           const startTime = Date.now();
           try {
             const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
-            const result = await generateImageOnlyRender(baseParams);
+            const result = await generateImageOnlyRender(paramsWithSharedPrompt);
             
             if (!result.success || !result.imageBase64) {
               throw new Error(result.error || 'Generation failed');
@@ -2310,8 +2334,8 @@ export function registerCuralinaRoutes(app: Express) {
             const { generateOpenAIRender } = await import('./services/openai-render');
             // Map products to match OpenAI service interface (convert null to undefined)
             const openaiParams = {
-              ...baseParams,
-              products: baseParams.products.map(p => ({
+              ...paramsWithSharedPrompt,
+              products: paramsWithSharedPrompt.products.map(p => ({
                 sku: p.sku,
                 name: p.name,
                 visualDescription: p.visualDescription || undefined,
@@ -2360,7 +2384,7 @@ export function registerCuralinaRoutes(app: Express) {
           const startTime = Date.now();
           try {
             const { generateStabilityRender } = await import('./services/stability-ai-render');
-            const result = await generateStabilityRender(baseParams);
+            const result = await generateStabilityRender(paramsWithSharedPrompt);
             
             if (!result.success || !result.imageBase64) {
               throw new Error(result.error || 'Generation failed');

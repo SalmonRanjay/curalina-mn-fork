@@ -141,7 +141,9 @@ REQUIREMENTS:
 • Natural furniture placement following interior design principles
 • High-resolution, magazine-quality composition
 ${roomAnalysis ? '• Room structure (walls, floor, ceiling, windows, doors, built-ins) must be IDENTICAL to description' : '• Cohesive color palette and style throughout'}
-• Only furniture is new - everything else preserved precisely`;
+• Only furniture is new - everything else preserved precisely
+
+${roomAnalysis ? 'Now, furnish this space with the product images provided.' : 'Use the product images provided to create this design.'}`;
 
   console.log(`   ✅ Shared prompt built (${mainPrompt.length} chars)`);
   

@@ -115,6 +115,7 @@ export interface ImageOnlyRenderParams {
   products: Product[];
   roomType?: string;
   stylePreference?: string;
+  sharedPrompt?: string; // Pre-built prompt from shared-prompt-builder (for fair comparison)
   floorPlanAnalysis?: {
     roomDimensions: string;
     windowLocations: string[];
@@ -211,22 +212,25 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       console.log(`📋 Floor plan analysis received:`, JSON.stringify(floorPlanAnalysis, null, 2));
     }
     
-    // Step 3: Use shared prompt builder for consistent prompts across all services
-    const { buildSharedPrompt } = await import('./shared-prompt-builder');
-    const sharedPrompt = await buildSharedPrompt({
-      roomImageUrl: params.roomImageUrl,
-      products: params.products,
-      roomType,
-      stylePreference,
-    });
+    // Step 3: Use pre-built shared prompt if provided (for fair comparison), otherwise build our own
+    // CRITICAL: Do NOT modify the shared prompt - use it exactly as provided
+    let prompt: string;
+    if (params.sharedPrompt) {
+      prompt = params.sharedPrompt;
+      console.log(`📝 Using pre-built shared prompt (${prompt.length} chars) - EXACT copy for fair comparison`);
+    } else {
+      const { buildSharedPrompt } = await import('./shared-prompt-builder');
+      const sharedPrompt = await buildSharedPrompt({
+        roomImageUrl: params.roomImageUrl,
+        products: params.products,
+        roomType,
+        stylePreference,
+      });
+      prompt = sharedPrompt.mainPrompt;
+      console.log(`📝 Built prompt (${prompt.length} chars)`);
+    }
     
-    // Use the shared prompt as the main instruction
-    let prompt = sharedPrompt.mainPrompt;
-    
-    // For Gemini, add instruction about product images following the prompt
-    prompt += roomImage 
-      ? `\n\nNow, furnish this space with the following product images:`
-      : `\n\nUse the following product images:`;
+    // The shared prompt already includes product image instructions, so no need to append
     
     // Step 4: Build parts array - INTERLEAVE text + image per product
     // This mimics Google AI Studio's sequential upload where each image is bound to preceding text

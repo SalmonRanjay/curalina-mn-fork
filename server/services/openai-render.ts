@@ -19,6 +19,7 @@ interface OpenAIRenderParams {
   }>;
   roomType?: string;
   stylePreference?: string;
+  sharedPrompt?: string; // Pre-built prompt from shared-prompt-builder (for fair comparison)
   floorPlanAnalysis?: any;
 }
 
@@ -43,16 +44,22 @@ export async function generateOpenAIRender(params: OpenAIRenderParams): Promise<
     console.log(`📍 Room image: ${params.roomImageUrl || '(none - text-to-image mode)'}`);
     console.log(`📦 Products to furnish: ${params.products.length}`);
     
-    // Use shared prompt builder for consistent prompts across all services
-    const { buildSharedPrompt } = await import('./shared-prompt-builder');
-    const sharedPrompt = await buildSharedPrompt({
-      roomImageUrl: params.roomImageUrl,
-      products: params.products,
-      roomType: params.roomType,
-      stylePreference: params.stylePreference,
-    });
-    
-    const prompt = sharedPrompt.mainPrompt;
+    // Use pre-built shared prompt if provided (for fair comparison), otherwise build our own
+    let prompt: string;
+    if (params.sharedPrompt) {
+      prompt = params.sharedPrompt;
+      console.log(`📝 Using pre-built shared prompt (${prompt.length} chars)`);
+    } else {
+      const { buildSharedPrompt } = await import('./shared-prompt-builder');
+      const sharedPrompt = await buildSharedPrompt({
+        roomImageUrl: params.roomImageUrl,
+        products: params.products,
+        roomType: params.roomType,
+        stylePreference: params.stylePreference,
+      });
+      prompt = sharedPrompt.mainPrompt;
+      console.log(`📝 Built prompt (${prompt.length} chars)`);
+    }
 
     console.log(`📝 Shared prompt length: ${prompt.length} characters`);
     console.log(`🎨 Calling OpenAI GPT Image 1...`);
