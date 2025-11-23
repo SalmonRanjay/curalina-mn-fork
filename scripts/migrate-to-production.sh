@@ -24,7 +24,6 @@ pg_dump "$DEV_DB_URL" \
   --compress=9 \
   --no-owner \
   --no-privileges \
-  --on-conflict-do-nothing \
   > /tmp/db_dump.custom
 
 if [ ! -f /tmp/db_dump.custom ]; then
