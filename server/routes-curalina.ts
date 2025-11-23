@@ -1881,40 +1881,94 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // CRITICAL FIX: Re-enable QA validation to detect which products are actually visible
-          // The AI doesn't always render all products we send it
-          console.log(`🔍 Running visibility detection to find which products appear in render...`);
+          // ENABLE FULL QA VALIDATION: Comprehensive quality control using Gemini Vision
+          // Analyzes product appearance, scale, placement, and space image fidelity
+          console.log(`🔍 Running comprehensive QA validation on render...`);
           
           let productsForShopTheLook: string[] = [];
           let qaResults = null;
           
           try {
-            // Use Gemini Vision to detect which products are actually visible in the render
-            const visibleSkus = await detectVisibleProducts(
-              imageDataUrl,
-              fullSelectedProducts
+            // Import the full QA validation system
+            const { validateRenderQuality } = await import('./services/render-qa');
+            
+            // Prepare products with visual descriptions and dimensions for validation
+            const productsForValidation = fullSelectedProducts.map(p => {
+              const dims = p.dimensions as any || {};
+              return {
+                sku: p.sku,
+                name: p.name,
+                visualDescription: p.visualDescription || undefined,
+                dimensions: {
+                  width: dims.w,
+                  depth: dims.d,
+                  height: dims.h,
+                  unit: dims.unit || 'in'
+                },
+                placement: placementInstructions || undefined
+              };
+            });
+            
+            // Run full QA validation
+            const renderPrompt = floorPlanAnalysis 
+              ? `Image-to-image render preserving space: ${floorPlanAnalysis.overallDescription}`
+              : `Image-only render with ${selectedProducts.length} products`;
+            
+            qaResults = await validateRenderQuality(
+              base64Data, // Raw base64 without data URI prefix
+              mimeType,
+              productsForValidation,
+              renderPrompt
             );
             
-            if (visibleSkus && visibleSkus.length > 0) {
-              productsForShopTheLook = visibleSkus;
-              console.log(`✅ Visibility Detection: ${visibleSkus.length}/${selectedProducts.length} products visible in render`);
+            console.log(`📊 QA Validation Complete:`);
+            console.log(`   Overall Score: ${qaResults.overallScore}/100`);
+            console.log(`   Dimension Accuracy: ${qaResults.dimensionAccuracy}/100`);
+            console.log(`   Issues Found: ${qaResults.issues.length}`);
+            
+            // Extract visible products from QA results (products that were found)
+            const visibleProducts = Object.entries(qaResults.productChecks)
+              .filter(([_, check]) => check.found)
+              .map(([sku, _]) => sku);
+            
+            if (visibleProducts.length > 0) {
+              productsForShopTheLook = visibleProducts;
+              console.log(`✅ QA Detected: ${visibleProducts.length}/${selectedProducts.length} products visible in render`);
               
               // Log which products are missing from render
-              const visibleSet = new Set(visibleSkus);
-              const missingProducts = selectedProducts.filter(p => !visibleSet.has(p.sku));
+              const missingProducts = fullSelectedProducts.filter(p => !visibleProducts.includes(p.sku));
               if (missingProducts.length > 0) {
                 console.log(`⚠️  Missing from render: ${missingProducts.map(p => p.name).join(', ')}`);
               }
+              
+              // Log quality issues
+              if (qaResults.issues.length > 0) {
+                console.log(`⚠️  Quality Issues:`);
+                qaResults.issues.forEach(issue => {
+                  console.log(`   [${issue.severity.toUpperCase()}] ${issue.category}: ${issue.description}`);
+                });
+              }
             } else {
-              // Fallback: show all selected products if detection fails
+              // Fallback: show all selected products if no products detected
               productsForShopTheLook = selectedProducts.map(p => p.sku);
-              console.log(`⚠️  Visibility detection returned no results - showing all ${productsForShopTheLook.length} selected products as fallback`);
+              console.log(`⚠️  QA detected no products, showing all ${productsForShopTheLook.length} selected products as fallback`);
             }
           } catch (error) {
-            console.error(`❌ Visibility detection error:`, error);
-            // Fallback: show all selected products if detection fails
-            productsForShopTheLook = selectedProducts.map(p => p.sku);
-            console.log(`⚠️  Visibility detection failed - showing all ${productsForShopTheLook.length} selected products as fallback`);
+            console.error(`❌ QA validation error:`, error);
+            // Fallback: Use simple visibility detection
+            try {
+              console.log('🔄 Falling back to simple visibility detection...');
+              const visibleSkus = await detectVisibleProducts(imageDataUrl, fullSelectedProducts);
+              if (visibleSkus && visibleSkus.length > 0) {
+                productsForShopTheLook = visibleSkus;
+                console.log(`✅ Fallback Detection: ${visibleSkus.length}/${selectedProducts.length} products visible`);
+              } else {
+                productsForShopTheLook = selectedProducts.map(p => p.sku);
+              }
+            } catch (fallbackError) {
+              console.error(`❌ Fallback detection also failed:`, fallbackError);
+              productsForShopTheLook = selectedProducts.map(p => p.sku);
+            }
           }
           
           console.log(`🛍️ Shop the Look: ${productsForShopTheLook.length} visible products`);
