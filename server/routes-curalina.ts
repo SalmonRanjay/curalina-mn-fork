@@ -1260,17 +1260,13 @@ export function registerCuralinaRoutes(app: Express) {
       let allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
       
-      // Resume mode: skip products that already have visualDescription (for THIS endpoint only)
+      // Resume mode: skip products that already have visualDescription
       let alreadyCompleted = 0;
       if (resume) {
         const originalCount = allProducts.length;
-        // Only skip products with valid, non-empty descriptions
         allProducts = allProducts.filter(p => !p.visualDescription || p.visualDescription.trim() === '');
         alreadyCompleted = originalCount - allProducts.length;
-        console.log(`📊 Resume stats: ${alreadyCompleted} already completed by this endpoint, ${allProducts.length} remaining to analyze`);
-      } else {
-        // Fresh start: analyze all products (discard previous analysis)
-        console.log(`🔄 Fresh start mode: Analyzing all ${allProducts.length} products (discarding previous analysis)`);
+        console.log(`📊 Resume stats: ${alreadyCompleted} already completed, ${allProducts.length} remaining`);
       }
       
       // Callback to save each product immediately as it's analyzed
