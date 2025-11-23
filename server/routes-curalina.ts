@@ -1930,25 +1930,35 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // Generate AI image with detailed product descriptions embedded in prompt
-          // Products include rich Gemini Vision analysis (300-400 word descriptions)
-          // AI generates furniture matching real products based on these visual specifications
-          // NOW ALSO INCLUDES: actual product images as visual references for improved fidelity
-          // AND: layout masks for ControlNet-guided furniture placement
+          // IMAGE-ONLY MODE: Generate AI render using ONLY images (room + products)
+          // NO text descriptions needed - Gemini sees the images directly
+          // This allows ALL 621 products with images to be used (not just the 246 with descriptions)
           if (floorplanUrl) {
-            console.log(`🖼️ Using Gemini image-to-image mode with uploaded space photo + ${productImages.length} product images + ${layoutMask ? 'layout mask' : 'no mask'}`);
+            console.log(`🖼️  IMAGE-ONLY MODE: Room photo + ${productImages.length} product front views → Gemini`);
           } else {
-            console.log(`🎨 Using Gemini text-to-image mode (no space photo) + ${productImages.length} product images + ${layoutMask ? 'layout mask' : 'no mask'}`);
+            console.log(`🎨 IMAGE-ONLY MODE: ${productImages.length} product images (no room photo) → Gemini`);
           }
-          const imageDataUrl = await generateInteriorImage(
-            prompt,
-            floorplanUrl,
-            roomAnalysis,
-            floorPlanAnalysis,
-            productImages.length > 0 ? productImages : undefined,
-            layoutMask
+          
+          const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+          const imageOnlyResult = await generateImageOnlyRender(
+            floorplanUrl || '', // Room image URL (empty if text-to-image mode)
+            productsWithPlacement.map((p: any) => ({
+              sku: p.sku,
+              name: p.name,
+              images: p.images || []
+            })),
+            {
+              roomType: quiz.roomType,
+              style: quiz.styles?.[0] || 'modern'
+            }
           );
-          console.log(`✅ AI-generated room rendering complete with ${productImages.length} product visual references${layoutMask ? ' and layout mask guidance' : ''}`);
+          
+          if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
+            throw new Error(imageOnlyResult.error || 'Image-only generation failed');
+          }
+          
+          console.log(`✅ AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images (image-only mode)`);
+          const imageDataUrl = imageOnlyResult.imageBase64;
           
           // Extract base64 data and MIME type from data URL (format: data:image/png;base64,...)
           const base64Match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);

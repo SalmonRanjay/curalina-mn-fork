@@ -272,15 +272,15 @@ function hasAIVisualDescription(product: Product): boolean {
 
 /**
  * Check if a product can be used for AI rendering
- * A product is usable if it has valid, working images AND AI-generated visual descriptions
+ * A product is usable if it has valid, working images (image-only mode)
  * @param product - Product to validate
  * @returns true if product can be used for AI rendering
  */
 function canUseForAIRendering(product: Product): boolean {
-  // REQUIREMENTS:
-  // 1. Product MUST have valid images (for compositing onto renders)
-  // 2. Product MUST have AI-generated visual descriptions (for accurate rendering)
-  return hasValidImages(product) && hasAIVisualDescription(product);
+  // REQUIREMENT (Image-Only Mode):
+  // Product MUST have valid images - Gemini generates renders from product images directly
+  // Visual descriptions are NO LONGER REQUIRED (switched to image-only rendering)
+  return hasValidImages(product);
 }
 
 /**
@@ -293,7 +293,8 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
   const withValidImages = products.filter(p => p.availability === 'in_stock' && hasValidImages(p)).length;
   const withAIDescriptions = products.filter(p => p.availability === 'in_stock' && hasAIVisualDescription(p)).length;
   console.log(`📊 Product Pool: ${products.length} total → ${inStockCount} in stock → ${withValidImages} with valid images`);
-  console.log(`   📸 ${withAIDescriptions} have AI visual descriptions (REQUIRED for rendering)`);
+  console.log(`   🖼️  Image-Only Mode: All ${withValidImages} products with images are usable (visual descriptions optional)`);
+  console.log(`   📝 ${withAIDescriptions} have AI visual descriptions (for reference only)`);
   console.log(`⚠️ Budget NOT enforced during filtering - focusing on render quality`);
   
   // First pass: strict filtering
@@ -301,7 +302,7 @@ export function filterProductsByQuiz(products: Product[], quiz: QuizResponse): P
     // Filter by availability
     if (product.availability !== 'in_stock') return false;
     
-    // Filter by AI-ready products (REQUIRED - must have images AND visual descriptions)
+    // Filter by AI-ready products (REQUIRED - must have valid images for image-only mode)
     if (!canUseForAIRendering(product)) return false;
     
     // Filter by room type (relaxed for essential furniture)
