@@ -197,18 +197,8 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       prompt = `Please create a beautifully designed interior space with Furniture and products images I provide`;
     }
     
-    if (roomType) {
-      prompt += `\n\nRoom Type: ${roomType}`;
-    }
-    
-    if (stylePreference) {
-      prompt += `\nStyle Preference: ${stylePreference}`;
-    }
-    
-    prompt += `\n\nInclude ALL ${fetchedCount} products shown in the images below:`;
-    
-    // Step 4: Build parts array for Gemini
-    // Order: text prompt + [room image if available] + product images
+    // Step 4: Build parts array - INTERLEAVE text + image per product
+    // This mimics Google AI Studio's sequential upload where each image is bound to preceding text
     const parts: any[] = [{ text: prompt }];
     
     // Add room image if available (image-to-image mode)
@@ -221,8 +211,34 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       });
     }
     
-    // Add all product images
-    parts.push(...productImageParts);
+    // Add each product with specific color/material instructions BEFORE its image
+    // This binds the color specification to the specific product image
+    for (let i = 0; i < productImageRefs.length; i++) {
+      const productRef = productImageRefs[i];
+      const product = products.find(p => p.sku === productRef.sku);
+      
+      // Build per-product instruction with color/material details
+      let productInstruction = `Product ${i + 1} – ${productRef.productName}`;
+      
+      if (product) {
+        // Add explicit color and material information
+        const colors = product.colors?.filter(c => c && c.trim()).join(', ') || '';
+        const materials = product.materials?.filter(m => m && m.trim()).join(', ') || '';
+        
+        if (colors) {
+          productInstruction += `: use this exact color (${colors})`;
+        }
+        if (materials) {
+          productInstruction += colors ? ` and material (${materials})` : `: use this exact material (${materials})`;
+        }
+      }
+      
+      // Add text instruction for this specific product
+      parts.push({ text: productInstruction });
+      
+      // Immediately follow with the product's image (binds them together)
+      parts.push(productImageParts[i]);
+    }
     
     console.log(`🎨 Sending to Gemini 2.5 Flash (image-only mode)...`);
     console.log(`   Mode: ${roomImage ? 'Image-to-image (room photo provided)' : 'Text-to-image (no room photo)'}`);
