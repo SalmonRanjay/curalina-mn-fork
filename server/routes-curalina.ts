@@ -70,17 +70,24 @@ function transformProductImages(product: any) {
       fullUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
     }
     
-    // Parse URL and encode the pathname to handle spaces and special characters
     try {
       const urlObj = new URL(fullUrl);
-      // Split path into segments, encode each segment, then rejoin
-      const pathSegments = urlObj.pathname.split('/');
-      const encodedPath = pathSegments.map(segment => encodeURIComponent(segment)).join('/');
-      urlObj.pathname = encodedPath;
+      // Decode first to handle any existing encoding, then split and encode each segment
+      const decodedPath = decodeURIComponent(urlObj.pathname);
+      const pathSegments = decodedPath.split('/');
+      // Encode each non-empty segment properly
+      const encodedSegments = pathSegments.map(segment => {
+        // Skip empty segments (from leading/trailing slashes)
+        if (!segment) return segment;
+        // Encode the segment - this handles spaces, parentheses, apostrophes, etc.
+        return encodeURIComponent(segment);
+      });
+      urlObj.pathname = encodedSegments.join('/');
       return urlObj.toString();
     } catch (e) {
-      // If URL parsing fails, fallback to simple space encoding
-      return fullUrl.replace(/ /g, '%20');
+      // If URL parsing or decoding fails, return original
+      console.error(`[IMAGE_TRANSFORM] Failed to encode URL: ${fullUrl}`, e);
+      return fullUrl;
     }
   });
   
