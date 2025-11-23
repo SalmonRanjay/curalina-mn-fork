@@ -2400,30 +2400,37 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`   Storing error details in QA results for debugging`);
           }
           
-          // Step 6: Log visibility analysis for debugging (but show all products to users)
+          // Step 6: Detect visible products for Shop the Look
+          let productsForShopTheLook: string[] = [];
           if (selectedProducts.length > 0) {
             try {
               // Convert image buffer to data URL for visibility detection
               const finalImageDataUrl = `data:image/png;base64,${imageBuffer.toString('base64')}`;
               const visibleProductSkus = await identifyVisibleProducts(finalImageDataUrl, selectedProducts);
+              
+              // Use detected visible products (even if empty - that's a valid result)
+              productsForShopTheLook = visibleProductSkus;
+              
               console.log(`🛍️ Visibility analysis: ${visibleProductSkus.length}/${selectedProducts.length} products clearly identified in image`);
-              console.log(`   Visible: ${visibleProductSkus.join(', ')}`);
+              if (visibleProductSkus.length > 0) {
+                console.log(`   Visible: ${visibleProductSkus.join(', ')}`);
+              }
               if (visibleProductSkus.length < selectedProducts.length) {
                 const notIdentified = selectedProducts.filter(p => !visibleProductSkus.includes(p.sku)).map(p => p.sku);
                 console.log(`   Not clearly visible: ${notIdentified.join(', ')}`);
               }
             } catch (error) {
-              console.error("Error in visibility analysis (non-blocking):", error);
+              console.error("Error in visibility analysis (detection failed):", error);
+              // Only fall back to all selected products if detection actually failed
+              productsForShopTheLook = selectedProducts.map(p => p.sku);
+              console.warn(`   ⚠️ Visibility detection failed - falling back to showing all ${productsForShopTheLook.length} selected products`);
             }
           }
           
-          // Store ALL selected products (users should see everything the AI recommended)
-          const allProductSkus = selectedProducts.map(p => p.sku);
-          
-          // Update render with completed data (all selected products + QA results)
+          // Update render with completed data (only visible products + QA results)
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
-            productSkus: allProductSkus,
+            productSkus: productsForShopTheLook,
             productMetadata,
             qaResults,
             prompt,
@@ -2434,7 +2441,7 @@ export function registerCuralinaRoutes(app: Express) {
           const completedEvent = buildRenderEvent(
             render.id,
             'completed',
-            `Render completed with ${allProductSkus.length} products`
+            `Render completed with ${productsForShopTheLook.length} visible products in Shop the Look`
           );
           await curalinaStorage.createRenderEvent(completedEvent);
           lifecycleEvents.push(completedEvent);
@@ -2459,18 +2466,26 @@ export function registerCuralinaRoutes(app: Express) {
             console.error("❌ Render snapshot ingestion failed (non-blocking):", error);
           }
           
-          // Lock selection ledger to prevent modifications
+          // Update selection ledger with only visible products before locking
           try {
             const ledger = await curalinaStorage.getSelectionLedgerByRender(render.id);
             if (ledger && !ledger.lockedAt) {
+              // Update composition order to include only visible products
+              const visibleCompositionOrder = productsForShopTheLook;
+              await curalinaStorage.updateSelectionLedgerDetails(ledger.id, {
+                compositionOrder: visibleCompositionOrder
+              });
+              console.log(`📋 Updated ledger composition order with ${visibleCompositionOrder.length} visible products`);
+              
+              // Lock the ledger after updating
               await curalinaStorage.lockSelectionLedger(ledger.id);
               console.log(`🔒 Locked selection ledger for render ${render.id}`);
             }
           } catch (error) {
-            console.error("Error locking selection ledger (non-blocking):", error);
+            console.error("Error updating/locking selection ledger (non-blocking):", error);
           }
           
-          console.log(`✅ Render ${render.id} completed with ${allProductSkus.length} products available in Shop the Look`);
+          console.log(`✅ Render ${render.id} completed with ${productsForShopTheLook.length} visible products in Shop the Look`);
         } catch (error) {
           console.error("AI generation error:", error);
           
