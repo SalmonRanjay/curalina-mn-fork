@@ -47,11 +47,13 @@ function extractAndDecodeS3Key(url: string): string {
 }
 
 /**
- * Check if a key needs normalization (contains spaces, +, %20, or %2B)
+ * Check if a key needs normalization
+ * After full decoding, there should be no % sequences remaining.
+ * If there are, it means decoding failed and we need to normalize.
  */
 function needsNormalization(key: string): boolean {
-  // Check for spaces, +, or percent-encoded variants (%20, %2B)
-  return /[\s+]|%20|%2B/i.test(key);
+  // Check for spaces, +, or any percent sequences (which shouldn't exist after full decoding)
+  return /[\s+%]/.test(key);
 }
 
 /**
@@ -144,16 +146,21 @@ export async function renameAllProductImages(
           }
           
           // Decode to canonical form (keep decoding until no more changes)
-          let canonicalKey = rawKey;
-          let prev;
-          do {
-            prev = canonicalKey;
+          // Build complete decoding path for S3 probing
+          const decodingPath: string[] = [rawKey];
+          let current = rawKey;
+          while (true) {
             try {
-              canonicalKey = decodeURIComponent(canonicalKey);
+              const decoded = decodeURIComponent(current);
+              if (decoded === current) break;
+              decodingPath.push(decoded);
+              current = decoded;
             } catch {
-              break;  // Stop on decode errors
+              // Even on error, use what we have so far
+              break;
             }
-          } while (canonicalKey !== prev);
+          }
+          const canonicalKey = decodingPath[decodingPath.length - 1];
           
           // Check if canonical key needs normalization
           if (!needsNormalization(canonicalKey)) {
@@ -165,18 +172,16 @@ export async function renameAllProductImages(
           // Find which variant actually exists in S3
           let existingKey: string | null = null;
           if (!dryRun) {
-            // Try canonical key first (most common case: literal space in S3)
-            if (await checkS3ObjectExists(canonicalKey)) {
-              existingKey = canonicalKey;
-            } else if (rawKey !== canonicalKey) {
-              // Try raw key (rare case: literal %20 in S3)
-              if (await checkS3ObjectExists(rawKey)) {
-                existingKey = rawKey;
+            // Try each variant (most decoded first, as most common)
+            for (let i = decodingPath.length - 1; i >= 0; i--) {
+              if (await checkS3ObjectExists(decodingPath[i])) {
+                existingKey = decodingPath[i];
+                break;
               }
             }
             
             if (!existingKey) {
-              console.warn(`[S3-RENAMER] Source not found (tried raw and canonical): ${rawKey}`);
+              console.warn(`[S3-RENAMER] Source not found (tried ${decodingPath.length} variants): ${rawKey}`);
               newImages.push(imageUrl);
               continue;
             }
@@ -186,7 +191,11 @@ export async function renameAllProductImages(
           }
           
           // Normalize the canonical key (for DB consistency)
-          const normalizedKey = canonicalKey.replace(/[\s+]+/g, '-');
+          // Replace spaces, +, and ANY percent sequences (valid or malformed) with dashes
+          const normalizedKey = canonicalKey
+            .replace(/%/g, '-')      // Replace ANY % with dash (handles %20, %GG, stray %)
+            .replace(/[\s+]+/g, '-')  // Replace spaces and + with dashes
+            .replace(/-+/g, '-');     // Collapse multiple dashes
           
           // Safety check
           if (existingKey === normalizedKey) {
