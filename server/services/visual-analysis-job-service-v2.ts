@@ -134,23 +134,11 @@ class VisualAnalysisJobQueue {
           )
         );
         
-        // Analyze batch with concurrent workers
-        const results = await batchAnalyzeProductsConcurrent(
-          validProducts,
-          {
-            workerCount: Math.min(workerCount, validProducts.length),
-            batchSize: Math.ceil(validProducts.length / workerCount),
-            onProgress: (completed, total) => {
-              console.log(`  Progress: ${completed}/${total} products analyzed`);
-            }
-          }
-        );
-        
         // Track which analysis products were matched
         const matchedAnalysisProductIds = new Set<string>();
         
-        // Save results
-        for (const result of results) {
+        // Real-time result callback - saves descriptions immediately as each product completes
+        const onResultComplete = async (result: any) => {
           const analysisProduct = batch.find(ap => {
             const product = validProducts.find(p => p.productId === ap.productId);
             return product?.sku === result.sku;
@@ -177,16 +165,31 @@ class VisualAnalysisJobQueue {
                 geminiDescription: result.visualDescriptionGemini || null
               });
               
-              // Update product with new descriptions
+              // Save product descriptions in real-time (immediately as they complete, not waiting for batch)
               await curalinaStorage.updateProduct(analysisProduct.productId, {
                 visualDescription: result.visualDescription || undefined,
                 visualDescriptionGemini: result.visualDescriptionGemini || undefined,
                 visualDescriptionFrontView: result.visualDescriptionFrontView || undefined,
                 visualDescriptionFrontViewGemini: result.visualDescriptionFrontViewGemini || undefined
               });
+              
+              console.log(`✅ [REALTIME] Visual description saved for product ${analysisProduct.productSku}`);
             }
           }
-        }
+        };
+        
+        // Analyze batch with concurrent workers - real-time callback for immediate saves
+        await batchAnalyzeProductsConcurrent(
+          validProducts,
+          {
+            workerCount: Math.min(workerCount, validProducts.length),
+            batchSize: Math.ceil(validProducts.length / workerCount),
+            onProgress: (completed, total) => {
+              console.log(`  Progress: ${completed}/${total} products analyzed`);
+            },
+            onResultComplete
+          }
+        );
         
         // Mark any unmatched products as failed (stuck in analyzing)
         for (const ap of batch) {

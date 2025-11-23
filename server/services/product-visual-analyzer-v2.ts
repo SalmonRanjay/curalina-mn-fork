@@ -471,12 +471,14 @@ export async function batchAnalyzeProductsConcurrent(
     workerCount?: number;
     batchSize?: number;
     onProgress?: (completed: number, total: number) => void;
+    onResultComplete?: (result: ProductAnalysisResult) => Promise<void>;
   } = {}
 ): Promise<ProductAnalysisResult[]> {
   const { 
     workerCount = 5, 
     batchSize = 20,
-    onProgress 
+    onProgress,
+    onResultComplete
   } = options;
   
   console.log(`\n🚀 Starting V2 concurrent analysis:`);
