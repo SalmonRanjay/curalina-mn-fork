@@ -1259,34 +1259,15 @@ export function registerCuralinaRoutes(app: Express) {
       const allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
       
-      // Start regeneration and save results in real-time
-      let completedCount = 0;
-      const progressCallback = async (progress: any) => {
-        if (progress.successful > completedCount) {
-          // New products completed - save them
-          for (const product of allProducts) {
-            if (product.visualDescription && product.visualDescription !== '') {
-              await curalinaStorage.updateProduct(product.id, {
-                visualDescription: product.visualDescription
-              });
-            }
-          }
-          completedCount = progress.successful;
-          console.log(`✅ Saved ${completedCount} products (${progress.processed}/${progress.total} processed)`);
-        }
+      // Callback to save each product immediately as it's analyzed
+      const onProductUpdated = async (product: Product) => {
+        await curalinaStorage.updateProduct(product.id, {
+          visualDescription: product.visualDescription
+        });
       };
       
-      // Run the trained analyzer
-      const finalProgress = await regenerateAllVisualDescriptions(allProducts, progressCallback);
-      
-      // Final save for any remaining updates
-      for (const product of allProducts) {
-        if (product.visualDescription && product.visualDescription !== '') {
-          await curalinaStorage.updateProduct(product.id, {
-            visualDescription: product.visualDescription
-          });
-        }
-      }
+      // Run the trained analyzer with immediate persistence
+      const finalProgress = await regenerateAllVisualDescriptions(allProducts, undefined, onProductUpdated);
       
       res.json({
         success: true,

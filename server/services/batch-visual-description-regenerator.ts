@@ -195,7 +195,8 @@ export interface BatchRegenerationProgress {
 
 export async function regenerateAllVisualDescriptions(
   products: Product[],
-  progressCallback?: (progress: BatchRegenerationProgress) => void
+  progressCallback?: (progress: BatchRegenerationProgress) => void,
+  onProductUpdated?: (product: Product) => Promise<void>
 ): Promise<BatchRegenerationProgress> {
   const progress: BatchRegenerationProgress = {
     total: products.length,
@@ -244,11 +245,16 @@ export async function regenerateAllVisualDescriptions(
           const description = await generateAccurateVisualDescription(product, selectedImage.url);
           
           if (description) {
-            // Update product in database (will be done by caller)
+            // Update product and save immediately via callback
             product.visualDescription = description;
             progress.successful++;
             const wordCount = description.split(/\s+/).length;
             console.log(`  ✅ Success - ${wordCount} words (${description.length} chars)`);
+            
+            // Save to database immediately as each product completes
+            if (onProductUpdated) {
+              await onProductUpdated(product);
+            }
           } else {
             progress.failed++;
             progress.errors.push({
