@@ -220,32 +220,9 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       });
     }
     
-    // Add each product with specific color/material instructions BEFORE its image
-    // This binds the color specification to the specific product image
-    for (let i = 0; i < productImageRefs.length; i++) {
-      const productRef = productImageRefs[i];
-      const product = products.find(p => p.sku === productRef.sku);
-      
-      // Build per-product instruction with color/material details
-      let productInstruction = `Product ${i + 1} – ${productRef.productName}`;
-      
-      if (product) {
-        // Add explicit color and material information
-        const colors = product.colors?.filter(c => c && c.trim()).join(', ') || '';
-        const materials = product.materials?.filter(m => m && m.trim()).join(', ') || '';
-        
-        if (colors) {
-          productInstruction += `: use this exact color (${colors})`;
-        }
-        if (materials) {
-          productInstruction += colors ? ` and material (${materials})` : `: use this exact material (${materials})`;
-        }
-      }
-      
-      // Add text instruction for this specific product
-      parts.push({ text: productInstruction });
-      
-      // Immediately follow with the product's image (binds them together)
+    // Add each product image directly - NO TEXT DESCRIPTIONS
+    // Pure image-only mode: Gemini uses visual features from the images themselves
+    for (let i = 0; i < productImageParts.length; i++) {
       parts.push(productImageParts[i]);
     }
     
