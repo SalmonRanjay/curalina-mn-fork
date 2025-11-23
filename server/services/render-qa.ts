@@ -4,7 +4,24 @@ import { buildDimensionSummary, normalizeDimensions } from './dimension-utils';
 /**
  * Post-render QA validation using Gemini Vision
  * Checks product appearance, scale, accuracy, and dimensional fidelity against specifications
+ * 
+ * STRICT QUALITY THRESHOLDS (enforced for auto-regeneration):
+ * - Color Match: REQUIRED (true) - wrong color = critical failure
+ * - Appearance Match: ≥85/100 - exact product look required
+ * - Scale Accuracy: ≥80/100 - proportions must be realistic
+ * - Dimension Accuracy: ≥75/100 - sizes must match specs
+ * - Overall Score: ≥80/100 - combined quality threshold
  */
+
+// STRICT QA THRESHOLDS - User requirement: exact product matching
+export const QA_THRESHOLDS = {
+  COLOR_MATCH_REQUIRED: true,         // Must be exact color
+  MIN_APPEARANCE_SCORE: 85,           // Product must look like the reference image
+  MIN_SCALE_SCORE: 80,                // Proportions must be realistic
+  MIN_DIMENSION_SCORE: 75,            // Sizes must match specifications
+  MIN_OVERALL_SCORE: 80,              // Combined quality threshold
+  MAX_REGENERATION_ATTEMPTS: 2,       // Auto-retry limit
+} as const;
 
 interface QAIssue {
   severity: 'critical' | 'major' | 'minor';
@@ -275,16 +292,38 @@ For each product, check:
    - Use visual cues (standard door height ~80", typical ceiling ~96", human scale ~5.5-6 feet)
 7. PLACEMENT: Is it in the correct location as specified?
 
-⚠️ COLOR VALIDATION IS CRITICAL:
-- If specified color is "soft taupe" but render shows "beige" → Appearance Match = 0
-- If specified color is "charcoal gray" but render shows "light gray" → Appearance Match = 0
-- Only score 90+ if color is an exact or very close match
+⚠️ **STRICT VALIDATION REQUIREMENTS** ⚠️
 
-⚠️ DIMENSION VALIDATION IS IMPORTANT:
-- Compare relative sizes between products (sofa should be larger than chairs)
-- Check proportions against room elements (ceiling, doors, windows)
-- Verify seating heights appear correct for their type
-- Score based on how accurately the render reflects the specified dimensions
+This is a SIDE-BY-SIDE COMPARISON validation. You are comparing the AI-generated render against the ACTUAL product reference images provided.
+
+**COLOR MATCHING (CRITICAL - ZERO TOLERANCE):**
+- Compare render product colors DIRECTLY to the reference product images provided
+- If specified color is "soft taupe" but render shows "beige" → Color Match = NO, Appearance = 0
+- If specified color is "charcoal gray" but render shows "light gray" → Color Match = NO, Appearance = 0
+- Even slight color variations → Color Match = NO, Appearance = 0
+- Only mark Color Match = YES if the color is virtually identical to reference image
+
+**APPEARANCE MATCHING (VERY STRICT - minimum 85/100 required):**
+- Compare the render product's EXACT LOOK against the reference image
+- Material/fabric texture must match (leather vs fabric vs wood grain)
+- Silhouette and shape must be identical (modern vs traditional, curved vs straight)
+- Details must match (tufting, legs style, arm shape, cushion count)
+- If ANYTHING looks different from the reference image → score below 85
+- Score 85-100: Product looks nearly identical to reference
+- Score 70-84: Product recognizable but noticeable differences
+- Score 0-69: Product looks significantly different or wrong
+
+**SCALE ACCURACY (STRICT - minimum 80/100 required):**
+- Compare relative sizes between products using their specified dimensions
+- Sofas should appear larger than chairs, beds larger than nightstands
+- Check proportions against room elements (doors ~80", ceilings ~96")
+- If proportions look unrealistic → score below 80
+
+**DIMENSION ACCURACY (STRICT - minimum 75/100 required):**
+- Verify width-to-height-to-depth ratios match specifications
+- Check seating heights (standard 17-19", counter 24-26", bar 28-30")
+- Validate furniture doesn't appear oversized or undersized for the room
+- Use visual cues and compare against specified dimensions
 
 RESPONSE FORMAT:
 Provide your analysis as a JSON object with the following structure:
@@ -355,9 +394,13 @@ function parseJSONQAResponse(
         }
         
         if (matchedProduct) {
+          // STRICT: Default colorMatch to FALSE if missing (zero-tolerance)
+          // Gemini MUST explicitly confirm color match = true
+          const colorMatch = check.colorMatch === true;
+          
           productChecks[matchedProduct.sku] = {
             found: check.found || false,
-            colorMatch: check.colorMatch !== undefined ? check.colorMatch : true,
+            colorMatch, // Strict: false unless explicitly true
             appearanceMatch: check.appearanceMatch || 0,
             scaleAccuracy: check.scaleAccuracy || 0,
             dimensionAccuracy: check.dimensionAccuracy || 0,
@@ -365,13 +408,35 @@ function parseJSONQAResponse(
             notes: check.notes || '',
           };
           matchedCount++;
-          console.log(`  ✅ Matched: ${matchedProduct.name} (SKU: ${matchedProduct.sku}) - Found: ${check.found}`);
+          console.log(`  ✅ Matched: ${matchedProduct.name} (SKU: ${matchedProduct.sku}) - Found: ${check.found}, Color: ${colorMatch ? 'MATCH' : 'FAIL'}`);
         } else {
           console.warn(`  ⚠️  Could not match product from Gemini: SKU=${check.sku}, Name=${check.productName}`);
         }
       });
       
       console.log(`✅ Matched ${matchedCount}/${parsed.productChecks.length} products from QA response`);
+    }
+    
+    // CRITICAL: Add FAILING defaults for expected products NOT in Gemini's response
+    // This enforces zero-tolerance - every product must be explicitly validated
+    const unmatchedProducts = expectedProducts.filter(
+      expected => !productChecks[expected.sku]
+    );
+    
+    if (unmatchedProducts.length > 0) {
+      console.warn(`⚠️  ${unmatchedProducts.length} expected products MISSING from Gemini QA response - marking as FAILED`);
+      unmatchedProducts.forEach(product => {
+        productChecks[product.sku] = {
+          found: false,
+          colorMatch: false, // STRICT: Missing = failed color check
+          appearanceMatch: 0,
+          scaleAccuracy: 0,
+          dimensionAccuracy: 0,
+          placementCorrect: false,
+          notes: 'Product not included in Gemini QA response - validation failed',
+        };
+        console.warn(`  🔴 ${product.name} (${product.sku}) - FAILED (missing from QA)`);
+      });
     }
     
     return {
@@ -525,27 +590,65 @@ function parseQAResponse(
 }
 
 /**
- * Determine if QA results require regeneration
- * Returns true if issues are severe enough to warrant a retry
+ * Determine if QA results require regeneration (STRICT THRESHOLDS)
+ * Returns true if render quality doesn't meet strict standards
  */
 export function shouldRegenerateRender(qaResults: QAResults): boolean {
+  console.log('🔍 Evaluating render quality against STRICT thresholds...');
+  
+  // CRITICAL: Empty productChecks = validation failure
+  if (!qaResults.productChecks || Object.keys(qaResults.productChecks).length === 0) {
+    console.warn('🔴 REGENERATION REQUIRED: QA validation returned NO product checks (validation failed)');
+    return true;
+  }
+  
   // CRITICAL: Regenerate if any product has a color mismatch
   const hasColorMismatch = Object.values(qaResults.productChecks).some(
     check => check.found && check.colorMatch === false
   );
   if (hasColorMismatch) {
-    console.warn('🔴 Regeneration required: Color mismatch detected');
+    console.warn('🔴 REGENERATION REQUIRED: Color mismatch detected (CRITICAL)');
     return true;
   }
   
-  // Regenerate if overall score is below 60
-  if (qaResults.overallScore < 60) {
+  // STRICT: Regenerate if overall score below 80 (raised from 60)
+  if (qaResults.overallScore < QA_THRESHOLDS.MIN_OVERALL_SCORE) {
+    console.warn(`🔴 REGENERATION REQUIRED: Overall score ${qaResults.overallScore} < ${QA_THRESHOLDS.MIN_OVERALL_SCORE}`);
+    return true;
+  }
+  
+  // STRICT: Check per-product thresholds (including products not found)
+  const failedProducts = Object.entries(qaResults.productChecks)
+    .filter(([sku, check]) => {
+      // CRITICAL: Products not found in render = automatic failure
+      if (!check.found) {
+        console.warn(`  🔴 Product missing from render: ${sku}`);
+        return true;
+      }
+      
+      const appearanceFail = check.appearanceMatch < QA_THRESHOLDS.MIN_APPEARANCE_SCORE;
+      const scaleFail = check.scaleAccuracy < QA_THRESHOLDS.MIN_SCALE_SCORE;
+      const dimensionFail = (check.dimensionAccuracy || 0) < QA_THRESHOLDS.MIN_DIMENSION_SCORE;
+      
+      if (appearanceFail || scaleFail || dimensionFail) {
+        console.warn(`  ⚠️  Product quality below threshold: ${sku}`);
+        console.warn(`     Appearance: ${check.appearanceMatch}/${QA_THRESHOLDS.MIN_APPEARANCE_SCORE} (${appearanceFail ? 'FAIL' : 'PASS'})`);
+        console.warn(`     Scale: ${check.scaleAccuracy}/${QA_THRESHOLDS.MIN_SCALE_SCORE} (${scaleFail ? 'FAIL' : 'PASS'})`);
+        console.warn(`     Dimensions: ${check.dimensionAccuracy || 0}/${QA_THRESHOLDS.MIN_DIMENSION_SCORE} (${dimensionFail ? 'FAIL' : 'PASS'})`);
+        return true;
+      }
+      return false;
+    });
+  
+  if (failedProducts.length > 0) {
+    console.warn(`🔴 REGENERATION REQUIRED: ${failedProducts.length} products below quality thresholds`);
     return true;
   }
   
   // Regenerate if there are any critical issues
   const criticalIssues = qaResults.issues.filter(i => i.severity === 'critical');
   if (criticalIssues.length > 0) {
+    console.warn(`🔴 REGENERATION REQUIRED: ${criticalIssues.length} critical issues detected`);
     return true;
   }
   

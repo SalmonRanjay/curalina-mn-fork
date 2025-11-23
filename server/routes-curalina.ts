@@ -1926,6 +1926,18 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`   Dimension Accuracy: ${qaResults.dimensionAccuracy}/100`);
             console.log(`   Issues Found: ${qaResults.issues.length}`);
             
+            // Check if render meets STRICT quality thresholds
+            const { shouldRegenerateRender, QA_THRESHOLDS } = await import('./services/render-qa');
+            const needsRegeneration = shouldRegenerateRender(qaResults);
+            
+            if (needsRegeneration) {
+              console.warn('⚠️  QUALITY CHECK FAILED - Render does not meet strict thresholds');
+              console.warn(`   Thresholds: Appearance≥${QA_THRESHOLDS.MIN_APPEARANCE_SCORE}, Scale≥${QA_THRESHOLDS.MIN_SCALE_SCORE}, Overall≥${QA_THRESHOLDS.MIN_OVERALL_SCORE}`);
+              console.warn(`   🔄 Auto-regeneration loop (max ${QA_THRESHOLDS.MAX_REGENERATION_ATTEMPTS} retries) will be implemented in next iteration`);
+            } else {
+              console.log('✅ QUALITY CHECK PASSED - Render meets all strict thresholds');
+            }
+            
             // Extract visible products from QA results (products that were found)
             const visibleProducts = Object.entries(qaResults.productChecks)
               .filter(([_, check]) => check.found)
