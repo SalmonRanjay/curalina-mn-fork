@@ -11,7 +11,7 @@ import type { Product } from "@shared/schema";
  * 3. Return refined render with accurate product appearance
  */
 
-const STABILITY_API_KEY = process.env.STABILITY_AI_API_KEY;
+const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
 const STABILITY_API_URL = "https://api.stability.ai/v2beta/image-to-image/control/reference";
 const STABILITY_ENGINE_ID = "stable-diffusion-xl-2-0-turbo";
 
@@ -89,7 +89,7 @@ export async function refineRenderWithControlNetReference(
   params: QCRefinementParams
 ): Promise<QCResult> {
   if (!STABILITY_API_KEY) {
-    console.warn("⚠️ STABILITY_AI_API_KEY not set - skipping QC refinement");
+    console.warn("⚠️ STABILITY_API_KEY not set - skipping QC refinement");
     return {
       success: false,
       error: "Stability AI API key not configured"
@@ -354,7 +354,7 @@ export async function applyQCRefinement(
 ): Promise<string | null> {
   // Verify QC is actually enabled and API key exists
   const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
-  const apiKey = process.env.STABILITY_AI_API_KEY;
+  const apiKey = process.env.STABILITY_API_KEY;
   
   if (!qcEnabled) {
     console.log('ℹ️ QC refinement skipped - disabled by admin');
@@ -407,7 +407,7 @@ export async function applyQCRefinement(
         const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.STABILITY_AI_API_KEY}`,
+            'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
             'Accept': 'image/*'
           },
           body: formData
@@ -462,7 +462,7 @@ export async function applyQCRefinement(
         const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/sketch', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.STABILITY_AI_API_KEY}`,
+            'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
             'Accept': 'image/*'
           },
           body: formData
@@ -494,7 +494,7 @@ export async function applyQCRefinement(
     const response = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.STABILITY_AI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
         'Accept': 'image/*'
       },
       body: formData

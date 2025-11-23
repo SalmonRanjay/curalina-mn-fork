@@ -3905,7 +3905,7 @@ export function registerCuralinaRoutes(app: Express) {
       // Check environment variables for current state
       const enabled = process.env.ENABLE_STABILITY_QC === 'true';
       const strength = process.env.STABILITY_QC_STRENGTH || '0.7';
-      const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+      const hasApiKey = !!process.env.STABILITY_API_KEY;
       
       res.json({ 
         enabled,

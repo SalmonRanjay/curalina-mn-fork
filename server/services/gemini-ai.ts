@@ -2626,7 +2626,7 @@ export async function generateInteriorImage(
       // Apply Stability AI QC refinement if enabled
       // Properly check the runtime settings, not just env vars
       const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
-      const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+      const hasApiKey = !!process.env.STABILITY_API_KEY;
       
       if (qcEnabled && hasApiKey) {
         try {
@@ -2692,7 +2692,7 @@ export async function generateInteriorImage(
       // Apply Stability AI QC refinement if enabled
       // Properly check the runtime settings, not just env vars
       const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
-      const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+      const hasApiKey = !!process.env.STABILITY_API_KEY;
       
       if (qcEnabled && hasApiKey) {
         try {
@@ -2789,7 +2789,7 @@ Generate a photorealistic redesign that preserves the room's architecture while 
     
     // Apply Stability AI QC refinement if enabled (image-to-image path)
     const qcEnabled = process.env.ENABLE_STABILITY_QC === 'true';
-    const hasApiKey = !!process.env.STABILITY_AI_API_KEY;
+    const hasApiKey = !!process.env.STABILITY_API_KEY;
     
     if (qcEnabled && hasApiKey) {
       try {
