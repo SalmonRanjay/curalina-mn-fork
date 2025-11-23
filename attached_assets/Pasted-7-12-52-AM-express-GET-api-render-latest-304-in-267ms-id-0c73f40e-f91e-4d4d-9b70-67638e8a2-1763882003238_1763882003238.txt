@@ -1,0 +1,37 @@
+7:12:52 AM [express] GET /api/render/latest 304 in 267ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+✅ Received QA analysis from Gemini
+📊 QA Score: 32/100
+🔴 Issues found: 8
+📊 QA Validation Complete for render 0c73f40e-f91e-4d4d-9b70-67638e8a2474:
+   Overall Score: 32/100
+   Issues Found: 8
+   - [CRITICAL] missing: 4 x Fayth Dining Chairs (SKU: 246660-001) are completely missing from the render.
+   - [MAJOR] appearance: The Mercantile Shop Store Cabinet (SKU: 242088-001) is replaced by a bookcase with lower drawers, not a cabinet.
+   - [MAJOR] appearance: The rendered bookcase (in place of Mercantile Cabinet) is approximately 80" tall, while the specified cabinet is 40" tall, a 100% height discrepancy.
+   - [MAJOR] missing: Bridges Slipcover Dining Armchair (SKU: 232437-001) is completely missing from the render.
+   - [MAJOR] missing: Tapestry Hanger (SKU: 241630-003) is completely missing from the render.
+   - [MAJOR] missing: Dining Seat Cushion-18.5" (SKU: 246721-001) is completely missing from the render.
+   - [MINOR] appearance: The dining setup specified 6 Fayth chairs. The render shows 4 Terrance chairs and 1 Wilmington chair, totaling only 5 chairs around the table, not 6.
+   - [MINOR] hallucination: 4 Terrance Dining Chairs (SKU: 245345-003) are placed around the dining table, successfully matching their own specifications, but they appear to *replace* the specified Fayth Dining Chairs, creating a manifest conflict.
+⚠️ Render 0c73f40e-f91e-4d4d-9b70-67638e8a2474: QA score below threshold or critical issues detected
+💡 Recommendation: Regenerate render with adjusted prompt
+   (Auto-retry not yet implemented - user can manually retry via UI)
+🛍️ Shop the Look: Showing all 12 selected products
+🔍 Analyzing generated image to identify visible products from 12 candidates...
+7:12:54 AM [express] GET /api/render/latest 304 in 264ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+7:12:57 AM [express] GET /api/render/latest 304 in 259ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+7:13:00 AM [express] GET /api/render/latest 304 in 262ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+7:13:02 AM [express] GET /api/render/latest 304 in 259ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+7:13:05 AM [express] GET /api/render/latest 304 in 266ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+✅ Identified 5 unique visible products out of 12 total: 224766-001, 246660-001, 242088-001, 246721-001, 244172-001
+📊 Visibility analytics: 5/12 products detected in render
+   ⚠️ Not auto-detected (but still in Shop the Look): 245345-003, 232437-001, 233854-003, 241630-003
+⚠️ Deduplication: 12 → 9 products (removed 3 duplicates)
+✅ Ingested 9 product snapshots + 3 events for render 0c73f40e-f91e-4d4d-9b70-67638e8a2474
+📋 Updated ledger composition order with 12 visible products
+7:13:08 AM [express] GET /api/render/latest 200 in 603ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a2…
+🔒 Locked selection ledger for render 0c73f40e-f91e-4d4d-9b70-67638e8a2474
+✅ Render 0c73f40e-f91e-4d4d-9b70-67638e8a2474 completed with 12 visible products in Shop the Look
+7:13:09 AM [express] GET /api/render/0c73f40e-f91e-4d4d-9b70-67638e8a2474/ledger 200 in 327ms :: {"i…
+7:13:10 AM [express] GET /api/render/latest 304 in 1164ms :: {"id":"0c73f40e-f91e-4d4d-9b70-67638e8a…
+7:13:10 AM [express] GET /api/products 304 in 1176ms :: [{"id":"9a483c15-a7e4-464a-abd2-a353d5084a52…
