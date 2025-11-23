@@ -1,0 +1,32 @@
+:33:59 AM [express] GET /api/render/latest 304 in 265ms :: {"id":"a187ab31-efa2-4356-8c6c-7b66e4849…
+✅ Received QA analysis from Gemini
+🔴 CRITICAL: Color mismatch detected for Bolsa Cabinet - setting appearance to 0
+🔴 CRITICAL: Color mismatch detected for Kent Sofa - setting appearance to 0
+📊 QA Score: 63/100
+🔴 Issues found: 7
+📊 QA Validation Complete for render a187ab31-efa2-4356-8c6c-7b66e4849f13:
+   Overall Score: 63/100
+   Issues Found: 7
+   - [CRITICAL] appearance: Product color does not match specification
+   - [CRITICAL] appearance: Product color does not match specification
+   - [CRITICAL] missing: Melle Sofa is not present in the render.
+   - [CRITICAL] appearance: Kent Sofa is olive green, not the specified deep olive brown.
+   - [MAJOR] appearance: Bolsa Cabinet has solid fluted doors instead of specified grid-paned glass doors, and no visible lower drawers.
+   - [MAJOR] appearance: Kent Sofa has straight/blocky arms, straight back, three seat cushions, and a modern silhouette instead of the specified low rolled arms, subtly curved back, single integrated seat, and traditional elegant silhouette. Legs are metal, not polished wood with brass ferrules.
+   - [MINOR] appearance: Tillery Sectional cushions are plush but may not fully represent "overstuffed".
+🔴 Regeneration required: Color mismatch detected
+⚠️ Render a187ab31-efa2-4356-8c6c-7b66e4849f13: QA score below threshold or critical issues detected
+💡 Recommendation: Regenerate render with adjusted prompt
+   (Auto-retry not yet implemented - user can manually retry via UI)
+🛍️ Shop the Look: Showing all 8 selected products
+🔍 Analyzing generated image to identify visible products from 8 candidates...
+7:34:02 AM [express] GET /api/render/latest 304 in 264ms :: {"id":"a187ab31-efa2-4356-8c6c-7b66e4849…
+7:34:05 AM [express] GET /api/render/latest 304 in 266ms :: {"id":"a187ab31-efa2-4356-8c6c-7b66e4849…
+✅ Identified 7 unique visible products out of 8 total: BC-1147-24, 249196-001, 239398-001, PJ-1024-32, 236339-005, 244638-001, 238975-001
+📊 Visibility analytics: 7/8 products detected in render
+   ⚠️ Not auto-detected (but still in Shop the Look): 246744-003
+✅ Ingested 8 product snapshots + 3 events for render a187ab31-efa2-4356-8c6c-7b66e4849f13
+📋 Updated ledger composition order with 8 visible products
+7:34:07 AM [express] GET /api/render/latest 200 in 548ms :: {"id":"a187ab31-efa2-4356-8c6c-7b66e4849…
+🔒 Locked selection ledger for render a187ab31-efa2-4356-8c6c-7b66e4849f13
+✅ Render a187ab31-efa2-4356-8c6c-7b66e4849f13 completed with 8 visible products in Shop the Look
