@@ -1631,10 +1631,10 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Batch regenerate visual descriptions using Gemini Vision (Admin only)
-  // Prioritizes front-view images and generates dimension-aware, highly accurate descriptions
+  // NOW USES OPTIMIZED V2 CONCURRENT JOB SERVICE (40 workers, 100 batch size, minimal delays)
   app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('\n🎨 Starting batch visual description regeneration...');
+      console.log('\n🚀 Starting FAST concurrent visual description regeneration (V2 Optimized)...');
       
       // Support both 'mode' (from frontend) and 'targetFilter' (legacy)
       const { mode, targetFilter: legacyFilter, specificSkus, skus } = req.body;
@@ -1691,57 +1691,27 @@ export function registerCuralinaRoutes(app: Express) {
         });
       }
       
-      // Return immediately, process in background
+      // Use V2 concurrent job service with optimizations
+      const { createAndStartVisualAnalysisJob } = await import('./services/visual-analysis-job-service-v2');
+      
+      // Create job with specific product IDs
+      const productIds = productsToProcess.map(p => p.id);
+      const job = await createAndStartVisualAnalysisJob(productIds, {
+        priority: 100, // High priority for manual triggers
+        autoStart: true
+      });
+      
+      // Return immediately with job ID
       res.json({
         success: true,
-        message: `Visual description regeneration started for ${productsToProcess.length} products. Check server logs for progress.`,
+        message: `🚀 FAST concurrent visual description analysis started (40 parallel workers)`,
+        jobId: job.id,
         totalProducts: productsToProcess.length,
         targetFilter: targetFilter || 'missing'
       });
       
-      // Run regeneration in background
-      (async () => {
-        try {
-          const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
-          
-          let updated = 0;
-          
-          const progress = await regenerateAllVisualDescriptions(
-            productsToProcess,
-            (progress) => {
-              // Optional: could broadcast progress via WebSocket
-              if (progress.processed % 10 === 0 || progress.processed === progress.total) {
-                console.log(`\n📊 Progress: ${progress.processed}/${progress.total} (${progress.successful} successful, ${progress.failed} failed, ${progress.skipped} skipped)`);
-              }
-            }
-          );
-          
-          // Update all successful products in database
-          for (const product of productsToProcess) {
-            if (product.visualDescription) {
-              try {
-                await curalinaStorage.updateProduct(product.id, {
-                  visualDescription: product.visualDescription
-                });
-                updated++;
-              } catch (error) {
-                console.error(`Failed to update product ${product.sku}:`, error);
-              }
-            }
-          }
-          
-          console.log(`\n✅ Batch Visual Description Regeneration Complete:`);
-          console.log(`  📊 Total Processed: ${progress.processed}`);
-          console.log(`  ✅ Successfully Generated: ${progress.successful}`);
-          console.log(`  💾 Database Updates: ${updated}`);
-          console.log(`  ❌ Failed: ${progress.failed}`);
-          console.log(`  ⏭️  Skipped (no images): ${progress.skipped}`);
-          console.log(`  📈 Coverage: ${((updated / allProducts.length) * 100).toFixed(1)}% of all products now have Gemini Vision descriptions`);
-          
-        } catch (error) {
-          console.error('❌ Batch regeneration error:', error);
-        }
-      })();
+      console.log(`✅ V2 Job created: ${job.id} for ${productsToProcess.length} products`);
+      console.log(`📈 Expected to complete in ~${Math.ceil(productsToProcess.length / 40)} seconds (40 concurrent workers)`);
       
     } catch (error) {
       console.error("Error starting visual description regeneration:", error);
