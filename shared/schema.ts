@@ -201,6 +201,15 @@ export const products = pgTable("products", {
   imageAnalyses: jsonb("image_analyses"), // { frontView: {...}, multiAngle: {...}, analysisDate, images: [...] }
   structuredAnalysis: jsonb("structured_analysis"), // { frontView: {...}, multiAngle: {...}, qualityScore: 0-100 }
   
+  // DEPRECATED: Legacy visual description fields (preserved for migration planning)
+  visualDescriptionGemini: text("visual_description_gemini"),
+  visualDescriptionFrontView: text("visual_description_front_view"),
+  visualDescriptionFrontViewGemini: text("visual_description_front_view_gemini"),
+  synthesizedFrontView: text("synthesized_front_view"),
+  completeProductDescription: text("complete_product_description"),
+  structuredAnalysisQuality: text("structured_analysis_quality"),
+  structuredAnalysisUpdatedAt: timestamp("structured_analysis_updated_at"),
+  
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
