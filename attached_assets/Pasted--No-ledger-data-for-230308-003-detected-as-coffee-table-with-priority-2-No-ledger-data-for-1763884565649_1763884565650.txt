@@ -1,0 +1,36 @@
+⚠️ No ledger data for 230308-003, detected as coffee_table with priority 2
+   ⚠️ No ledger data for 247299-004, detected as accent_seating with priority 3
+   ⚠️ No ledger data for 239396-002, detected as accent_seating with priority 3
+   ⚠️ No ledger data for QJ-1018-02-0, detected as side_table with priority 4
+   ⚠️ No ledger data for 248920-001, detected as storage with priority 5
+   ⚠️ No ledger data for 230983-001, detected as lighting with priority 6
+   ⚠️ No ledger data for 241605-001, detected as storage with priority 5
+   📸 Using condensed Regenerated Analysis description for: Kent Sofa
+   🔍 Condensed: "COLOR: deep olive | MATERIAL: velvet | SHAPE: curved"
+   📊 Product Specifications: MATERIALS: 50% Recycled Polyester, 50% Polyester, Iron, Solid Ash | COLORS: Malmo Olive, Brushed Brass, Terra Brown Ash | DIMENSIONS: D: 37.5inches × ...
+   📏 Added dimension scale references
+   ⚠️ No visual description available for: Four In A Row - using product specifications only
+   📊 Product Specifications: MATERIALS: Aluminum, Iron, Solid Mixed Reclaimed Wood | COLORS: Aged Grey, Aged Metal, Ivory | DIMENSIONS: W: 19.75inches × D: 14inches × H: 12.25inch...
+   📏 Added dimension scale references
+   📸 Using condensed Regenerated Analysis description for: Eleanor Accent Bench
+   🔍 Condensed: "COLOR: light beige | MATERIAL: oak | SHAPE: angular, rectangular"
+   📊 Product Specifications: MATERIALS: 100% Polyester, Solid Ash, Iron | COLORS: Altair Sienna, Toasted Ash Solid, Distressed Brass | DIMENSIONS: W: 69.75inches × D: 21.5inches ×...
+   📏 Added dimension scale references
+   ⚠️ No visual description available for: Abaso Accent Bench
+ - using product specifications only
+   📊 Product Specifications: MATERIALS: Thick Oak Veneer | COLORS: Ebony Rustic Wormwood Oak | DIMENSIONS: W: 70inches × D: 19.25inches × H: 19inches | Seat Width: 70inches | Seat...
+   📏 Added dimension scale references
+   ⚠️ No visual description available for: Lillith Accent Table Black - using product specifications only
+   📊 Product Specifications: MATERIALS: Black Terrazzo Base, Black Iron Top | COLORS: Black | WEIGHT: 28.2 lbs | Trade Price: $271.20 | Retail Price: $339.00 | Delivery ETA: 45963...
+   ℹ️ No dimensions available for: Lillith Accent Table Black
+   📸 Using condensed Regenerated Analysis description for: Pilar Cabinet
+   🔍 Condensed: "COLOR: deep charcoal | MATERIAL: oak | SHAPE: angular, rounded"
+   📊 Product Specifications: MATERIALS: Oak Veneer, Solid Oak, Tempered Glass | COLORS: Charcoal Oak Veneer, Tempered Glass | DIMENSIONS: W: 50inches × D: 20inches × H: 84inches |...
+   📏 Added dimension scale references
+   📸 Using condensed Regenerated Analysis description for: Mays Table Lamp
+   🔍 Condensed: "COLOR: light sand | MATERIAL: linen"
+   📊 Product Specifications: MATERIALS: Ceramic, 65% Polyester, 35% Flax/Linen | COLORS: Vintage Brown Porcelain Ceramic, Ivory Linen | DIMENSIONS: W: 22inches × D: 22inches × H: ...
+   📏 Added dimension scale references
+   📸 Using condensed Regenerated Analysis description for: Ledge Wall Mirror
+   🔍 Condensed: "COLOR: warm gray | MATERIAL: oak | SHAPE: angular, rectangular"
+   📊 Product Specifications: MATERIALS: Solid Reclaimed Pine, Mirror | COLORS: Distressed Light Pine | DIMENSIONS: W: 42inches × D: 4inches × H: 50inches | WEIGHT: 54.45 lb | Trad...

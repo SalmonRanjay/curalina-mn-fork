@@ -1880,68 +1880,25 @@ export function registerCuralinaRoutes(app: Express) {
             console.error("Error updating selection ledger (non-blocking):", error);
           }
           
-          // Attach placement metadata from ledger before building prompt
-          const { attachPlacementMetadata } = await import('./services/gemini-ai');
-          const ledgerData = await curalinaStorage.getSelectionLedgerByRender(render.id) || null;
-          const productsWithPlacement = attachPlacementMetadata(
-            enrichedProducts,
-            ledgerData,
-            quiz.roomType,
-            allProducts
-          );
+          // IMAGE-ONLY MODE: Skip all text-based prompt building
+          // We'll send images directly to Gemini without text descriptions
+          console.log(`⚡ Skipping text-based prompt building - using pure image-only mode`);
           
-          // Build enhanced prompt with enriched products and image analysis
-          const { prompt, productMetadata } = buildPromptFromQuiz(quiz, productsWithPlacement, roomAnalysis, floorPlanAnalysis, placements);
+          // Set simple prompt for image-only mode (used for QA/logging only)
+          const prompt = floorplanUrl 
+            ? `This is my space image. Please furnish it with the Furniture and product images I provide`
+            : `Please create a beautifully designed interior space with Furniture and products images I provide`;
           
-          // Log what image analysis was used
-          const analysisTypes = [];
-          if (roomAnalysis) analysisTypes.push('room photo analysis');
-          if (floorPlanAnalysis) analysisTypes.push('floor plan analysis');
-          if (floorplanUrl && !roomAnalysis && !floorPlanAnalysis) analysisTypes.push('uploaded image (analysis pending)');
-          
-          console.log(`📝 Generated prompt with ${analysisTypes.length > 0 ? analysisTypes.join(' + ') : 'no image analysis'}`);
-          
-          // Prepare product reference images (Front View ONLY for consistency)
-          // Pass only Front View images to Gemini for accurate color and style matching
-          const productImages: Array<{ url: string; productName: string }> = [];
-          for (const product of productsWithPlacement) {
-            if (product.images && product.images.length > 0) {
-              // Find Front View image - use ONLY Front View images
-              const frontViewImage = product.images.find((url: string) => url.includes('Front') || url.includes('front'));
-              
-              if (frontViewImage) {
-                productImages.push({
-                  url: frontViewImage,
-                  productName: product.name
-                });
-              }
-            }
-          }
-          
-          if (productImages.length > 0) {
-            console.log(`📸 Preparing ${productImages.length} Front View reference images for Gemini (all selected products with Front View)`);
-          }
-          
-          // Generate layout mask from zone-based placements for ControlNet
-          let layoutMask: string | undefined;
-          if (placements && placements.length > 0) {
-            try {
-              const { generateLayoutMask } = await import('./services/layout-mask-generator');
-              layoutMask = await generateLayoutMask(placements);
-              console.log(`🎭 Generated layout mask from ${placements.length} zone placements for ControlNet guidance`);
-            } catch (error) {
-              console.warn('⚠️ Failed to generate layout mask (non-blocking):', error);
-              layoutMask = undefined;
-            }
-          }
+          // No product metadata in image-only mode
+          const productMetadata: Record<string, any> = {};
           
           // IMAGE-ONLY MODE: Let Gemini see the images directly with minimal text
           // This approach preserves the room structure better than text-heavy prompts
           // Product images guide what furniture to add without confusing text descriptions
           if (floorplanUrl) {
-            console.log(`🖼️  IMAGE-ONLY MODE: Room photo + ${productImages.length} product images → Gemini`);
+            console.log(`🖼️  IMAGE-ONLY MODE: Room photo + ${selectedProducts.length} product images → Gemini`);
           } else {
-            console.log(`🎨 IMAGE-ONLY MODE: ${productImages.length} product images (no room) → Gemini`);
+            console.log(`🎨 IMAGE-ONLY MODE: ${selectedProducts.length} product images (no room) → Gemini`);
           }
           
           // Get full product objects from database for image-only rendering
@@ -2004,16 +1961,16 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`   Image format: ${mimeType}, size: ${(imageBuffer.length / 1024).toFixed(1)}KB`);
             
             // Pass base64 image data and MIME type directly to avoid URL resolution issues
-            // Use enrichedProducts (not selectedProducts) because they have visual descriptions
+            // Use selectedProducts (image-only mode doesn't have enrichedProducts)
             qaResults = await validateRenderQuality(
               base64Data,
               mimeType,
-              enrichedProducts.map((p: any) => ({
+              selectedProducts.map((p: any) => ({
                 sku: p.sku,
                 name: p.name,
-                visualDescription: p.visualDescription,
+                visualDescription: p.visualDescription || '',
                 dimensions: p.dimensions,
-                placement: p.placement
+                placement: undefined
               })),
               prompt
             );
@@ -2106,9 +2063,13 @@ export function registerCuralinaRoutes(app: Express) {
             const { ingestRenderSnapshot } = await import('./services/render-ingestion');
             // Deep copy events array for immutable snapshot
             const eventSnapshot = JSON.parse(JSON.stringify(lifecycleEvents));
+            
+            // Get ledger data for snapshot ingestion
+            const ledgerData = await curalinaStorage.getSelectionLedgerByRender(render.id);
+            
             await ingestRenderSnapshot({
               render,
-              productsWithPlacement,
+              productsWithPlacement: selectedProducts, // Use selectedProducts in image-only mode
               allProducts,
               ledgerData: ledgerData || null,
               quizContext: {
