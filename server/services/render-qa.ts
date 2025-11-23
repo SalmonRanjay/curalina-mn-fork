@@ -85,7 +85,7 @@ export async function validateRenderQuality(
       throw new Error(`Image too large for inline validation: ${imageSizeMB.toFixed(2)}MB > 4MB limit`);
     }
     
-    // Use Gemini Vision to analyze the render
+    // Use Gemini Vision to analyze the render with structured JSON output
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
@@ -102,13 +102,55 @@ export async function validateRenderQuality(
           ],
         },
       ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object" as const,
+          properties: {
+            overallScore: { type: "integer" as const },
+            dimensionAccuracy: { type: "integer" as const },
+            productChecks: {
+              type: "array" as const,
+              items: {
+                type: "object" as const,
+                properties: {
+                  sku: { type: "string" as const },
+                  productName: { type: "string" as const },
+                  found: { type: "boolean" as const },
+                  colorMatch: { type: "boolean" as const },
+                  appearanceMatch: { type: "integer" as const },
+                  scaleAccuracy: { type: "integer" as const },
+                  dimensionAccuracy: { type: "integer" as const },
+                  placementCorrect: { type: "boolean" as const },
+                  notes: { type: "string" as const }
+                },
+                required: ["sku", "productName", "found", "appearanceMatch", "scaleAccuracy"]
+              }
+            },
+            issues: {
+              type: "array" as const,
+              items: {
+                type: "object" as const,
+                properties: {
+                  severity: { type: "string" as const, enum: ["critical", "major", "minor"] },
+                  category: { type: "string" as const },
+                  description: { type: "string" as const },
+                  affectedProduct: { type: "string" as const }
+                }
+              }
+            },
+            summary: { type: "string" as const }
+          },
+          required: ["overallScore", "dimensionAccuracy", "productChecks", "issues", "summary"]
+        }
+      }
     });
 
-    const analysisText = response.text || '';
-    console.log('✅ Received QA analysis from Gemini');
+    const analysisText = response.text || '{}';
+    console.log('✅ Received QA analysis from Gemini (structured JSON)');
     
-    // Parse the response into structured QA results
-    const qaResults = parseQAResponse(analysisText, expectedProducts);
+    // Parse the JSON response into structured QA results
+    const qaResults = parseJSONQAResponse(analysisText, expectedProducts);
     
     console.log(`📊 QA Score: ${qaResults.overallScore}/100`);
     console.log(`🔴 Issues found: ${qaResults.issues.length}`);
@@ -245,35 +287,119 @@ For each product, check:
 - Score based on how accurately the render reflects the specified dimensions
 
 RESPONSE FORMAT:
-Provide your analysis in this exact structure:
-
-OVERALL SCORE: [0-100]
-DIMENSION ACCURACY: [0-100] (overall accuracy of all product dimensions and proportions)
-
-PRODUCT CHECKS:
-[For each product]
-- Product Name: [name]
-  Found: [yes/no]
-  Color Match: [yes/no - EXACT match required]
-  Appearance Match: [0-100]
-  Scale Accuracy: [0-100]
-  Dimension Accuracy: [0-100] (how well dimensions match specifications)
-  Placement: [correct/incorrect/N/A]
-  Notes: [brief observations, especially color discrepancies and dimension issues]
-
-ISSUES FOUND:
-[List any problems, one per line]
-- [CRITICAL/MAJOR/MINOR] [dimensions/appearance/scale/placement/missing/hallucination]: [Description] (affects: [product name])
-
-SUMMARY:
-[2-3 sentence overall assessment including dimension accuracy]
+Provide your analysis as a JSON object with the following structure:
+{
+  "overallScore": 0-100,
+  "dimensionAccuracy": 0-100,
+  "productChecks": [
+    {
+      "sku": "product SKU",
+      "productName": "product name",
+      "found": true/false,
+      "colorMatch": true/false,
+      "appearanceMatch": 0-100,
+      "scaleAccuracy": 0-100,
+      "dimensionAccuracy": 0-100,
+      "placementCorrect": true/false,
+      "notes": "brief observations"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "critical|major|minor",
+      "category": "appearance|scale|placement|missing|hallucination|dimensions",
+      "description": "issue description",
+      "affectedProduct": "product name"
+    }
+  ],
+  "summary": "2-3 sentence overall assessment"
+}
 `;
 
   return prompt;
 }
 
 /**
- * Parse Gemini's response into structured QA results
+ * Parse Gemini's JSON response into structured QA results
+ */
+function parseJSONQAResponse(
+  analysisText: string,
+  expectedProducts: Array<{ sku: string; name: string }>
+): QAResults {
+  try {
+    const parsed = JSON.parse(analysisText);
+    
+    // Create lookup maps for case-insensitive matching
+    const skuToProduct = new Map<string, { sku: string; name: string }>();
+    const nameToProduct = new Map<string, { sku: string; name: string }>();
+    
+    expectedProducts.forEach(product => {
+      skuToProduct.set(product.sku.toLowerCase(), product);
+      nameToProduct.set(product.name.toLowerCase(), product);
+    });
+    
+    // Convert product checks array to SKU-keyed object
+    const productChecks: Record<string, any> = {};
+    let matchedCount = 0;
+    
+    if (parsed.productChecks && Array.isArray(parsed.productChecks)) {
+      console.log(`📋 Processing ${parsed.productChecks.length} product checks from Gemini...`);
+      
+      parsed.productChecks.forEach((check: any) => {
+        // Try to match by SKU (case-insensitive)
+        let matchedProduct = skuToProduct.get(check.sku?.toLowerCase() || '');
+        
+        // If no SKU match, try by product name (case-insensitive)
+        if (!matchedProduct && check.productName) {
+          matchedProduct = nameToProduct.get(check.productName.toLowerCase());
+        }
+        
+        if (matchedProduct) {
+          productChecks[matchedProduct.sku] = {
+            found: check.found || false,
+            colorMatch: check.colorMatch !== undefined ? check.colorMatch : true,
+            appearanceMatch: check.appearanceMatch || 0,
+            scaleAccuracy: check.scaleAccuracy || 0,
+            dimensionAccuracy: check.dimensionAccuracy || 0,
+            placementCorrect: check.placementCorrect !== undefined ? check.placementCorrect : false,
+            notes: check.notes || '',
+          };
+          matchedCount++;
+          console.log(`  ✅ Matched: ${matchedProduct.name} (SKU: ${matchedProduct.sku}) - Found: ${check.found}`);
+        } else {
+          console.warn(`  ⚠️  Could not match product from Gemini: SKU=${check.sku}, Name=${check.productName}`);
+        }
+      });
+      
+      console.log(`✅ Matched ${matchedCount}/${parsed.productChecks.length} products from QA response`);
+    }
+    
+    return {
+      overallScore: parsed.overallScore || 50,
+      dimensionAccuracy: parsed.dimensionAccuracy || 50,
+      issues: parsed.issues || [],
+      validatedAt: new Date().toISOString(),
+      productChecks,
+      summary: parsed.summary || 'QA validation completed',
+    };
+  } catch (error) {
+    console.error('Failed to parse QA JSON response:', error);
+    console.error('Raw response:', analysisText.substring(0, 500));
+    
+    // Fallback to empty results
+    return {
+      overallScore: 50,
+      dimensionAccuracy: 50,
+      issues: [],
+      validatedAt: new Date().toISOString(),
+      productChecks: {},
+      summary: 'Failed to parse QA response',
+    };
+  }
+}
+
+/**
+ * Parse Gemini's TEXT response into structured QA results (LEGACY - kept as fallback)
  */
 function parseQAResponse(
   analysisText: string,
