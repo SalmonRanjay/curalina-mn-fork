@@ -61,6 +61,15 @@ Preferred communication style: Simple, everyday language.
     - Shipping metadata (delivery options, location, policy, cost, ETA) with deep serialization to prevent [object Object]
     - Tags (deduplicated, trimmed)
   - **Deep Serialization Helper**: `serializeValue()` function recursively serializes nested objects/arrays to prevent [object Object] in prompts, with JSON.stringify fallback for very deep structures (depth > 5)
+- **Dimension Validation System**: Three-stage pipeline preventing furniture purchases that won't fit:
+  - **Natural Language Room Parser**: Gemini AI extracts structured dimensions from descriptions like "15x12 feet living room with 32-inch doorway, 8-foot ceilings"
+  - **Spatial Fit Validator**: Validates products against room envelope (dual-orientation checking), doorway delivery (diagonal Pythagorean calculations), and clearance requirements
+  - **Validation Tiers**: BLOCK (oversized), WARNING (tight fit 15-18" clearance), OK (comfortable >18" clearance)
+  - **Database Schema**: `roomDescription` (text) and `parsedRoomData` (JSONB) fields in `quiz_responses` table for persistence
+  - **Pre-Render Filtering**: Hard-blocks oversized products before AI selection to prevent showing unavailable furniture
+  - **Confirmation UI**: Shows parsed dimensions with confidence scores, allows editing, requires user acknowledgment
+  - **Graceful Degradation**: If parsing fails or confidence low, system continues without blocking but logs warnings
+  - **Known Limitations**: Clearance assumes centered placement (not wall-adjacent), warnings logged server-side but limited UI surfacing, simplified confidence scoring
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM.
