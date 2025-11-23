@@ -2414,7 +2414,7 @@ export function registerCuralinaRoutes(app: Express) {
         const fileExtension = mimeType === 'image/jpeg' ? 'jpg' : 'png';
         const imageName = `comparison-${comparison.id}-${serviceName}.${fileExtension}`;
         
-        const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+        const publicPaths = await objectStorageService.getPublicObjectSearchPaths();
         if (!publicPaths || publicPaths.length === 0) {
           throw new Error("Object storage public paths not configured");
         }

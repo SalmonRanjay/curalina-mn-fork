@@ -38,30 +38,34 @@ export default function ComparisonRender() {
   const [, setLocation] = useLocation();
   const [comparisonId, setComparisonId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string>("");
   
-  // Get or create session ID
-  const getSessionId = () => {
-    let sessionId = localStorage.getItem("sessionId");
-    if (!sessionId) {
-      sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem("sessionId", sessionId);
+  // Get or create session ID (SSR-safe)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let id = localStorage.getItem("sessionId");
+      if (!id) {
+        id = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem("sessionId", id);
+      }
+      setSessionId(id);
     }
-    return sessionId;
-  };
-  
-  const sessionId = getSessionId();
+  }, []);
   
   // Trigger comparison render on mount (only once)
   const createComparisonMutation = useMutation({
     mutationFn: async (params: any) => {
       const response = await apiRequest("POST", "/api/render/comparison", params);
-      return await response.json();
+      const json = await response.json();
+      // Handle both plain JSON and wrapped { data } responses
+      return json.data || json;
     },
     onSuccess: (data: ComparisonRender) => {
       setComparisonId(data.id);
     },
     onError: (error: Error) => {
       console.error("Failed to create comparison:", error);
+      alert(`Failed to create comparison: ${error.message}`);
     },
   });
   
@@ -83,9 +87,9 @@ export default function ComparisonRender() {
     },
   });
   
-  // Start comparison on mount
+  // Start comparison on mount (wait for sessionId to be set)
   useEffect(() => {
-    if (!comparisonId) {
+    if (typeof window !== "undefined" && !comparisonId && sessionId) {
       // Get params from location state or localStorage
       const roomImageUrl = localStorage.getItem("roomImageUrl");
       const productSkus = JSON.parse(localStorage.getItem("selectedProductSkus") || "[]");
@@ -102,7 +106,7 @@ export default function ComparisonRender() {
         });
       }
     }
-  }, []);
+  }, [sessionId, comparisonId]);
   
   const selectWinnerMutation = useMutation({
     mutationFn: async ({ service, reason }: { service: string; reason?: string }) => {
