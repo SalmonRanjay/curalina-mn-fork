@@ -12,28 +12,53 @@ import { useToast } from "@/hooks/use-toast";
 import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } from "@shared/schema";
 
 /**
+ * Properly encode image URLs to handle spaces and special characters
+ * S3 requires proper URL encoding, otherwise returns 403 Forbidden
+ */
+function encodeImageUrl(url: string): string {
+  if (!url) return url;
+  
+  try {
+    // Parse the URL to separate the path from the base
+    const urlObj = new URL(url);
+    // Encode only the pathname, preserving the protocol and domain
+    const pathParts = urlObj.pathname.split('/');
+    const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
+    urlObj.pathname = encodedPath;
+    return urlObj.toString();
+  } catch {
+    // If URL parsing fails, fall back to simple encoding
+    return url;
+  }
+}
+
+/**
  * Helper function to reorder product images to prioritize Front View
  * Front View images should be displayed first in the Shop the Look carousel
  */
 function prioritizeFrontViewImage(images: string[] | null): string[] {
   if (!images || images.length === 0) return [];
   
+  // Properly encode all image URLs
+  const encodedImages = images.map(url => encodeImageUrl(url));
+  
   // Find the Front View image (case insensitive)
-  const frontViewIndex = images.findIndex(url => 
-    url.toLowerCase().includes('front view') || 
+  const frontViewIndex = encodedImages.findIndex(url => 
+    url.toLowerCase().includes('front%20view') ||
     url.toLowerCase().includes('front_view') ||
-    url.toLowerCase().includes('frontview')
+    url.toLowerCase().includes('frontview') ||
+    url.toLowerCase().includes('front-view')
   );
   
   // If Front View found, move it to the front
   if (frontViewIndex > 0) {
-    const reordered = [...images];
+    const reordered = [...encodedImages];
     const frontView = reordered.splice(frontViewIndex, 1)[0];
     return [frontView, ...reordered];
   }
   
-  // Return original order if Front View is already first or not found
-  return images;
+  // Return encoded images in original order if Front View is already first or not found
+  return encodedImages;
 }
 
 /**
