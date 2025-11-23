@@ -51,23 +51,37 @@ function parseObjectPath(path: string): { bucketName: string; objectName: string
   return { bucketName, objectName };
 }
 
-// Helper to convert image filenames/paths to full S3 URLs
+// Helper to convert image filenames/paths to full S3 URLs and encode them properly
 function transformProductImages(product: any) {
   if (!product.images || product.images.length === 0) return product;
   
   const AWS_REGION = (process.env.AWS_REGION === "global" || !process.env.AWS_REGION) ? "us-east-1" : process.env.AWS_REGION;
   const BUCKET_NAME = "curalina";
   
-  // Transform images array to full S3 URLs
+  // Transform images array to full S3 URLs with proper encoding
   const transformedImages = product.images.map((imageUrl: string) => {
-    // If already a full URL (starts with https://), return as-is
+    let fullUrl: string;
+    
+    // If already a full URL, we still need to encode it properly
     if (imageUrl.startsWith('https://')) {
-      return imageUrl;
+      fullUrl = imageUrl;
+    } else {
+      // Construct full S3 URL from filename
+      fullUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
     }
-    // Otherwise, construct full S3 URL from filename
-    const fullUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
-    console.log(`[IMAGE_TRANSFORM] ${imageUrl} → ${fullUrl}`);
-    return fullUrl;
+    
+    // Parse URL and encode the pathname to handle spaces and special characters
+    try {
+      const urlObj = new URL(fullUrl);
+      // Split path into segments, encode each segment, then rejoin
+      const pathSegments = urlObj.pathname.split('/');
+      const encodedPath = pathSegments.map(segment => encodeURIComponent(segment)).join('/');
+      urlObj.pathname = encodedPath;
+      return urlObj.toString();
+    } catch (e) {
+      // If URL parsing fails, fallback to simple space encoding
+      return fullUrl.replace(/ /g, '%20');
+    }
   });
   
   return { ...product, images: transformedImages };
