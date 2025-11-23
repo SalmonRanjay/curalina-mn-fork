@@ -92,12 +92,37 @@ export default function ComparisonRender() {
     if (typeof window !== "undefined" && !comparisonId && sessionId) {
       // Get params from location state or localStorage
       const roomImageUrl = localStorage.getItem("roomImageUrl") || "";
-      const productSkus = JSON.parse(localStorage.getItem("selectedProductSkus") || "[]");
+      const productSkusStr = localStorage.getItem("selectedProductSkus") || "[]";
       const roomType = localStorage.getItem("roomType");
       const style = localStorage.getItem("style");
       
+      console.log("Comparison page - localStorage data:", {
+        roomImageUrl,
+        productSkusStr,
+        roomType,
+        style,
+        sessionId
+      });
+      
+      let productSkus: string[] = [];
+      try {
+        productSkus = JSON.parse(productSkusStr);
+      } catch (e) {
+        console.error("Failed to parse productSkus:", e);
+        alert("Invalid product data. Please create a design first.");
+        setLocation("/quiz");
+        return;
+      }
+      
       // Allow comparison with or without room image (text-to-image or image-to-image)
       if (productSkus.length > 0) {
+        console.log("Starting comparison with:", {
+          roomImageUrl,
+          productSkus,
+          sessionId,
+          roomType,
+          style,
+        });
         createComparisonMutation.mutate({
           roomImageUrl, // Empty string for text-to-image mode
           productSkus,
@@ -106,6 +131,7 @@ export default function ComparisonRender() {
           style,
         });
       } else {
+        console.error("No products selected for comparison");
         alert("No products selected for comparison. Please create a design first.");
         setLocation("/quiz");
       }
@@ -135,17 +161,18 @@ export default function ComparisonRender() {
     });
   };
   
-  if (createComparisonMutation.isPending || isLoading) {
+  // Show loading state while waiting for sessionId or creating comparison
+  if (!sessionId || createComparisonMutation.isPending || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Generating Comparison Renders
+              {!sessionId ? "Initializing..." : "Generating Comparison Renders"}
             </CardTitle>
             <CardDescription>
-              Testing all three AI services in parallel...
+              {!sessionId ? "Setting up comparison..." : "Testing all three AI services in parallel..."}
             </CardDescription>
           </CardHeader>
         </Card>
