@@ -52,6 +52,7 @@ function parseObjectPath(path: string): { bucketName: string; objectName: string
 }
 
 // Helper to convert image filenames/paths to full S3 URLs with proper URL encoding
+// This function is idempotent: running it multiple times produces the same result
 function transformProductImages(product: any) {
   if (!product.images || product.images.length === 0) return product;
   
@@ -62,7 +63,7 @@ function transformProductImages(product: any) {
   const transformedImages = product.images.map((imageUrl: string) => {
     let fullUrl: string;
     
-    // If already a full URL, we need to properly encode it
+    // If already a full URL, use it
     if (imageUrl.startsWith('https://')) {
       fullUrl = imageUrl;
     } else {
@@ -73,19 +74,22 @@ function transformProductImages(product: any) {
     try {
       const urlObj = new URL(fullUrl);
       
-      // Split path into segments and properly encode each segment
-      // This handles spaces, special characters, etc.
+      // Idempotent encoding: decode first (to handle already-encoded or mixed states),
+      // then encode to ensure consistent output
       const pathSegments = urlObj.pathname.split('/');
       const encodedSegments = pathSegments.map(segment => {
-        if (!segment) return segment; // Skip empty segments
+        if (!segment) return segment;
         
-        // Decode first in case it's already partially encoded
         try {
+          // Try to decode - this handles already-encoded, partially-encoded, or unencoded segments
           const decoded = decodeURIComponent(segment);
-          // Then encode it properly
+          // Check if decoding changed the segment (meaning it was encoded)
+          // or if decoding returned the same value (meaning it wasn't encoded)
+          // Either way, we encode the decoded result for consistency
           return encodeURIComponent(decoded);
-        } catch {
-          // If decode fails, just encode the original
+        } catch (e) {
+          // If decode fails (malformed encoding), encode the original segment as-is
+          // This handles edge cases with invalid % sequences
           return encodeURIComponent(segment);
         }
       });
@@ -94,7 +98,7 @@ function transformProductImages(product: any) {
       return urlObj.toString();
     } catch (e) {
       // If URL parsing fails, log error and return original
-      console.error(`[IMAGE_TRANSFORM] Failed to encode URL: ${fullUrl}`, e);
+      console.error(`[IMAGE_TRANSFORM] Failed to process URL: ${fullUrl}`, e);
       return fullUrl;
     }
   });
