@@ -191,13 +191,15 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     if (roomImage) {
       // Image-to-image mode: furnish the provided space
       prompt = `This is my space image. Please furnish it with ALL ${fetchedCount} furniture items whose photos I'm providing.
-      
-CRITICAL: You MUST include EVERY SINGLE product image I provide in the final design. Do not skip any products.`;
+
+CRITICAL: You MUST include EVERY SINGLE product image I provide in the final design, Colors should exactly match, Shape should Exactly match, dimensions handled based on uses space dimensions overall product look in render should exact as product image.
+Do not skip any products.`;
     } else {
       // Text-to-image mode: create a new room scene
       prompt = `Please create a beautifully designed interior space using ALL ${fetchedCount} furniture products whose photos I'm providing.
-      
-CRITICAL: You MUST include EVERY SINGLE product image I provide in the final design. Do not skip any products.`;
+
+CRITICAL: You MUST include EVERY SINGLE product image I provide in the final design, Colors should exactly match, Shape should Exactly match, dimensions handled based on uses space dimensions overall product look in render should exact as product image.
+Do not skip any products.`;
     }
     
     if (roomType) {
