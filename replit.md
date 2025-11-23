@@ -39,7 +39,16 @@ Preferred communication style: Simple, everyday language.
   - **Real-World Scale**: Automatic dimension extraction and enforcement, comparative ratios between products, human-scale references
   - **Multi-Modal Generation**: Product catalog images (Front View priority) passed to both Gemini and Stability AI as visual references
   - **Layout Mask System**: Zone-based placements converted to visual masks for ControlNet-guided furniture placement
-  - **Post-Render QA**: Gemini Vision validation checking product presence/appearance/scale/placement, regeneration recommendations for quality thresholds
+  - **Strict Post-Render QA with Auto-Regeneration**: 
+    - **Structured JSON Validation**: Gemini Vision generates structured JSON output for reliable parsing (not text regex)
+    - **Strict Quality Thresholds**: Appearance≥85, Scale≥80, Dimensions≥75, Overall≥80, ColorMatch REQUIRED
+    - **Auto-Regeneration Loop**: Up to 3 attempts (1 initial + 2 retries) to meet quality standards
+    - **Best Attempt Tracking**: Tracks highest QA score across attempts, uses best if all fail thresholds
+    - **Quality Status Tracking**: Renders tagged as 'passed' (meets all thresholds), 'warning' (below thresholds), or 'unknown'
+    - **Zero-Tolerance Color Matching**: colorMatch defaults to false unless Gemini explicitly confirms match
+    - **Missing Product Protection**: Products absent from Gemini response automatically marked as failed
+    - **Enhanced QA Prompt**: "SIDE-BY-SIDE COMPARISON" emphasis for exact product matching with reference images
+    - **Comprehensive Logging**: Full audit trail with warnings for below-threshold renders and manual review recommendations
   - **Refinement Pipeline**: Three-tier Stability AI QC (ControlNet mask → product images → structure-only) with graceful fallbacks
   - **Comprehensive Product Specifications**: All database fields passed to AI prompts including:
     - Materials (deduplicated, filter falsy values)
