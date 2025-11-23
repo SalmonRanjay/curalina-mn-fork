@@ -16,14 +16,14 @@ import { buildDimensionSummary, normalizeDimensions } from './dimension-utils';
  * Color matching remains strict (zero tolerance) to ensure e-commerce accuracy.
  */
 
-// QA THRESHOLDS - Balanced for quality and throughput
+// QA THRESHOLDS - Lowered to reduce regeneration attempts while maintaining quality
 export const QA_THRESHOLDS = {
   COLOR_MATCH_REQUIRED: true,         // Must be exact color (STRICT for e-commerce)
-  MIN_APPEARANCE_SCORE: 82,           // Product must look like the reference image
-  MIN_SCALE_SCORE: 78,                // Proportions must be realistic
-  MIN_DIMENSION_SCORE: 72,            // Sizes must match specifications
-  MIN_OVERALL_SCORE: 78,              // Combined quality threshold
-  MAX_REGENERATION_ATTEMPTS: 2,       // Auto-retry limit
+  MIN_APPEARANCE_SCORE: 75,           // Product must look like the reference image (lowered from 82)
+  MIN_SCALE_SCORE: 72,                // Proportions must be realistic (lowered from 78)
+  MIN_DIMENSION_SCORE: 65,            // Sizes must match specifications (lowered from 72)
+  MIN_OVERALL_SCORE: 70,              // Combined quality threshold (lowered from 78)
+  MAX_REGENERATION_ATTEMPTS: 2,       // Auto-retry limit (keep same)
 } as const;
 
 interface QAIssue {
