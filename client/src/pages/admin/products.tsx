@@ -847,12 +847,9 @@ export default function AdminProducts() {
   });
 
   const encodeImageUrl = (url: string): string => {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.toString();
-    } catch {
-      return url;
-    }
+    if (!url) return url;
+    // Replace unencoded spaces with %20 to handle S3 URLs with spaces in filenames
+    return url.replace(/ /g, '%20');
   };
 
   const getImageUrl = (images: string[] | null) => {

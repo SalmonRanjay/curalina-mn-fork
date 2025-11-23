@@ -17,19 +17,8 @@ import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } 
  */
 function encodeImageUrl(url: string): string {
   if (!url) return url;
-  
-  try {
-    // Parse the URL to separate the path from the base
-    const urlObj = new URL(url);
-    // Encode only the pathname, preserving the protocol and domain
-    const pathParts = urlObj.pathname.split('/');
-    const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
-    urlObj.pathname = encodedPath;
-    return urlObj.toString();
-  } catch {
-    // If URL parsing fails, fall back to simple encoding
-    return url;
-  }
+  // Replace unencoded spaces with %20 to handle S3 URLs with spaces in filenames
+  return url.replace(/ /g, '%20');
 }
 
 /**
