@@ -1939,10 +1939,14 @@ export function registerCuralinaRoutes(app: Express) {
             console.log(`🎨 IMAGE-ONLY MODE: ${productImages.length} product images (no room) → Gemini`);
           }
           
+          // Get full product objects from database for image-only rendering
+          const selectedSkus = selectedProducts.map(p => p.sku);
+          const fullSelectedProducts = allProducts.filter(p => selectedSkus.includes(p.sku));
+          
           const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
           const imageOnlyResult = await generateImageOnlyRender({
             roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
-            products: selectedProducts, // Full product objects for image extraction
+            products: fullSelectedProducts, // Full product objects from database for image extraction
             roomType: quiz.roomType,
             stylePreference: quiz.styles?.[0] || 'modern'
           });
