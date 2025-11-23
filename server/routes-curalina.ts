@@ -25,7 +25,7 @@ import {
 import { z } from "zod";
 import { isAuthenticated } from "./localAuth";
 import { isAdmin } from "./routes";
-import { buildPromptFromQuiz, extractProductSkus, generateInteriorImage } from "./services/gemini-ai";
+import { buildPromptFromQuiz, extractProductSkus } from "./services/gemini-ai";
 import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
 import type { PlacementInstruction } from "./services/room-composition-service";
 import { renameAllProductImages, previewImageRenames } from "./services/s3-image-renamer";
@@ -1930,27 +1930,29 @@ export function registerCuralinaRoutes(app: Express) {
             }
           }
           
-          // HYBRID MODE: Use text-based prompt + product images as visual references
-          // This preserves the room structure while using product images for accurate representation
-          // Text prompt provides context, product images ensure fidelity
-          const { generateInteriorImage } = await import('./services/gemini-ai');
-          
+          // IMAGE-ONLY MODE: Let Gemini see the images directly with minimal text
+          // This approach preserves the room structure better than text-heavy prompts
+          // Product images guide what furniture to add without confusing text descriptions
           if (floorplanUrl) {
-            console.log(`🖼️  Image-to-image mode: Preserving room structure + ${productImages.length} product references`);
+            console.log(`🖼️  IMAGE-ONLY MODE: Room photo + ${productImages.length} product images → Gemini`);
           } else {
-            console.log(`🎨 Text-to-image mode: Creative generation + ${productImages.length} product references`);
+            console.log(`🎨 IMAGE-ONLY MODE: ${productImages.length} product images (no room) → Gemini`);
           }
           
-          const imageDataUrl = await generateInteriorImage(
-            prompt,
-            floorplanUrl,
-            roomAnalysis,
-            floorPlanAnalysis,
-            productImages.length > 0 ? productImages : undefined,
-            layoutMask
-          );
-          console.log(`✅ AI-generated room rendering complete with ${productImages.length} product visual references${layoutMask ? ' and layout mask guidance' : ''}`);
+          const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+          const imageOnlyResult = await generateImageOnlyRender({
+            roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
+            products: selectedProducts, // Full product objects for image extraction
+            roomType: quiz.roomType,
+            stylePreference: quiz.styles?.[0] || 'modern'
+          });
           
+          if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
+            throw new Error(imageOnlyResult.error || 'Image-only generation failed');
+          }
+          
+          console.log(`✅ AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images (image-only mode)`);
+          const imageDataUrl = imageOnlyResult.imageBase64;
           
           // Extract base64 data and MIME type from data URL (format: data:image/png;base64,...)
           const base64Match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
