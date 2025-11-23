@@ -680,14 +680,16 @@ export default function Results() {
                     data-testid={`card-alternative-${alt.id}`}
                   >
                     <div className="aspect-square relative bg-muted group">
-                      {alt.images && alt.images.length > 0 ? (
-                        <>
-                          <img
-                            src={alt.images[currentImageIndex[alt.id] || 0]}
-                            alt={alt.name}
-                            className="w-full h-full object-cover"
-                          />
-                          {alt.images.length > 1 && (
+                      {(() => {
+                        const encodedAltImages = alt.images?.map(url => encodeImageUrl(url)) || [];
+                        return encodedAltImages.length > 0 ? (
+                          <>
+                            <img
+                              src={encodedAltImages[currentImageIndex[alt.id] || 0]}
+                              alt={alt.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {encodedAltImages.length > 1 && (
                             <>
                               <Button
                                 size="icon"
@@ -696,7 +698,7 @@ export default function Results() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const currentIdx = currentImageIndex[alt.id] || 0;
-                                  const newIdx = currentIdx === 0 ? alt.images!.length - 1 : currentIdx - 1;
+                                  const newIdx = currentIdx === 0 ? encodedAltImages.length - 1 : currentIdx - 1;
                                   setCurrentImageIndex(prev => ({ ...prev, [alt.id]: newIdx }));
                                 }}
                               >
@@ -709,14 +711,14 @@ export default function Results() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const currentIdx = currentImageIndex[alt.id] || 0;
-                                  const newIdx = (currentIdx + 1) % alt.images!.length;
+                                  const newIdx = (currentIdx + 1) % encodedAltImages.length;
                                   setCurrentImageIndex(prev => ({ ...prev, [alt.id]: newIdx }));
                                 }}
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </Button>
                               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                {alt.images.map((_, idx) => (
+                                {encodedAltImages.map((_, idx) => (
                                   <div
                                     key={idx}
                                     className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -729,12 +731,13 @@ export default function Results() {
                               </div>
                             </>
                           )}
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          No image
-                        </div>
-                      )}
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            No image
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="p-4">
                       <h3 className="font-semibold mb-1" style={{ fontSize: 'var(--font-size-base)' }}>{alt.name}</h3>
