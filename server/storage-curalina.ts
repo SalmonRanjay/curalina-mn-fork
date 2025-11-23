@@ -1190,7 +1190,24 @@ export class CuralinaStorage implements ICuralinaStorage {
       await tx.delete(renderEvents).where(eq(renderEvents.renderId, renderId));
       
       if (productsData.length > 0) {
-        await tx.insert(renderProducts).values(productsData);
+        // Use ON CONFLICT to handle duplicate (render_id, product_id) pairs
+        await tx.insert(renderProducts)
+          .values(productsData)
+          .onConflictDoUpdate({
+            target: [renderProducts.renderId, renderProducts.productId],
+            set: {
+              sku: sql`EXCLUDED.sku`,
+              name: sql`EXCLUDED.name`,
+              quantity: sql`EXCLUDED.quantity`,
+              retailPrice: sql`EXCLUDED.retail_price`,
+              totalPrice: sql`EXCLUDED.total_price`,
+              visualDescription: sql`EXCLUDED.visual_description`,
+              condensedDescription: sql`EXCLUDED.condensed_description`,
+              imageUrls: sql`EXCLUDED.image_urls`,
+              dimensions: sql`EXCLUDED.dimensions`,
+              placement: sql`EXCLUDED.placement`
+            }
+          });
       }
       
       if (eventsData.length > 0) {
