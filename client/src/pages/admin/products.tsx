@@ -2595,7 +2595,7 @@ export default function AdminProducts() {
                     {viewingProduct.images.map((img, idx) => (
                       <img
                         key={idx}
-                        src={getImageUrl([img])!}
+                        src={img}
                         alt={`${viewingProduct.name} ${idx + 1}`}
                         className="w-full h-24 object-cover rounded"
                       />
