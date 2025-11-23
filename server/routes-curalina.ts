@@ -29,6 +29,11 @@ import { buildPromptFromQuiz, generateInteriorImage, extractProductSkus } from "
 import { uploadToS3, generateProductImageKey, generatePresignedUploadUrl, checkS3ObjectExists } from "./s3";
 import type { PlacementInstruction } from "./services/room-composition-service";
 import { renameAllProductImages, previewImageRenames } from "./services/s3-image-renamer";
+import { 
+  createAndStartS3RenamingJob, 
+  getS3JobDetails, 
+  getS3JobQueueStatus 
+} from "./services/s3-renaming-job-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const objectStorageService = new ObjectStorageService();
@@ -271,6 +276,7 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // S3 image renaming endpoints - Replace spaces with dashes
+  // Legacy preview endpoint (dry run)
   app.post('/api/admin/products/s3-images/preview-rename', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       console.log('[S3-RENAME] Starting preview of S3 image renaming...');
@@ -282,11 +288,71 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // New persistent job-based execution
+  app.post('/api/admin/products/s3-images/start-rename-job', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { dryRun = false, priority = 0 } = req.body;
+      console.log(`[S3-RENAME] Starting S3 image renaming job (dryRun: ${dryRun})`);
+      
+      const job = await createAndStartS3RenamingJob(undefined, {
+        priority,
+        autoStart: true,
+        dryRun,
+        userId: req.user?.id
+      });
+      
+      res.json(job);
+    } catch (error) {
+      console.error('Error starting S3 renaming job:', error);
+      res.status(500).json({ error: 'Failed to start S3 renaming job' });
+    }
+  });
+
+  // Get job status and details
+  app.get('/api/admin/products/s3-images/job/:jobId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const jobDetails = await getS3JobDetails(req.params.jobId);
+      if (!jobDetails) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      res.json(jobDetails);
+    } catch (error) {
+      console.error('Error getting S3 job details:', error);
+      res.status(500).json({ error: 'Failed to get job details' });
+    }
+  });
+
+  // Get queue status
+  app.get('/api/admin/products/s3-images/queue-status', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const status = getS3JobQueueStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Error getting queue status:', error);
+      res.status(500).json({ error: 'Failed to get queue status' });
+    }
+  });
+
+  // Legacy execute endpoint (uses new persistent job system)
   app.post('/api/admin/products/s3-images/execute-rename', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('[S3-RENAME] Starting S3 image renaming execution...');
-      const summary = await renameAllProductImages(curalinaStorage, false);
-      res.json(summary);
+      console.log('[S3-RENAME] Starting S3 image renaming execution (legacy endpoint)...');
+      
+      // Create and start job with high priority
+      const job = await createAndStartS3RenamingJob(undefined, {
+        priority: 100,
+        autoStart: true,
+        dryRun: false,
+        userId: req.user?.id
+      });
+      
+      // Return job info instead of immediate results
+      res.json({
+        message: 'S3 renaming job started',
+        jobId: job.id,
+        status: job.status,
+        totalProducts: job.totalProducts
+      });
     } catch (error) {
       console.error('Error executing S3 image renames:', error);
       res.status(500).json({ error: 'Failed to execute S3 image renames' });
