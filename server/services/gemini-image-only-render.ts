@@ -84,6 +84,9 @@ function selectProductFrontViewImages(products: Product[]): Array<{ url: string;
         productName: product.name,
         sku: product.sku
       });
+    } else {
+      console.warn(`⚠️  Product ${product.name} (${product.sku}) has no valid image - SKIPPED from rendering`);
+      console.warn(`   Images field: ${JSON.stringify(product.images)?.substring(0, 200)}`);
     }
   }
   
