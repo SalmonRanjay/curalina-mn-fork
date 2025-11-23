@@ -443,8 +443,9 @@ async function processWorker(
         console.log(`  ${qualityLevel} Quality Score: ${result.structuredAnalysisQuality}/100`);
       }
       
-      // Adaptive delay based on success (shorter if successful, longer if struggling)
-      const delay = result.error ? 10000 : 5000;
+      // Minimal adaptive delay - mostly for rate limiting fairness
+      // Successful: 100ms, Failed: 500ms (very fast now)
+      const delay = result.error ? 500 : 100;
       if (i < products.length - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -475,8 +476,8 @@ export async function batchAnalyzeProductsConcurrent(
   } = {}
 ): Promise<ProductAnalysisResult[]> {
   const { 
-    workerCount = 5, 
-    batchSize = 20,
+    workerCount = 40, // Increased from 5 for aggressive parallelization
+    batchSize = 100, // Increased from 20 for better throughput
     onProgress,
     onResultComplete
   } = options;

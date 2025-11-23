@@ -102,9 +102,9 @@ class VisualAnalysisJobQueue {
         return;
       }
       
-      // Process in batches with concurrent workers
-      const batchSize = 20;
-      const workerCount = 10;
+      // Process in batches with concurrent workers - OPTIMIZED FOR SPEED
+      const batchSize = 100; // Increased from 20 for better throughput
+      const workerCount = 40; // Increased from 10 for aggressive parallelization
       
       for (let i = 0; i < pendingProducts.length; i += batchSize) {
         const batch = pendingProducts.slice(i, i + batchSize);
