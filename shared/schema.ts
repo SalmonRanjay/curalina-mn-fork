@@ -817,6 +817,79 @@ export const insertVisualAnalysisProductSchema = createInsertSchema(visualAnalys
 });
 export type InsertVisualAnalysisProduct = z.infer<typeof insertVisualAnalysisProductSchema>;
 
+// S3 Renaming Jobs - Track background S3 image normalization tasks
+export const s3RenamingJobs = pgTable("s3_renaming_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  totalProducts: integer("total_products").notNull().default(0),
+  processedProducts: integer("processed_products").notNull().default(0),
+  successfulRenames: integer("successful_renames").notNull().default(0),
+  failedRenames: integer("failed_renames").notNull().default(0),
+  currentProductName: text("current_product_name"), // Currently processing product
+  errorMessage: text("error_message"),
+  dryRun: boolean("dry_run").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_s3_job_status").on(table.status),
+]);
+
+export const s3RenamingJobRelations = relations(s3RenamingJobs, ({ one, many }) => ({
+  user: one(users, {
+    fields: [s3RenamingJobs.userId],
+    references: [users.id],
+  }),
+  products: many(s3RenamingProducts),
+}));
+
+export type S3RenamingJob = typeof s3RenamingJobs.$inferSelect;
+export const insertS3RenamingJobSchema = createInsertSchema(s3RenamingJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertS3RenamingJob = z.infer<typeof insertS3RenamingJobSchema>;
+
+// S3 Renaming Products - Track individual products within a renaming job
+export const s3RenamingProducts = pgTable("s3_renaming_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => s3RenamingJobs.id, { onDelete: "cascade" }).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  productSku: varchar("product_sku").notNull(),
+  productName: text("product_name").notNull(),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'skipped'
+  oldImages: jsonb("old_images"), // Original image URLs
+  newImages: jsonb("new_images"), // Normalized image URLs
+  renamedCount: integer("renamed_count").notNull().default(0),
+  errorMessage: text("error_message"),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_s3_product_job_status").on(table.jobId, table.status),
+  index("idx_s3_product_id").on(table.productId),
+  unique("s3_job_product_unique").on(table.jobId, table.productId),
+]);
+
+export const s3RenamingProductRelations = relations(s3RenamingProducts, ({ one }) => ({
+  job: one(s3RenamingJobs, {
+    fields: [s3RenamingProducts.jobId],
+    references: [s3RenamingJobs.id],
+  }),
+  product: one(products, {
+    fields: [s3RenamingProducts.productId],
+    references: [products.id],
+  }),
+}));
+
+export type S3RenamingProduct = typeof s3RenamingProducts.$inferSelect;
+export const insertS3RenamingProductSchema = createInsertSchema(s3RenamingProducts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertS3RenamingProduct = z.infer<typeof insertS3RenamingProductSchema>;
+
 // Room Templates - Define standard composition for each room type
 export const roomTemplates = pgTable("room_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

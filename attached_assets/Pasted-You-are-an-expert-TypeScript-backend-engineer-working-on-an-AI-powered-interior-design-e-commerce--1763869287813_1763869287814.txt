@@ -1,0 +1,101 @@
+You are an expert TypeScript backend engineer working on an AI-powered interior design + e-commerce app called Curalina AI.
+
+Your task: implement a **budget allocation + product scoring engine** for room designs, based on room type, quiz answers, and a total budget. The goal is to ensure the budget is distributed smartly across categories (sofa, rug, bed, table, etc.) and that product selection respects those allocations.
+
+=====================================
+CONTEXT
+=====================================
+We have:
+- A 7-step quiz that collects:
+  - roomType: "living_room" | "bedroom" | "dining_room" | "home_office"
+  - style preferences
+  - functional features (e.g. "Storage Solutions", "Workspace Area", "Reading Nook", etc.)
+  - budgetRange: one of ["500-1500", "1500-3000", "3000-5000", "5000-plus"]
+- A product catalog with:
+  - category (e.g. "sofa", "rug", "coffee_table", "desk", "dining_table", "dining_chair", "nightstand", "dresser", etc.)
+  - price
+  - roomType compatibility
+  - styleTags
+  - dimensions
+  - etc.
+
+Currently we already rank products by:
+- category match
+- style match
+- visual similarity
+- functional feature bonus
+
+Now we want to **add real budget enforcement** with smart budget splits.
+
+=====================================
+REQUIREMENTS
+=====================================
+
+Implement TypeScript logic (for a Node/Express backend or a services layer) that does the following:
+
+1. **Determine Total Budget**
+   - Input: budgetRange string from quiz:
+     - "500-1500" → choose a working numeric value (e.g. mid or max of range)
+     - "1500-3000"
+     - "3000-5000"
+     - "5000-plus" → treat as a configurable max, e.g. 6000 or 8000
+   - Return a numeric `totalBudget` in USD.
+
+2. **Define Essential vs. Complementary Categories per Room Type**
+
+   Hardcode a config object like:
+
+   - Living room essentials:
+     - sofa, rug, coffee_table, main_lighting
+     - optional high-priority: accent_chair, side_table
+   - Bedroom essentials:
+     - bed_frame, (optional: mattress), nightstands, dresser
+   - Dining room essentials:
+     - dining_table, dining_chair_set
+     - optional: sideboard, lighting
+   - Home office essentials:
+     - desk, office_chair, storage
+     - optional: lighting, decor
+
+3. **Base Budget Weights per Room Type**
+
+   Hardcode **default percentage allocations** for each room type, for example:
+
+   - Living Room:
+     - sofa: 35%
+     - rug: 15%
+     - coffee_table: 10%
+     - accent_chair: 10%
+     - side_table: 5%
+     - lighting: 5%
+     - decor/extra: 5–10%
+
+   - Bedroom:
+     - bed_frame: 35%
+     - mattress (if we sell it): 20%
+     - nightstands (pair): 10%
+     - dresser/storage: 15%
+     - rug/decor: 5–10%
+
+   - Dining Room:
+     - dining_table: 45%
+     - dining_chairs (set): 35%
+     - storage/sideboard: 10%
+     - lighting/decor: 5–10%
+
+   - Home Office:
+     - desk: 40%
+     - office_chair: 30%
+     - storage: 15%
+     - lighting/decor: 5–10%
+
+   These can be represented as a config map:
+   ```ts
+   type RoomType = "living_room" | "bedroom" | "dining_room" | "home_office";
+
+   interface CategoryWeight {
+     category: string;
+     baseWeight: number; // in percentage, e.g. 0.35 for 35%
+   }
+
+   const BASE_WEIGHTS: Record<RoomType, CategoryWeight[]> = { ... }
