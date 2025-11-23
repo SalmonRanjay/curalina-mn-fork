@@ -239,34 +239,34 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
 const ROOM_TEMPLATES = {
   'Living Room': {
     essentials: {
-      'primary_seating': { min: 1, max: 1, priority: 1 }, // Must have a sofa
-      'coffee_table': { min: 1, max: 1, priority: 2 },
+      'primary_seating': { min: 1, max: 2, priority: 1 }, // REQUIRED: Sofa (6+ seating capacity)
+      'coffee_table': { min: 1, max: 1, priority: 2 }, // REQUIRED: Center table
     },
     complementary: {
       'accent_seating': { min: 0, max: 2, priority: 3 }, // Chairs, ottomans
-      'side_table': { min: 0, max: 1, priority: 4 },
-      'storage': { min: 0, max: 1, priority: 5 }, // Cabinets, shelving
-      'lighting': { min: 1, max: 2, priority: 6 }, // Floor lamps, table lamps (reduced from 3)
+      'side_table': { min: 0, max: 2, priority: 4 },
+      'storage': { min: 0, max: 1, priority: 5 }, // Cabinets, shelving (if selected)
+      'lighting': { min: 1, max: 2, priority: 6 }, // Floor lamps, table lamps
       'decor': { min: 0, max: 2, priority: 7 }, // Art, plants, accessories
     }
   },
   'Bedroom': {
     essentials: {
-      'bed': { min: 1, max: 1, priority: 1 }, // Must have a bed
-      'lighting': { min: 1, max: 2, priority: 2 }, // Bedside lamps
+      'bed': { min: 1, max: 1, priority: 1 }, // PRIMARY REQUIREMENT - bed is mandatory
+      'nightstand': { min: 1, max: 2, priority: 2 }, // Bedside tables
+      'lighting': { min: 1, max: 2, priority: 3 }, // Bedside lamps
     },
     complementary: {
-      'nightstand': { min: 1, max: 2, priority: 3 },
-      'dresser': { min: 0, max: 1, priority: 4 },
-      'accent_seating': { min: 0, max: 1, priority: 5 }, // Bench or chair
+      'accent_seating': { min: 1, max: 1, priority: 4 }, // Comfortable seating (bench/chair)
+      'dresser': { min: 0, max: 1, priority: 5 }, // Table/dresser
       'storage': { min: 0, max: 1, priority: 6 }, // Wardrobe
-      'decor': { min: 0, max: 2, priority: 7 },
+      'decor': { min: 1, max: 2, priority: 7 }, // Mirror for fashion setups
     }
   },
   'Dining Room': {
     essentials: {
-      'dining_table': { min: 1, max: 1, priority: 1 }, // Must have dining table
-      'dining_seating': { min: 4, max: 8, priority: 2 }, // Dining chairs
+      'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table
+      'dining_seating': { min: 4, max: 8, priority: 2 }, // REQUIRED: Matching chairs (same SKU)
     },
     complementary: {
       'storage': { min: 0, max: 1, priority: 3 }, // Buffet, sideboard
@@ -276,14 +276,15 @@ const ROOM_TEMPLATES = {
   },
   'Home Office': {
     essentials: {
-      'desk': { min: 1, max: 1, priority: 1 }, // Must have desk
-      'office_seating': { min: 1, max: 1, priority: 2 }, // Office chair
+      'desk': { min: 1, max: 1, priority: 1 }, // REQUIRED: Professional-quality desk
+      'office_seating': { min: 1, max: 1, priority: 2 }, // REQUIRED: Ergonomic office chair
+      'storage': { min: 1, max: 2, priority: 3 }, // REQUIRED: Cabinets for books/documents
     },
     complementary: {
-      'storage': { min: 1, max: 2, priority: 3 }, // Bookshelf, filing cabinet
       'lighting': { min: 1, max: 2, priority: 4 }, // Desk lamp
-      'accent_seating': { min: 0, max: 1, priority: 5 }, // Guest chair
-      'decor': { min: 0, max: 2, priority: 6 },
+      'accent_seating': { min: 0, max: 1, priority: 5 }, // Rest area seating
+      'side_table': { min: 0, max: 1, priority: 6 }, // Small table for rest area
+      'decor': { min: 0, max: 2, priority: 7 },
     }
   }
 };
