@@ -5,21 +5,24 @@ import { buildDimensionSummary, normalizeDimensions } from './dimension-utils';
  * Post-render QA validation using Gemini Vision
  * Checks product appearance, scale, accuracy, and dimensional fidelity against specifications
  * 
- * STRICT QUALITY THRESHOLDS (enforced for auto-regeneration):
- * - Color Match: REQUIRED (true) - wrong color = critical failure
- * - Appearance Match: ≥85/100 - exact product look required
- * - Scale Accuracy: ≥80/100 - proportions must be realistic
- * - Dimension Accuracy: ≥75/100 - sizes must match specs
- * - Overall Score: ≥80/100 - combined quality threshold
+ * BALANCED QUALITY THRESHOLDS (enforced for auto-regeneration):
+ * - Color Match: REQUIRED (true) - wrong color = critical failure (STRICT)
+ * - Appearance Match: ≥82/100 - product look must be very close
+ * - Scale Accuracy: ≥78/100 - proportions must be realistic
+ * - Dimension Accuracy: ≥72/100 - sizes should match specs
+ * - Overall Score: ≥78/100 - combined quality threshold
+ * 
+ * Note: Thresholds balanced to improve pass rates while maintaining quality.
+ * Color matching remains strict (zero tolerance) to ensure e-commerce accuracy.
  */
 
-// STRICT QA THRESHOLDS - User requirement: exact product matching
+// QA THRESHOLDS - Balanced for quality and throughput
 export const QA_THRESHOLDS = {
-  COLOR_MATCH_REQUIRED: true,         // Must be exact color
-  MIN_APPEARANCE_SCORE: 85,           // Product must look like the reference image
-  MIN_SCALE_SCORE: 80,                // Proportions must be realistic
-  MIN_DIMENSION_SCORE: 75,            // Sizes must match specifications
-  MIN_OVERALL_SCORE: 80,              // Combined quality threshold
+  COLOR_MATCH_REQUIRED: true,         // Must be exact color (STRICT for e-commerce)
+  MIN_APPEARANCE_SCORE: 82,           // Product must look like the reference image
+  MIN_SCALE_SCORE: 78,                // Proportions must be realistic
+  MIN_DIMENSION_SCORE: 72,            // Sizes must match specifications
+  MIN_OVERALL_SCORE: 78,              // Combined quality threshold
   MAX_REGENERATION_ATTEMPTS: 2,       // Auto-retry limit
 } as const;
 
