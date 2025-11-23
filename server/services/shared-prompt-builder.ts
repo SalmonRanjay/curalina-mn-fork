@@ -75,7 +75,7 @@ Be specific and precise - this will be used to recreate the exact same room stru
           }
         ]
       }],
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     });
     
     const analysis = response.choices[0]?.message?.content || 'Room analysis unavailable';

@@ -572,46 +572,48 @@ export default function Results() {
             </Button>
             <Button
               variant="secondary"
+              disabled={!renderProducts || renderProducts.length === 0 || productsLoading}
               onClick={() => {
                 // Save render data to localStorage for comparison page
-                if (render && quizResponse) {
+                if (render && quizResponse && renderProducts) {
                   // Get room image from quiz response floorplan
                   const roomImageUrl = quizResponse.floorplanUrl || "";
                   
                   // Get product SKUs from render.productSkus OR from renderProducts
                   const productSkus = render.productSkus && render.productSkus.length > 0 
                     ? render.productSkus 
-                    : (renderProducts || []).map(p => p.sku);
+                    : renderProducts.map(p => p.sku);
                   
                   console.log("Saving comparison data to localStorage:", {
                     roomImageUrl,
                     productSkus,
                     renderProductSkus: render.productSkus,
-                    renderProducts: renderProducts?.length,
+                    renderProducts: renderProducts.length,
                     roomType: quizResponse.roomType,
                     style: quizResponse.styles?.[0],
                   });
+                  
+                  if (productSkus.length === 0) {
+                    toast({
+                      title: "No Products",
+                      description: "No products available to compare",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   
                   localStorage.setItem("roomImageUrl", roomImageUrl);
                   localStorage.setItem("selectedProductSkus", JSON.stringify(productSkus));
                   localStorage.setItem("roomType", quizResponse.roomType || "");
                   localStorage.setItem("style", quizResponse.styles?.[0] || "modern");
                   
-                  if (productSkus.length === 0) {
-                    toast({
-                      title: "No Products",
-                      description: "Please wait for products to load before comparing",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
+                  setLocation("/comparison");
                 }
-                setLocation("/comparison");
               }}
               data-testid="button-compare-ai"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Compare AI Services
+              {productsLoading ? "Loading Products..." : "Compare AI Services"}
             </Button>
             <Button
               onClick={() => setLocation("/cart")}
