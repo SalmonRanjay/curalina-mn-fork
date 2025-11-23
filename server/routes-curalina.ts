@@ -65,7 +65,9 @@ function transformProductImages(product: any) {
       return imageUrl;
     }
     // Otherwise, construct full S3 URL from filename
-    return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
+    const fullUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
+    console.log(`[IMAGE_TRANSFORM] ${imageUrl} → ${fullUrl}`);
+    return fullUrl;
   });
   
   return { ...product, images: transformedImages };
@@ -153,7 +155,9 @@ export function registerCuralinaRoutes(app: Express) {
   app.get('/api/admin/products', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const products = await curalinaStorage.getAllProducts();
+      console.log(`[DEBUG] Fetched ${products.length} products, first product images:`, products[0]?.images?.slice(0, 2));
       const transformedProducts = transformProductsImages(products);
+      console.log(`[DEBUG] After transform, first product images:`, transformedProducts[0]?.images?.slice(0, 2));
       res.json(transformedProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
