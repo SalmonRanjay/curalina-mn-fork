@@ -2078,6 +2078,29 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Get full product details for a render's "Shop the Look" section
+  app.get('/api/render/:renderId/products', async (req, res) => {
+    try {
+      const render = await curalinaStorage.getRender(req.params.renderId);
+      if (!render) {
+        return res.status(404).json({ error: "Render not found" });
+      }
+
+      // Get all products from database
+      const allProducts = await curalinaStorage.getAllProducts();
+      
+      // Filter to only the products in this render's productSkus
+      const renderProducts = allProducts.filter(p => 
+        render.productSkus && render.productSkus.includes(p.sku)
+      );
+
+      res.json(renderProducts);
+    } catch (error) {
+      console.error("Error fetching render products:", error);
+      res.status(500).json({ error: "Failed to fetch render products" });
+    }
+  });
+
   // Get selection ledger for a render (Task 7: Shop the Look composition order)
   app.get('/api/render/:renderId/ledger', async (req, res) => {
     try {
