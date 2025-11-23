@@ -1251,82 +1251,55 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
-  // FAST Visual Description Analysis - ONLY ENDPOINT (40 concurrent workers, real-time saves)
-  // Replaces all other slow sequential analysis endpoints
+  // Visual Description Regeneration - Uses trained analyzer with word count validation (30-40 words)
   app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('\n🚀 Starting FAST concurrent visual description analysis (40 parallel workers)...');
+      console.log('\n🎨 Starting visual description regeneration (word count validated: 30-40 words)...');
       
-      // Support both 'mode' (from frontend) and 'targetFilter' (legacy)
-      const { mode, targetFilter: legacyFilter, specificSkus, skus } = req.body;
-      
-      // Map frontend mode to backend filter
-      let targetFilter = mode || legacyFilter;
-      if (targetFilter === 'front-view') {
-        targetFilter = 'front-view-only';
-      }
-      
-      // Support both 'skus' and 'specificSkus'
-      const skuList = skus || specificSkus;
-      
-      // Get products to process
       const allProducts = await curalinaStorage.getAllProducts();
-      let productsToProcess: any[] = [];
+      const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
       
-      if (skuList && Array.isArray(skuList) && skuList.length > 0) {
-        productsToProcess = allProducts.filter(p => skuList.includes(p.sku));
-        console.log(`📌 Processing ${productsToProcess.length} specific products`);
-      } else if (targetFilter === 'all') {
-        productsToProcess = allProducts.filter(p => p.images && p.images.length > 0);
-        console.log(`📊 Processing all ${productsToProcess.length} products with images`);
-      } else if (targetFilter === 'missing') {
-        productsToProcess = allProducts.filter(p => 
-          (p.images && p.images.length > 0) && !p.visualDescription
-        );
-        console.log(`📊 Processing ${productsToProcess.length} products without descriptions`);
-      } else if (targetFilter === 'front-view-only') {
-        productsToProcess = allProducts.filter(p => {
-          if (!p.images || p.images.length === 0) return false;
-          return p.images.some((url: string) => url.toLowerCase().includes('front'));
-        });
-        console.log(`📊 Processing ${productsToProcess.length} products with front-view images`);
-      } else {
-        productsToProcess = allProducts.filter(p => 
-          (p.images && p.images.length > 0) && !p.visualDescription
-        );
-        console.log(`📊 Processing ${productsToProcess.length} products without descriptions (default)`);
+      // Start regeneration and save results in real-time
+      let completedCount = 0;
+      const progressCallback = async (progress: any) => {
+        if (progress.successful > completedCount) {
+          // New products completed - save them
+          for (const product of allProducts) {
+            if (product.visualDescription && product.visualDescription !== '') {
+              await curalinaStorage.updateProduct(product.id, {
+                visualDescription: product.visualDescription
+              });
+            }
+          }
+          completedCount = progress.successful;
+          console.log(`✅ Saved ${completedCount} products (${progress.processed}/${progress.total} processed)`);
+        }
+      };
+      
+      // Run the trained analyzer
+      const finalProgress = await regenerateAllVisualDescriptions(allProducts, progressCallback);
+      
+      // Final save for any remaining updates
+      for (const product of allProducts) {
+        if (product.visualDescription && product.visualDescription !== '') {
+          await curalinaStorage.updateProduct(product.id, {
+            visualDescription: product.visualDescription
+          });
+        }
       }
-      
-      if (productsToProcess.length === 0) {
-        return res.json({
-          success: true,
-          message: 'No products match the specified criteria',
-          totalProducts: 0
-        });
-      }
-      
-      // Use optimized V2 concurrent job service
-      const { createAndStartVisualAnalysisJob } = await import('./services/visual-analysis-job-service-v2');
-      const productIds = productsToProcess.map(p => p.id);
-      const job = await createAndStartVisualAnalysisJob(productIds, {
-        priority: 100,
-        autoStart: true
-      });
       
       res.json({
         success: true,
-        message: `🚀 FAST concurrent visual description analysis started (40 parallel workers, real-time saves)`,
-        jobId: job.id,
-        totalProducts: productsToProcess.length,
-        targetFilter: targetFilter || 'missing'
+        message: '✅ Visual description regeneration complete (word count validated)',
+        totalProducts: finalProgress.total,
+        successful: finalProgress.successful,
+        failed: finalProgress.failed,
+        skipped: finalProgress.skipped
       });
       
-      console.log(`✅ V2 Job created: ${job.id} for ${productsToProcess.length} products`);
-      console.log(`📈 Expected to complete in ~${Math.ceil(productsToProcess.length / 40)} seconds`);
-      
     } catch (error) {
-      console.error("Error starting visual description analysis:", error);
-      res.status(500).json({ error: "Failed to start analysis" });
+      console.error("Error regenerating visual descriptions:", error);
+      res.status(500).json({ error: "Failed to regenerate descriptions" });
     }
   });
 
