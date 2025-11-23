@@ -37,7 +37,27 @@ function truncatePrompt(prompt: string, maxLength: number = 9500): string {
 }
 
 /**
+ * Resolve relative URLs to absolute URLs
+ */
+function resolveImageUrl(imageUrl: string): string {
+  // If already absolute, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Resolve relative URLs using domain
+  const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
+  const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
+  
+  // Ensure URL starts with /
+  const normalizedUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  
+  return `${fullDomain}${normalizedUrl}`;
+}
+
+/**
  * Generate render using Stability AI image-to-image
+ * Uses shared prompt builder for fair comparison with Gemini/OpenAI
  */
 export async function generateStabilityRender(
   params: StabilityRenderParams
@@ -57,8 +77,10 @@ export async function generateStabilityRender(
     // Fetch room image (only for image-to-image mode)
     let roomImageBuffer: ArrayBuffer | null = null;
     if (!isTextToImage) {
-      console.log(`📥 Fetching room image...`);
-      const roomImageResponse = await fetch(params.roomImageUrl);
+      // Resolve relative URL to absolute
+      const absoluteUrl = resolveImageUrl(params.roomImageUrl);
+      console.log(`📥 Fetching room image: ${absoluteUrl}`);
+      const roomImageResponse = await fetch(absoluteUrl);
       if (!roomImageResponse.ok) {
         throw new Error(`Failed to fetch room image: ${roomImageResponse.statusText}`);
       }
@@ -66,38 +88,18 @@ export async function generateStabilityRender(
       console.log(`✅ Room image loaded`);
     }
 
-    // Build comprehensive prompt
-    const productDescriptions = params.products
-      .map((p, i) => {
-        const desc = p.visualDescription || p.name;
-        const colors = p.colors?.filter(Boolean).join(', ') || '';
-        return `${i + 1}. ${p.name}${colors ? ` (${colors})` : ''}: ${desc}`;
-      })
-      .join('\n');
+    // Use shared prompt builder for consistent prompts across all services
+    const { buildSharedPrompt } = await import('./shared-prompt-builder');
+    const sharedPrompt = await buildSharedPrompt({
+      roomImageUrl: params.roomImageUrl,
+      products: params.products,
+      roomType: params.roomType,
+      stylePreference: params.stylePreference,
+    });
+    
+    const prompt = sharedPrompt.mainPrompt;
 
-    const prompt = isTextToImage 
-      ? `Create a photorealistic ${params.stylePreference || 'modern'} ${params.roomType || 'room'} interior design with the following furniture:
-
-${productDescriptions}
-
-The room should feel cohesive and beautifully designed with professional interior styling.`
-      : `🔒 CRITICAL - PRESERVE USER'S CURRENT SPACE:
-• Keep ALL room structure EXACTLY as shown - walls, floors, ceiling, windows, doors unchanged
-• Preserve room dimensions, architectural features, lighting, wall colors, floor materials
-• DO NOT move, resize, or change any structural elements
-• ONLY change furniture - everything else must remain precisely as photographed
-
-🏠 Room Type: ${params.roomType || 'room'}
-🎨 Style: ${params.stylePreference || 'modern'}
-
-📦 FURNITURE TO ADD:
-${productDescriptions}
-
-⚠️ STRICT REQUIREMENT: This is furniture replacement only. Any changes to walls/windows/floors/ceiling = FAILURE.
-
-Generate a photorealistic ${params.stylePreference || 'modern'} ${params.roomType || 'room'} design with these products, preserving ALL existing room structure.`.trim();
-
-    console.log(`📝 Prompt length: ${prompt.length} chars`);
+    console.log(`📝 Shared prompt length: ${prompt.length} chars`);
 
     // Create FormData for Stability AI API (multipart/form-data)
     const formData = new FormData();

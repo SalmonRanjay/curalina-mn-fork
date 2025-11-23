@@ -211,68 +211,22 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       console.log(`📋 Floor plan analysis received:`, JSON.stringify(floorPlanAnalysis, null, 2));
     }
     
-    // Step 3: Build prompt with architectural context from floor plan analysis
-    // The floor plan analysis provides hard constraints (windows, doors, dimensions) that prevent
-    // the AI from redrawing walls/windows and ensures space preservation
-    let prompt: string;
+    // Step 3: Use shared prompt builder for consistent prompts across all services
+    const { buildSharedPrompt } = await import('./shared-prompt-builder');
+    const sharedPrompt = await buildSharedPrompt({
+      roomImageUrl: params.roomImageUrl,
+      products: params.products,
+      roomType,
+      stylePreference,
+    });
     
-    if (roomImage) {
-      // Image-to-image mode: STRICT space preservation - only furniture changes
-      prompt = `🔒 CRITICAL REQUIREMENT: This is the user's CURRENT SPACE. You must preserve EVERYTHING about this room EXACTLY as shown, including:
-
-✅ PRESERVE (DO NOT CHANGE):
-• Walls - exact positions, colors, materials, textures
-• Floors - exact materials, colors, patterns  
-• Windows - exact locations, sizes, styles, glass, frames
-• Doors/openings - exact positions and sizes
-• Ceiling - height, design, molding, lighting fixtures
-• Built-in features - shelves, fireplace, beams, columns
-• Room dimensions - length, width, height
-• Architectural style - molding, trim, wainscoting
-• Lighting - natural light direction and intensity
-• Wall art/decor - keep existing paintings, frames, fixtures
-
-❌ ONLY CHANGE:
-• Furniture - REPLACE with the product images I provide
-• Do NOT add, remove, or modify ANY structural elements
-• Do NOT change wall colors, floor materials, or window placement
-• Do NOT redraw or reimagine the space in any way
-
-This is an existing room - the user loves their space and only wants new furniture. Keep their current room EXACTLY as photographed.`;
-      
-      // CRITICAL: Add architectural context from Vision analysis to reinforce preservation
-      if (floorPlanAnalysis) {
-        prompt += `\n\n📐 ARCHITECTURAL SPECIFICATIONS (MUST PRESERVE):`;
-        prompt += `\n• Dimensions: ${floorPlanAnalysis.roomDimensions}`;
-        
-        if (floorPlanAnalysis.windowLocations && floorPlanAnalysis.windowLocations.length > 0) {
-          prompt += `\n• Windows: ${floorPlanAnalysis.windowLocations.join(', ')} - DO NOT move, resize, or change`;
-        }
-        
-        if (floorPlanAnalysis.doorLocations && floorPlanAnalysis.doorLocations.length > 0) {
-          prompt += `\n• Doors: ${floorPlanAnalysis.doorLocations.join(', ')} - DO NOT move or modify`;
-        }
-        
-        if (floorPlanAnalysis.builtInFeatures && floorPlanAnalysis.builtInFeatures.length > 0) {
-          prompt += `\n• Built-ins: ${floorPlanAnalysis.builtInFeatures.join(', ')} - MUST remain exactly as shown`;
-        }
-        
-        if (floorPlanAnalysis.ceilingRoofDesign) {
-          prompt += `\n• Ceiling: ${floorPlanAnalysis.ceilingRoofDesign} - DO NOT alter`;
-        }
-        
-        if (floorPlanAnalysis.layoutNotes) {
-          prompt += `\n• Layout: ${floorPlanAnalysis.layoutNotes}`;
-        }
-        
-        prompt += `\n\n⚠️ STRICT ENFORCEMENT: Any changes to walls, windows, doors, floors, ceiling, or architectural features will be considered a FAILURE. Only furniture replacement is permitted.`;
-      }
-      
-      prompt += `\n\nNow, furnish this space with the following product images:`;
-    } else {
-      // Text-to-image mode: create a new room scene
-      prompt = `Please create a beautifully designed ${roomType || 'interior'} space in ${stylePreference || 'modern'} style with the Furniture and products images I provide`;
-    }
+    // Use the shared prompt as the main instruction
+    let prompt = sharedPrompt.mainPrompt;
+    
+    // For Gemini, add instruction about product images following the prompt
+    prompt += roomImage 
+      ? `\n\nNow, furnish this space with the following product images:`
+      : `\n\nUse the following product images:`;
     
     // Step 4: Build parts array - INTERLEAVE text + image per product
     // This mimics Google AI Studio's sequential upload where each image is bound to preceding text
