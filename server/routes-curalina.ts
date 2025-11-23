@@ -1952,73 +1952,11 @@ export function registerCuralinaRoutes(app: Express) {
           
           const imageUrl = `/public-objects/renders/${imageName}`;
           
-          // Step 5: Post-render QA validation using Gemini Vision
-          let qaResults = null;
-          try {
-            const { validateRenderQuality, shouldRegenerateRender } = await import('./services/render-qa');
-            
-            console.log(`🔍 Starting post-render QA validation for render ${render.id}...`);
-            console.log(`   Image format: ${mimeType}, size: ${(imageBuffer.length / 1024).toFixed(1)}KB`);
-            
-            // Pass base64 image data and MIME type directly to avoid URL resolution issues
-            // Use selectedProducts (image-only mode doesn't have enrichedProducts)
-            qaResults = await validateRenderQuality(
-              base64Data,
-              mimeType,
-              selectedProducts.map((p: any) => ({
-                sku: p.sku,
-                name: p.name,
-                visualDescription: p.visualDescription || '',
-                dimensions: p.dimensions,
-                placement: undefined
-              })),
-              prompt
-            );
-            
-            if (qaResults) {
-              console.log(`📊 QA Validation Complete for render ${render.id}:`);
-              console.log(`   Overall Score: ${qaResults.overallScore}/100`);
-              console.log(`   Issues Found: ${qaResults.issues.length}`);
-              if (qaResults.issues.length > 0) {
-                qaResults.issues.forEach(issue => {
-                  console.log(`   - [${issue.severity.toUpperCase()}] ${issue.category}: ${issue.description}`);
-                });
-              }
-              
-              // Check if render quality warrants regeneration
-              if (shouldRegenerateRender(qaResults)) {
-                console.log(`⚠️ Render ${render.id}: QA score below threshold or critical issues detected`);
-                console.log('💡 Recommendation: Regenerate render with adjusted prompt');
-                console.log('   (Auto-retry not yet implemented - user can manually retry via UI)');
-                
-                // TODO: Future enhancement - implement auto-retry with:
-                // 1. Prompt adjustments based on specific QA issues
-                // 2. Maximum retry limit (e.g., 2 attempts)
-                // 3. Exponential backoff or different generation parameters
-                // 4. Track retry count in render metadata
-                // 5. Image compression for >4MB renders
-              } else {
-                console.log(`✅ Render ${render.id}: QA validation passed - render quality acceptable`);
-              }
-            }
-          } catch (error) {
-            console.error(`⚠️ Render ${render.id}: QA validation failed (non-blocking):`, error);
-            // Store error information in QA results for debugging
-            qaResults = {
-              overallScore: 0,
-              issues: [{
-                severity: 'critical',
-                category: 'hallucination',
-                description: `QA validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              }],
-              validatedAt: new Date().toISOString(),
-              productChecks: {},
-              summary: 'QA validation error - unable to assess render quality',
-            };
-            console.log(`   Storing error details in QA results for debugging`);
-          }
+          // QA validation disabled for image-only mode - renders are generated directly from visual inputs
+          const qaResults = null;
+          console.log(`⚡ QA validation skipped (image-only mode)`);
           
-          // Step 6: Show ALL selected products in "Shop the Look"
+          // Show ALL selected products in "Shop the Look"
           // Since we intentionally selected these products for the design, show them all
           const productsForShopTheLook: string[] = selectedProducts.map(p => p.sku);
           console.log(`🛍️ Shop the Look: Showing all ${productsForShopTheLook.length} selected products`);
