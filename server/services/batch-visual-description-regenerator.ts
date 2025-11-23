@@ -87,17 +87,36 @@ export async function generateAccurateVisualDescription(
     const imageBase64 = Buffer.from(imageBuffer).toString('base64');
     const mimeType = imageUrl.endsWith('.png') ? 'image/png' : 'image/jpeg';
     
-    // Call Gemini Vision for analysis
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [
-          { text: analysisPrompt },
-          { inlineData: { data: imageBase64, mimeType } }
-        ]
-      }]
-    });
+    // Call Gemini Vision for analysis with retry logic for rate limits
+    let response;
+    let retries = 0;
+    const MAX_RETRIES = 3;
+    
+    while (retries <= MAX_RETRIES) {
+      try {
+        response = await genAI.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{
+            role: "user",
+            parts: [
+              { text: analysisPrompt },
+              { inlineData: { data: imageBase64, mimeType } }
+            ]
+          }]
+        });
+        break; // Success, exit retry loop
+      } catch (error: any) {
+        // Check if it's a rate limit error
+        if (error?.error?.code === 'RATELIMIT_EXCEEDED' && retries < MAX_RETRIES) {
+          const delayMs = Math.pow(2, retries) * 2000; // Exponential backoff: 2s, 4s, 8s
+          console.warn(`  ⏱️ Rate limit hit. Retrying in ${delayMs}ms... (attempt ${retries + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          retries++;
+        } else {
+          throw error; // Not a rate limit error or max retries reached
+        }
+      }
+    }
     
     // Extract text from response
     let description = (response.text || '').trim();
@@ -207,10 +226,10 @@ export async function regenerateAllVisualDescriptions(
     errors: []
   };
   
-  console.log(`\n🎨 Starting batch visual description regeneration (concurrent: 5 workers) for ${products.length} products...`);
+  console.log(`\n🎨 Starting batch visual description regeneration (concurrent: 2 workers, respecting API limits) for ${products.length} products...`);
   
-  // Process 5 products concurrently instead of sequentially
-  const CONCURRENT_WORKERS = 5;
+  // Process 2 products concurrently to respect API rate limits
+  const CONCURRENT_WORKERS = 2;
   const BATCH_SIZE = Math.ceil(products.length / CONCURRENT_WORKERS);
   
   const processingWorkers = [];
@@ -277,8 +296,8 @@ export async function regenerateAllVisualDescriptions(
         progress.processed++;
         progressCallback?.(progress);
         
-        // Minimal delay - 100ms instead of 500ms
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Delay between products to respect API rate limits (500-1000ms per product)
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
     })();
     

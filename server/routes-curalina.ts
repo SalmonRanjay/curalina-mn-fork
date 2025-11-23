@@ -1258,9 +1258,10 @@ export function registerCuralinaRoutes(app: Express) {
       
       const allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
+      const { Product } = await import('@shared/schema');
       
       // Callback to save each product immediately as it's analyzed
-      const onProductUpdated = async (product: Product) => {
+      const onProductUpdated = async (product: any) => {
         await curalinaStorage.updateProduct(product.id, {
           visualDescription: product.visualDescription
         });
@@ -3044,8 +3045,6 @@ export function registerCuralinaRoutes(app: Express) {
 
       
       const frontView = (product.structuredAnalysis as any).frontView;
-      const metrics = frontView ? EnhancedQualityScorer.calculateMetrics(frontView) : null;
-      const report = frontView ? EnhancedQualityScorer.generateReport(frontView) : 'No analysis data';
 
       res.json({
         product: {
@@ -3055,10 +3054,8 @@ export function registerCuralinaRoutes(app: Express) {
           images: product.images
         },
         analysis: product.structuredAnalysis,
-        metrics,
         qualityScore: (product.structuredAnalysis as any)?.qualityScore || 50,
-        analyzedAt: product.createdAt,
-        report
+        analyzedAt: product.createdAt
       });
     } catch (error) {
       console.error("Error fetching analysis:", error);
