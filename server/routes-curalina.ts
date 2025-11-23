@@ -1682,7 +1682,8 @@ export function registerCuralinaRoutes(app: Express) {
   app.get('/api/products/alternatives/:id', async (req, res) => {
     try {
       const alternatives = await curalinaStorage.getProductAlternatives(req.params.id);
-      res.json(alternatives);
+      const transformedAlternatives = transformProductsImages(alternatives);
+      res.json(transformedAlternatives);
     } catch (error) {
       console.error("Error fetching alternatives:", error);
       res.status(500).json({ error: "Failed to fetch alternatives" });
@@ -2673,7 +2674,12 @@ export function registerCuralinaRoutes(app: Express) {
   app.get('/api/cart/:sessionId', async (req, res) => {
     try {
       const cart = await curalinaStorage.getCartBySession(req.params.sessionId);
-      res.json(cart);
+      // Transform product images in each cart item
+      const transformedCart = cart.map(item => ({
+        ...item,
+        product: transformProductImages(item.product)
+      }));
+      res.json(transformedCart);
     } catch (error) {
       console.error("Error fetching cart:", error);
       res.status(500).json({ error: "Failed to fetch cart" });

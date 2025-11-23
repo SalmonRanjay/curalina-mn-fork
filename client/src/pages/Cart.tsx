@@ -18,12 +18,6 @@ interface CartItemWithProduct {
   product: Product;
 }
 
-const encodeImageUrl = (url: string): string => {
-  if (!url) return url;
-  // Replace unencoded spaces with %20 to handle S3 URLs with spaces in filenames
-  return url.replace(/ /g, '%20');
-};
-
 export default function Cart() {
   const [, setLocation] = useLocation();
   const sessionId = getSessionId();
@@ -170,7 +164,7 @@ export default function Cart() {
                     <div className="w-32 h-32 flex-shrink-0 bg-stone-100 dark:bg-stone-800 rounded-md overflow-hidden">
                       {item.product.images && item.product.images.length > 0 ? (
                         <img
-                          src={encodeImageUrl(item.product.images[0])}
+                          src={item.product.images[0]}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                         />

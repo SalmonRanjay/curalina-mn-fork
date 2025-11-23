@@ -846,21 +846,10 @@ export default function AdminProducts() {
     },
   });
 
-  const encodeImageUrl = (url: string): string => {
-    if (!url) return url;
-    // Replace unencoded spaces with %20 to handle S3 URLs with spaces in filenames
-    return url.replace(/ /g, '%20');
-  };
-
   const getImageUrl = (images: string[] | null) => {
     if (!images || images.length === 0) return null;
-    const firstImage = images[0];
-    // If it's already a full URL (S3 or external), encode it to handle spaces
-    if (firstImage.startsWith("http://") || firstImage.startsWith("https://")) {
-      return encodeImageUrl(firstImage);
-    }
-    // If it's a local path, return as is (will be served by the server)
-    return firstImage;
+    // Backend already handles URL encoding, return as-is
+    return images[0];
   };
 
   // Helper to check if product has any AI analysis

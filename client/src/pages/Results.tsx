@@ -12,42 +12,33 @@ import { useToast } from "@/hooks/use-toast";
 import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } from "@shared/schema";
 
 /**
- * Properly encode image URLs to handle spaces and special characters
- * S3 requires proper URL encoding, otherwise returns 403 Forbidden
- */
-function encodeImageUrl(url: string): string {
-  if (!url) return url;
-  // Replace unencoded spaces with %20 to handle S3 URLs with spaces in filenames
-  return url.replace(/ /g, '%20');
-}
-
-/**
  * Helper function to reorder product images to prioritize Front View
  * Front View images should be displayed first in the Shop the Look carousel
+ * Backend already handles URL encoding for S3 URLs
  */
 function prioritizeFrontViewImage(images: string[] | null): string[] {
   if (!images || images.length === 0) return [];
   
-  // Properly encode all image URLs
-  const encodedImages = images.map(url => encodeImageUrl(url));
-  
-  // Find the Front View image (case insensitive)
-  const frontViewIndex = encodedImages.findIndex(url => 
-    url.toLowerCase().includes('front%20view') ||
-    url.toLowerCase().includes('front_view') ||
-    url.toLowerCase().includes('frontview') ||
-    url.toLowerCase().includes('front-view')
-  );
+  // Backend already handles URL encoding, use images as-is
+  // Find the Front View image (case insensitive, checking for both encoded and unencoded variants)
+  const frontViewIndex = images.findIndex(url => {
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.includes('front%20view') ||
+           lowerUrl.includes('front_view') ||
+           lowerUrl.includes('front view') ||
+           lowerUrl.includes('frontview') ||
+           lowerUrl.includes('front-view');
+  });
   
   // If Front View found, move it to the front
   if (frontViewIndex > 0) {
-    const reordered = [...encodedImages];
+    const reordered = [...images];
     const frontView = reordered.splice(frontViewIndex, 1)[0];
     return [frontView, ...reordered];
   }
   
-  // Return encoded images in original order if Front View is already first or not found
-  return encodedImages;
+  // Return images in original order if Front View is already first or not found
+  return images;
 }
 
 /**
@@ -670,15 +661,15 @@ export default function Results() {
                   >
                     <div className="aspect-square relative bg-muted group">
                       {(() => {
-                        const encodedAltImages = alt.images?.map(url => encodeImageUrl(url)) || [];
-                        return encodedAltImages.length > 0 ? (
+                        const altImages = alt.images || [];
+                        return altImages.length > 0 ? (
                           <>
                             <img
-                              src={encodedAltImages[currentImageIndex[alt.id] || 0]}
+                              src={altImages[currentImageIndex[alt.id] || 0]}
                               alt={alt.name}
                               className="w-full h-full object-cover"
                             />
-                            {encodedAltImages.length > 1 && (
+                            {altImages.length > 1 && (
                             <>
                               <Button
                                 size="icon"
@@ -687,7 +678,7 @@ export default function Results() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const currentIdx = currentImageIndex[alt.id] || 0;
-                                  const newIdx = currentIdx === 0 ? encodedAltImages.length - 1 : currentIdx - 1;
+                                  const newIdx = currentIdx === 0 ? altImages.length - 1 : currentIdx - 1;
                                   setCurrentImageIndex(prev => ({ ...prev, [alt.id]: newIdx }));
                                 }}
                               >
@@ -700,14 +691,14 @@ export default function Results() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const currentIdx = currentImageIndex[alt.id] || 0;
-                                  const newIdx = (currentIdx + 1) % encodedAltImages.length;
+                                  const newIdx = (currentIdx + 1) % altImages.length;
                                   setCurrentImageIndex(prev => ({ ...prev, [alt.id]: newIdx }));
                                 }}
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </Button>
                               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                {encodedAltImages.map((_, idx) => (
+                                {altImages.map((_, idx) => (
                                   <div
                                     key={idx}
                                     className={`w-1.5 h-1.5 rounded-full transition-all ${
