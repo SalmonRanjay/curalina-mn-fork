@@ -1,0 +1,257 @@
+import { GoogleGenAI, Modality } from "@google/genai";
+import type { Product } from "@shared/schema";
+
+// Initialize Gemini client using Replit AI Integrations
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
+  httpOptions: {
+    apiVersion: "",
+    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
+  },
+});
+
+/**
+ * Resolve relative URLs to absolute URLs for fetching
+ * Handles /public-objects/... and other relative paths
+ */
+function resolveImageUrl(imageUrl: string): string {
+  // If already absolute, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Resolve relative URLs using domain
+  const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
+  const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
+  
+  // Ensure URL starts with /
+  const normalizedUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  
+  return `${fullDomain}${normalizedUrl}`;
+}
+
+/**
+ * Helper to fetch image and convert to base64
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    // Resolve relative URLs to absolute
+    const absoluteUrl = resolveImageUrl(imageUrl);
+    console.log(`  📥 Fetching: ${absoluteUrl}`);
+    
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) {
+      console.warn(`Failed to fetch image ${absoluteUrl}: ${response.statusText}`);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    
+    // Determine MIME type
+    const contentType = response.headers.get('content-type');
+    const mimeType = contentType || (imageUrl.endsWith('.png') ? 'image/png' : 'image/jpeg');
+    
+    return { data: base64, mimeType };
+  } catch (error) {
+    console.error(`Error fetching image ${imageUrl}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Select front view image for each product
+ * Returns array of product images to use as references
+ */
+function selectProductFrontViewImages(products: Product[]): Array<{ url: string; productName: string; sku: string }> {
+  const productImages: Array<{ url: string; productName: string; sku: string }> = [];
+  
+  for (const product of products) {
+    // Priority: frontView > first image in array
+    let imageUrl: string | null = null;
+    
+    if (product.images) {
+      if (typeof product.images === 'object' && 'frontView' in product.images && product.images.frontView) {
+        imageUrl = product.images.frontView as string;
+      } else if (Array.isArray(product.images) && product.images.length > 0) {
+        imageUrl = product.images[0];
+      }
+    }
+    
+    if (imageUrl && isValidImageUrl(imageUrl)) {
+      productImages.push({
+        url: imageUrl,
+        productName: product.name,
+        sku: product.sku
+      });
+    }
+  }
+  
+  return productImages;
+}
+
+/**
+ * Validate image URL
+ */
+function isValidImageUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  
+  const trimmed = url.trim();
+  if (trimmed.length === 0) return false;
+  
+  // Check for valid URL formats
+  const isExternalUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+  const isObjectStorage = trimmed.startsWith('/public-objects/') || trimmed.startsWith('/private-objects/');
+  const isS3Path = trimmed.includes('s3.amazonaws.com') || trimmed.includes('curalina');
+  
+  return isExternalUrl || isObjectStorage || isS3Path;
+}
+
+export interface ImageOnlyRenderParams {
+  roomImageUrl: string;
+  products: Product[];
+  roomType?: string;
+  stylePreference?: string;
+}
+
+export interface ImageOnlyRenderResult {
+  success: boolean;
+  imageBase64?: string;
+  error?: string;
+  productsUsed: number;
+}
+
+/**
+ * Generate render using ONLY images - no text descriptions
+ * Mimics the user's AI Studio approach:
+ * 1. Upload room photo
+ * 2. Upload product front view images
+ * 3. Simple prompt: "furnish this space with my products"
+ * 
+ * This approach bypasses all the visual description generation complexity
+ */
+export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Promise<ImageOnlyRenderResult> {
+  const { roomImageUrl, products, roomType, stylePreference } = params;
+  
+  try {
+    console.log(`\n🖼️ Starting IMAGE-ONLY render generation...`);
+    console.log(`📍 Room image: ${roomImageUrl}`);
+    console.log(`📦 Products to furnish: ${products.length}`);
+    
+    // Step 1: Fetch room image
+    console.log(`📥 Fetching room image...`);
+    const roomImage = await fetchImageAsBase64(roomImageUrl);
+    if (!roomImage) {
+      return {
+        success: false,
+        error: 'Failed to fetch room image',
+        productsUsed: 0
+      };
+    }
+    console.log(`✅ Room image loaded (${roomImage.mimeType})`);
+    
+    // Step 2: Select and fetch product front view images
+    const productImageRefs = selectProductFrontViewImages(products);
+    console.log(`📸 Selected ${productImageRefs.length} product front view images`);
+    
+    if (productImageRefs.length === 0) {
+      return {
+        success: false,
+        error: 'No valid product images found',
+        productsUsed: 0
+      };
+    }
+    
+    const productImageParts: any[] = [];
+    let fetchedCount = 0;
+    
+    for (const productRef of productImageRefs) {
+      const productImage = await fetchImageAsBase64(productRef.url);
+      if (productImage) {
+        productImageParts.push({
+          inlineData: {
+            data: productImage.data,
+            mimeType: productImage.mimeType
+          }
+        });
+        fetchedCount++;
+        console.log(`  ✅ ${fetchedCount}. ${productRef.productName} (${productRef.sku})`);
+      }
+    }
+    
+    console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
+    
+    // Step 3: Build simple conversational prompt (mimics AI Studio approach)
+    let prompt = `This is my space image. Please furnish it with the furniture and product images I provide.`;
+    
+    if (roomType) {
+      prompt += `\n\nRoom Type: ${roomType}`;
+    }
+    
+    if (stylePreference) {
+      prompt += `\nStyle Preference: ${stylePreference}`;
+    }
+    
+    prompt += `\n\nI want my own furniture to be used. Let me provide the photos:\n`;
+    prompt += `(${fetchedCount} product images provided below)`;
+    
+    // Step 4: Build parts array for Gemini
+    // Order: text prompt + room image + product images
+    const parts: any[] = [
+      { text: prompt },
+      {
+        inlineData: {
+          data: roomImage.data,
+          mimeType: roomImage.mimeType
+        }
+      },
+      ...productImageParts
+    ];
+    
+    console.log(`🎨 Sending to Gemini 2.5 Flash (image-only mode)...`);
+    console.log(`   Prompt: "${prompt.substring(0, 100)}..."`);
+    console.log(`   Images: 1 room + ${productImageParts.length} products`);
+    
+    // Step 5: Call Gemini with multimodal inputs
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+    
+    // Step 6: Extract generated image
+    const candidate = response.candidates?.[0];
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+    
+    if (!imagePart?.inlineData?.data) {
+      console.error(`❌ No image data in Gemini response`);
+      return {
+        success: false,
+        error: 'No image generated by Gemini',
+        productsUsed: fetchedCount
+      };
+    }
+    
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    const imageBase64 = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    
+    console.log(`✅ Image-only render generated successfully!`);
+    console.log(`   Products used: ${fetchedCount}`);
+    
+    return {
+      success: true,
+      imageBase64,
+      productsUsed: fetchedCount
+    };
+    
+  } catch (error) {
+    console.error(`❌ Image-only render generation failed:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      productsUsed: 0
+    };
+  }
+}

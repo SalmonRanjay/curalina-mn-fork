@@ -1258,7 +1258,6 @@ export function registerCuralinaRoutes(app: Express) {
       
       const allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
-      const { Product } = await import('@shared/schema');
       
       // Callback to save each product immediately as it's analyzed
       const onProductUpdated = async (product: any) => {
@@ -2136,6 +2135,127 @@ export function registerCuralinaRoutes(app: Express) {
       }
       console.error("Error creating render:", error);
       res.status(500).json({ error: "Failed to create render" });
+    }
+  });
+
+  // IMAGE-ONLY rendering endpoint - bypasses visual description generation
+  // Uses only room photo + product front view images (no text descriptions)
+  app.post('/api/render/image-only', async (req, res) => {
+    try {
+      const { roomImageUrl, productSkus, quizResponseId, sessionId, roomType, style } = req.body;
+      
+      if (!roomImageUrl) {
+        return res.status(400).json({ error: "roomImageUrl is required for image-only rendering" });
+      }
+      
+      if (!productSkus || productSkus.length === 0) {
+        return res.status(400).json({ error: "productSkus array is required" });
+      }
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: "sessionId is required" });
+      }
+      
+      console.log(`\n🖼️ IMAGE-ONLY RENDER REQUEST`);
+      console.log(`   Room image: ${roomImageUrl}`);
+      console.log(`   Products: ${productSkus.length} SKUs`);
+      console.log(`   Room type: ${roomType || 'not specified'}`);
+      console.log(`   Style: ${style || 'not specified'}`);
+      
+      // Fetch products by SKUs
+      const allProducts = await curalinaStorage.getAllProducts();
+      const selectedProducts = allProducts.filter(p => productSkus.includes(p.sku));
+      
+      if (selectedProducts.length === 0) {
+        return res.status(404).json({ error: "No matching products found for provided SKUs" });
+      }
+      
+      console.log(`✅ Found ${selectedProducts.length}/${productSkus.length} products`);
+      
+      // Create render record
+      const render = await curalinaStorage.createRender({
+        quizResponseId: quizResponseId || null,
+        sessionId,
+        prompt: `Image-only render: ${roomType || 'room'} in ${style || 'modern'} style`,
+        productSkus,
+        status: "generating",
+      });
+      
+      // Start async image-only generation
+      (async () => {
+        try {
+          const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+          
+          // Call image-only rendering service
+          const result = await generateImageOnlyRender({
+            roomImageUrl,
+            products: selectedProducts,
+            roomType,
+            stylePreference: style
+          });
+          
+          if (!result.success || !result.imageBase64) {
+            throw new Error(result.error || 'Image generation failed');
+          }
+          
+          console.log(`✅ Image-only render generated with ${result.productsUsed} products`);
+          
+          // Extract base64 data and MIME type from data URL
+          const base64Match = result.imageBase64.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (!base64Match) {
+            throw new Error("Invalid image data format");
+          }
+          const mimeType = base64Match[1];
+          const base64Data = base64Match[2];
+          
+          // Convert to buffer for storage
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+          
+          // Upload to object storage
+          const fileExtension = mimeType === 'image/jpeg' ? 'jpg' : 'png';
+          const imageName = `render-${render.id}-image-only.${fileExtension}`;
+          
+          const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+          const publicDir = publicPaths[0];
+          const objectPath = `${publicDir}/renders/${imageName}`;
+          
+          const { bucketName, objectName } = parseObjectPath(objectPath);
+          const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          
+          await file.save(imageBuffer, {
+            metadata: {
+              contentType: mimeType,
+            },
+          });
+          
+          const imageUrl = `/public-objects/renders/${imageName}`;
+          
+          // Update render with success
+          await curalinaStorage.updateRender(render.id, {
+            status: 'completed',
+            imageUrl,
+            productSkus // Store which products were used
+          });
+          
+          console.log(`✅ Image-only render ${render.id} completed successfully`);
+          
+        } catch (error) {
+          console.error("Image-only generation error:", error);
+          
+          await curalinaStorage.updateRender(render.id, {
+            status: 'failed',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      })();
+      
+      // Return render immediately (generation happens async)
+      res.json(render);
+      
+    } catch (error) {
+      console.error("Error creating image-only render:", error);
+      res.status(500).json({ error: "Failed to create image-only render" });
     }
   });
 
