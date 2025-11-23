@@ -510,3 +510,8 @@ export async function getS3JobDetails(jobId: string) {
     }))
   };
 }
+
+// Auto-resume interrupted jobs on service start
+resumeInterruptedS3Jobs().catch(error => {
+  console.error('[S3-JOB] Failed to resume interrupted jobs on startup:', error);
+});
