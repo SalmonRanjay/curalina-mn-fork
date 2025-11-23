@@ -2183,9 +2183,8 @@ export function registerCuralinaRoutes(app: Express) {
     try {
       const { roomImageUrl, productSkus, quizResponseId, sessionId, roomType, style } = req.body;
       
-      if (!roomImageUrl) {
-        return res.status(400).json({ error: "roomImageUrl is required" });
-      }
+      // roomImageUrl is optional - empty/null means text-to-image mode
+      // non-empty means image-to-image mode
       
       if (!productSkus || productSkus.length === 0) {
         return res.status(400).json({ error: "productSkus array is required" });

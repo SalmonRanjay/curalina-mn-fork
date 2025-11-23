@@ -47,20 +47,26 @@ export async function generateStabilityRender(
       throw new Error("STABILITY_API_KEY not configured");
     }
 
+    const isTextToImage = !params.roomImageUrl || params.roomImageUrl.trim() === '';
+    
     console.log(`\n🎨 Starting Stability AI render generation...`);
-    console.log(`   Room image: ${params.roomImageUrl}`);
+    console.log(`   Mode: ${isTextToImage ? 'Text-to-image' : 'Image-to-image'}`);
+    console.log(`   Room image: ${params.roomImageUrl || '(none)'}`);
     console.log(`   Products: ${params.products.length}`);
 
-    // Fetch room image
-    console.log(`📥 Fetching room image...`);
-    const roomImageResponse = await fetch(params.roomImageUrl);
-    if (!roomImageResponse.ok) {
-      throw new Error(`Failed to fetch room image: ${roomImageResponse.statusText}`);
+    // Fetch room image (only for image-to-image mode)
+    let roomImageBuffer: ArrayBuffer | null = null;
+    if (!isTextToImage) {
+      console.log(`📥 Fetching room image...`);
+      const roomImageResponse = await fetch(params.roomImageUrl);
+      if (!roomImageResponse.ok) {
+        throw new Error(`Failed to fetch room image: ${roomImageResponse.statusText}`);
+      }
+      roomImageBuffer = await roomImageResponse.arrayBuffer();
+      console.log(`✅ Room image loaded`);
     }
-    const roomImageBuffer = await roomImageResponse.arrayBuffer();
-    console.log(`✅ Room image loaded`);
 
-    // Build comprehensive prompt with strict preservation requirements
+    // Build comprehensive prompt
     const productDescriptions = params.products
       .map((p, i) => {
         const desc = p.visualDescription || p.name;
@@ -69,8 +75,13 @@ export async function generateStabilityRender(
       })
       .join('\n');
 
-    const prompt = `
-🔒 CRITICAL - PRESERVE USER'S CURRENT SPACE:
+    const prompt = isTextToImage 
+      ? `Create a photorealistic ${params.stylePreference || 'modern'} ${params.roomType || 'room'} interior design with the following furniture:
+
+${productDescriptions}
+
+The room should feel cohesive and beautifully designed with professional interior styling.`
+      : `🔒 CRITICAL - PRESERVE USER'S CURRENT SPACE:
 • Keep ALL room structure EXACTLY as shown - walls, floors, ceiling, windows, doors unchanged
 • Preserve room dimensions, architectural features, lighting, wall colors, floor materials
 • DO NOT move, resize, or change any structural elements
@@ -84,22 +95,24 @@ ${productDescriptions}
 
 ⚠️ STRICT REQUIREMENT: This is furniture replacement only. Any changes to walls/windows/floors/ceiling = FAILURE.
 
-Generate a photorealistic ${params.stylePreference || 'modern'} ${params.roomType || 'room'} design with these products, preserving ALL existing room structure.
-`.trim();
+Generate a photorealistic ${params.stylePreference || 'modern'} ${params.roomType || 'room'} design with these products, preserving ALL existing room structure.`.trim();
 
     console.log(`📝 Prompt length: ${prompt.length} chars`);
 
     // Create FormData for Stability AI API (multipart/form-data)
-    // Note: 'mode' is implied when image is provided, so we don't send it
     const formData = new FormData();
-    formData.append('image', new Blob([roomImageBuffer]), 'room.jpg');
+    
+    // Add image only for image-to-image mode
+    if (!isTextToImage && roomImageBuffer) {
+      formData.append('image', new Blob([roomImageBuffer]), 'room.jpg');
+      formData.append('image_strength', '0.65'); // Only for image-to-image
+    }
+    
     formData.append('prompt', truncatePrompt(prompt));
-    formData.append('image_strength', '0.65'); // Correct parameter name for SD3
     formData.append('output_format', 'png');
     formData.append('model', 'sd3-5-large'); // Correct model name with hyphens
-    // seed can be omitted for random generation
 
-    console.log(`🚀 Calling Stability AI SD3 API with SD3.5 Large model...`);
+    console.log(`🚀 Calling Stability AI SD3 API (${isTextToImage ? 'text-to-image' : 'image-to-image'})...`);
     const response = await fetch(STABILITY_API_URL, {
       method: 'POST',
       headers: {

@@ -91,19 +91,23 @@ export default function ComparisonRender() {
   useEffect(() => {
     if (typeof window !== "undefined" && !comparisonId && sessionId) {
       // Get params from location state or localStorage
-      const roomImageUrl = localStorage.getItem("roomImageUrl");
+      const roomImageUrl = localStorage.getItem("roomImageUrl") || "";
       const productSkus = JSON.parse(localStorage.getItem("selectedProductSkus") || "[]");
       const roomType = localStorage.getItem("roomType");
       const style = localStorage.getItem("style");
       
-      if (roomImageUrl && productSkus.length > 0) {
+      // Allow comparison with or without room image (text-to-image or image-to-image)
+      if (productSkus.length > 0) {
         createComparisonMutation.mutate({
-          roomImageUrl,
+          roomImageUrl, // Empty string for text-to-image mode
           productSkus,
           sessionId,
           roomType,
           style,
         });
+      } else {
+        alert("No products selected for comparison. Please create a design first.");
+        setLocation("/quiz");
       }
     }
   }, [sessionId, comparisonId]);
