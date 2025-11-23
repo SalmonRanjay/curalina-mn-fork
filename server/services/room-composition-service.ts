@@ -698,10 +698,14 @@ export async function selectProductsWithComposition(
     const availableProducts = (productsByCategory[category] || [])
       .filter(p => !usedProductIds.has(p.id));
     
+    console.log(`\n🔍 Processing category: ${category} (${isEssential ? 'ESSENTIAL' : 'complementary'})`);
+    console.log(`   Available products: ${availableProducts.length}, Required: min ${rule.min}, max ${rule.max}`);
+    
     if (availableProducts.length === 0) {
       if (isEssential && rule.min > 0) {
         missingEssentials.push(category);
         warnings.push(`Missing essential item: ${category}`);
+        console.log(`   ❌ MISSING ESSENTIAL: ${category}`);
       }
       continue;
     }
@@ -712,6 +716,8 @@ export async function selectProductsWithComposition(
       Math.min(rule.max, Math.max(1, Math.floor(availableProducts.length / 2))); // Be conservative with complementary
     
     const toSelect = Math.min(targetCount, rule.max, availableProducts.length);
+    
+    console.log(`   Will select: ${toSelect} products (target: ${targetCount}, max: ${rule.max})`);
     
     // Score and rank products for this category
     const scoredProducts = availableProducts.map(product => {
@@ -802,7 +808,16 @@ export async function selectProductsWithComposition(
     
     for (const product of selected) {
       if (selectedProducts.length >= maxProducts) break;
+      
+      // CRITICAL FIX: Prevent duplicate selection of same product
+      // This product might already be in selectedProducts if it was added in a previous category iteration
+      if (selectedProducts.some(p => p.id === product.id)) {
+        console.log(`⚠️ Skipping duplicate product: ${product.name} already selected`);
+        continue;
+      }
+      
       selectedProducts.push(product);
+      console.log(`   ✅ Added: ${product.name} (${product.sku})`);
       
       // Only mark as used once per unique product
       usedProductIds.add(product.id);
@@ -813,11 +828,18 @@ export async function selectProductsWithComposition(
       composition[category].push(product);
     }
     
+    console.log(`   📊 Selected ${composition[category]?.length || 0} products for ${category}`);
+    
     // Check if we met minimum requirements
     if (isEssential && selected.length < rule.min) {
-      warnings.push(`Only found ${selected.length} of ${rule.min} required ${category} items`);
+      const warning = `Only found ${selected.length} of ${rule.min} required ${category} items`;
+      warnings.push(warning);
+      console.log(`   ⚠️  ${warning}`);
     }
   }
+  
+  console.log(`\n📦 FINAL SELECTION: ${selectedProducts.length} total products`);
+  console.log(`   Composition:`, Object.entries(composition).map(([cat, prods]) => `${cat}: ${prods.length}`).join(', '));
   
   // Add some uncategorized items if we have room
   if (selectedProducts.length < maxProducts && uncategorized.length > 0) {
