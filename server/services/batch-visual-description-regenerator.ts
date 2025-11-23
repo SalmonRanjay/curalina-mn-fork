@@ -100,14 +100,17 @@ export async function generateAccurateVisualDescription(
     });
     
     // Extract text from response
-    const description = (response.text || '').trim();
+    let description = (response.text || '').trim();
     
     if (!description) {
       console.error(`  ⚠️ No text in response - response keys:`, Object.keys(response));
       return null;
     }
     
-    // Validate format: must be comma-separated, no sentence structure
+    // Remove trailing period if present (Gemini sometimes adds it)
+    description = description.replace(/\.$/, '');
+    
+    // Validate format: must be comma-separated, no sentence structure (mid-sentence terminators)
     if (description.match(/[.!?]/)) {
       console.warn(`  ⚠️ Generated description contains sentence terminators - not comma-separated format`);
       console.log(`  Response preview: ${description.substring(0, 150)}...`);
@@ -161,11 +164,12 @@ Create a 30-40 word comma-separated description extracting ONLY the essential vi
 
 **FORMAT RULES:**
 - Comma-separated key attributes only
-- NO full sentences, NO prose paragraphs
+- NO full sentences, NO prose paragraphs, NO periods
 - NO marketing language or subjective opinions
 - Target: 30-40 words (40-50 tokens)
 - Be hyper-specific with colors (not "neutral" but "soft taupe with gray undertones")
 - Include finish types (matte, glossy, brushed, textured)
+- DO NOT end with a period - just list the attributes
 
 **GOOD EXAMPLE:**
 "Walnut wood dining chair, curved backrest with channel tufting, tapered wooden legs, warm charcoal gray linen upholstery, matte finish, mid-century modern silhouette, standard dining height"
