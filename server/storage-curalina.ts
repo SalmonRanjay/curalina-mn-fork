@@ -19,6 +19,8 @@ import {
   visualAnalysisProducts,
   s3RenamingJobs,
   s3RenamingProducts,
+  visualDescriptionJobs,
+  visualDescriptionProducts,
   renderProducts,
   renderEvents,
   documentationSections,
@@ -63,6 +65,10 @@ import {
   type InsertS3RenamingJob,
   type S3RenamingProduct,
   type InsertS3RenamingProduct,
+  type VisualDescriptionJob,
+  type InsertVisualDescriptionJob,
+  type VisualDescriptionProduct,
+  type InsertVisualDescriptionProduct,
   type RenderProduct,
   type InsertRenderProduct,
   type RenderEvent,
@@ -227,6 +233,21 @@ export interface ICuralinaStorage {
   getPendingS3RenamingProducts(jobId: string, limit: number): Promise<S3RenamingProduct[]>;
   updateS3RenamingProduct(id: string, data: Partial<InsertS3RenamingProduct>): Promise<S3RenamingProduct>;
   deleteS3RenamingProduct(id: string): Promise<void>;
+  
+  // Visual Description Job operations
+  createVisualDescriptionJob(job: InsertVisualDescriptionJob): Promise<VisualDescriptionJob>;
+  getVisualDescriptionJob(id: string): Promise<VisualDescriptionJob | undefined>;
+  getActiveVisualDescriptionJobs(userId?: string): Promise<VisualDescriptionJob[]>;
+  updateVisualDescriptionJob(id: string, data: Partial<InsertVisualDescriptionJob>): Promise<VisualDescriptionJob>;
+  deleteVisualDescriptionJob(id: string): Promise<void>;
+  
+  // Visual Description Product operations
+  createVisualDescriptionProduct(product: InsertVisualDescriptionProduct): Promise<VisualDescriptionProduct>;
+  createVisualDescriptionProducts(products: InsertVisualDescriptionProduct[]): Promise<VisualDescriptionProduct[]>;
+  getVisualDescriptionProducts(jobId: string): Promise<VisualDescriptionProduct[]>;
+  getPendingVisualDescriptionProducts(jobId: string, limit: number): Promise<VisualDescriptionProduct[]>;
+  updateVisualDescriptionProduct(id: string, data: Partial<InsertVisualDescriptionProduct>): Promise<VisualDescriptionProduct>;
+  deleteVisualDescriptionProduct(id: string): Promise<void>;
   
   // Render Products operations
   createRenderProduct(product: InsertRenderProduct): Promise<RenderProduct>;
@@ -1154,6 +1175,80 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async deleteS3RenamingProduct(id: string): Promise<void> {
     await db.delete(s3RenamingProducts).where(eq(s3RenamingProducts.id, id));
+  }
+  
+  // Visual Description Job operations
+  async createVisualDescriptionJob(jobData: InsertVisualDescriptionJob): Promise<VisualDescriptionJob> {
+    const [job] = await db.insert(visualDescriptionJobs).values(jobData).returning();
+    return job;
+  }
+
+  async getVisualDescriptionJob(id: string): Promise<VisualDescriptionJob | undefined> {
+    const [job] = await db.select().from(visualDescriptionJobs).where(eq(visualDescriptionJobs.id, id));
+    return job;
+  }
+
+  async getActiveVisualDescriptionJobs(userId?: string): Promise<VisualDescriptionJob[]> {
+    const conditions = [or(eq(visualDescriptionJobs.status, 'pending'), eq(visualDescriptionJobs.status, 'processing'))];
+    if (userId) {
+      conditions.push(eq(visualDescriptionJobs.userId, userId));
+    }
+    return db.select().from(visualDescriptionJobs).where(and(...conditions));
+  }
+
+  async updateVisualDescriptionJob(id: string, data: Partial<InsertVisualDescriptionJob>): Promise<VisualDescriptionJob> {
+    const [job] = await db
+      .update(visualDescriptionJobs)
+      .set(data)
+      .where(eq(visualDescriptionJobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteVisualDescriptionJob(id: string): Promise<void> {
+    await db.delete(visualDescriptionJobs).where(eq(visualDescriptionJobs.id, id));
+  }
+  
+  // Visual Description Product operations
+  async createVisualDescriptionProduct(productData: InsertVisualDescriptionProduct): Promise<VisualDescriptionProduct> {
+    const [product] = await db.insert(visualDescriptionProducts).values(productData).returning();
+    return product;
+  }
+
+  async createVisualDescriptionProducts(productsData: InsertVisualDescriptionProduct[]): Promise<VisualDescriptionProduct[]> {
+    if (productsData.length === 0) return [];
+    return db.insert(visualDescriptionProducts).values(productsData).returning();
+  }
+
+  async getVisualDescriptionProducts(jobId: string): Promise<VisualDescriptionProduct[]> {
+    return db.select().from(visualDescriptionProducts).where(eq(visualDescriptionProducts.jobId, jobId));
+  }
+
+  async getPendingVisualDescriptionProducts(jobId: string, limit: number): Promise<VisualDescriptionProduct[]> {
+    if (limit > 10000) limit = 10000; // Safety cap
+    return db
+      .select()
+      .from(visualDescriptionProducts)
+      .where(
+        and(
+          eq(visualDescriptionProducts.jobId, jobId),
+          eq(visualDescriptionProducts.status, "pending")
+        )
+      )
+      .limit(limit);
+  }
+
+  async updateVisualDescriptionProduct(id: string, data: Partial<InsertVisualDescriptionProduct>): Promise<VisualDescriptionProduct> {
+    const [product] = await db
+      .update(visualDescriptionProducts)
+      .set(data)
+      .where(eq(visualDescriptionProducts.id, id))
+      .returning();
+    return product;
+  }
+
+  async deleteVisualDescriptionProduct(id: string): Promise<void> {
+    await db.delete(visualDescriptionProducts).where(eq(visualDescriptionProducts.id, id));
   }
   
   // Render Products operations

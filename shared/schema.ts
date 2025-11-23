@@ -899,6 +899,80 @@ export const insertS3RenamingProductSchema = createInsertSchema(s3RenamingProduc
 });
 export type InsertS3RenamingProduct = z.infer<typeof insertS3RenamingProductSchema>;
 
+// Visual Description Jobs - Track background visual description generation tasks
+export const visualDescriptionJobs = pgTable("visual_description_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  mode: varchar("mode").notNull().default("missing_only"), // 'missing_only', 'regenerate_all'
+  totalProducts: integer("total_products").notNull().default(0),
+  processedProducts: integer("processed_products").notNull().default(0),
+  successfulAnalyses: integer("successful_analyses").notNull().default(0),
+  failedAnalyses: integer("failed_analyses").notNull().default(0),
+  skippedProducts: integer("skipped_products").notNull().default(0),
+  currentProductName: text("current_product_name"), // Currently processing product
+  lastCheckpointProductId: varchar("last_checkpoint_product_id"), // For resume functionality
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_visual_desc_job_status").on(table.status),
+]);
+
+export const visualDescriptionJobRelations = relations(visualDescriptionJobs, ({ one, many }) => ({
+  user: one(users, {
+    fields: [visualDescriptionJobs.userId],
+    references: [users.id],
+  }),
+  products: many(visualDescriptionProducts),
+}));
+
+export type VisualDescriptionJob = typeof visualDescriptionJobs.$inferSelect;
+export const insertVisualDescriptionJobSchema = createInsertSchema(visualDescriptionJobs).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+export type InsertVisualDescriptionJob = z.infer<typeof insertVisualDescriptionJobSchema>;
+
+// Visual Description Products - Track individual product analysis within a job
+export const visualDescriptionProducts = pgTable("visual_description_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => visualDescriptionJobs.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'skipped'
+  visualDescription: text("visual_description"), // Generated description
+  wordCount: integer("word_count"), // Word count of generated description
+  imageSource: text("image_source"), // Which image was used (Front View, Main View, etc.)
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_visual_desc_product_job_status").on(table.jobId, table.status),
+  index("idx_visual_desc_product_id").on(table.productId),
+  unique("visual_desc_job_product_unique").on(table.jobId, table.productId),
+]);
+
+export const visualDescriptionProductRelations = relations(visualDescriptionProducts, ({ one }) => ({
+  job: one(visualDescriptionJobs, {
+    fields: [visualDescriptionProducts.jobId],
+    references: [visualDescriptionJobs.id],
+  }),
+  product: one(products, {
+    fields: [visualDescriptionProducts.productId],
+    references: [products.id],
+  }),
+}));
+
+export type VisualDescriptionProduct = typeof visualDescriptionProducts.$inferSelect;
+export const insertVisualDescriptionProductSchema = createInsertSchema(visualDescriptionProducts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertVisualDescriptionProduct = z.infer<typeof insertVisualDescriptionProductSchema>;
+
 // Room Templates - Define standard composition for each room type
 export const roomTemplates = pgTable("room_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

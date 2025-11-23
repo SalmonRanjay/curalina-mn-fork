@@ -1252,9 +1252,16 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Visual Description Regeneration - Uses trained analyzer with word count validation (30-40 words)
+  // Supports resume functionality and filtering for products with missing descriptions
   app.post('/api/admin/products/regenerate-visual-descriptions', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      console.log('\n🎨 Starting visual description regeneration (word count validated: 30-40 words)...');
+      const { mode = 'missing_only', resumeJobId } = req.body;
+      
+      if (resumeJobId) {
+        console.log(`\n🔄 Resuming visual description job ${resumeJobId}...`);
+      } else {
+        console.log(`\n🎨 Starting visual description regeneration (mode: ${mode})...`);
+      }
       
       const allProducts = await curalinaStorage.getAllProducts();
       const { regenerateAllVisualDescriptions } = await import('./services/batch-visual-description-regenerator');
@@ -1266,21 +1273,46 @@ export function registerCuralinaRoutes(app: Express) {
         });
       };
       
-      // Run the trained analyzer with immediate persistence
-      const finalProgress = await regenerateAllVisualDescriptions(allProducts, undefined, onProductUpdated);
+      // Run the analyzer with checkpoint support
+      const finalProgress = await regenerateAllVisualDescriptions(
+        allProducts,
+        curalinaStorage,
+        {
+          mode,
+          userId: req.user?.id,
+          resumeJobId,
+        },
+        undefined, // no progress callback
+        onProductUpdated
+      );
       
       res.json({
         success: true,
-        message: '✅ Visual description regeneration complete (word count validated)',
+        message: resumeJobId 
+          ? `✅ Resumed job completed (Job ID: ${finalProgress.jobId})` 
+          : `✅ Visual description regeneration complete (Job ID: ${finalProgress.jobId})`,
+        jobId: finalProgress.jobId,
         totalProducts: finalProgress.total,
         successful: finalProgress.successful,
         failed: finalProgress.failed,
-        skipped: finalProgress.skipped
+        skipped: finalProgress.skipped,
+        mode
       });
       
     } catch (error) {
       console.error("Error regenerating visual descriptions:", error);
       res.status(500).json({ error: "Failed to regenerate descriptions" });
+    }
+  });
+  
+  // Get active visual description jobs
+  app.get('/api/admin/products/visual-description-jobs', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const jobs = await curalinaStorage.getActiveVisualDescriptionJobs(req.user?.id);
+      res.json({ jobs });
+    } catch (error) {
+      console.error('Failed to get visual description jobs:', error);
+      res.status(500).json({ error: 'Failed to get jobs' });
     }
   });
 

@@ -119,6 +119,11 @@ export async function generateAccurateVisualDescription(
     }
     
     // Extract text from response
+    if (!response) {
+      console.error(`  ⚠️ No response from Gemini`);
+      return null;
+    }
+    
     let description = (response.text || '').trim();
     
     if (!description) {
@@ -210,15 +215,33 @@ export interface BatchRegenerationProgress {
   skipped: number;
   currentProduct?: string;
   errors: Array<{ sku: string; error: string }>;
+  jobId?: string;
+}
+
+export interface VisualDescriptionJobOptions {
+  mode?: 'missing_only' | 'regenerate_all';
+  userId?: string;
+  resumeJobId?: string; // Resume an existing job
 }
 
 export async function regenerateAllVisualDescriptions(
   products: Product[],
+  storage: any, // ICuralinaStorage instance
+  options: VisualDescriptionJobOptions = {},
   progressCallback?: (progress: BatchRegenerationProgress) => void,
   onProductUpdated?: (product: Product) => Promise<void>
 ): Promise<BatchRegenerationProgress> {
+  const { mode = 'missing_only', userId, resumeJobId } = options;
+  
+  // Filter products based on mode
+  let productsToProcess = products;
+  if (mode === 'missing_only' && !resumeJobId) {
+    productsToProcess = products.filter(p => !p.visualDescription || p.visualDescription.trim() === '');
+    console.log(`\n📋 Filtered to ${productsToProcess.length} products with missing descriptions (out of ${products.length} total)`);
+  }
+  
   const progress: BatchRegenerationProgress = {
-    total: products.length,
+    total: productsToProcess.length,
     processed: 0,
     successful: 0,
     failed: 0,
@@ -226,18 +249,68 @@ export async function regenerateAllVisualDescriptions(
     errors: []
   };
   
-  console.log(`\n🎨 Starting batch visual description regeneration (concurrent: 2 workers, respecting API limits) for ${products.length} products...`);
+  // Create or resume job
+  let job: any;
+  if (resumeJobId) {
+    job = await storage.getVisualDescriptionJob(resumeJobId);
+    if (!job) {
+      throw new Error(`Job ${resumeJobId} not found`);
+    }
+    console.log(`\n🔄 Resuming job ${resumeJobId} from checkpoint...`);
+    console.log(`   Previous progress: ${job.processedProducts}/${job.totalProducts}`);
+    
+    // Restore progress from job
+    progress.processed = job.processedProducts || 0;
+    progress.successful = job.successfulAnalyses || 0;
+    progress.failed = job.failedAnalyses || 0;
+    progress.skipped = job.skippedProducts || 0;
+    progress.jobId = job.id;
+  } else {
+    // Create new job
+    job = await storage.createVisualDescriptionJob({
+      userId,
+      status: 'processing',
+      mode,
+      totalProducts: productsToProcess.length,
+      processedProducts: 0,
+      successfulAnalyses: 0,
+      failedAnalyses: 0,
+      skippedProducts: 0,
+      startedAt: new Date(),
+    });
+    progress.jobId = job.id;
+    
+    // Create job products for tracking
+    const jobProducts = productsToProcess.map(p => ({
+      jobId: job.id,
+      productId: p.id,
+      status: 'pending' as const,
+    }));
+    await storage.createVisualDescriptionProducts(jobProducts);
+    
+    console.log(`\n🎨 Starting batch visual description regeneration (Job ID: ${job.id})`);
+    console.log(`   Mode: ${mode}`);
+    console.log(`   Products: ${productsToProcess.length}`);
+    console.log(`   Workers: 2 concurrent`);
+  }
+  
+  // Get pending products from job
+  const jobProducts = await storage.getPendingVisualDescriptionProducts(job.id, 999999);
+  const pendingProductIds = new Set(jobProducts.map((jp: any) => jp.productId));
+  const remainingProducts = productsToProcess.filter(p => pendingProductIds.has(p.id));
+  
+  console.log(`\n📊 Products remaining: ${remainingProducts.length}`);
   
   // Process 2 products concurrently to respect API rate limits
   const CONCURRENT_WORKERS = 2;
-  const BATCH_SIZE = Math.ceil(products.length / CONCURRENT_WORKERS);
+  const BATCH_SIZE = Math.ceil(remainingProducts.length / CONCURRENT_WORKERS);
   
   const processingWorkers = [];
   
   for (let workerIdx = 0; workerIdx < CONCURRENT_WORKERS; workerIdx++) {
     const start = workerIdx * BATCH_SIZE;
-    const end = Math.min(start + BATCH_SIZE, products.length);
-    const workerProducts = products.slice(start, end);
+    const end = Math.min(start + BATCH_SIZE, remainingProducts.length);
+    const workerProducts = remainingProducts.slice(start, end);
     
     if (workerProducts.length === 0) continue;
     
@@ -245,6 +318,19 @@ export async function regenerateAllVisualDescriptions(
       for (const product of workerProducts) {
         progress.currentProduct = `${product.sku} - ${product.name}`;
         console.log(`\n[W${workerIdx + 1}][${progress.processed + 1}/${progress.total}] ${progress.currentProduct}`);
+        
+        // Find corresponding job product
+        const jobProduct = jobProducts.find((jp: any) => jp.productId === product.id);
+        if (!jobProduct) {
+          console.warn(`  ⚠️ No job product found for ${product.sku}`);
+          progress.processed++;
+          continue;
+        }
+        
+        // Update job product status to processing
+        await storage.updateVisualDescriptionProduct(jobProduct.id, {
+          status: 'processing',
+        });
         
         try {
           // Select best image for analysis
@@ -254,6 +340,13 @@ export async function regenerateAllVisualDescriptions(
             console.log(`  ⏭️ Skipped - no images available`);
             progress.skipped++;
             progress.processed++;
+            
+            // Update job product as skipped
+            await storage.updateVisualDescriptionProduct(jobProduct.id, {
+              status: 'skipped',
+              errorMessage: 'No images available',
+            });
+            
             progressCallback?.(progress);
             continue;
           }
@@ -274,6 +367,14 @@ export async function regenerateAllVisualDescriptions(
             if (onProductUpdated) {
               await onProductUpdated(product);
             }
+            
+            // Update job product with success
+            await storage.updateVisualDescriptionProduct(jobProduct.id, {
+              status: 'completed',
+              visualDescription: description,
+              wordCount,
+              imageSource: selectedImage.source,
+            });
           } else {
             progress.failed++;
             progress.errors.push({
@@ -281,6 +382,12 @@ export async function regenerateAllVisualDescriptions(
               error: 'Failed to generate description'
             });
             console.log(`  ❌ Failed - could not generate description`);
+            
+            // Update job product with failure
+            await storage.updateVisualDescriptionProduct(jobProduct.id, {
+              status: 'failed',
+              errorMessage: 'Failed to generate description',
+            });
           }
           
         } catch (error) {
@@ -291,9 +398,29 @@ export async function regenerateAllVisualDescriptions(
             error: errorMessage
           });
           console.error(`  ❌ Error:`, errorMessage);
+          
+          // Update job product with error
+          await storage.updateVisualDescriptionProduct(jobProduct.id, {
+            status: 'failed',
+            errorMessage,
+          });
         }
         
         progress.processed++;
+        
+        // Save checkpoint every 10 products
+        if (progress.processed % 10 === 0) {
+          await storage.updateVisualDescriptionJob(job.id, {
+            processedProducts: progress.processed,
+            successfulAnalyses: progress.successful,
+            failedAnalyses: progress.failed,
+            skippedProducts: progress.skipped,
+            currentProductName: progress.currentProduct,
+            lastCheckpointProductId: product.id,
+          });
+          console.log(`   💾 Checkpoint saved: ${progress.processed}/${progress.total}`);
+        }
+        
         progressCallback?.(progress);
         
         // Delay between products to respect API rate limits (500-1000ms per product)
@@ -307,7 +434,17 @@ export async function regenerateAllVisualDescriptions(
   // Wait for all workers to complete
   await Promise.all(processingWorkers);
   
-  console.log(`\n✅ Batch regeneration complete!`);
+  // Mark job as completed
+  await storage.updateVisualDescriptionJob(job.id, {
+    status: 'completed',
+    processedProducts: progress.processed,
+    successfulAnalyses: progress.successful,
+    failedAnalyses: progress.failed,
+    skippedProducts: progress.skipped,
+    completedAt: new Date(),
+  });
+  
+  console.log(`\n✅ Batch regeneration complete! (Job ID: ${job.id})`);
   console.log(`  📊 Total: ${progress.total}`);
   console.log(`  ✅ Successful: ${progress.successful}`);
   console.log(`  ❌ Failed: ${progress.failed}`);
