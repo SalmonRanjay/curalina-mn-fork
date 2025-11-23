@@ -1607,8 +1607,13 @@ export function registerCuralinaRoutes(app: Express) {
       // Generate hash from quiz + filtered candidate pool (not full catalog)
       const selectionHash = generateSelectionHash(quiz, candidatePool);
       
-      // Check if we already have a ledger with this hash (idempotency)
-      const existingLedger = await curalinaStorage.getSelectionLedgerByHash(selectionHash);
+      // Check if we already have a ledger with this hash (idempotency) - UNLESS forceNew is requested
+      const forceNew = req.body.forceNew === true;
+      if (forceNew) {
+        console.log(`⚡ Force new render requested - skipping idempotency cache`);
+      }
+      
+      const existingLedger = forceNew ? null : await curalinaStorage.getSelectionLedgerByHash(selectionHash);
       if (existingLedger) {
         console.log(`♻️  Idempotency: Found existing ledger for hash ${selectionHash.substring(0, 8)}...`);
         const existingRender = await curalinaStorage.getRender(existingLedger.renderId);
