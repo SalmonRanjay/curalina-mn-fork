@@ -189,9 +189,9 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     let prompt: string;
     
     if (roomImage) {
-      // Image-to-image mode: furnish the provided space
-      // Use EXACT prompt that worked in Google AI Studio
-      prompt = `This is my space image. Please furnish it with Furniture and products images I provide`;
+      // Image-to-image mode: PRESERVE the space structure exactly
+      // Emphasize keeping the architecture, windows, walls, floor intact
+      prompt = `This is my space image. PRESERVE this exact room structure (walls, windows, floor, ceiling, architectural details). Only add the furniture and products I provide - do NOT change the room itself.`;
     } else {
       // Text-to-image mode: create a new room scene
       prompt = `Please create a beautifully designed interior space with Furniture and products images I provide`;
