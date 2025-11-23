@@ -195,6 +195,11 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
     
+    // Log floor plan analysis if provided
+    if (floorPlanAnalysis) {
+      console.log(`📋 Floor plan analysis received:`, JSON.stringify(floorPlanAnalysis, null, 2));
+    }
+    
     // Step 3: Build prompt with architectural context from floor plan analysis
     // The floor plan analysis provides hard constraints (windows, doors, dimensions) that prevent
     // the AI from redrawing walls/windows and ensures space preservation
@@ -259,7 +264,7 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     console.log(`🎨 Sending to Gemini 2.5 Flash (image-only mode)...`);
     console.log(`   Mode: ${roomImage ? 'Image-to-image (room photo provided)' : 'Text-to-image (no room photo)'}`);
-    console.log(`   Prompt: "${prompt.substring(0, 100)}..."`);
+    console.log(`\n📝 FULL PROMPT:\n${'='.repeat(80)}\n${prompt}\n${'='.repeat(80)}\n`);
     console.log(`   Images: ${roomImage ? '1 room + ' : ''}${productImageParts.length} products`);
     
     // Step 5: Call Gemini with multimodal inputs
