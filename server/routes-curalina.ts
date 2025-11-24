@@ -3516,35 +3516,77 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Helper to build comprehensive CSV rows with all product fields
+  const buildProductExportRows = (products: any[]) => {
+    const headers = [
+      'ID', 'SKU', 'Name', 'Slug', 'Description', 'Category ID', 'Supplier ID',
+      'Price', 'Trade Price', 'Discount', 'Availability', 'Inventory', 'Lead Time (days)',
+      'Visual Description', 'Structured Analysis', 'Image Count', 'Image URLs',
+      'Room Types', 'Design Styles', 'Style Tags', 'Key Features', 'Storage Solutions',
+      'Colors', 'Materials', 'Weight', 'Seating', 'Assembly',
+      'Dimensions (JSON)', 'Asset 3D URL',
+      'Shipping Cost', 'Shipping ETA', 'Delivery Options', 'Delivery Location', 'Delivery Policy',
+      'Image Health', 'Last Validated', 'Tags', 'Source File', 'SEO Title', 'SEO Description',
+      'Image Analyses (JSON)', 'Created At'
+    ];
+    
+    const rows = products.map(p => [
+      p.id || '',
+      p.sku || '',
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      p.slug || '',
+      `"${(p.description || '').replace(/"/g, '""')}"`,
+      p.categoryId || '',
+      p.supplierId || '',
+      p.price || '',
+      p.tradePrice || '',
+      p.discount || '',
+      p.availability || 'unknown',
+      p.inventory !== null ? p.inventory : '',
+      p.leadTime || '',
+      `"${((p as any).visualDescription || '').substring(0, 500).replace(/"/g, '""')}"`,
+      p.structuredAnalysis ? `"${JSON.stringify(p.structuredAnalysis).replace(/"/g, '""')}"` : '',
+      (p.images || []).length,
+      `"${(p.images || []).join('; ').replace(/"/g, '""')}"`,
+      (p.roomType || []).join('; '),
+      (p.designStyle || []).join('; '),
+      (p.styleTags || []).join('; '),
+      (p.keyFeatures || []).join('; '),
+      p.storageSolutions || '',
+      (p.colors || []).join('; '),
+      (p.materials || []).join('; '),
+      p.weight || '',
+      p.seating || '',
+      p.assembly || '',
+      p.dimensions ? `"${JSON.stringify(p.dimensions).replace(/"/g, '""')}"` : '',
+      p.asset3dUrl || '',
+      (p.shipping as any)?.cost || '',
+      (p.shipping as any)?.eta || '',
+      (p.shipping as any)?.deliveryOptions || '',
+      (p.shipping as any)?.deliveryLocation || '',
+      (p.shipping as any)?.deliveryPolicy || '',
+      p.imageHealth || 'unknown',
+      p.lastValidatedAt || '',
+      (p.tags || []).join('; '),
+      p.sourceFile || '',
+      (p.seoMeta as any)?.title || '',
+      (p.seoMeta as any)?.description || '',
+      p.imageAnalyses ? `"${JSON.stringify(p.imageAnalyses).replace(/"/g, '""')}"` : '',
+      p.createdAt || ''
+    ]);
+    
+    return { headers, rows };
+  };
+
   // Export all products as CSV
   app.get('/api/admin/products/export/all', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const products = await curalinaStorage.getAllProducts();
-      
-      const headers = [
-        'SKU', 'Name', 'Price', 'Trade Price', 'Category', 'Supplier', 'Images',
-        'Availability', 'Description', 'Visual Description', 'Dimensions', 'Colors'
-      ];
-      
-      const rows = products.map(p => [
-        p.sku,
-        `"${(p.name || '').replace(/"/g, '""')}"`,
-        p.price || '',
-        p.tradePrice || '',
-        p.categoryId || '',
-        p.supplierId || '',
-        (p.images || []).length,
-        p.availability || 'unknown',
-        `"${(p.description || '').replace(/"/g, '""')}"`,
-        `"${((p as any).visualDescription || '').substring(0, 100).replace(/"/g, '""')}"`,
-        p.dimensions ? JSON.stringify(p.dimensions) : '',
-        (p.colors || []).join('; ')
-      ]);
-      
+      const { headers, rows } = buildProductExportRows(products);
       const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
       
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="products.csv"');
+      res.setHeader('Content-Disposition', 'attachment; filename="products-all.csv"');
       res.send(csv);
     } catch (error) {
       console.error("Error exporting products:", error);
