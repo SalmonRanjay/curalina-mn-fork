@@ -572,23 +572,23 @@ export default function Results() {
             </Button>
             <Button
               variant="secondary"
-              disabled={!renderProducts || renderProducts.length === 0 || productsLoading}
+              disabled={!render || !quizResponse}
               onClick={() => {
                 // Save render data to localStorage for comparison page
-                if (render && quizResponse && renderProducts) {
+                if (render && quizResponse) {
                   // Get room image from quiz response floorplan
                   const roomImageUrl = quizResponse.floorplanUrl || "";
                   
-                  // Get product SKUs from render.productSkus OR from renderProducts
+                  // Get product SKUs from render.productSkus OR from renderProducts as fallback
                   const productSkus = render.productSkus && render.productSkus.length > 0 
                     ? render.productSkus 
-                    : renderProducts.map(p => p.sku);
+                    : (renderProducts || []).map(p => p.sku);
                   
                   console.log("Saving comparison data to localStorage:", {
                     roomImageUrl,
                     productSkus,
                     renderProductSkus: render.productSkus,
-                    renderProducts: renderProducts.length,
+                    renderProducts: renderProducts?.length,
                     roomType: quizResponse.roomType,
                     style: quizResponse.styles?.[0],
                   });
@@ -596,7 +596,7 @@ export default function Results() {
                   if (productSkus.length === 0) {
                     toast({
                       title: "No Products",
-                      description: "No products available to compare",
+                      description: "No products available to compare. Please wait for the design to finish.",
                       variant: "destructive",
                     });
                     return;
@@ -613,7 +613,7 @@ export default function Results() {
               data-testid="button-compare-ai"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              {productsLoading ? "Loading Products..." : "Compare AI Services"}
+              Compare AI Services
             </Button>
             <Button
               onClick={() => setLocation("/cart")}
