@@ -3633,26 +3633,7 @@ export function registerCuralinaRoutes(app: Express) {
         products = products.filter(p => !p.images || p.images.length === 0);
       }
       
-      const headers = [
-        'SKU', 'Name', 'Price', 'Trade Price', 'Category', 'Supplier', 'Images',
-        'Availability', 'Description', 'Visual Description', 'Dimensions', 'Colors'
-      ];
-      
-      const rows = products.map(p => [
-        p.sku,
-        `"${(p.name || '').replace(/"/g, '""')}"`,
-        p.price || '',
-        p.tradePrice || '',
-        p.categoryId || '',
-        p.supplierId || '',
-        (p.images || []).length,
-        p.availability || 'unknown',
-        `"${(p.description || '').replace(/"/g, '""')}"`,
-        `"${((p as any).visualDescription || '').substring(0, 100).replace(/"/g, '""')}"`,
-        p.dimensions ? JSON.stringify(p.dimensions) : '',
-        (p.colors || []).join('; ')
-      ]);
-      
+      const { headers, rows } = buildProductExportRows(products);
       const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
       
       res.setHeader('Content-Type', 'text/csv');
