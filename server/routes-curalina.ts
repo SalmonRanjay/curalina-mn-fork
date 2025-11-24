@@ -3517,9 +3517,13 @@ export function registerCuralinaRoutes(app: Express) {
   });
 
   // Helper to build comprehensive CSV rows with all product fields
-  const buildProductExportRows = (products: any[]) => {
+  const buildProductExportRows = (products: any[], categories?: any[], suppliers?: any[]) => {
+    // Build lookup maps for faster access
+    const categoryMap = new Map((categories || []).map((c: any) => [c.id, c.name]));
+    const supplierMap = new Map((suppliers || []).map((s: any) => [s.id, s.name]));
+    
     const headers = [
-      'ID', 'SKU', 'Name', 'Slug', 'Description', 'Category ID', 'Supplier ID',
+      'ID', 'SKU', 'Name', 'Slug', 'Description', 'Category ID', 'Category Name', 'Supplier ID', 'Supplier Name',
       'Price', 'Trade Price', 'Discount', 'Availability', 'Inventory', 'Lead Time (days)',
       'Visual Description', 'Structured Analysis', 'Image Count', 'Image URLs',
       'Room Types', 'Design Styles', 'Style Tags', 'Key Features', 'Storage Solutions',
@@ -3537,7 +3541,9 @@ export function registerCuralinaRoutes(app: Express) {
       p.slug || '',
       `"${(p.description || '').replace(/"/g, '""')}"`,
       p.categoryId || '',
+      categoryMap.get(p.categoryId) || '',
       p.supplierId || '',
+      supplierMap.get(p.supplierId) || '',
       p.price || '',
       p.tradePrice || '',
       p.discount || '',
@@ -3581,8 +3587,12 @@ export function registerCuralinaRoutes(app: Express) {
   // Export all products as CSV
   app.get('/api/admin/products/export/all', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const products = await curalinaStorage.getAllProducts();
-      const { headers, rows } = buildProductExportRows(products);
+      const [products, categories, suppliers] = await Promise.all([
+        curalinaStorage.getAllProducts(),
+        curalinaStorage.getAllCategories(),
+        curalinaStorage.getAllSuppliers()
+      ]);
+      const { headers, rows } = buildProductExportRows(products, categories, suppliers);
       const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
       
       res.setHeader('Content-Type', 'text/csv');
@@ -3598,7 +3608,13 @@ export function registerCuralinaRoutes(app: Express) {
   app.post('/api/admin/products/export/filtered', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { searchQuery, categoryId, supplierId, minPrice, maxPrice, hasImages } = req.body;
-      let products = await curalinaStorage.getAllProducts();
+      const [allProducts, categories, suppliers] = await Promise.all([
+        curalinaStorage.getAllProducts(),
+        curalinaStorage.getAllCategories(),
+        curalinaStorage.getAllSuppliers()
+      ]);
+      
+      let products = allProducts;
       
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -3633,7 +3649,7 @@ export function registerCuralinaRoutes(app: Express) {
         products = products.filter(p => !p.images || p.images.length === 0);
       }
       
-      const { headers, rows } = buildProductExportRows(products);
+      const { headers, rows } = buildProductExportRows(products, categories, suppliers);
       const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
       
       res.setHeader('Content-Type', 'text/csv');

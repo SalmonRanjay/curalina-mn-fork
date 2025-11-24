@@ -4,7 +4,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { getOrCreateSessionId } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
@@ -26,63 +34,85 @@ const TOTAL_STEPS = 7;
 const STYLES_DATA = {
   "Midcentury Scandi": {
     moodWords: "Vintage, retro, functional, warm, clean, natural, refined",
-    textures: "Woods are a staple like oak and walnut, often paired with leather, durable wools, cotton and matte metals",
-    furniture: "Furniture has clean lines, soft curves, and minimalist forms, with natural wood finishes and tapered legs that add timeless warmth and function.",
-    colorPalette: "Soft neutrals like off-white, warm beige, and light grey form a timeless base. Accents in sage, teal, mustard, burnt orange, and burgundy add retro warmth and contrast.",
+    textures:
+      "Woods are a staple like oak and walnut, often paired with leather, durable wools, cotton and matte metals",
+    furniture:
+      "Furniture has clean lines, soft curves, and minimalist forms, with natural wood finishes and tapered legs that add timeless warmth and function.",
+    colorPalette:
+      "Soft neutrals like off-white, warm beige, and light grey form a timeless base. Accents in sage, teal, mustard, burnt orange, and burgundy add retro warmth and contrast.",
     renders: [
       "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop",
       "https://images.unsplash.com/photo-1615875474908-f403609c4ccc?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=400&h=300&fit=crop"
-    ]
+      "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=400&h=300&fit=crop",
+    ],
   },
   "Organic Modern": {
-    moodWords: "Earthy, uncluttered, tranquil, zen-inspired, textural, rounded edges, plush, minimalistic",
-    textures: "Breathable linens, soft cotton, cozy bouclé paired with warm oaks, tactile rugs, neutral matte stones, clay & plaster",
-    furniture: "Furniture features low-profile, minimalist designs with soft curves and sculpted edges, replacing harsh modern angles.",
-    colorPalette: "Whites, bones, chalks & earthy neutrals with small nature-inspired accents of sage, terracotta",
+    moodWords:
+      "Earthy, uncluttered, tranquil, zen-inspired, textural, rounded edges, plush, minimalistic",
+    textures:
+      "Breathable linens, soft cotton, cozy bouclé paired with warm oaks, tactile rugs, neutral matte stones, clay & plaster",
+    furniture:
+      "Furniture features low-profile, minimalist designs with soft curves and sculpted edges, replacing harsh modern angles.",
+    colorPalette:
+      "Whites, bones, chalks & earthy neutrals with small nature-inspired accents of sage, terracotta",
     renders: [
       "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=400&h=300&fit=crop",
       "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop"
-    ]
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop",
+    ],
   },
   "Modern Farmhouse": {
-    moodWords: "Rustic, casual, heritage-inspired, cozy, wholesome, vintage charm, worn-in",
-    textures: "Distressed and whitewashed woods, matte stones, exposed brick, butcher blocks, knits, boucle, woven wool, cotton and linen",
-    furniture: "Oversized armchairs, plush slipcovered sofas that invite relaxation with built-in storage",
-    colorPalette: "Foundational neutrals of creamy white and greige, contrasting accents of black metals and nature inspired hues of deep green, pale blue and terracotta",
+    moodWords:
+      "Rustic, casual, heritage-inspired, cozy, wholesome, vintage charm, worn-in",
+    textures:
+      "Distressed and whitewashed woods, matte stones, exposed brick, butcher blocks, knits, boucle, woven wool, cotton and linen",
+    furniture:
+      "Oversized armchairs, plush slipcovered sofas that invite relaxation with built-in storage",
+    colorPalette:
+      "Foundational neutrals of creamy white and greige, contrasting accents of black metals and nature inspired hues of deep green, pale blue and terracotta",
     renders: [
       "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?w=400&h=300&fit=crop",
       "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=400&h=300&fit=crop"
-    ]
+      "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=400&h=300&fit=crop",
+    ],
   },
   "Warm Transitional": {
-    moodWords: "Timeless blend of traditional and modern, with tailored comfort and understated elegance that's refined, classic, and polished",
-    textures: "Polished metals, rich woods, velvet upholstery, chenille, bouclé, silk drapes, and veined marble surfaces",
-    furniture: "Combines traditional curves with modern clean lines, subtle nailhead trim, piping and metal knobs",
-    colorPalette: "Creamy white, warm greige, charcoal grey, espresso brown, bronze, brushed gold, antique nickel, soft blush, mauve, pewter, sage green, dusty blue, slate blue",
+    moodWords:
+      "Timeless blend of traditional and modern, with tailored comfort and understated elegance that's refined, classic, and polished",
+    textures:
+      "Polished metals, rich woods, velvet upholstery, chenille, bouclé, silk drapes, and veined marble surfaces",
+    furniture:
+      "Combines traditional curves with modern clean lines, subtle nailhead trim, piping and metal knobs",
+    colorPalette:
+      "Creamy white, warm greige, charcoal grey, espresso brown, bronze, brushed gold, antique nickel, soft blush, mauve, pewter, sage green, dusty blue, slate blue",
     renders: [
       "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=400&h=300&fit=crop",
       "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=400&h=300&fit=crop"
-    ]
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=400&h=300&fit=crop",
+    ],
   },
   "Contemporary Luxe": {
-    moodWords: "Sophisticated, minimal yet rich, polished, glamorous, refined, sleek, chic, upscale, curated",
-    textures: "Plush velvet, vegan furs, high performance linen, leather, lacquered surfaces, smooth woods & finishes, polished or honed marbles, quarzite and travertines",
-    furniture: "Clean sculptural lines, sleek silhouettes, gentle curves, architectural forms, statement pieces, art-inspired design, polished finishes, high-end materials, luxury accent chairs, curated furniture",
-    colorPalette: "Ivory white, bone white, warm taupe, greige, putty beige, charcoal grey, matte black, espresso brown, brushed gold, antique brass, emerald green, sapphire blue, dusty rose, muted mauve",
+    moodWords:
+      "Sophisticated, minimal yet rich, polished, glamorous, refined, sleek, chic, upscale, curated",
+    textures:
+      "Plush velvet, vegan furs, high performance linen, leather, lacquered surfaces, smooth woods & finishes, polished or honed marbles, quarzite and travertines",
+    furniture:
+      "Clean sculptural lines, sleek silhouettes, gentle curves, architectural forms, statement pieces, art-inspired design, polished finishes, high-end materials, luxury accent chairs, curated furniture",
+    colorPalette:
+      "Ivory white, bone white, warm taupe, greige, putty beige, charcoal grey, matte black, espresso brown, brushed gold, antique brass, emerald green, sapphire blue, dusty rose, muted mauve",
     renders: [
       "https://images.unsplash.com/photo-1600566753414-2afc9e2f5a28?w=400&h=300&fit=crop",
       "https://images.unsplash.com/photo-1600563438938-a9a27216b4f5?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400&h=300&fit=crop"
-    ]
-  }
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400&h=300&fit=crop",
+    ],
+  },
 };
 
 // Key Features by Room Type
-const KEY_FEATURES_BY_ROOM: Record<string, Array<{label: string, subtitle?: string}>> = {
+const KEY_FEATURES_BY_ROOM: Record<
+  string,
+  Array<{ label: string; subtitle?: string }>
+> = {
   "Living Room": [
     { label: "Storage Solutions", subtitle: "Shelves & cabinetry" },
     { label: "Workspace Area", subtitle: "Integrated office" },
@@ -91,73 +121,63 @@ const KEY_FEATURES_BY_ROOM: Record<string, Array<{label: string, subtitle?: stri
     { label: "Pet-Friendly", subtitle: "Durable fabrics" },
     { label: "Child-Friendly", subtitle: "Toy storage, rounded edges" },
     { label: "Media Area", subtitle: "Entertainment Cabinet" },
-    { label: "Multi-Function", subtitle: "Sofa Bed" }
+    { label: "Multi-Function", subtitle: "Sofa Bed" },
   ],
-  "Bedroom": [
+  Bedroom: [
     { label: "Storage Solutions", subtitle: "Clothing & Linens" },
     { label: "Workspace Area", subtitle: "Integrated office" },
     { label: "Vanity Table", subtitle: "" },
     { label: "Comfortable Seat", subtitle: "Reading Chair" },
     { label: "Media Area", subtitle: "TV Cabinet" },
-    { label: "Twin/Single Bed", subtitle: "38\" wide x 75\" long" },
-    { label: "Double Bed", subtitle: "54\" wide x 75\" long" },
-    { label: "Queen Bed", subtitle: "60\" wide x 75\" long" },
-    { label: "King Bed", subtitle: "76\" wide x 80\" long" }
+    { label: "Twin/Single Bed", subtitle: '38" wide x 75" long' },
+    { label: "Double Bed", subtitle: '54" wide x 75" long' },
+    { label: "Queen Bed", subtitle: '60" wide x 75" long' },
+    { label: "King Bed", subtitle: '76" wide x 80" long' },
   ],
   "Dining Room": [
     { label: "Casual Setting", subtitle: "Relaxed & Everyday" },
     { label: "Formal Setting", subtitle: "Elevated & Polished" },
     { label: "Bar Storage", subtitle: "Wine and Liquor" },
-    { label: "Open or Closed Storage", subtitle: "Organize clutter" }
+    { label: "Open or Closed Storage", subtitle: "Organize clutter" },
   ],
   "Home Office": [
     { label: "Concealed Storage", subtitle: "Keep clutter out" },
     { label: "Bookcase Storage", subtitle: "Open Shelves" },
     { label: "Filing Storage", subtitle: "Documents & Files" },
     { label: "Reading Chair", subtitle: "Comfortable Seat" },
-    { label: "Large Desk", subtitle: "52\" to 62\"" },
-    { label: "Small Desk", subtitle: "32\" to 48\"" }
+    { label: "Large Desk", subtitle: '52" to 62"' },
+    { label: "Small Desk", subtitle: '32" to 48"' },
+  
   ],
-  "Nursery": [
-    { label: "Crib Area", subtitle: "Safe Sleep Zone" },
-    { label: "Nursing Area", subtitle: "Comfy Chair/Glider" },
-    { label: "Changing Station", subtitle: "Storage Table" },
-    { label: "Toy Storage", subtitle: "Baskets or Bins" },
-    { label: "Book Storage", subtitle: "Open Shelving" },
-    { label: "Soft & Cozy", subtitle: "Comfortable Palette" },
-    { label: "Play Area", subtitle: "Open Soft Flooring" },
-    { label: "Growth-Ready", subtitle: "Convertible Furniture" }
-  ],
-  "Entry": [
-    { label: "Shoe Storage", subtitle: "Daily drop zone" },
-    { label: "Coat Hooks", subtitle: "Wall Mounted" },
-    { label: "Coat Storage", subtitle: "Hallway closet" },
-    { label: "Console Table", subtitle: "Landing pad for keys" },
-    { label: "Mirror Moment", subtitle: "See beautiful you" },
-    { label: "Artwork", subtitle: "Sets the style/tone" },
-    { label: "Bench or Stool", subtitle: "Seating for shoes" },
-    { label: "Accent Lighting", subtitle: "Statement Lamp" }
-  ]
 };
 
 export default function Quiz() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   // Use QuizContext for state management
-  const { currentStep, quizData, updateQuizData, nextStep, previousStep, canProceed, getStepContext } = useQuiz();
+  const {
+    currentStep,
+    quizData,
+    updateQuizData,
+    nextStep,
+    previousStep,
+    canProceed,
+    getStepContext,
+  } = useQuiz();
 
   // UI state (local to this component)
   const [expandedStyles, setExpandedStyles] = useState<string[]>([]);
   const [uploadingVibe, setUploadingVibe] = useState(false);
   const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
-  const [showDimensionConfirmation, setShowDimensionConfirmation] = useState(false);
+  const [showDimensionConfirmation, setShowDimensionConfirmation] =
+    useState(false);
   const [parsedDimensions, setParsedDimensions] = useState<any>(null);
 
   const submitQuizMutation = useMutation({
     mutationFn: async (data: typeof quizData) => {
       const sessionId = getOrCreateSessionId();
-      
+
       // Transform data to match backend schema
       const submitData = {
         sessionId,
@@ -180,15 +200,15 @@ export default function Quiz() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(submitData),
       });
-      
+
       if (!quizResponse.ok) {
         const errorData = await quizResponse.json();
         console.error("Quiz submission error:", errorData);
         throw new Error(errorData.error || "Failed to submit quiz");
       }
-      
+
       const quiz = await quizResponse.json();
-      
+
       // Step 2: Create render and start AI generation
       const renderResponse = await fetch("/api/render", {
         method: "POST",
@@ -198,18 +218,22 @@ export default function Quiz() {
           sessionId,
         }),
       });
-      
+
       if (!renderResponse.ok) {
         const errorData = await renderResponse.json();
         console.error("Render creation error:", errorData);
         throw new Error(errorData.error || "Failed to start AI generation");
       }
-      
+
       return quiz;
     },
     onSuccess: (quiz) => {
       // If room dimensions were parsed, show confirmation dialog
-      if (quiz.parsedRoomData && typeof quiz.parsedRoomData === 'object' && Object.keys(quiz.parsedRoomData).length > 0) {
+      if (
+        quiz.parsedRoomData &&
+        typeof quiz.parsedRoomData === "object" &&
+        Object.keys(quiz.parsedRoomData).length > 0
+      ) {
         setParsedDimensions(quiz.parsedRoomData);
         setShowDimensionConfirmation(true);
       } else {
@@ -220,17 +244,20 @@ export default function Quiz() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to submit quiz. Please try again.",
+        description:
+          error.message || "Failed to submit quiz. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-
   const toggleStyle = (style: string) => {
     const currentStyles = quizData.styles;
     if (currentStyles.includes(style)) {
-      updateQuizData("styles", currentStyles.filter(s => s !== style));
+      updateQuizData(
+        "styles",
+        currentStyles.filter((s) => s !== style),
+      );
     } else if (currentStyles.length < 2) {
       updateQuizData("styles", [...currentStyles, style]);
     } else {
@@ -245,7 +272,10 @@ export default function Quiz() {
   const toggleColorPalette = (palette: string) => {
     const currentPalettes = quizData.colorPalettes;
     if (currentPalettes.includes(palette)) {
-      updateQuizData("colorPalettes", currentPalettes.filter(p => p !== palette));
+      updateQuizData(
+        "colorPalettes",
+        currentPalettes.filter((p) => p !== palette),
+      );
     } else if (currentPalettes.length < 2) {
       updateQuizData("colorPalettes", [...currentPalettes, palette]);
     } else {
@@ -260,17 +290,23 @@ export default function Quiz() {
   const toggleKeyFeature = (feature: string) => {
     const current = quizData.keyFeatures;
     if (current.includes(feature)) {
-      updateQuizData("keyFeatures", current.filter(f => f !== feature));
+      updateQuizData(
+        "keyFeatures",
+        current.filter((f) => f !== feature),
+      );
     } else {
       updateQuizData("keyFeatures", [...current, feature]);
     }
   };
 
-  const handleFileUpload = async (files: File[], type: "vibe" | "floorplan") => {
+  const handleFileUpload = async (
+    files: File[],
+    type: "vibe" | "floorplan",
+  ) => {
     if (files.length === 0) return;
-    
+
     const formData = new FormData();
-    files.forEach(file => formData.append("files", file));
+    files.forEach((file) => formData.append("files", file));
     formData.append("folder", type === "vibe" ? "vibe-images" : "floorplans");
 
     if (type === "vibe") setUploadingVibe(true);
@@ -278,7 +314,7 @@ export default function Quiz() {
 
     try {
       console.log(`Uploading ${files.length} file(s) to /api/upload`);
-      
+
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
@@ -291,7 +327,7 @@ export default function Quiz() {
         console.error("Upload failed:", errorText);
         throw new Error(`Upload failed: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log("Upload response data:", data);
       const urls = data.urls || [];
@@ -314,7 +350,10 @@ export default function Quiz() {
       console.error("Upload error:", error);
       toast({
         title: "Upload Error",
-        description: error instanceof Error ? error.message : "Failed to upload files. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to upload files. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -332,7 +371,7 @@ export default function Quiz() {
       });
       return;
     }
-    
+
     if (currentStep < TOTAL_STEPS) {
       nextStep();
     } else {
@@ -352,42 +391,56 @@ export default function Quiz() {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.08
-      }
-    }
+        staggerChildren: 0.08,
+      },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
   };
 
   const renderStep1 = () => {
     return (
-      <RoomTypeStep 
-        value={quizData.roomType} 
-        onChange={(value) => updateQuizData("roomType", value)} 
+      <RoomTypeStep
+        value={quizData.roomType}
+        onChange={(value) => updateQuizData("roomType", value)}
       />
     );
   };
 
   const renderStep2 = () => {
-    const styles = ["Organic Modern", "Modern Farmhouse", "Midcentury Scandi", "Contemporary Luxe", "Warm Transitional"];
+    const styles = [
+      "Organic Modern",
+      "Modern Farmhouse",
+      "Midcentury Scandi",
+      "Contemporary Luxe",
+      "Warm Transitional",
+    ];
 
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
-          <p className="text-muted-foreground font-medium" 
-             style={{ fontSize: 'var(--font-size-sm)' }}>
-            Everyone has their own sense of style | Learn More About Our Design Styles
+          <p
+            className="text-muted-foreground font-medium"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
+            Everyone has their own sense of style | Learn More About Our Design
+            Styles
           </p>
-          <h2 className="font-serif font-medium text-foreground" 
-              style={{ fontSize: 'var(--font-size-3xl)' }}>
+          <h2
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: "var(--font-size-3xl)" }}
+          >
             Which style feels most like home?
           </h2>
-          <p className="text-muted-foreground max-w-2xl" 
-             style={{ fontSize: 'var(--font-size-lg)' }}>
-            Choose up to 2 styles. Trust your instincts — There are no wrong answers.
+          <p
+            className="text-muted-foreground max-w-2xl"
+            style={{ fontSize: "var(--font-size-lg)" }}
+          >
+            Choose up to 2 styles. Trust your instincts — There are no wrong
+            answers.
           </p>
         </div>
 
@@ -398,7 +451,8 @@ export default function Quiz() {
           className="stack-base flex flex-col"
         >
           {styles.map((styleName) => {
-            const styleData = STYLES_DATA[styleName as keyof typeof STYLES_DATA];
+            const styleData =
+              STYLES_DATA[styleName as keyof typeof STYLES_DATA];
             const isSelected = quizData.styles.includes(styleName);
             const isExpanded = expandedStyles.includes(styleName);
 
@@ -413,15 +467,21 @@ export default function Quiz() {
                     <div className="flex items-center gap-4">
                       <div
                         className={`w-6 h-6 border-2 rounded flex items-center justify-center cursor-pointer transition-all ${
-                          isSelected ? "bg-accent border-accent" : "border-border hover:border-accent/50"
+                          isSelected
+                            ? "bg-accent border-accent"
+                            : "border-border hover:border-accent/50"
                         }`}
                         onClick={() => toggleStyle(styleName)}
                         data-testid={`style-${styleName.toLowerCase().replace(" ", "-")}`}
                       >
-                        {isSelected && <Check className="w-4 h-4 text-accent-foreground" />}
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-accent-foreground" />
+                        )}
                       </div>
-                      <h3 className="font-semibold text-card-foreground uppercase" 
-                          style={{ fontSize: 'var(--font-size-xl)' }}>
+                      <h3
+                        className="font-semibold text-card-foreground uppercase"
+                        style={{ fontSize: "var(--font-size-xl)" }}
+                      >
                         {styleName}
                       </h3>
                     </div>
@@ -436,8 +496,10 @@ export default function Quiz() {
                           alt={`${styleName} render ${idx + 1}`}
                           className="w-full h-32 object-cover rounded-md"
                         />
-                        <p className="text-center text-muted-foreground uppercase font-medium" 
-                           style={{ fontSize: 'var(--font-size-xs)' }}>
+                        <p
+                          className="text-center text-muted-foreground uppercase font-medium"
+                          style={{ fontSize: "var(--font-size-xs)" }}
+                        >
                           {["Living", "Dining", "Bedroom"][idx]} Render
                         </p>
                       </div>
@@ -447,10 +509,10 @@ export default function Quiz() {
                   {/* Key Characteristics Toggle */}
                   <button
                     onClick={() =>
-                      setExpandedStyles(prev =>
+                      setExpandedStyles((prev) =>
                         prev.includes(styleName)
-                          ? prev.filter(s => s !== styleName)
-                          : [...prev, styleName]
+                          ? prev.filter((s) => s !== styleName)
+                          : [...prev, styleName],
                       )
                     }
                     className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
@@ -473,35 +535,51 @@ export default function Quiz() {
                         className="mt-4 stack-base flex flex-col overflow-hidden"
                       >
                         <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground">Mood Words</h4>
-                          <p className="text-muted-foreground leading-relaxed" 
-                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                          <h4 className="font-semibold text-card-foreground">
+                            Mood Words
+                          </h4>
+                          <p
+                            className="text-muted-foreground leading-relaxed"
+                            style={{ fontSize: "var(--font-size-sm)" }}
+                          >
                             {styleData.moodWords}
                           </p>
                         </div>
                         <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground">Textures</h4>
-                          <p className="text-muted-foreground leading-relaxed" 
-                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                          <h4 className="font-semibold text-card-foreground">
+                            Textures
+                          </h4>
+                          <p
+                            className="text-muted-foreground leading-relaxed"
+                            style={{ fontSize: "var(--font-size-sm)" }}
+                          >
                             {styleData.textures}
                           </p>
                         </div>
                         <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground">Furniture</h4>
-                          <p className="text-muted-foreground leading-relaxed" 
-                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                          <h4 className="font-semibold text-card-foreground">
+                            Furniture
+                          </h4>
+                          <p
+                            className="text-muted-foreground leading-relaxed"
+                            style={{ fontSize: "var(--font-size-sm)" }}
+                          >
                             {styleData.furniture}
                           </p>
                         </div>
                         <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground mb-2">Color Palette</h4>
-                          <img 
-                            src={colorPalette} 
-                            alt="Color palette inspiration" 
+                          <h4 className="font-semibold text-card-foreground mb-2">
+                            Color Palette
+                          </h4>
+                          <img
+                            src={colorPalette}
+                            alt="Color palette inspiration"
                             className="w-full max-w-md mb-2 rounded-md"
                           />
-                          <p className="text-muted-foreground leading-relaxed" 
-                             style={{ fontSize: 'var(--font-size-sm)' }}>
+                          <p
+                            className="text-muted-foreground leading-relaxed"
+                            style={{ fontSize: "var(--font-size-sm)" }}
+                          >
                             {styleData.colorPalette}
                           </p>
                         </div>
@@ -526,23 +604,31 @@ export default function Quiz() {
       "Monochrome Luxe",
       "Artful Contrast",
       "Heritage Warmth",
-      "Dark & Moody"
+      "Dark & Moody",
     ];
-    
+
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
-          <p className="text-muted-foreground font-medium" 
-             style={{ fontSize: 'var(--font-size-sm)' }}>
-            Everyone has their own sense of style | Learn More About Our Design Styles
+          <p
+            className="text-muted-foreground font-medium"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
+            Everyone has their own sense of style | Learn More About Our Design
+            Styles
           </p>
-          <h2 className="font-serif font-medium text-foreground" 
-              style={{ fontSize: 'var(--font-size-3xl)' }}>
+          <h2
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: "var(--font-size-3xl)" }}
+          >
             Which colour palette feels most like you?
           </h2>
-          <p className="text-muted-foreground max-w-2xl" 
-             style={{ fontSize: 'var(--font-size-lg)' }}>
-            Choose up to 2 styles. Trust your instincts — There are no wrong answers.
+          <p
+            className="text-muted-foreground max-w-2xl"
+            style={{ fontSize: "var(--font-size-lg)" }}
+          >
+            Choose up to 2 styles. Trust your instincts — There are no wrong
+            answers.
           </p>
         </div>
 
@@ -554,7 +640,7 @@ export default function Quiz() {
         >
           {palettes.map((palette) => {
             const isSelected = quizData.colorPalettes.includes(palette);
-            
+
             return (
               <motion.div key={palette} variants={itemVariants}>
                 <Card
@@ -564,8 +650,10 @@ export default function Quiz() {
                   onClick={() => toggleColorPalette(palette)}
                   data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
-                  <p className="font-semibold uppercase text-card-foreground" 
-                     style={{ fontSize: 'var(--font-size-sm)' }}>
+                  <p
+                    className="font-semibold uppercase text-card-foreground"
+                    style={{ fontSize: "var(--font-size-sm)" }}
+                  >
                     {palette}
                   </p>
                 </Card>
@@ -585,20 +673,30 @@ export default function Quiz() {
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
-          <p className="text-muted-foreground font-medium" 
-             style={{ fontSize: 'var(--font-size-sm)' }}>
-            Everyone has their own sense of style | Learn More About Our Design Styles
+          <p
+            className="text-muted-foreground font-medium"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
+            Everyone has their own sense of style | Learn More About Our Design
+            Styles
           </p>
-          <h2 className="font-serif font-medium text-foreground" 
-              style={{ fontSize: 'var(--font-size-3xl)' }}>
+          <h2
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: "var(--font-size-3xl)" }}
+          >
             Functional Features
           </h2>
-          <p className="text-muted-foreground max-w-2xl" 
-             style={{ fontSize: 'var(--font-size-lg)' }}>
-            A room should look stunning and live smart. Let's design for how you live, not just how it looks.
+          <p
+            className="text-muted-foreground max-w-2xl"
+            style={{ fontSize: "var(--font-size-lg)" }}
+          >
+            A room should look stunning and live smart. Let's design for how you
+            live, not just how it looks.
           </p>
-          <p className="text-muted-foreground font-medium" 
-             style={{ fontSize: 'var(--font-size-sm)' }}>
+          <p
+            className="text-muted-foreground font-medium"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
             Select all that apply
           </p>
         </div>
@@ -621,10 +719,14 @@ export default function Quiz() {
                   onClick={() => toggleKeyFeature(feature.label)}
                   data-testid={`feature-${feature.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
-                  <p className="font-semibold text-card-foreground">{feature.label}</p>
+                  <p className="font-semibold text-card-foreground">
+                    {feature.label}
+                  </p>
                   {feature.subtitle && (
-                    <p className="text-muted-foreground mt-1" 
-                       style={{ fontSize: 'var(--font-size-sm)' }}>
+                    <p
+                      className="text-muted-foreground mt-1"
+                      style={{ fontSize: "var(--font-size-sm)" }}
+                    >
                       {feature.subtitle}
                     </p>
                   )}
@@ -637,7 +739,9 @@ export default function Quiz() {
         {/* Special Dining Room Seating Selector */}
         {isDiningRoom && (
           <div className="max-w-3xl mx-auto stack-base flex flex-col items-center">
-            <p className="text-center font-semibold text-foreground">Seating (Please select number of people to be seated)</p>
+            <p className="text-center font-semibold text-foreground">
+              Seating (Please select number of people to be seated)
+            </p>
             <div className="flex justify-center gap-4 flex-wrap">
               {seatingCounts.map((count) => {
                 const seatingLabel = `Seating for ${count}`;
@@ -649,7 +753,7 @@ export default function Quiz() {
                     variant={isSelected ? "default" : "outline"}
                     size="lg"
                     className="w-16 h-16 font-semibold"
-                    style={{ fontSize: 'var(--font-size-lg)' }}
+                    style={{ fontSize: "var(--font-size-lg)" }}
                     onClick={() => toggleKeyFeature(seatingLabel)}
                     data-testid={`seating-${count}`}
                   >
@@ -671,24 +775,31 @@ export default function Quiz() {
       "$9,000-$12,000",
       "$13,000-$16,000",
       "$17,000-$20,000",
-      "Over $20,000"
+      "Over $20,000",
     ];
 
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
-          <h2 className="font-serif font-medium text-foreground" 
-              style={{ fontSize: 'var(--font-size-3xl)' }}>
+          <h2
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: "var(--font-size-3xl)" }}
+          >
             Dream Big, Spend Smart
           </h2>
           <div className="stack-tight flex flex-col items-center">
-            <p className="font-semibold text-foreground" 
-               style={{ fontSize: 'var(--font-size-xl)' }}>
+            <p
+              className="font-semibold text-foreground"
+              style={{ fontSize: "var(--font-size-xl)" }}
+            >
               Set Your Budget
             </p>
-            <p className="text-muted-foreground max-w-2xl" 
-               style={{ fontSize: 'var(--font-size-lg)' }}>
-              Choose a budget range that feels comfortable — enough to elevate your space without stretching your limits
+            <p
+              className="text-muted-foreground max-w-2xl"
+              style={{ fontSize: "var(--font-size-lg)" }}
+            >
+              Choose a budget range that feels comfortable — enough to elevate
+              your space without stretching your limits
             </p>
           </div>
         </div>
@@ -703,13 +814,17 @@ export default function Quiz() {
             <motion.div key={budget} variants={itemVariants}>
               <Card
                 className={`p-8 text-center cursor-pointer hover-elevate active-elevate-2 transition-all border-card-border ${
-                  quizData.budgetRange === budget ? "bg-accent/10 border-accent" : ""
+                  quizData.budgetRange === budget
+                    ? "bg-accent/10 border-accent"
+                    : ""
                 }`}
                 onClick={() => updateQuizData("budgetRange", budget)}
                 data-testid={`budget-${budget.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
               >
-                <p className="font-semibold text-card-foreground" 
-                   style={{ fontSize: 'var(--font-size-lg)' }}>
+                <p
+                  className="font-semibold text-card-foreground"
+                  style={{ fontSize: "var(--font-size-lg)" }}
+                >
                   {budget}
                 </p>
               </Card>
@@ -724,18 +839,25 @@ export default function Quiz() {
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
-          <h2 className="font-serif font-medium text-foreground" 
-              style={{ fontSize: 'var(--font-size-3xl)' }}>
+          <h2
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: "var(--font-size-3xl)" }}
+          >
             You Bring the Vibe and We'll Bring the Design
           </h2>
           <div className="stack-tight flex flex-col items-center">
-            <p className="font-semibold text-foreground" 
-               style={{ fontSize: 'var(--font-size-xl)' }}>
+            <p
+              className="font-semibold text-foreground"
+              style={{ fontSize: "var(--font-size-xl)" }}
+            >
               Vibe Check
             </p>
-            <p className="text-muted-foreground max-w-2xl" 
-               style={{ fontSize: 'var(--font-size-lg)' }}>
-              Upload photos from Pinterest<br />
+            <p
+              className="text-muted-foreground max-w-2xl"
+              style={{ fontSize: "var(--font-size-lg)" }}
+            >
+              Upload photos from Pinterest
+              <br />
               Generate your room design based on a Pinterest board or images
             </p>
           </div>
@@ -751,14 +873,22 @@ export default function Quiz() {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all ${
-                  isDragActive ? "border-accent bg-accent/5" : "border-border hover:border-accent/50 hover:bg-accent/5"
+                  isDragActive
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-accent/50 hover:bg-accent/5"
                 }`}
                 data-testid="vibe-upload-area"
               >
                 <input {...getInputProps()} />
-                <p className="font-semibold mb-2 text-foreground" 
-                   style={{ fontSize: 'var(--font-size-lg)' }}>
-                  {uploadingVibe ? "Uploading..." : isDragActive ? "Drop files here" : "Drag and drop or add photos"}
+                <p
+                  className="font-semibold mb-2 text-foreground"
+                  style={{ fontSize: "var(--font-size-lg)" }}
+                >
+                  {uploadingVibe
+                    ? "Uploading..."
+                    : isDragActive
+                      ? "Drop files here"
+                      : "Drag and drop or add photos"}
                 </p>
                 <Button
                   type="button"
@@ -777,9 +907,18 @@ export default function Quiz() {
             <div className="mt-6 grid grid-cols-3 gap-4">
               {quizData.vibeImages.map((url, idx) => (
                 <div key={idx} className="relative group">
-                  <img src={url} alt={`Vibe ${idx + 1}`} className="w-full h-32 object-cover rounded-md" />
+                  <img
+                    src={url}
+                    alt={`Vibe ${idx + 1}`}
+                    className="w-full h-32 object-cover rounded-md"
+                  />
                   <button
-                    onClick={() => updateQuizData("vibeImages", quizData.vibeImages.filter((_, i) => i !== idx))}
+                    onClick={() =>
+                      updateQuizData(
+                        "vibeImages",
+                        quizData.vibeImages.filter((_, i) => i !== idx),
+                      )
+                    }
                     className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover-elevate"
                     data-testid={`remove-vibe-${idx}`}
                   >
@@ -803,12 +942,14 @@ export default function Quiz() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", bounce: 0.5 }}
             className="font-serif font-medium text-foreground"
-            style={{ fontSize: 'var(--font-size-3xl)' }}
+            style={{ fontSize: "var(--font-size-3xl)" }}
           >
             You Made It to the Final Step
           </motion.h2>
-          <p className="text-muted-foreground font-medium" 
-             style={{ fontSize: 'var(--font-size-sm)' }}>
+          <p
+            className="text-muted-foreground font-medium"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
             Uploading a photo is optional
           </p>
         </div>
@@ -816,8 +957,10 @@ export default function Quiz() {
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Photo Upload */}
           <div className="stack-base flex flex-col">
-            <h3 className="font-semibold text-center text-foreground" 
-                style={{ fontSize: 'var(--font-size-lg)' }}>
+            <h3
+              className="font-semibold text-center text-foreground"
+              style={{ fontSize: "var(--font-size-lg)" }}
+            >
               Upload a photo of your space
             </h3>
             <Dropzone
@@ -836,8 +979,15 @@ export default function Quiz() {
                   data-testid="photo-upload-area"
                 >
                   <input {...getInputProps()} />
-                  <p className="font-semibold mb-4 text-foreground">{uploadingFloorplan ? "Uploading..." : "Add Photo"}</p>
-                  <Button type="button" variant="ghost" size="sm" data-testid="button-see-photo-example">
+                  <p className="font-semibold mb-4 text-foreground">
+                    {uploadingFloorplan ? "Uploading..." : "Add Photo"}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="button-see-photo-example"
+                  >
                     See Example
                   </Button>
                 </div>
@@ -847,8 +997,10 @@ export default function Quiz() {
 
           {/* Floorplan Upload */}
           <div className="stack-base flex flex-col">
-            <h3 className="font-semibold text-center text-foreground" 
-                style={{ fontSize: 'var(--font-size-lg)' }}>
+            <h3
+              className="font-semibold text-center text-foreground"
+              style={{ fontSize: "var(--font-size-lg)" }}
+            >
               Upload your floorplan
             </h3>
             <Dropzone
@@ -867,8 +1019,15 @@ export default function Quiz() {
                   data-testid="floorplan-upload-area"
                 >
                   <input {...getInputProps()} />
-                  <p className="font-semibold mb-4 text-foreground">{uploadingFloorplan ? "Uploading..." : "Add Plan"}</p>
-                  <Button type="button" variant="ghost" size="sm" data-testid="button-see-plan-example">
+                  <p className="font-semibold mb-4 text-foreground">
+                    {uploadingFloorplan ? "Uploading..." : "Add Plan"}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="button-see-plan-example"
+                  >
                     See Example
                   </Button>
                 </div>
@@ -880,19 +1039,29 @@ export default function Quiz() {
         {/* Room Description - Natural Language Input */}
         <div className="max-w-4xl mx-auto mt-8">
           <div className="stack-base flex flex-col">
-            <h3 className="font-semibold text-foreground" 
-                style={{ fontSize: 'var(--font-size-lg)' }}>
+            <h3
+              className="font-semibold text-foreground"
+              style={{ fontSize: "var(--font-size-lg)" }}
+            >
               Describe your space
             </h3>
-            <p className="text-muted-foreground mb-4" style={{ fontSize: 'var(--font-size-sm)' }}>
-              Tell us about your room dimensions, doorway size, and any preferences. For example: "My living room is 15 feet by 12 feet with 8-foot ceilings. Standard 32-inch doorway. I want a modern look with light wood tones."
+            <p
+              className="text-muted-foreground mb-4"
+              style={{ fontSize: "var(--font-size-sm)" }}
+            >
+              Tell us about your room dimensions, doorway size, and any
+              preferences. For example: "My living room is 15 feet by 12 feet
+              with 8-foot ceilings. Standard 32-inch doorway. I want a modern
+              look with light wood tones."
             </p>
             <textarea
               value={quizData.roomDescription}
-              onChange={(e) => updateQuizData("roomDescription", e.target.value)}
+              onChange={(e) =>
+                updateQuizData("roomDescription", e.target.value)
+              }
               placeholder="Example: Living room is 15x12 feet with 8ft ceilings. Doorway is 32 inches wide. I love cozy, warm vibes with natural materials..."
               className="w-full min-h-32 p-4 rounded-lg border-2 border-border bg-background text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-              style={{ fontSize: 'var(--font-size-base)' }}
+              style={{ fontSize: "var(--font-size-base)" }}
               data-testid="input-room-description"
             />
           </div>
@@ -903,14 +1072,22 @@ export default function Quiz() {
 
   const renderStep = () => {
     switch (currentStep) {
-      case 1: return renderStep1();
-      case 2: return renderStep2();
-      case 3: return renderStep3();
-      case 4: return renderStep4();
-      case 5: return renderStep5();
-      case 6: return renderStep6();
-      case 7: return renderStep7();
-      default: return null;
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      case 5:
+        return renderStep5();
+      case 6:
+        return renderStep6();
+      case 7:
+        return renderStep7();
+      default:
+        return null;
     }
   };
 
@@ -918,13 +1095,16 @@ export default function Quiz() {
     <div className="min-h-screen bg-background section-padding">
       <div className="max-w-6xl mx-auto px-6">
         {/* Progress Indicator - 7 dots */}
-        <div className="flex items-center justify-center gap-3 mb-10" data-testid="quiz-progress">
+        <div
+          className="flex items-center justify-center gap-3 mb-10"
+          data-testid="quiz-progress"
+        >
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
               className={`h-2.5 rounded-full transition-all duration-300 ${
-                i + 1 <= currentStep 
-                  ? "bg-accent w-8" 
+                i + 1 <= currentStep
+                  ? "bg-accent w-8"
                   : "bg-muted-foreground/30 w-2.5"
               }`}
               data-testid={`progress-dot-${i + 1}`}
@@ -933,7 +1113,10 @@ export default function Quiz() {
         </div>
 
         {/* Quiz Content */}
-        <div className="surface-soft rounded-lg p-8 md:p-12 mb-10" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <div
+          className="surface-soft rounded-lg p-8 md:p-12 mb-10"
+          style={{ boxShadow: "var(--shadow-sm)" }}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -960,7 +1143,9 @@ export default function Quiz() {
             {currentStep > 1 ? (
               <>
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Previous: {getStepContext(currentStep).previous}</span>
+                <span className="hidden sm:inline">
+                  Previous: {getStepContext(currentStep).previous}
+                </span>
                 <span className="sm:hidden">Back</span>
               </>
             ) : (
@@ -968,9 +1153,11 @@ export default function Quiz() {
             )}
           </Button>
 
-          <p className="font-semibold text-muted-foreground uppercase order-first sm:order-none w-full sm:w-auto text-center" 
-             style={{ fontSize: 'var(--font-size-sm)' }}
-             data-testid="text-step-counter">
+          <p
+            className="font-semibold text-muted-foreground uppercase order-first sm:order-none w-full sm:w-auto text-center"
+            style={{ fontSize: "var(--font-size-sm)" }}
+            data-testid="text-step-counter"
+          >
             Step {currentStep} of {TOTAL_STEPS}
           </p>
 
@@ -987,7 +1174,9 @@ export default function Quiz() {
               <span>Submit Quiz</span>
             ) : (
               <>
-                <span className="hidden sm:inline">Next: {getStepContext(currentStep).next}</span>
+                <span className="hidden sm:inline">
+                  Next: {getStepContext(currentStep).next}
+                </span>
                 <span className="sm:hidden">Next</span>
                 <ChevronRight className="w-4 h-4" />
               </>
@@ -997,28 +1186,40 @@ export default function Quiz() {
       </div>
 
       {/* Room Dimensions Confirmation Dialog */}
-      <Dialog open={showDimensionConfirmation} onOpenChange={setShowDimensionConfirmation}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-dimension-confirmation">
+      <Dialog
+        open={showDimensionConfirmation}
+        onOpenChange={setShowDimensionConfirmation}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          data-testid="dialog-dimension-confirmation"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-accent" />
               We understood your room
             </DialogTitle>
             <DialogDescription>
-              Based on your description, here's what we understood about your space:
+              Based on your description, here's what we understood about your
+              space:
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Room Dimensions */}
             {parsedDimensions?.dimensions && (
               <div className="space-y-2">
-                <h4 className="font-medium text-sm text-foreground">Room Dimensions</h4>
+                <h4 className="font-medium text-sm text-foreground">
+                  Room Dimensions
+                </h4>
                 <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                  {parsedDimensions.dimensions.width && parsedDimensions.dimensions.depth ? (
+                  {parsedDimensions.dimensions.width &&
+                  parsedDimensions.dimensions.depth ? (
                     <p>
-                      {parsedDimensions.dimensions.width}' × {parsedDimensions.dimensions.depth}' 
-                      {parsedDimensions.dimensions.height && ` with ${parsedDimensions.dimensions.height}' height`}
+                      {parsedDimensions.dimensions.width}' ×{" "}
+                      {parsedDimensions.dimensions.depth}'
+                      {parsedDimensions.dimensions.height &&
+                        ` with ${parsedDimensions.dimensions.height}' height`}
                     </p>
                   ) : (
                     <p>Dimensions partially detected</p>
@@ -1026,13 +1227,16 @@ export default function Quiz() {
                   {parsedDimensions.dimensions.confidence < 80 && (
                     <div className="flex items-center gap-1 mt-2 text-amber-600 dark:text-amber-500">
                       <AlertTriangle className="w-3 h-3" />
-                      <span className="text-xs">Low confidence ({parsedDimensions.dimensions.confidence}%)</span>
+                      <span className="text-xs">
+                        Low confidence ({parsedDimensions.dimensions.confidence}
+                        %)
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             )}
-            
+
             {/* Doorway */}
             {parsedDimensions?.doorway && (
               <div className="space-y-2">
@@ -1040,50 +1244,61 @@ export default function Quiz() {
                 <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
                   <p>
                     {parsedDimensions.doorway.width}" wide
-                    {parsedDimensions.doorway.height && ` × ${parsedDimensions.doorway.height}" tall`}
+                    {parsedDimensions.doorway.height &&
+                      ` × ${parsedDimensions.doorway.height}" tall`}
                   </p>
                   {parsedDimensions.doorway.confidence < 80 && (
                     <div className="flex items-center gap-1 mt-2 text-amber-600 dark:text-amber-500">
                       <AlertTriangle className="w-3 h-3" />
-                      <span className="text-xs">Low confidence ({parsedDimensions.doorway.confidence}%)</span>
+                      <span className="text-xs">
+                        Low confidence ({parsedDimensions.doorway.confidence}%)
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             )}
-            
+
             {/* Ceiling Height */}
             {parsedDimensions?.ceilingHeight && (
               <div className="space-y-2">
-                <h4 className="font-medium text-sm text-foreground">Ceiling Height</h4>
+                <h4 className="font-medium text-sm text-foreground">
+                  Ceiling Height
+                </h4>
                 <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
                   <p>{parsedDimensions.ceilingHeight.height}' high</p>
                   {parsedDimensions.ceilingHeight.confidence < 80 && (
                     <div className="flex items-center gap-1 mt-2 text-amber-600 dark:text-amber-500">
                       <AlertTriangle className="w-3 h-3" />
-                      <span className="text-xs">Low confidence ({parsedDimensions.ceilingHeight.confidence}%)</span>
+                      <span className="text-xs">
+                        Low confidence (
+                        {parsedDimensions.ceilingHeight.confidence}%)
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             )}
-            
+
             {/* Warnings */}
-            {parsedDimensions?.warnings && parsedDimensions.warnings.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm text-foreground flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
-                  Notes
-                </h4>
-                <ul className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md space-y-1">
-                  {parsedDimensions.warnings.map((warning: string, idx: number) => (
-                    <li key={idx}>• {warning}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {parsedDimensions?.warnings &&
+              parsedDimensions.warnings.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm text-foreground flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                    Notes
+                  </h4>
+                  <ul className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md space-y-1">
+                    {parsedDimensions.warnings.map(
+                      (warning: string, idx: number) => (
+                        <li key={idx}>• {warning}</li>
+                      ),
+                    )}
+                  </ul>
+                </div>
+              )}
           </div>
-          
+
           <div className="flex gap-2">
             <Button
               variant="outline"
