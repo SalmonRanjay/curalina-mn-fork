@@ -562,10 +562,122 @@ async function processGeminiResponse(
 // ============================================================================
 // Breaks render into multiple smaller passes for better fidelity:
 // 1. Room Lock Pass: Establish room baseline
-// 2. Product Batch Passes: Add 2-3 products at a time
+// 2. Product Batch Passes: Add 2-3 products at a time (large items first)
 // ============================================================================
 
 const PRODUCTS_PER_BATCH = 2; // Optimal for fidelity
+
+// Category weights for ordering: higher = render first (anchors the scene)
+const CATEGORY_PRIORITY_WEIGHTS: Record<string, number> = {
+  // Tier 1: Primary anchors (largest visual impact)
+  'Sofa': 100,
+  'Sectional': 100,
+  'Sectional Sofa': 100,
+  'Bed': 95,
+  'Dining Table': 90,
+  
+  // Tier 2: Large furniture
+  'Cabinet': 80,
+  'Bar Cabinet': 80,
+  'Sideboard': 80,
+  'Buffet': 80,
+  'Media Console': 75,
+  'Media Unit': 75,
+  'Bookcase': 75,
+  'Shelving Unit': 75,
+  'Console Table': 70,
+  
+  // Tier 3: Tables
+  'Coffee Table': 65,
+  'Dining Chair': 60,
+  'Rug': 60,
+  
+  // Tier 4: Accent seating
+  'Accent Chair': 55,
+  'Chair': 55,
+  'Ottoman': 50,
+  'Bench': 50,
+  'Stool': 45,
+  
+  // Tier 5: Small tables
+  'Side Table': 40,
+  'Accent Table': 40,
+  'End Table': 40,
+  'Nightstand': 40,
+  
+  // Tier 6: Lighting
+  'Floor Lamp': 30,
+  'Table Lamp': 25,
+  'Pendant': 25,
+  'Chandelier': 25,
+  
+  // Tier 7: Small decor (last)
+  'Home Decor': 15,
+  'Decor': 15,
+  'Vase': 10,
+  'Mirror': 10,
+  'Art': 10,
+};
+
+/**
+ * Orders products for optimal batching: large/anchor items first, small items last
+ * This ensures foundational pieces establish the scene before smaller accents are added
+ */
+function orderProductsForBatching(products: Product[]): Product[] {
+  return [...products].sort((a, b) => {
+    // Get category weights
+    const weightA = getCategoryWeight(a);
+    const weightB = getCategoryWeight(b);
+    
+    // Primary sort: by category weight (descending - larger items first)
+    if (weightA !== weightB) {
+      return weightB - weightA;
+    }
+    
+    // Secondary sort: by price as proxy for size (descending - expensive items often larger)
+    const priceA = parseFloat(a.price || '0');
+    const priceB = parseFloat(b.price || '0');
+    if (priceA !== priceB) {
+      return priceB - priceA;
+    }
+    
+    // Tertiary sort: prefer items with visual descriptions (better reference data)
+    const hasDescA = a.visualDescription ? 1 : 0;
+    const hasDescB = b.visualDescription ? 1 : 0;
+    if (hasDescA !== hasDescB) {
+      return hasDescB - hasDescA;
+    }
+    
+    // Final tie-breaker: SKU for determinism
+    return a.sku.localeCompare(b.sku);
+  });
+}
+
+/**
+ * Get priority weight for a product based on its category/name
+ */
+function getCategoryWeight(product: Product): number {
+  // Match category from product name (most reliable)
+  const name = product.name.toLowerCase();
+  
+  // Check for specific keywords in name
+  if (name.includes('sofa') || name.includes('sectional')) return 100;
+  if (name.includes('bed')) return 95;
+  if (name.includes('dining table')) return 90;
+  if (name.includes('cabinet') || name.includes('sideboard') || name.includes('buffet')) return 80;
+  if (name.includes('console')) return 70;
+  if (name.includes('coffee table')) return 65;
+  if (name.includes('dining chair')) return 60;
+  if (name.includes('rug')) return 60;
+  if (name.includes('chair') || name.includes('ottoman')) return 50;
+  if (name.includes('bench') || name.includes('stool')) return 45;
+  if (name.includes('side table') || name.includes('accent table') || name.includes('end table')) return 40;
+  if (name.includes('lamp')) return 25;
+  if (name.includes('pedestal')) return 35; // Pedestal sets are medium-sized
+  
+  // Default weight for unknown categories
+  return 20;
+}
 
 interface MultiStepRenderParams {
   roomImageUrl: string;
