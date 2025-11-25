@@ -73,124 +73,106 @@ export function budgetRangeToNumeric(budgetRange: string): number {
 const BUDGET_WEIGHTS: Record<RoomType, CategoryWeight[]> = {
   "Living Room": [
     {
-      category: "Seating",
-      baseWeight: 0.35, // 35% - Primary sofa/sectional
+      category: "Sofa",
+      baseWeight: 0.40, // 40% - Primary anchor piece
       priority: "essential",
       description: "Sofa, sectional, or primary seating"
     },
     {
-      category: "Rug",
-      baseWeight: 0.15, // 15%
+      category: "Accent Chairs",
+      baseWeight: 0.20, // 20% - Comfort + visual impact
       priority: "high",
-      description: "Area rug to anchor the space"
+      description: "Accent chairs for additional seating"
     },
     {
       category: "Tables",
       baseWeight: 0.15, // 15% - Coffee table, side tables
       priority: "high",
-      description: "Coffee table and accent tables"
-    },
-    {
-      category: "Accent Chair",
-      baseWeight: 0.10, // 10%
-      priority: "medium",
-      description: "Additional seating and visual interest"
+      description: "Coffee table and side tables"
     },
     {
       category: "Lighting",
-      baseWeight: 0.08, // 8%
-      priority: "medium",
+      baseWeight: 0.15, // 15% - Accent lighting
+      priority: "high",
       description: "Floor lamps, table lamps"
     },
     {
-      category: "Storage/Decor",
-      baseWeight: 0.12, // 12% - Media console, shelving, decor
+      category: "Rug/Decor",
+      baseWeight: 0.10, // 10% - Rug + decor combined
       priority: "medium",
-      description: "Storage solutions and decorative items"
-    },
-    {
-      category: "Flexible",
-      baseWeight: 0.05, // 5% - Buffer for adjustments
-      priority: "optional",
-      description: "Flexible budget for additional items"
+      description: "Area rug and decorative items"
     }
   ],
 
   "Bedroom": [
     {
       category: "Bed",
-      baseWeight: 0.35, // 35% - Bed frame
+      baseWeight: 0.40, // 40% - Hero anchor piece
       priority: "essential",
       description: "Bed frame or platform bed"
     },
     {
-      category: "Storage",
-      baseWeight: 0.25, // 25% - Dresser, nightstands
-      priority: "essential",
-      description: "Dresser, nightstands, wardrobe"
+      category: "Nightstands",
+      baseWeight: 0.20, // 20% - Secondary seating/storage
+      priority: "high",
+      description: "Nightstands (pair)"
     },
     {
-      category: "Seating",
-      baseWeight: 0.10, // 10% - Bench, chair
-      priority: "medium",
-      description: "Bench, reading chair, or ottoman"
-    },
-    {
-      category: "Rug",
-      baseWeight: 0.10, // 10%
-      priority: "medium",
-      description: "Area rug for comfort and warmth"
+      category: "Dresser/Storage",
+      baseWeight: 0.15, // 15% - Major storage
+      priority: "high",
+      description: "Dresser, wardrobe, or storage"
     },
     {
       category: "Lighting",
-      baseWeight: 0.10, // 10%
-      priority: "medium",
+      baseWeight: 0.15, // 15%
+      priority: "high",
       description: "Table lamps, floor lamps"
     },
     {
-      category: "Decor",
-      baseWeight: 0.05, // 5%
-      priority: "optional",
-      description: "Mirrors, artwork, accessories"
-    },
-    {
-      category: "Flexible",
-      baseWeight: 0.05, // 5%
-      priority: "optional",
-      description: "Flexible budget for additional items"
+      category: "Decor/Bedding",
+      baseWeight: 0.10, // 10% - Soft goods
+      priority: "medium",
+      description: "Bedding, mirrors, artwork, accessories"
     }
   ],
 
   "Dining Room": [
     {
       category: "Dining Table",
-      baseWeight: 0.40, // 40% - Main table
+      baseWeight: 0.35, // 35% - Hero anchor piece
       priority: "essential",
       description: "Dining table"
     },
     {
-      category: "Seating",
-      baseWeight: 0.35, // 35% - Dining chairs (set of 4-6)
+      category: "Dining Chairs",
+      baseWeight: 0.25, // 25% - Comfort + visual impact
       priority: "essential",
       description: "Dining chairs set"
     },
     {
-      category: "Storage",
-      baseWeight: 0.12, // 12% - Sideboard, buffet
+      category: "Sideboard/Storage",
+      baseWeight: 0.10, // 10% - Storage
       priority: "medium",
-      description: "Buffet, sideboard, or cabinet"
+      description: "Sideboard, buffet, or cabinet"
     },
     {
       category: "Lighting",
-      baseWeight: 0.08, // 8%
-      priority: "medium",
-      description: "Chandelier, pendant lights"
+      baseWeight: 0.15, // 15% - Accent lighting
+      priority: "high",
+      description: "Pendant, chandelier, floor/table lamps"
     },
     {
       category: "Rug",
+      baseWeight: 0.10, // 10%
+      priority: "medium",
+      description: "Area rug under dining table"
+    },
+    {
+      category: "Decor/Styling",
       baseWeight: 0.05, // 5%
       priority: "optional",
-      description: "Area rug under dining table"
+      description: "Decorative items and styling"
     }
   ],
 
@@ -279,6 +261,12 @@ export function calculateBudgetAllocation(
 /**
  * Map product categories to budget allocation categories
  * This handles the mapping between our database categories and budget categories
+ * 
+ * Updated to match new consistent budget allocation framework:
+ * - Living Room: Sofa, Accent Chairs, Tables, Lighting, Rug/Decor
+ * - Bedroom: Bed, Nightstands, Dresser/Storage, Lighting, Decor/Bedding
+ * - Dining Room: Dining Table, Dining Chairs, Sideboard/Storage, Lighting, Rug, Decor/Styling
+ * - Home Office: Desk, Seating, Storage, Lighting, Decor
  */
 export function mapProductCategoryToBudgetCategory(
   productCategoryName: string,
@@ -287,31 +275,55 @@ export function mapProductCategoryToBudgetCategory(
   const normalized = productCategoryName.toLowerCase();
   const normalizedRoom = roomType.toLowerCase();
 
-  // Seating categories
+  // Sofa/Sectional for Living Room anchor
   if (normalized.includes('sofa') || normalized.includes('sectional') || 
       normalized.includes('loveseat')) {
-    return "Seating";
+    return "Sofa";
   }
+
+  // Chair categories - context dependent
   if (normalized.includes('chair')) {
-    // Dining chairs for dining room
     if (normalizedRoom.includes('dining')) {
-      return "Seating";
+      return "Dining Chairs";
     }
-    // Office chairs for home office
     if (normalizedRoom.includes('office')) {
       return "Seating";
     }
-    // Accent chairs for living room/bedroom
-    return "Accent Chair";
-  }
-  if (normalized.includes('bench') || normalized.includes('ottoman')) {
-    return "Seating";
+    if (normalizedRoom.includes('bedroom')) {
+      return "Decor/Bedding"; // Bedroom has no separate seating category
+    }
+    // Living room = accent chairs
+    return "Accent Chairs";
   }
 
-  // Table categories
+  // Bench/Ottoman/Stool for seating categories
+  if (normalized.includes('bench') || normalized.includes('ottoman') || normalized.includes('stool')) {
+    if (normalizedRoom.includes('office')) {
+      return "Seating";
+    }
+    if (normalizedRoom.includes('dining')) {
+      return "Dining Chairs"; // Stools can be dining seating
+    }
+    if (normalizedRoom.includes('bedroom')) {
+      return "Decor/Bedding"; // Bedroom has no separate seating category
+    }
+    // Living room = accent chairs
+    return "Accent Chairs";
+  }
+
+  // Table categories - context dependent
   if (normalized.includes('coffee table') || normalized.includes('side table') || 
       normalized.includes('end table') || normalized.includes('console table')) {
-    return "Tables";
+    if (normalizedRoom.includes('dining')) {
+      return "Sideboard/Storage"; // Dining room uses Sideboard/Storage for accent tables
+    }
+    if (normalizedRoom.includes('bedroom')) {
+      return "Nightstands"; // Side tables in bedroom = nightstands
+    }
+    if (normalizedRoom.includes('office')) {
+      return "Storage"; // Office side tables go to storage
+    }
+    return "Tables"; // Living Room has Tables category
   }
   if (normalized.includes('dining table')) {
     return "Dining Table";
@@ -320,19 +332,50 @@ export function mapProductCategoryToBudgetCategory(
     return "Desk";
   }
 
-  // Storage categories
-  if (normalized.includes('dresser') || normalized.includes('nightstand') ||
-      normalized.includes('wardrobe') || normalized.includes('armoire') ||
-      normalized.includes('chest')) {
+  // Nightstand specific category for Bedroom
+  if (normalized.includes('nightstand') || normalized.includes('night stand') ||
+      normalized.includes('bedside')) {
+    return "Nightstands";
+  }
+
+  // Dresser/Storage for Bedroom
+  if (normalized.includes('dresser') || normalized.includes('wardrobe') || 
+      normalized.includes('armoire') || normalized.includes('chest')) {
+    if (normalizedRoom.includes('bedroom')) {
+      return "Dresser/Storage";
+    }
     return "Storage";
   }
-  if (normalized.includes('bookcase') || normalized.includes('shelving') ||
-      normalized.includes('cabinet') || normalized.includes('storage')) {
-    return "Storage";
-  }
+
+  // Sideboard/Storage for Dining Room (other rooms use their storage categories)
   if (normalized.includes('sideboard') || normalized.includes('buffet') ||
       normalized.includes('credenza')) {
-    return "Storage";
+    if (normalizedRoom.includes('living')) {
+      return "Rug/Decor"; // Living room has no storage category
+    }
+    if (normalizedRoom.includes('office')) {
+      return "Storage"; // Home Office uses Storage
+    }
+    if (normalizedRoom.includes('bedroom')) {
+      return "Dresser/Storage"; // Bedroom uses Dresser/Storage
+    }
+    return "Sideboard/Storage"; // Dining Room
+  }
+
+  // General storage - context dependent
+  if (normalized.includes('bookcase') || normalized.includes('shelving') ||
+      normalized.includes('cabinet') || normalized.includes('storage') ||
+      normalized.includes('media') || normalized.includes('console')) {
+    if (normalizedRoom.includes('bedroom')) {
+      return "Dresser/Storage";
+    }
+    if (normalizedRoom.includes('dining')) {
+      return "Sideboard/Storage";
+    }
+    if (normalizedRoom.includes('living')) {
+      return "Rug/Decor"; // Living room has no storage category
+    }
+    return "Storage"; // Home Office
   }
 
   // Bed categories
@@ -340,25 +383,62 @@ export function mapProductCategoryToBudgetCategory(
     return "Bed";
   }
 
-  // Rug categories
+  // Rug categories - context dependent
   if (normalized.includes('rug')) {
+    if (normalizedRoom.includes('living')) {
+      return "Rug/Decor";
+    }
+    if (normalizedRoom.includes('bedroom')) {
+      return "Decor/Bedding"; // Bedroom has no separate Rug category
+    }
+    if (normalizedRoom.includes('office')) {
+      return "Decor"; // Home Office has no separate Rug category
+    }
+    // Dining room keeps separate Rug category
     return "Rug";
   }
 
   // Lighting categories
   if (normalized.includes('lamp') || normalized.includes('lighting') ||
-      normalized.includes('chandelier') || normalized.includes('pendant')) {
+      normalized.includes('chandelier') || normalized.includes('pendant') ||
+      normalized.includes('sconce')) {
     return "Lighting";
   }
 
-  // Decor categories
+  // Decor categories - context dependent
   if (normalized.includes('decor') || normalized.includes('art') ||
-      normalized.includes('mirror') || normalized.includes('accessory')) {
+      normalized.includes('mirror') || normalized.includes('accessory') ||
+      normalized.includes('vase') || normalized.includes('pillow') ||
+      normalized.includes('throw')) {
+    if (normalizedRoom.includes('living')) {
+      return "Rug/Decor";
+    }
+    if (normalizedRoom.includes('bedroom')) {
+      return "Decor/Bedding";
+    }
+    if (normalizedRoom.includes('dining')) {
+      return "Decor/Styling";
+    }
     return "Decor";
   }
 
-  // Default to Storage/Decor for unmatched categories
-  return "Storage/Decor";
+  // Bedding for Bedroom
+  if (normalized.includes('bedding') || normalized.includes('duvet') ||
+      normalized.includes('comforter') || normalized.includes('sheet')) {
+    return "Decor/Bedding";
+  }
+
+  // Default based on room type
+  if (normalizedRoom.includes('living')) {
+    return "Rug/Decor";
+  }
+  if (normalizedRoom.includes('bedroom')) {
+    return "Decor/Bedding";
+  }
+  if (normalizedRoom.includes('dining')) {
+    return "Decor/Styling";
+  }
+  return "Decor";
 }
 
 // ============================================
