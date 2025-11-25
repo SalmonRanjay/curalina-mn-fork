@@ -136,8 +136,11 @@ ${productDescriptions}
 
 REQUIREMENTS:
 • Photorealistic quality with professional lighting${roomAnalysis ? ' matching the original room' : ' and shadows'}
+• ALL ${params.products.length} PRODUCTS MUST APPEAR - do not omit any product
 • All products clearly visible, properly scaled to real-world dimensions
-• Accurate product colors and materials as specified
+• Each product must be a PIXEL-PERFECT COPY of its reference image - exact shape, color, texture, material
+• Lamps must match exactly: if reference shows fabric shade, render fabric shade. If metal, render metal.
+• Ottomans and small accent items MUST be included - place near seating or as featured accent pieces
 • Natural furniture placement following interior design principles
 • High-resolution, magazine-quality composition
 ${roomAnalysis ? '• Room structure (walls, floor, ceiling, windows, doors, built-ins) must be IDENTICAL to description' : '• Cohesive color palette and style throughout'}

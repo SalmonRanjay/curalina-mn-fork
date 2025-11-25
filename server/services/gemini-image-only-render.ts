@@ -469,11 +469,14 @@ Include appropriate walls, flooring, windows, and ceiling for the style.`;
 
 Replace the existing furniture with these exact items from the reference images: ${productList}.
 
-For each furniture piece, copy the exact appearance from its reference image - same shape, same color, same texture, same material. The furniture should look identical to the photos provided.
+MANDATORY PRODUCT RULES:
+1. ALL ${productRefs.length} PRODUCTS MUST APPEAR in the final image - do not omit any product.
+2. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
+3. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
-2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles. These major pieces should align cleanly with the room's architecture.
+2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
 
 Arrange the furniture naturally in the room with proper perspective and realistic shadows. ${style} style. Photorealistic interior design photo.`;
     
@@ -486,11 +489,15 @@ Arrange the furniture naturally in the room with proper perspective and realisti
     
     prompt = `Create a beautiful ${style} ${room} interior featuring these exact furniture pieces from the reference images: ${productList}.
 
-For each furniture piece, copy the exact appearance from its reference image - same shape, same color, same texture, same material. The furniture should look identical to the photos provided.
+MANDATORY PRODUCT RULES:
+1. ALL ${productRefs.length} PRODUCTS MUST APPEAR in the final image - do not omit any product.
+2. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
+3. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
+4. Ottomans and small items MUST be included - place them naturally near seating or as accent pieces.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
-2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles. These major pieces should align cleanly with the room's architecture.
+2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
 
 Design a well-lit room with appropriate walls, windows, and flooring. Arrange the furniture naturally with proper perspective and realistic shadows. Photorealistic interior design photo, 8K.`;
   }
