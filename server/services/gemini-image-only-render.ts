@@ -471,6 +471,8 @@ Replace the existing furniture with these exact items from the reference images:
 
 For each furniture piece, copy the exact appearance from its reference image - same shape, same color, same texture, same material. The furniture should look identical to the photos provided.
 
+CRITICAL PLACEMENT RULE: All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image. Every piece must be completely visible with adequate margin from all frame boundaries.
+
 Arrange the furniture naturally in the room with proper perspective and realistic shadows. ${style} style. Photorealistic interior design photo.`;
     
   } else {
@@ -483,6 +485,8 @@ Arrange the furniture naturally in the room with proper perspective and realisti
     prompt = `Create a beautiful ${style} ${room} interior featuring these exact furniture pieces from the reference images: ${productList}.
 
 For each furniture piece, copy the exact appearance from its reference image - same shape, same color, same texture, same material. The furniture should look identical to the photos provided.
+
+CRITICAL PLACEMENT RULE: All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image. Every piece must be completely visible with adequate margin from all frame boundaries.
 
 Design a well-lit room with appropriate walls, windows, and flooring. Arrange the furniture naturally with proper perspective and realistic shadows. Photorealistic interior design photo, 8K.`;
   }

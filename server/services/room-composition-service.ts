@@ -65,7 +65,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'flanking_left',
       name: 'Left Accent Seating',
-      bounds: { x: 0.0, y: 0.35, width: 0.2, height: 0.35 },
+      bounds: { x: 0.08, y: 0.35, width: 0.17, height: 0.35 },  // Pulled inward from x=0.0 to prevent edge clipping
       priority: 3,
       allowedCategories: ['accent_seating'],
       maxItems: 1,
@@ -89,7 +89,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'side_table_zone',
       name: 'Side Table Area',
-      bounds: { x: 0.0, y: 0.7, width: 0.15, height: 0.2 },
+      bounds: { x: 0.08, y: 0.7, width: 0.12, height: 0.2 },  // Pulled inward from x=0.0 to prevent edge clipping
       priority: 4,
       allowedCategories: ['side_table', 'lighting'], // Table lamps on side tables
       maxItems: 2,
@@ -164,7 +164,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'bedside_left',
       name: 'Left Nightstand Zone',
-      bounds: { x: 0.05, y: 0.65, width: 0.15, height: 0.25 },
+      bounds: { x: 0.08, y: 0.65, width: 0.12, height: 0.25 },  // Pulled inward from x=0.05 to prevent edge clipping
       priority: 2,
       allowedCategories: ['nightstand', 'lighting'],
       maxItems: 2,
@@ -200,7 +200,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'seating_corner',
       name: 'Reading/Seating Corner',
-      bounds: { x: 0.05, y: 0.05, width: 0.15, height: 0.25 },
+      bounds: { x: 0.08, y: 0.08, width: 0.12, height: 0.22 },  // Pulled inward from x=0.05 to prevent edge clipping
       priority: 4,
       allowedCategories: ['accent_seating', 'side_table', 'lighting'],
       maxItems: 2,
@@ -338,7 +338,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'storage_wall',
       name: 'Storage/Bookshelf Wall',
-      bounds: { x: 0.0, y: 0.2, width: 0.15, height: 0.6 },
+      bounds: { x: 0.08, y: 0.2, width: 0.12, height: 0.6 },  // Pulled inward from x=0.0 to prevent edge clipping
       priority: 3,
       allowedCategories: ['storage'],
       maxItems: 2,
