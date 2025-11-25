@@ -471,7 +471,9 @@ Replace the existing furniture with these exact items from the reference images:
 
 For each furniture piece, copy the exact appearance from its reference image - same shape, same color, same texture, same material. The furniture should look identical to the photos provided.
 
-CRITICAL PLACEMENT RULE: All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image. Every piece must be completely visible with adequate margin from all frame boundaries.
+CRITICAL PLACEMENT RULES:
+1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
+2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles. These major pieces should align cleanly with the room's architecture.
 
 Arrange the furniture naturally in the room with proper perspective and realistic shadows. ${style} style. Photorealistic interior design photo.`;
     
@@ -486,7 +488,9 @@ Arrange the furniture naturally in the room with proper perspective and realisti
 
 For each furniture piece, copy the exact appearance from its reference image - same shape, same color, same texture, same material. The furniture should look identical to the photos provided.
 
-CRITICAL PLACEMENT RULE: All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image. Every piece must be completely visible with adequate margin from all frame boundaries.
+CRITICAL PLACEMENT RULES:
+1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
+2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles. These major pieces should align cleanly with the room's architecture.
 
 Design a well-lit room with appropriate walls, windows, and flooring. Arrange the furniture naturally with proper perspective and realistic shadows. Photorealistic interior design photo, 8K.`;
   }

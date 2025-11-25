@@ -143,6 +143,7 @@ REQUIREMENTS:
 ${roomAnalysis ? '• Room structure (walls, floor, ceiling, windows, doors, built-ins) must be IDENTICAL to description' : '• Cohesive color palette and style throughout'}
 • Only furniture is new - everything else preserved precisely
 • CRITICAL: All furniture must appear FULLY within the frame - no clipping at edges. Keep adequate margin from all frame boundaries.
+• ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
 
 ${roomAnalysis ? 'Now, furnish this space with the product images provided.' : 'Use the product images provided to create this design.'}`;
 
