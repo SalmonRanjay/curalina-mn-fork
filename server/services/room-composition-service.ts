@@ -33,63 +33,117 @@ export interface PlacementInstruction {
 }
 
 // Room zone configurations for organized layouts
+// Based on professional interior design floor plans (PDF analysis)
 const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
   'Living Room': [
+    // Zone 1: Sofa against wall (anchor piece)
     {
-      id: 'conversation_core',
-      name: 'Main Seating Area',
-      bounds: { x: 0.3, y: 0.3, width: 0.4, height: 0.4 },
+      id: 'sofa_wall',
+      name: 'Primary Sofa Wall',
+      bounds: { x: 0.15, y: 0.7, width: 0.7, height: 0.25 },
       priority: 1,
-      allowedCategories: ['primary_seating', 'coffee_table', 'accent_seating'],
-      maxItems: 4,
-      orientation: 'focal',
+      allowedCategories: ['primary_seating'],
+      maxItems: 1,
+      orientation: 'wall',
       clearance: 0.08,
-      adjacentZones: ['focal_wall', 'circulation_path'],
+      adjacentZones: ['coffee_table_zone', 'flanking_left', 'flanking_right'],
       heightTier: 'floor'
     },
+    // Zone 2: Coffee table centered in front of sofa
     {
-      id: 'focal_wall',
-      name: 'TV/Fireplace Wall',
-      bounds: { x: 0.0, y: 0.35, width: 0.15, height: 0.3 },
+      id: 'coffee_table_zone',
+      name: 'Coffee Table Area',
+      bounds: { x: 0.3, y: 0.4, width: 0.4, height: 0.25 },
       priority: 2,
-      allowedCategories: ['storage', 'decor'],
-      maxItems: 2,
-      orientation: 'wall',
-      clearance: 0.05,
-      heightTier: 'wall'
-    },
-    {
-      id: 'perimeter_left',
-      name: 'Left Side Zone',
-      bounds: { x: 0.0, y: 0.0, width: 0.2, height: 0.3 },
-      priority: 3,
-      allowedCategories: ['side_table', 'lighting', 'storage'],
-      maxItems: 2,
-      orientation: 'wall',
-      clearance: 0.05,
+      allowedCategories: ['coffee_table'],
+      maxItems: 1,
+      orientation: 'center',
+      clearance: 0.1, // 18" clearance from sofa
       heightTier: 'floor'
     },
+    // Zone 3: Left accent chair (flanking sofa at 90°)
     {
-      id: 'perimeter_right',
-      name: 'Right Side Zone',
-      bounds: { x: 0.8, y: 0.0, width: 0.2, height: 1.0 },
+      id: 'flanking_left',
+      name: 'Left Accent Seating',
+      bounds: { x: 0.0, y: 0.35, width: 0.2, height: 0.35 },
       priority: 3,
-      allowedCategories: ['accent_seating', 'side_table', 'lighting'],
-      maxItems: 2,
+      allowedCategories: ['accent_seating'],
+      maxItems: 1,
       orientation: 'corner',
       clearance: 0.05,
       heightTier: 'floor'
     },
+    // Zone 4: Right accent chair (flanking sofa at 90°)
     {
-      id: 'circulation_path',
-      name: 'Traffic Flow Area',
-      bounds: { x: 0.2, y: 0.0, width: 0.6, height: 0.2 },
-      priority: 4,
-      allowedCategories: [], // Keep clear for movement
-      maxItems: 0,
-      orientation: 'center',
-      clearance: 0.1,
+      id: 'flanking_right',
+      name: 'Right Accent Seating',
+      bounds: { x: 0.8, y: 0.35, width: 0.2, height: 0.35 },
+      priority: 3,
+      allowedCategories: ['accent_seating'],
+      maxItems: 1,
+      orientation: 'corner',
+      clearance: 0.05,
       heightTier: 'floor'
+    },
+    // Zone 5: Side table adjacent to sofa end (supports table lamps)
+    {
+      id: 'side_table_zone',
+      name: 'Side Table Area',
+      bounds: { x: 0.0, y: 0.7, width: 0.15, height: 0.2 },
+      priority: 4,
+      allowedCategories: ['side_table', 'lighting'], // Table lamps on side tables
+      maxItems: 2,
+      orientation: 'wall',
+      clearance: 0.03,
+      heightTier: 'surface' // Surface height for table lamps
+    },
+    // Zone 6: Storage/cabinet against opposite wall
+    {
+      id: 'storage_wall',
+      name: 'Storage Cabinet Wall',
+      bounds: { x: 0.2, y: 0.0, width: 0.6, height: 0.15 },
+      priority: 5,
+      allowedCategories: ['storage'],
+      maxItems: 1,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    // Zone 7: Floor lamp in corner near seating
+    {
+      id: 'lamp_corner',
+      name: 'Floor Lamp Corner',
+      bounds: { x: 0.85, y: 0.7, width: 0.15, height: 0.25 },
+      priority: 6,
+      allowedCategories: ['lighting'],
+      maxItems: 1,
+      orientation: 'corner',
+      clearance: 0.03,
+      heightTier: 'floor'
+    },
+    // Zone 8: Rug under coffee table / seating area decor
+    {
+      id: 'rug_zone',
+      name: 'Area Rug Zone',
+      bounds: { x: 0.15, y: 0.3, width: 0.7, height: 0.5 },
+      priority: 7,
+      allowedCategories: ['decor'], // Rugs, pillows on seating
+      maxItems: 1,
+      orientation: 'center',
+      clearance: 0.0,
+      heightTier: 'floor'
+    },
+    // Zone 9: Wall art above sofa
+    {
+      id: 'art_wall',
+      name: 'Wall Art Zone',
+      bounds: { x: 0.3, y: 0.85, width: 0.4, height: 0.15 },
+      priority: 8,
+      allowedCategories: ['decor'], // Art, tapestry above sofa
+      maxItems: 1,
+      orientation: 'wall',
+      clearance: 0.0,
+      heightTier: 'wall'
     }
   ],
   'Bedroom': [
@@ -236,18 +290,20 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
 };
 
 // Define room composition templates with essential and complementary items
+// Based on professional interior design packages (see PDF analysis)
 const ROOM_TEMPLATES = {
   'Living Room': {
+    // Pattern from PDF: 1 sofa, 1 coffee table, 1-2 accent chairs, 0-1 side table, 0-1 storage, 0-1 lamp, 0-1 decor
     essentials: {
-      'primary_seating': { min: 1, max: 2, priority: 1 }, // REQUIRED: Sofa (6+ seating capacity)
+      'primary_seating': { min: 1, max: 1, priority: 1 }, // REQUIRED: 1 Sofa/Sectional (anchor piece)
       'coffee_table': { min: 1, max: 1, priority: 2 }, // REQUIRED: Center table
+      'accent_seating': { min: 1, max: 2, priority: 3 }, // REQUIRED: 1-2 accent chairs/ottomans/stools
     },
     complementary: {
-      'accent_seating': { min: 0, max: 2, priority: 3 }, // Chairs, ottomans
-      'side_table': { min: 0, max: 2, priority: 4 },
-      'storage': { min: 0, max: 1, priority: 5 }, // Cabinets, shelving (if selected)
-      'lighting': { min: 1, max: 2, priority: 6 }, // Floor lamps, table lamps
-      'decor': { min: 0, max: 2, priority: 7 }, // Art, plants, accessories
+      'side_table': { min: 0, max: 1, priority: 4 }, // Optional: 0-1 side/end table
+      'storage': { min: 0, max: 1, priority: 5 }, // Optional: Sideboard/cabinet
+      'lighting': { min: 0, max: 1, priority: 6 }, // Optional: 0-1 floor lamp
+      'decor': { min: 0, max: 1, priority: 7 }, // Optional: 0-1 pillow/rug/art
     }
   },
   'Bedroom': {
