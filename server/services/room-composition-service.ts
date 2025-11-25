@@ -600,19 +600,22 @@ function detectFunctionalCategory(product: Product): string[] {
   }
   
   // Lighting detection - use word boundaries to avoid matching "highlight", "lowlight", etc.
-  // Match: lamp, light (as standalone word), chandelier, pendant, sconce
-  const isLighting = /\blamp(s)?\b/i.test(text) || 
-                     /\blight(s|ing)?\b/i.test(text) ||
-                     /\bchandelier(s)?\b/i.test(text) || 
-                     /\bpendant(s)?\b/i.test(text) || 
-                     /\bsconce(s)?\b/i.test(text);
-  // Exclude products that are clearly NOT lighting (tables, consoles, cabinets, etc.)
-  const isNotLighting = /\btable\b/i.test(productName) || 
-                        /\bconsole\b/i.test(productName) || 
-                        /\bcabinet\b/i.test(productName) ||
-                        /\bsideboard\b/i.test(productName) ||
-                        /\bmedia\b/i.test(productName);
-  if (isLighting && !isNotLighting) {
+  // Match: lamp, chandelier, pendant, sconce (primary lighting keywords)
+  // For "light" as standalone word, be more careful to avoid false positives
+  const hasLampKeyword = /\blamp(s)?\b/i.test(text);
+  const hasChandelierKeyword = /\bchandelier(s)?\b/i.test(text);
+  const hasPendantKeyword = /\bpendant(s)?\b/i.test(text);
+  const hasSconceKeyword = /\bsconce(s)?\b/i.test(text);
+  // Only match "light" or "lighting" if NOT part of "highlight", "lowlight", "lighter", "delightful", etc.
+  // Also check product name explicitly for "light" as it's more reliable
+  const hasLightInName = /\blight(s|ing)?\b/i.test(productName);
+  
+  // A product is lighting if it has any primary lighting keyword OR "light/lighting" in name
+  const isLighting = hasLampKeyword || hasChandelierKeyword || hasPendantKeyword || hasSconceKeyword || hasLightInName;
+  
+  // Products with lamp/chandelier/pendant/sconce are ALWAYS lighting regardless of other words
+  // (this ensures "Table Lamp" is still categorized as lighting)
+  if (isLighting) {
     categories.add('lighting');
   }
   
