@@ -811,25 +811,53 @@ async function executeProductBatchPass(
       return { success: false, error: 'Failed to fetch product images', productsSentToAI: [] };
     }
     
-    // Build product list for prompt
-    const productList = productImageRefs
-      .filter(ref => productsSentToAI.includes(ref.sku))
-      .map((ref, index) => `the ${ref.productName} from image ${index + 2}`)
+    // Build detailed product descriptions for better AI recognition
+    const successfulRefs = productImageRefs.filter(ref => productsSentToAI.includes(ref.sku));
+    const productDescriptions = successfulRefs.map((ref, index) => {
+      const product = products.find(p => p.sku === ref.sku);
+      const details: string[] = [];
+      
+      // Add materials if available (array field)
+      if (product?.materials && product.materials.length > 0) {
+        details.push(`made of ${product.materials.join(', ')}`);
+      }
+      
+      // Add colors if available (array field)
+      if (product?.colors && product.colors.length > 0) {
+        details.push(`in ${product.colors.join('/')} color`);
+      }
+      
+      // Add AI visual description if available (truncated for prompt efficiency)
+      if (product?.visualDescription) {
+        const shortDesc = product.visualDescription.slice(0, 150);
+        details.push(`- ${shortDesc}`);
+      }
+      
+      const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
+      return `Image ${index + 2}: "${ref.productName}"${detailStr}`;
+    });
+    
+    // Build product list for prompt intro
+    const productList = successfulRefs
+      .map((ref, index) => `the "${ref.productName}" from image ${index + 2}`)
       .join(' and ');
     
-    // Simple batch prompt
-    const prompt = `Using the room in image 1, add ${productList} to the scene.
+    // Enhanced batch prompt with product details
+    const prompt = `Add these furniture pieces to the room in image 1: ${productList}.
 
-Keep the room EXACTLY the same - same walls, windows, floor, ceiling, lighting, camera angle. Only add the new furniture.
+CRITICAL - For EACH piece, replicate its EXACT appearance from its reference image:
+${productDescriptions.map((desc, i) => `- ${desc}`).join('\n')}
 
-For each furniture piece, copy the EXACT appearance from its reference image - same shape, same color, same texture, same material.
+Room preservation: Keep walls, windows, floor, ceiling, lighting, camera angle EXACTLY the same.
 
-Arrange naturally with proper perspective and shadows. ${style} style interior.`;
+Product fidelity: Copy the EXACT shape, proportions, color, texture, and material from each reference image. The furniture in the render must look identical to the reference photos.
+
+Place naturally with correct perspective, scale, and shadows. ${style} style interior.`;
     
     // Build parts
     const parts: any[] = [
       { text: prompt },
-      { text: `Image 1: The room (keep exactly the same, only add furniture)` }
+      { text: `Image 1: The room (preserve exactly, only add furniture)` }
     ];
     
     // Add anchor image (extract base64 data)
@@ -842,10 +870,9 @@ Arrange naturally with proper perspective and shadows. ${style} style interior.`
       }
     });
     
-    // Add product images
-    const successfulRefs = productImageRefs.filter(ref => productsSentToAI.includes(ref.sku));
+    // Add product images with detailed labels
     for (let i = 0; i < productImageParts.length; i++) {
-      parts.push({ text: `Image ${i + 2}: ${successfulRefs[i].productName}` });
+      parts.push({ text: productDescriptions[i] });
       parts.push(productImageParts[i]);
     }
     
