@@ -1174,10 +1174,19 @@ async function executeProductBatchPass(
     // Batch 2+: Image 1 = ORIGINAL room (architecture ref), Image 2 = current anchor, products start at Image 3
     const productImageStartIndex = hasOriginalRoomRef ? 3 : 2;
     
-    // Update product descriptions with correct image numbering
+    // Update product descriptions with correct image numbering INCLUDING DIMENSIONS
     const productDescriptionsIndexed = successfulRefs.map((ref, index) => {
       const product = products.find(p => p.sku === ref.sku);
       const details: string[] = [];
+      
+      // Add dimensions for proper scale
+      if (product?.dimensions) {
+        const dims = product.dimensions as any;
+        if (dims.w && dims.d && dims.h) {
+          const unit = dims.unit || 'inches';
+          details.push(`SIZE: ${dims.w}"W x ${dims.d}"D x ${dims.h}"H`);
+        }
+      }
       
       if (product?.materials && product.materials.length > 0) {
         details.push(`made of ${product.materials.join(', ')}`);
@@ -1186,8 +1195,8 @@ async function executeProductBatchPass(
         details.push(`in ${product.colors.join('/')} color`);
       }
       if (product?.visualDescription) {
-        const shortDesc = product.visualDescription.slice(0, 150);
-        details.push(`- ${shortDesc}`);
+        const shortDesc = product.visualDescription.slice(0, 100);
+        details.push(`${shortDesc}`);
       }
       
       const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
@@ -1235,7 +1244,12 @@ ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 - Match the EXACT material texture (leather, fabric, wood grain, metal finish)
 - If reference shows a white sofa, render a WHITE sofa - not any other color
 
-📐 SPATIAL RULES - NO OVERLAP:
+📐 SCALE & SPATIAL RULES:
+- USE THE DIMENSIONS PROVIDED for each product to render at CORRECT REAL-WORLD SCALE
+- A standard door is ~80"H x 36"W - use this as reference for furniture sizing
+- A standard ceiling is ~96"H (8 feet) - furniture should be proportional
+- Dining chairs are typically ~18"W x 20"D x 35"H
+- Sofas are typically ~80-90"W x 35"D x 35"H
 - Every piece of furniture must be FULLY VISIBLE and SEPARATE
 - NO furniture should be hidden behind or under other furniture
 - Ottomans go IN FRONT of sofas, not underneath them
@@ -1273,7 +1287,12 @@ ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 - Match the EXACT material texture (leather, fabric, wood grain, metal finish)
 - If reference shows a white sofa, render a WHITE sofa - not any other color
 
-📐 SPATIAL RULES - NO OVERLAP:
+📐 SCALE & SPATIAL RULES:
+- USE THE DIMENSIONS PROVIDED for each product to render at CORRECT REAL-WORLD SCALE
+- A standard door is ~80"H x 36"W - use this as reference for furniture sizing
+- A standard ceiling is ~96"H (8 feet) - furniture should be proportional
+- Dining chairs are typically ~18"W x 20"D x 35"H
+- Sofas are typically ~80-90"W x 35"D x 35"H
 - Every piece of furniture must be FULLY VISIBLE and SEPARATE
 - NO furniture should be hidden behind or under other furniture
 - Ottomans go IN FRONT of sofas, not underneath them
