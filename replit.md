@@ -34,6 +34,13 @@ Preferred communication style: Simple, everyday language.
   - **Database Tracking**: Full audit trail with per-product status, old/new URLs, and rename counts
   - **Auto-Resume on Startup**: Interrupted jobs automatically continue where they left off
 - **Zone-Based Placement System**: Configurable room zones with `ROOM_ZONES` definitions, `assignItemsToZones()` for product-to-zone assignment based on functional categories and design rules, and `generateZoneBasedPlacementMatrix()` to create explicit spatial instructions for AI prompts.
+- **Professional Room Composition Templates**: Based on analysis of professional interior design packages (PDF), each room type has templates defining essential and complementary furniture with min/max counts:
+  - **Living Room (9 zones)**: 1 sofa (wall), 1 coffee table (centered), 1-2 accent chairs (flanking at 90°), 0-1 side table, 0-1 storage, 0-1 floor/table lamp, 0-1 rug/art
+  - **Bedroom (7 zones)**: 1 bed (anchor), 1-2 nightstands (symmetric), 1-2 table lamps (surface), 0-1 dresser, 0-1 storage, 0-1 seating, 0-1 rug/art
+  - **Dining Room (6 zones)**: 1 table (centered), 4-8 matching chairs, 1 chandelier (ceiling), 0-1 sideboard, 0-1 rug/art
+  - **Home Office (7 zones)**: 1 desk (wall), 1 office chair, 1-2 storage, 1 task lamp (surface), 0-1 guest seating, 0-1 rug/art
+  - **Zone Height Tiers**: floor (rugs, furniture), surface (table lamps on surfaces), wall (art, ceiling fixtures)
+  - **Template Enforcement**: Selection function respects min/max constraints with priority-based ordering
 - **Budget Allocation Framework**: Consistent percentage-based budget distribution across room types with anchor piece emphasis:
   - **Living Room**: Sofa 40% (anchor), Accent Chairs 20%, Tables 15%, Lighting 15%, Rug/Decor 10%
   - **Bedroom**: Bed 40% (anchor), Nightstands 20%, Dresser/Storage 15%, Lighting 15%, Decor/Bedding 10%
