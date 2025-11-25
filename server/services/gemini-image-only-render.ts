@@ -578,7 +578,7 @@ Design a well-lit room with appropriate walls, windows, and flooring. Arrange th
 // More products = lower accuracy per product
 // Google's multi-image composition works best with 2-3 reference images per batch
 const MAX_PRODUCTS_FOR_FIDELITY = 8;
-const TEXT_TO_IMAGE_BATCH_SIZE = 3; // Batch size for text-to-image mode
+const TEXT_TO_IMAGE_BATCH_SIZE = 2; // STRICT: 2 products per batch for best accuracy (matches multi-step mode)
 
 /**
  * Generate render using the "Anchor & Composite" multi-modal strategy
@@ -992,55 +992,63 @@ function buildBatchedTextToImagePrompt(
   
   if (isFirstBatch) {
     // First batch: Create the scene
-    return `Create a beautiful ${style} ${room} interior photograph featuring these exact furniture pieces from the reference images: ${productList}.
+    return `You are placing EXACTLY ${productRefs.length} REAL FURNITURE PRODUCTS into a ${style} ${room}.
 
-ROOM ARCHITECTURE (CRITICAL):
-1. Generate a COMPLETE ENCLOSED ROOM with THREE VISIBLE WALLS - back wall and two side walls clearly visible.
-2. The camera should be positioned at the entrance looking INTO the room - like standing in a doorway.
-3. Room dimensions should be realistic (roughly 15x12 feet) with 9-foot ceilings.
-4. Include at least ONE WINDOW on the back wall or side wall with natural light coming through.
-5. Show the FLOOR clearly - hardwood, carpet, or tile appropriate for a ${room}.
-6. The walls should frame the composition - furniture should be CENTERED within the room, not at the edges.
+ZERO TOLERANCE - ABSOLUTELY NO EXTRA FURNITURE:
+- The room should contain ONLY ${productRefs.length} furniture items - the EXACT items from the reference images.
+- DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, mirrors, ottomans, or ANY other furniture/decor.
+- If you add ANYTHING not in the reference images, the render is FAILED.
+- Count before generating: There must be EXACTLY ${productRefs.length} pieces of furniture. No more.
 
-MANDATORY PRODUCT RULES:
-1. EXACTLY ${productRefs.length} PRODUCTS - ALL must appear, NO extras. Count: ${productRefs.length} items only.
-2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 1-${productRefs.length}.
-3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
-4. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
-5. CONSOLE TABLES & SIDEBOARDS: Preserve exact leg style (tapered, straight, curved), drawer configuration, hardware finish, and material grain patterns from reference.
-6. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
-7. Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently.
+PIXEL-PERFECT PRODUCT COPYING (CRITICAL):
+- Each product MUST be an EXACT VISUAL CLONE of its reference image.
+- SOFA/CHAIR COLORS: Copy the EXACT upholstery color from reference. If the sofa is gray, render gray. If beige, render beige. Do NOT change colors.
+- PEDESTALS/TABLES: Copy the EXACT shape, material, and finish. If the reference shows a sculptural white pedestal, render that exact sculptural white pedestal - NOT a different table.
+- WOOD GRAIN: If reference shows walnut, render walnut. If oak, render oak. Match the exact tone.
+- METAL FINISHES: If reference shows brass legs, render brass. If chrome, render chrome.
+- LEG STYLES: Match exact leg shape - tapered, straight, or curved as shown in reference.
 
-CRITICAL PLACEMENT RULES:
-1. ALL FURNITURE MUST BE 100% WITHIN THE FRAME - leave at least 2 feet of visible floor between furniture and the image edges.
-2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
-3. VISIBILITY: ALL furniture must be FULLY VISIBLE. NO furniture should be hidden behind other furniture.
-4. MEDIA CONSOLES & CONSOLE TABLES: Place against the BACK WALL or SIDE WALLS where they are fully visible. NOT behind or beside the sofa.
-5. Camera angle: Wide shot showing the entire room from corner to corner - no furniture should be cropped at edges.
+The products to copy EXACTLY are: ${productList}
 
-Professional interior design photography, natural lighting from windows, photorealistic, 8K resolution.`;
+ROOM STRUCTURE:
+1. THREE VISIBLE WALLS - back wall and two side walls framing the scene.
+2. Camera positioned at entrance looking into the room.
+3. Room size approximately 15x12 feet with 9-foot ceilings.
+4. One window with natural light. Neutral wall color.
+5. Hardwood or carpet floor appropriate for ${room}.
+
+PLACEMENT:
+1. ALL furniture 100% within frame - no cropping at edges.
+2. Sofas/beds STRAIGHT and parallel to walls, never diagonal.
+3. Leave 2+ feet between furniture and image edges.
+
+Professional interior design photography, natural window lighting, 8K.`;
   } else {
     // Subsequent batches: Add to existing scene
-    return `ADD these exact furniture pieces to the existing room scene from Image 1: ${productList}.
+    return `Image 1 shows the current room with existing furniture. ADD EXACTLY ${productRefs.length} MORE products: ${productList}.
 
-ROOM PRESERVATION (CRITICAL):
-1. KEEP the exact same room - same walls, same window positions, same floor, same camera angle.
-2. KEEP ALL EXISTING FURNITURE from Image 1 - do NOT remove, move, or change any existing items.
-3. The room boundaries must remain identical - three visible walls framing the space.
+ZERO TOLERANCE - NO EXTRA FURNITURE:
+- After this batch, the room should contain ONLY the existing furniture from Image 1 PLUS the ${productRefs.length} new items from reference images.
+- DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, or ANY other furniture/decor not in references.
+- Count the new items: EXACTLY ${productRefs.length} new pieces. No more.
 
-NEW PRODUCT RULES:
-1. ADD EXACTLY ${productRefs.length} NEW PRODUCTS from the reference images - no more, no less.
-2. Each new product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
-3. Place new items in appropriate empty spaces - do NOT overlap with existing furniture.
-4. Pedestals, side tables, and small accent pieces MUST be prominently placed where visible.
+PRESERVE EXISTING FURNITURE (CRITICAL):
+- Every piece of furniture from Image 1 MUST remain EXACTLY as shown - same position, same color, same appearance.
+- Do NOT remove, move, recolor, or modify ANY existing furniture.
+- The existing sofa color must stay EXACTLY the same.
 
-PLACEMENT RULES:
-1. ALL products (existing + new) must be 100% WITHIN THE FRAME - no furniture cropped at edges.
-2. Leave at least 2 feet of visible floor between furniture and image edges.
-3. Media consoles and console tables should be against walls, not floating in the room.
-4. Maintain the same lighting and perspective as Image 1.
+PIXEL-PERFECT NEW PRODUCT COPYING:
+- Each new product MUST be an EXACT VISUAL CLONE of its reference image.
+- SOFA/CHAIR COLORS: Copy EXACT upholstery color. Do NOT change colors.
+- PEDESTALS/TABLES: Copy EXACT shape, material, finish. If reference shows sculptural white pedestal, render THAT - not a different table.
+- WOOD/METAL: Match exact grain pattern and finish from reference.
 
-Professional interior design photography, photorealistic, 8K resolution.`;
+PLACEMENT:
+1. ALL furniture (existing + new) 100% within frame - no cropping.
+2. Place new items in empty spaces - no overlap with existing furniture.
+3. Keep same room walls, windows, floor, camera angle, lighting as Image 1.
+
+Professional interior design photography, 8K.`;
   }
 }
 
