@@ -97,48 +97,61 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       clearance: 0.03,
       heightTier: 'surface' // Surface height for table lamps
     },
-    // Zone 6: Storage/cabinet against opposite wall
+    // Zone 6: Console table on LEFT SIDE WALL (visible, NOT behind sofa)
+    // Positioned in front area (y: 0.05-0.25) to avoid overlap with flanking_left (y: 0.35+)
+    {
+      id: 'console_table_zone',
+      name: 'Console Table Wall',
+      bounds: { x: 0.02, y: 0.05, width: 0.12, height: 0.20 },  // Left side wall, front area - no overlap with other zones
+      priority: 5,
+      allowedCategories: ['console_table'],
+      maxItems: 1,
+      orientation: 'wall',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    // Zone 7: Storage/cabinet against opposite wall
     {
       id: 'storage_wall',
       name: 'Storage Cabinet Wall',
       bounds: { x: 0.2, y: 0.0, width: 0.6, height: 0.15 },
-      priority: 5,
+      priority: 6,
       allowedCategories: ['storage'],
       maxItems: 1,
       orientation: 'wall',
       clearance: 0.05,
       heightTier: 'floor'
     },
-    // Zone 7: Floor lamp in corner near seating
+    // Zone 8: Floor lamp in corner near seating
     {
       id: 'lamp_corner',
       name: 'Floor Lamp Corner',
       bounds: { x: 0.75, y: 0.7, width: 0.15, height: 0.25 },  // Pulled inward from x=0.85 to prevent edge clipping
-      priority: 6,
+      priority: 7,
       allowedCategories: ['lighting'],
       maxItems: 1,
       orientation: 'corner',
       clearance: 0.03,
       heightTier: 'floor'
     },
-    // Zone 8: Rug under coffee table / seating area decor
+    // Zone 9: Rug under coffee table / seating area decor
     {
       id: 'rug_zone',
       name: 'Area Rug Zone',
       bounds: { x: 0.15, y: 0.3, width: 0.7, height: 0.5 },
-      priority: 7,
+      priority: 8,
       allowedCategories: ['decor'], // Rugs, pillows on seating
       maxItems: 1,
       orientation: 'center',
       clearance: 0.0,
       heightTier: 'floor'
     },
-    // Zone 9: Wall art above sofa
+    // Zone 10: Wall art above sofa
     {
       id: 'art_wall',
       name: 'Wall Art Zone',
       bounds: { x: 0.3, y: 0.85, width: 0.4, height: 0.15 },
-      priority: 8,
+      priority: 9,
       allowedCategories: ['decor'], // Art, tapestry above sofa
       maxItems: 1,
       orientation: 'wall',
@@ -469,7 +482,7 @@ const CATEGORY_TO_FUNCTIONAL: Record<string, string[]> = {
   'Coffee Tables': ['coffee_table'],
   'Side Tables': ['side_table'],
   'End Tables': ['side_table'],
-  'Console Tables': ['storage', 'decor'],
+  'Console Tables': ['console_table'],
   'Cabinets': ['storage'],
   'Sideboards': ['storage'],
   'Bookcases': ['storage'],
@@ -536,8 +549,11 @@ function detectFunctionalCategory(product: Product): string[] {
     categories.add('bed');
   }
   
-  // Table detection
-  if (text.includes('coffee table')) {
+  // Table detection (check console table first since it's more specific)
+  // Note: Only match "console table" specifically, not just "console" to avoid false positives
+  if (text.includes('console table') || productName.includes('console table')) {
+    categories.add('console_table');
+  } else if (text.includes('coffee table')) {
     categories.add('coffee_table');
   } else if (text.includes('dining table')) {
     categories.add('dining_table');

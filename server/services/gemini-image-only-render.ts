@@ -537,6 +537,9 @@ MANDATORY PRODUCT RULES:
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
 2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
+3. VISIBILITY: ALL furniture must be FULLY VISIBLE. NO furniture should be hidden behind other furniture.
+4. CONSOLE TABLES: Place against SIDE WALLS (left or right), NOT behind sofas. Must be clearly visible in the composition.
+5. SOFAS: When there's ample wall space on the left side of the room, consider positioning the sofa against the LEFT WALL to leave the rest of the room open for other furniture placement.
 
 Arrange the furniture naturally in the room with proper perspective and realistic shadows. ${style} style. Photorealistic interior design photo.`;
     
@@ -561,6 +564,9 @@ MANDATORY PRODUCT RULES:
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
 2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
+3. VISIBILITY: ALL furniture must be FULLY VISIBLE. NO furniture should be hidden behind other furniture.
+4. CONSOLE TABLES: Place against SIDE WALLS (left or right), NOT behind sofas. Must be clearly visible in the composition.
+5. SOFAS: When there's ample wall space on the left side of the room, consider positioning the sofa against the LEFT WALL to leave the rest of the room open for other furniture placement.
 
 Design a well-lit room with appropriate walls, windows, and flooring. Arrange the furniture naturally with proper perspective and realistic shadows. Photorealistic interior design photo, 8K.`;
   }
