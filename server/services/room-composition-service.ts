@@ -599,9 +599,20 @@ function detectFunctionalCategory(product: Product): string[] {
     categories.add('storage');
   }
   
-  // Lighting detection
-  if (text.includes('lamp') || text.includes('light') || text.includes('chandelier') || 
-      text.includes('pendant') || text.includes('sconce')) {
+  // Lighting detection - use word boundaries to avoid matching "highlight", "lowlight", etc.
+  // Match: lamp, light (as standalone word), chandelier, pendant, sconce
+  const isLighting = /\blamp(s)?\b/i.test(text) || 
+                     /\blight(s|ing)?\b/i.test(text) ||
+                     /\bchandelier(s)?\b/i.test(text) || 
+                     /\bpendant(s)?\b/i.test(text) || 
+                     /\bsconce(s)?\b/i.test(text);
+  // Exclude products that are clearly NOT lighting (tables, consoles, cabinets, etc.)
+  const isNotLighting = /\btable\b/i.test(productName) || 
+                        /\bconsole\b/i.test(productName) || 
+                        /\bcabinet\b/i.test(productName) ||
+                        /\bsideboard\b/i.test(productName) ||
+                        /\bmedia\b/i.test(productName);
+  if (isLighting && !isNotLighting) {
     categories.add('lighting');
   }
   
