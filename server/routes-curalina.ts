@@ -1921,7 +1921,9 @@ export function registerCuralinaRoutes(app: Express) {
               roomType: quiz.roomType,
               stylePreference: quiz.styles?.[0] || 'modern',
               floorPlanAnalysis,
-              placementInstructions
+              placementInstructions,
+              roomDescription: quiz.roomDescription || undefined,
+              parsedRoomData: quiz.parsedRoomData as any || undefined
             });
           }
           

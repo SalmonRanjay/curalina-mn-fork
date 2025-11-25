@@ -83,6 +83,12 @@ Preferred communication style: Simple, everyday language.
   - **Confirmation UI**: Shows parsed dimensions with confidence scores, allows editing, requires user acknowledgment
   - **Graceful Degradation**: If parsing fails or confidence low, system continues without blocking but logs warnings
   - **Known Limitations**: Clearance assumes centered placement (not wall-adjacent), warnings logged server-side but limited UI surfacing, simplified confidence scoring
+- **Room Specification Integration for AI Renders**: Quiz roomDescription and parsedRoomData are passed to AI render generation prompts:
+  - **Text-to-Image Mode**: Includes full room specification in prompt (dimensions, window placement, door placement)
+  - **Structured Data**: Parsed dimensions (width x depth) from parsedRoomData.dimensions
+  - **Raw Description**: Full roomDescription text preserved for window/door placement details
+  - **Architectural Requirements**: AI instructed to build exact dimensions, place windows/doors precisely, scale furniture appropriately
+  - **Implementation**: gemini-image-only-render.ts, shared-prompt-builder.ts, routes-curalina.ts
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL via Neon serverless driver using Drizzle ORM.

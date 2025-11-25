@@ -385,6 +385,15 @@ export interface ImageOnlyRenderParams {
     overallDescription: string;
   };
   placementInstructions?: string; // Spatial guidance for furniture placement
+  roomDescription?: string; // User's text-based room specification (dimensions, windows, doors)
+  parsedRoomData?: {
+    dimensions?: { width?: number; depth?: number; height?: number; unit?: string };
+    doorway?: { width?: number; height?: number; unit?: string };
+    ceilingHeight?: number;
+    confidence?: number;
+    warnings?: string[];
+    rawText?: string;
+  };
 }
 
 export interface ImageOnlyRenderResult {
@@ -412,7 +421,9 @@ function buildAnchorCompositePrompt(
   stylePreference?: string,
   hasRoomImage?: boolean,
   floorPlanAnalysis?: any,
-  placementInstructions?: string
+  placementInstructions?: string,
+  roomDescription?: string,
+  parsedRoomData?: ImageOnlyRenderParams['parsedRoomData']
 ): string {
   // Extract style context
   const style = stylePreference || 'Modern';
@@ -459,8 +470,40 @@ Keep all walls, windows, floor, ceiling, doors, and perspective EXACTLY as seen 
 Replace only the existing furniture.`;
     }
   } else {
-    architecturalInstructions = `Create a beautiful ${style} ${room} interior with professional architecture.
+    // Text-to-image mode: Use room description if provided
+    if (roomDescription || parsedRoomData) {
+      let roomSpec = '';
+      
+      // Use parsed data if available (more structured)
+      if (parsedRoomData?.dimensions) {
+        const dims = parsedRoomData.dimensions;
+        const width = dims.width || dims.depth || '?';
+        const depth = dims.depth || dims.width || '?';
+        roomSpec = `📏 ROOM DIMENSIONS: ${width} x ${depth} ${dims.unit || 'feet'}`;
+        if (parsedRoomData.ceilingHeight) {
+          roomSpec += `, Ceiling Height: ${parsedRoomData.ceilingHeight} feet`;
+        }
+      }
+      
+      // Add raw room description - this contains window/door placement details
+      if (roomDescription) {
+        roomSpec += roomSpec ? '\n\n' : '';
+        roomSpec += `📋 FULL ROOM SPECIFICATION:\n${roomDescription}`;
+      }
+      
+      architecturalInstructions = `🏠 CREATE THIS EXACT ROOM LAYOUT:
+${roomSpec}
+
+⚠️ CRITICAL - FOLLOW THESE ARCHITECTURAL REQUIREMENTS:
+1. BUILD the room with the EXACT dimensions specified above (e.g., 12 ft × 10 ft means 12 feet on one axis, 10 feet on the other)
+2. WINDOWS: Place windows EXACTLY where described (e.g., "centered on the 12 ft wall" means the window is on the longer wall, centered)
+3. DOORS: Place doors EXACTLY where described (e.g., "on the 10 ft wall, 2 ft from corner" means door is on shorter wall, offset from corner)
+4. SCALE: Furniture must be properly scaled to fit within these room dimensions
+5. PERSPECTIVE: Show the room from an angle that reveals both the window wall and door wall if possible`;
+    } else {
+      architecturalInstructions = `Create a beautiful ${style} ${room} interior with professional architecture.
 Include appropriate walls, flooring, windows, and ceiling for the style.`;
+    }
   }
   
   // Build the full prompt using Google's SIMPLE, DIRECT pattern
@@ -633,7 +676,9 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       stylePreference,
       !!roomImage,
       floorPlanAnalysis,
-      placementInstructions
+      placementInstructions,
+      params.roomDescription,
+      params.parsedRoomData
     );
     
     console.log(`\n📝 ANCHOR & COMPOSITE PROMPT:\n${'='.repeat(80)}\n${prompt}\n${'='.repeat(80)}\n`);

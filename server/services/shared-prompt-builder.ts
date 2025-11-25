@@ -17,6 +17,15 @@ export interface PromptBuilderParams {
   }>;
   roomType?: string;
   stylePreference?: string;
+  roomDescription?: string; // User's text-based room specification
+  parsedRoomData?: {
+    dimensions?: { width?: number; depth?: number; height?: number; unit?: string };
+    doorway?: { width?: number; height?: number; unit?: string };
+    ceilingHeight?: number;
+    confidence?: number;
+    warnings?: string[];
+    rawText?: string;
+  };
 }
 
 export interface PromptBuilderResult {
@@ -119,6 +128,36 @@ export async function buildSharedPrompt(params: PromptBuilderParams): Promise<Pr
 ${roomAnalysis}
 
 ⚠️ STRICT REQUIREMENT: Recreate this EXACT room structure. ALL walls, floors, ceiling, windows, doors, built-in features, and architectural details MUST match the description above PRECISELY. Only furniture should be different - the room itself must be IDENTICAL.`;
+  } else if (params.roomDescription || params.parsedRoomData) {
+    // Text-to-image mode with room specifications: Use user's room description
+    let roomSpec = '';
+    
+    // Use parsed data if available (more structured)
+    if (params.parsedRoomData?.dimensions) {
+      const dims = params.parsedRoomData.dimensions;
+      const width = dims.width || dims.depth || '?';
+      const depth = dims.depth || dims.width || '?';
+      roomSpec = `📏 ROOM DIMENSIONS: ${width} x ${depth} ${dims.unit || 'feet'}`;
+      if (params.parsedRoomData.ceilingHeight) {
+        roomSpec += `, Ceiling Height: ${params.parsedRoomData.ceilingHeight} feet`;
+      }
+    }
+    
+    // Add raw room description - this contains window/door placement details
+    if (params.roomDescription) {
+      roomSpec += roomSpec ? '\n\n' : '';
+      roomSpec += `📋 FULL ROOM SPECIFICATION:\n${params.roomDescription}`;
+    }
+    
+    architecturalContext = `\n\n🏠 CREATE THIS EXACT ROOM LAYOUT:
+${roomSpec}
+
+⚠️ CRITICAL - FOLLOW THESE ARCHITECTURAL REQUIREMENTS:
+1. BUILD the room with the EXACT dimensions specified above
+2. WINDOWS: Place windows EXACTLY where described in the specification
+3. DOORS: Place doors EXACTLY where described in the specification
+4. SCALE: Furniture must be properly scaled to fit within these room dimensions
+5. PERSPECTIVE: Show the room from an angle that reveals the window and door placement`;
   } else {
     // Text-to-image mode: Generic room description (no preservation constraints)
     architecturalContext = `\n\n✨ Create a beautiful, cohesive ${params.stylePreference || 'modern'} ${params.roomType || 'room'} with professional interior design.`;
