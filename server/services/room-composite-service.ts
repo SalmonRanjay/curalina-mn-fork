@@ -112,23 +112,63 @@ export async function compositeWithSmoothEdges(
     console.log(`   Interior changes: ${deltaPercentage.toFixed(1)}%`);
     console.log(`   Edge changes (rejected): ${edgePercentage.toFixed(1)}%`);
     
-    // If too much of the image changed, Gemini probably repainted walls
-    // In this case, fall back to using Gemini's render directly
+    // ALWAYS composite to preserve original room architecture
+    // Even with high delta, we extract furniture-like regions and overlay on original
+    let workingMask = maskBuffer;
+    
     if (deltaPercentage > 50) {
-      console.log(`   ⚠️ HIGH DELTA (${deltaPercentage.toFixed(1)}%) - too much changed, using Gemini render directly`);
-      return {
-        success: true,
-        imageBase64: renderedImageBase64,
-        deltaPercentage
-      };
+      console.log(`   ⚠️ HIGH DELTA (${deltaPercentage.toFixed(1)}%) - applying stricter furniture extraction`);
+      
+      // SECOND PASS: Re-run with MUCH higher threshold to only get obvious furniture
+      const strictThreshold = threshold + 30; // Much stricter (e.g., 30 -> 60)
+      console.log(`   🔧 Re-filtering with strict threshold: ${strictThreshold}`);
+      
+      const strictMask = Buffer.alloc(pixelCount);
+      let strictChangedPixels = 0;
+      
+      for (let i = 0; i < pixelCount; i++) {
+        const srcIdx = i * channels;
+        const x = i % width;
+        const y = Math.floor(i / width);
+        
+        const oR = originalRaw[srcIdx];
+        const oG = originalRaw[srcIdx + 1];
+        const oB = originalRaw[srcIdx + 2];
+        
+        const rR = renderedResized[srcIdx];
+        const rG = renderedResized[srcIdx + 1];
+        const rB = renderedResized[srcIdx + 2];
+        
+        const diff = Math.max(
+          Math.abs(oR - rR),
+          Math.abs(oG - rG),
+          Math.abs(oB - rB)
+        );
+        
+        // Higher threshold + larger edge margin
+        const largeEdgeMargin = 10;
+        const touchesEdge = x < largeEdgeMargin || x >= width - largeEdgeMargin || 
+                           y < largeEdgeMargin || y >= height - largeEdgeMargin;
+        
+        if (diff > strictThreshold && !touchesEdge) {
+          strictMask[i] = 255;
+          strictChangedPixels++;
+        } else {
+          strictMask[i] = 0;
+        }
+      }
+      
+      const strictDelta = (strictChangedPixels / pixelCount) * 100;
+      console.log(`   📊 After strict filter: ${strictDelta.toFixed(1)}% (was ${deltaPercentage.toFixed(1)}%)`);
+      workingMask = strictMask;
     }
     
     // Apply minimal edge feathering then RE-BINARIZE to prevent gradient bleed
-    let processedMask = maskBuffer;
+    let processedMask = workingMask;
     
     if (edgeBlur > 0) {
       // Very light blur just to soften edges
-      const blurred = await sharp(maskBuffer, {
+      const blurred = await sharp(workingMask, {
         raw: { width, height, channels: 1 }
       })
         .blur(edgeBlur)
@@ -152,7 +192,10 @@ export async function compositeWithSmoothEdges(
     
     // Connected component rejection: find large regions that are likely walls
     // Simple flood-fill based area calculation
-    const maxFurnitureArea = pixelCount * 0.12; // Max 12% for single furniture piece
+    // When delta is high, be STRICTER about what counts as furniture (smaller max)
+    const maxRegionPercent = deltaPercentage > 50 ? 0.08 : 0.12; // 8% when high delta, 12% normal
+    const maxFurnitureArea = pixelCount * maxRegionPercent;
+    console.log(`   Max furniture region: ${(maxRegionPercent * 100).toFixed(0)}% of image`);
     const regionLabels = new Int32Array(pixelCount);
     let currentLabel = 0;
     const regionSizes: Map<number, number> = new Map();
