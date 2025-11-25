@@ -1,0 +1,62 @@
+Here is the technical breakdown of how I designed the Multi-Modal Generation Strategy in services/geminiService.ts.
+1. The Strategy: "Anchor & Composite"
+We use Gemini 2.5 Flash because it is a "Multimodal" model—it can "see" multiple images at once and understand text simultaneously.
+My strategy involves two specific steps:
+The Anchor (Structure): I pass the user's uploaded room photo as the first reference. I tell Gemini, "This is the geometry. Do not change the walls, floor, or window placement."
+The Composites (Products): I pass the actual cropped images of your products (from the database) as secondary references. I tell Gemini, "Here is a sofa. Here is a chair. Place THESE specific objects into the Anchor room."
+2. How the Data is Passed (Technical Flow)
+The Gemini API accepts an array called parts. We construct this array dynamically:
+Part 1: The Prompt (Text) - The set of instructions.
+Part 2: The Room (Image) - Encoded as Base64.
+Part 3...N: The Products (Images) - Each selected product's image, encoded as Base64.
+3. The Exact Prompt Structure
+Here is the actual prompt template used in the code. I designed it to force the AI to respect the inputs rather than "hallucinating" random furniture.
+code
+Text
+Professional Interior Design Render. 8k Resolution. Photorealistic.
+Task: Redesign the room to look exactly like the user's vision using specific products.
+
+[Style Context]
+Style Vibe: Organic Modern. Colors: Cream, Oak, Beige.
+
+ARCHITECTURAL INSTRUCTIONS:
+PRESERVE EXACT ARCHITECTURE: [Analysis from Gemini Vision]. 
+REFERENCE IMAGE 1: The user's actual room. Keep walls, windows, floor, and perspective EXACTLY as seen in this image. Replace existing furniture.
+
+CRITICAL PRODUCT PLACEMENT INSTRUCTIONS:
+You are provided with reference images for specific furniture items. You MUST composite these exact items into the scene.
+
+REFERENCE IMAGE 2: [Seating] Cloud Boucle Sofa.
+ACTION: Place this exact item in the room.
+Visual Details: Curved cream boucle sofa with low profile and rounded arms.
+Dimensions: 84x32x38 inches.
+
+REFERENCE IMAGE 3: [Tables] Travertine Coffee Table.
+ACTION: Place this exact item in the room.
+Visual Details: Rectangular travertine coffee table with cylindrical legs.
+
+COMPOSITION RULES:
+- Harmonious arrangement matching the room's scale.
+- Correct lighting and shadows for the inserted products.
+4. Why This Works
+Visual Fidelity: By sending the actual pixel data of the sofa (Reference Image 2), Gemini replicates the texture (Boucle) and shape (Curved) much better than if we just wrote "Cream Sofa."
+Spatial Integrity: By sending the room photo (Reference Image 1), Gemini understands where the floor ends and the wall begins, ensuring the sofa sits on the floor, not floating in space.
+5. Code Implementation
+You can see this logic in services/geminiService.ts inside the generateRoomRender function:
+code
+TypeScript
+// Pushing the User's Room Image
+parts.push({
+    inlineData: { mimeType: 'image/jpeg', data: roomData }
+});
+
+// Pushing Product Images Loop
+for (const p of selectedProducts) {
+    if (p.imageUrl) {
+        const base64 = await urlToBase64(p.imageUrl);
+        parts.push({
+            inlineData: { mimeType: 'image/jpeg', data: base64 }
+        });
+        // ... append specific text instructions for this image
+    }
+}
