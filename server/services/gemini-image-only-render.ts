@@ -211,8 +211,12 @@ async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mim
  * Select front view image for each product
  * Returns array of product images to use as references
  */
-function selectProductFrontViewImages(products: Product[]): Array<{ url: string; productName: string; sku: string }> {
-  const productImages: Array<{ url: string; productName: string; sku: string }> = [];
+function selectProductFrontViewImages(products: Product[]): { 
+  selected: Array<{ url: string; productName: string; sku: string }>;
+  dropped: Array<{ productName: string; sku: string; reason: string }>;
+} {
+  const selected: Array<{ url: string; productName: string; sku: string }> = [];
+  const dropped: Array<{ productName: string; sku: string; reason: string }> = [];
   
   for (const product of products) {
     // Priority: frontView > first image in array
@@ -227,18 +231,26 @@ function selectProductFrontViewImages(products: Product[]): Array<{ url: string;
     }
     
     if (imageUrl && isValidImageUrl(imageUrl)) {
-      productImages.push({
+      selected.push({
         url: imageUrl,
         productName: product.name,
         sku: product.sku
       });
     } else {
-      console.warn(`⚠️  Product ${product.name} (${product.sku}) has no valid image - SKIPPED from rendering`);
-      console.warn(`   Images field: ${JSON.stringify(product.images)?.substring(0, 200)}`);
+      const reason = !imageUrl ? 'No image URL found' : 'Invalid image URL format';
+      dropped.push({ productName: product.name, sku: product.sku, reason });
+      console.error(`❌ PRODUCT DROPPED: ${product.name} (${product.sku}) - ${reason}`);
+      console.error(`   Images field: ${JSON.stringify(product.images)?.substring(0, 200)}`);
     }
   }
   
-  return productImages;
+  if (dropped.length > 0) {
+    console.error(`\n🚨 WARNING: ${dropped.length} product(s) will NOT appear in render due to missing/invalid images:`);
+    dropped.forEach(d => console.error(`   - ${d.productName} (${d.sku}): ${d.reason}`));
+    console.error(`\n`);
+  }
+  
+  return { selected, dropped };
 }
 
 /**
@@ -381,6 +393,7 @@ export interface ImageOnlyRenderResult {
   error?: string;
   productsUsed: number;
   productsSentToAI?: string[]; // SKUs of products actually sent to AI (after image filtering)
+  droppedProducts?: Array<{ productName: string; sku: string; reason: string }>; // Products excluded due to image issues
 }
 
 /**
@@ -470,10 +483,12 @@ Include appropriate walls, flooring, windows, and ceiling for the style.`;
 Replace the existing furniture with these exact items from the reference images: ${productList}.
 
 MANDATORY PRODUCT RULES:
-1. ALL ${productRefs.length} PRODUCTS MUST APPEAR in the final image - do not omit any product.
-2. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
-3. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
-4. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
+1. EXACTLY ${productRefs.length} PRODUCTS - ALL must appear, NO extras. Count: ${productRefs.length} items only.
+2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 2-${productRefs.length + 1}.
+3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
+4. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
+5. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
+6. Pedestals, side tables, and small accent pieces MUST be included - place them prominently.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
@@ -491,11 +506,12 @@ Arrange the furniture naturally in the room with proper perspective and realisti
     prompt = `Create a beautiful ${style} ${room} interior featuring these exact furniture pieces from the reference images: ${productList}.
 
 MANDATORY PRODUCT RULES:
-1. ALL ${productRefs.length} PRODUCTS MUST APPEAR in the final image - do not omit any product.
-2. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
-3. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
-4. Ottomans and small items MUST be included - place them naturally near seating or as accent pieces.
+1. EXACTLY ${productRefs.length} PRODUCTS - ALL must appear, NO extras. Count: ${productRefs.length} items only.
+2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 1-${productRefs.length}.
+3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
+4. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
 5. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
+6. Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
@@ -558,15 +574,20 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     // Step 2: Select and fetch product front view images (THE COMPOSITES)
     // Use limitedProducts for better fidelity
-    const productImageRefs = selectProductFrontViewImages(limitedProducts);
+    const { selected: productImageRefs, dropped: droppedProducts } = selectProductFrontViewImages(limitedProducts);
     console.log(`📸 Selected ${productImageRefs.length} product images (COMPOSITES)`);
+    
+    if (droppedProducts.length > 0) {
+      console.error(`🚨 ${droppedProducts.length} products DROPPED due to image issues - these will NOT appear in render!`);
+    }
     
     if (productImageRefs.length === 0) {
       return {
         success: false,
         error: 'No valid product images found',
         productsUsed: 0,
-        productsSentToAI: []
+        productsSentToAI: [],
+        droppedProducts
       };
     }
     
@@ -1246,7 +1267,11 @@ async function executeProductBatchPass(
 ): Promise<{ success: boolean; imageBase64?: string; error?: string; productsSentToAI: string[] }> {
   try {
     // Get product images
-    const productImageRefs = selectProductFrontViewImages(products);
+    const { selected: productImageRefs, dropped: droppedProducts } = selectProductFrontViewImages(products);
+    
+    if (droppedProducts.length > 0) {
+      console.error(`🚨 Batch ${batchIndex + 1}: ${droppedProducts.length} products DROPPED - won't appear in render`);
+    }
     
     if (productImageRefs.length === 0) {
       return { success: false, error: 'No valid product images', productsSentToAI: [] };
