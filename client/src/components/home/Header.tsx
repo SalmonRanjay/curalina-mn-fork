@@ -17,7 +17,7 @@ export default function Header() {
 
   const navLinks = [
     { label: "How It Works", href: "#how-it-works", isAnchor: true },
-    { label: "Style Quiz", href: "/quiz", isAnchor: false },
+    { label: "Styles", href: "/#styles", isAnchor: true },
     { label: "Pricing", href: "/pricing", isAnchor: false },
     { label: "The Edit", href: "/blog", isAnchor: false },
   ];
