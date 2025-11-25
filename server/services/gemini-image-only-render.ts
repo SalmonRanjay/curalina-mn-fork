@@ -13,6 +13,64 @@ const ai = new GoogleGenAI({
 });
 
 /**
+ * Analyze room architecture using Gemini Vision BEFORE rendering
+ * This gives the model a detailed understanding of what to preserve
+ */
+async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<string> {
+  try {
+    console.log(`\n🔍 ANALYZING ROOM ARCHITECTURE with Gemini Vision...`);
+    
+    // Extract base64 data
+    const base64Data = roomImageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const mimeType = roomImageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [
+          {
+            text: `Analyze this room's architecture in detail. Provide a SHORT, DENSE description (max 150 words) covering:
+
+1. WALLS: Color, texture, position of each wall visible
+2. FLOOR: Material, color, pattern
+3. CEILING: Height, color, any features
+4. WINDOWS: Exact position, size, shape, what's visible through them
+5. DOORS: Position, style, color
+6. LIGHTING: Natural light direction, any fixtures
+7. PERSPECTIVE: Camera angle, vanishing points
+8. EXISTING ELEMENTS: Built-ins, moldings, architectural details
+
+Be PRECISE and SPECIFIC. This description will guide an AI to recreate this EXACT room structure.
+Format: Dense paragraph, no bullet points.`
+          },
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType
+            }
+          }
+        ]
+      }]
+    });
+    
+    const analysis = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    if (analysis.length > 0) {
+      console.log(`   ✅ Room analysis complete (${analysis.length} chars)`);
+      console.log(`   📝 ${analysis.substring(0, 200)}...`);
+      return analysis;
+    }
+    
+    console.log(`   ⚠️ Room analysis returned empty`);
+    return '';
+  } catch (error) {
+    console.error(`   ❌ Room analysis failed:`, error);
+    return '';
+  }
+}
+
+/**
  * Resolve relative URLs to absolute URLs for fetching
  * Handles /public-objects/... and other relative paths
  */
@@ -893,6 +951,11 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     console.log(`   ✅ Original room stored for delta compositing`);
     
     // ========================================
+    // STEP 0.5: Analyze room architecture with Gemini Vision
+    // ========================================
+    const roomArchitectureAnalysis = await analyzeRoomWithGeminiVision(trueOriginalBase64);
+    
+    // ========================================
     // STEP 1: Room Lock Pass
     // ========================================
     console.log(`\n📍 STEP 1/${totalSteps}: Room Lock Pass`);
@@ -928,7 +991,7 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       console.log(`\n📦 STEP ${stepNum}/${totalSteps}: Product Batch ${batchIndex + 1}`);
       console.log(`   Products: ${batch.map(p => p.name).join(', ')}`);
       
-      // Pass original room image for architecture reference (batch 2+ will use it)
+      // Pass original room image AND analysis for architecture reference
       const batchResult = await executeProductBatchPass(
         currentAnchor,
         batch,
@@ -936,7 +999,8 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
         room,
         batchIndex,
         productBatches.length,
-        originalRoomBase64  // Original room for architecture preservation
+        originalRoomBase64,         // Original room image for architecture preservation
+        roomArchitectureAnalysis    // Detailed room analysis from Gemini Vision
       );
       
       if (!batchResult.success || !batchResult.imageBase64) {
@@ -1079,6 +1143,7 @@ Output: The same room ready for furniture, with identical architecture.`;
  * Step 2+: Product Batch Pass
  * Adds a batch of products to the current anchor image
  * Now includes originalRoomBase64 as a reference for architecture preservation
+ * roomArchitectureAnalysis provides detailed text description of the room to preserve
  */
 async function executeProductBatchPass(
   anchorBase64: string,
@@ -1087,7 +1152,8 @@ async function executeProductBatchPass(
   room: string,
   batchIndex: number,
   totalBatches: number,
-  originalRoomBase64?: string // Original room image for architecture reference
+  originalRoomBase64?: string, // Original room image for architecture reference
+  roomArchitectureAnalysis?: string // Detailed room analysis from Gemini Vision
 ): Promise<{ success: boolean; imageBase64?: string; error?: string; productsSentToAI: string[] }> {
   try {
     // Get product images
@@ -1155,11 +1221,20 @@ async function executeProductBatchPass(
       .map((ref, index) => `the "${ref.productName}" from image ${productImageStartIndex + index}`)
       .join(' and ');
     
+    // Build room architecture section from analysis
+    const roomArchitectureSection = roomArchitectureAnalysis 
+      ? `
+
+🏠 ROOM ARCHITECTURE TO PRESERVE EXACTLY:
+${roomArchitectureAnalysis}
+
+` : '';
+
     // Enhanced prompt that references ORIGINAL room for batch 2+
     const keepExistingText = isFirstBatch 
-      ? '' 
+      ? roomArchitectureSection
       : `
-
+${roomArchitectureSection}
 ⚠️ CRITICAL PRESERVATION REQUIREMENTS:
 - ROOM ARCHITECTURE: Match Image 1 (ORIGINAL ROOM) EXACTLY - same walls, windows, floor, ceiling, lighting, camera angle
 - EXISTING FURNITURE: Keep all furniture from Image 2 (current scene) exactly as shown
