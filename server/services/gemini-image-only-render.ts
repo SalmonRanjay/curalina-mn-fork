@@ -718,20 +718,21 @@ async function executeRoomLockPass(
       return { success: false, error: 'Failed to fetch room image' };
     }
     
-    // Simple room lock prompt - just preserve the room
-    const prompt = `This is a ${style} ${room}. Create a clean, empty version of this exact room ready for furniture.
+    // Room lock prompt - preserve EVERYTHING architectural including window shapes
+    const prompt = `Recreate this ${style} ${room} EXACTLY as shown, preserving every architectural detail.
 
-Keep the room EXACTLY the same:
-- Same walls, wall colors, wall textures
-- Same windows in exact positions
-- Same floor and flooring
-- Same ceiling
-- Same lighting
-- Same camera angle and perspective
+CRITICAL - DO NOT CHANGE:
+- Window shapes, sizes, frames, and positions (keep arched windows arched, rectangular windows rectangular)
+- Wall colors, textures, and surfaces
+- Floor pattern and material
+- Ceiling design, beams, and height
+- All doors and doorframes
+- Camera angle and perspective
+- Natural lighting direction
 
-Remove any existing furniture but keep all architectural elements identical. The room should look empty and ready for new furniture to be added.
+You may remove loose furniture items, but the room's architecture must be PIXEL-PERFECT identical to the original. The window design is especially important - preserve its exact shape and style.
 
-Photorealistic interior photo.`;
+Output: The same room ready for furniture, with identical architecture.`;
     
     const parts = [
       { text: prompt },
@@ -842,17 +843,24 @@ async function executeProductBatchPass(
       .map((ref, index) => `the "${ref.productName}" from image ${index + 2}`)
       .join(' and ');
     
-    // Enhanced batch prompt with product details
-    const prompt = `Add these furniture pieces to the room in image 1: ${productList}.
+    // Enhanced batch prompt with explicit instruction to KEEP existing furniture
+    const isFirstBatch = batchIndex === 0;
+    const keepExistingText = isFirstBatch 
+      ? '' 
+      : `\n\nKEEP ALL EXISTING FURNITURE: The room in image 1 already has furniture from previous steps. DO NOT remove or change any existing furniture - only ADD the new pieces listed below.`;
+    
+    const prompt = `Add these furniture pieces to the room in image 1: ${productList}.${keepExistingText}
 
-CRITICAL - For EACH piece, replicate its EXACT appearance from its reference image:
+NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
 ${productDescriptions.map((desc, i) => `- ${desc}`).join('\n')}
 
-Room preservation: Keep walls, windows, floor, ceiling, lighting, camera angle EXACTLY the same.
+CRITICAL RULES:
+1. KEEP all existing furniture in image 1 exactly where it is (do not remove, move, or modify)
+2. KEEP room architecture identical (walls, windows, floor, ceiling, camera angle)
+3. ADD new furniture with EXACT colors, shapes, textures from their reference images
+4. Place new items naturally with proper perspective and shadows
 
-Product fidelity: Copy the EXACT shape, proportions, color, texture, and material from each reference image. The furniture in the render must look identical to the reference photos.
-
-Place naturally with correct perspective, scale, and shadows. ${style} style interior.`;
+${style} style interior. Photorealistic render.`;
     
     // Build parts
     const parts: any[] = [
