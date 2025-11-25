@@ -346,7 +346,7 @@ Design a well-lit room with appropriate walls, windows, and flooring. Arrange th
 // Maximum products to send to AI for optimal fidelity
 // More products = lower accuracy per product
 // Google's multi-image composition works best with 3-5 reference images
-const MAX_PRODUCTS_FOR_FIDELITY = 5;
+const MAX_PRODUCTS_FOR_FIDELITY = 7;
 
 /**
  * Generate render using the "Anchor & Composite" multi-modal strategy
@@ -566,8 +566,8 @@ async function processGeminiResponse(
 // 2. Product Batch Passes: Add 2-3 products at a time (large items first)
 // ============================================================================
 
-const MAX_PRODUCTS = 5; // Hard limit for model reliability
-const PRODUCTS_PER_BATCH = 3; // 2-3 products per batch = 2 batches for 5 products
+const MAX_PRODUCTS = 7; // Hard limit for model reliability
+const PRODUCTS_PER_BATCH = 3; // 3 products per batch = 3 batches for 7 products (3+3+1)
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
 
 /**
