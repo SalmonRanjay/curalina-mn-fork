@@ -234,86 +234,165 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     }
   ],
   'Dining Room': [
+    // Zone 1: Dining table centered in room (anchor piece)
     {
-      id: 'dining_center',
-      name: 'Dining Table Zone',
-      bounds: { x: 0.3, y: 0.3, width: 0.4, height: 0.4 },
+      id: 'dining_table_zone',
+      name: 'Dining Table Area',
+      bounds: { x: 0.25, y: 0.3, width: 0.5, height: 0.4 },
       priority: 1,
-      allowedCategories: ['dining_table', 'dining_seating'],
-      maxItems: 9, // Table + 8 chairs
+      allowedCategories: ['dining_table'],
+      maxItems: 1,
       orientation: 'center',
-      clearance: 0.1, // Extra clearance for chairs
-      adjacentZones: ['buffet_wall'],
+      clearance: 0.1,
+      adjacentZones: ['chair_zone'],
       heightTier: 'floor'
     },
+    // Zone 2: Dining chairs around table
+    {
+      id: 'chair_zone',
+      name: 'Dining Chairs Zone',
+      bounds: { x: 0.15, y: 0.2, width: 0.7, height: 0.6 },
+      priority: 2,
+      allowedCategories: ['dining_seating'],
+      maxItems: 8,
+      orientation: 'center',
+      clearance: 0.08,
+      heightTier: 'floor'
+    },
+    // Zone 3: Sideboard/buffet against wall
     {
       id: 'buffet_wall',
       name: 'Buffet/Sideboard Wall',
-      bounds: { x: 0.1, y: 0.75, width: 0.8, height: 0.15 },
-      priority: 2,
-      allowedCategories: ['storage', 'decor'],
-      maxItems: 3,
+      bounds: { x: 0.1, y: 0.85, width: 0.8, height: 0.15 },
+      priority: 3,
+      allowedCategories: ['storage'],
+      maxItems: 1,
       orientation: 'wall',
       clearance: 0.05,
       heightTier: 'floor'
     },
+    // Zone 4: Chandelier centered over table
     {
       id: 'chandelier_zone',
-      name: 'Overhead Lighting Zone',
+      name: 'Chandelier Zone',
       bounds: { x: 0.4, y: 0.4, width: 0.2, height: 0.2 },
-      priority: 3,
+      priority: 4,
       allowedCategories: ['lighting'],
       maxItems: 1,
       orientation: 'center',
       clearance: 0.0,
-      heightTier: 'wall' // Ceiling mounted
+      heightTier: 'wall'
+    },
+    // Zone 5: Area rug under dining table
+    {
+      id: 'dining_rug',
+      name: 'Dining Rug Zone',
+      bounds: { x: 0.1, y: 0.15, width: 0.8, height: 0.7 },
+      priority: 5,
+      allowedCategories: ['decor'],
+      maxItems: 1,
+      orientation: 'center',
+      clearance: 0.0,
+      heightTier: 'floor'
+    },
+    // Zone 6: Wall art above buffet/sideboard
+    {
+      id: 'dining_wall_art',
+      name: 'Dining Wall Art Zone',
+      bounds: { x: 0.25, y: 0.0, width: 0.5, height: 0.12 },
+      priority: 6,
+      allowedCategories: ['decor'],
+      maxItems: 1,
+      orientation: 'wall',
+      clearance: 0.0,
+      heightTier: 'wall'
     }
   ],
   'Home Office': [
+    // Zone 1: Desk against wall (anchor piece)
     {
-      id: 'work_zone',
+      id: 'desk_zone',
       name: 'Desk Area',
-      bounds: { x: 0.25, y: 0.6, width: 0.5, height: 0.3 },
+      bounds: { x: 0.25, y: 0.7, width: 0.5, height: 0.25 },
       priority: 1,
-      allowedCategories: ['desk', 'office_seating'],
-      maxItems: 2,
+      allowedCategories: ['desk'],
+      maxItems: 1,
       orientation: 'wall',
       clearance: 0.08,
-      adjacentZones: ['storage_zone'],
+      adjacentZones: ['chair_zone', 'task_lighting'],
       heightTier: 'floor'
     },
+    // Zone 2: Office chair at desk
     {
-      id: 'storage_zone',
-      name: 'Storage/Bookshelf Wall',
-      bounds: { x: 0.05, y: 0.2, width: 0.15, height: 0.6 },
+      id: 'office_chair_zone',
+      name: 'Office Chair Zone',
+      bounds: { x: 0.35, y: 0.5, width: 0.3, height: 0.2 },
       priority: 2,
+      allowedCategories: ['office_seating'],
+      maxItems: 1,
+      orientation: 'focal',
+      clearance: 0.1,
+      heightTier: 'floor'
+    },
+    // Zone 3: Storage/bookshelves along wall
+    {
+      id: 'storage_wall',
+      name: 'Storage/Bookshelf Wall',
+      bounds: { x: 0.0, y: 0.2, width: 0.15, height: 0.6 },
+      priority: 3,
       allowedCategories: ['storage'],
       maxItems: 2,
       orientation: 'wall',
       clearance: 0.05,
       heightTier: 'floor'
     },
-    {
-      id: 'meeting_zone',
-      name: 'Guest Seating Area',
-      bounds: { x: 0.75, y: 0.3, width: 0.2, height: 0.3 },
-      priority: 3,
-      allowedCategories: ['accent_seating', 'side_table'],
-      maxItems: 2,
-      orientation: 'corner',
-      clearance: 0.05,
-      heightTier: 'floor'
-    },
+    // Zone 4: Task lamp on desk surface
     {
       id: 'task_lighting',
       name: 'Task Lighting Zone',
-      bounds: { x: 0.3, y: 0.7, width: 0.4, height: 0.1 },
+      bounds: { x: 0.6, y: 0.75, width: 0.15, height: 0.15 },
       priority: 4,
       allowedCategories: ['lighting'],
       maxItems: 1,
       orientation: 'focal',
       clearance: 0.0,
       heightTier: 'surface'
+    },
+    // Zone 5: Guest seating area
+    {
+      id: 'guest_zone',
+      name: 'Guest Seating Area',
+      bounds: { x: 0.75, y: 0.3, width: 0.2, height: 0.35 },
+      priority: 5,
+      allowedCategories: ['accent_seating', 'side_table'],
+      maxItems: 2,
+      orientation: 'corner',
+      clearance: 0.05,
+      heightTier: 'floor'
+    },
+    // Zone 6: Area rug under desk/seating
+    {
+      id: 'office_rug',
+      name: 'Office Rug Zone',
+      bounds: { x: 0.15, y: 0.2, width: 0.6, height: 0.6 },
+      priority: 6,
+      allowedCategories: ['decor'],
+      maxItems: 1,
+      orientation: 'center',
+      clearance: 0.0,
+      heightTier: 'floor'
+    },
+    // Zone 7: Wall art above desk or storage
+    {
+      id: 'office_wall_art',
+      name: 'Office Wall Art Zone',
+      bounds: { x: 0.3, y: 0.9, width: 0.4, height: 0.1 },
+      priority: 7,
+      allowedCategories: ['decor'],
+      maxItems: 1,
+      orientation: 'wall',
+      clearance: 0.0,
+      heightTier: 'wall'
     }
   ]
 };
