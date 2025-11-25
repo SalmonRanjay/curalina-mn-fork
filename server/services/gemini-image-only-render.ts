@@ -655,27 +655,78 @@ function orderProductsForBatching(products: Product[]): Product[] {
 
 /**
  * Get priority weight for a product based on its category/name
+ * Uses CATEGORY_PRIORITY_WEIGHTS map with comprehensive keyword matching
  */
 function getCategoryWeight(product: Product): number {
-  // Match category from product name (most reliable)
   const name = product.name.toLowerCase();
   
-  // Check for specific keywords in name
-  if (name.includes('sofa') || name.includes('sectional')) return 100;
-  if (name.includes('bed')) return 95;
-  if (name.includes('dining table')) return 90;
-  if (name.includes('cabinet') || name.includes('sideboard') || name.includes('buffet')) return 80;
-  if (name.includes('console')) return 70;
-  if (name.includes('coffee table')) return 65;
-  if (name.includes('dining chair')) return 60;
-  if (name.includes('rug')) return 60;
-  if (name.includes('chair') || name.includes('ottoman')) return 50;
-  if (name.includes('bench') || name.includes('stool')) return 45;
-  if (name.includes('side table') || name.includes('accent table') || name.includes('end table')) return 40;
-  if (name.includes('lamp')) return 25;
-  if (name.includes('pedestal')) return 35; // Pedestal sets are medium-sized
+  // Try to match against all keys in CATEGORY_PRIORITY_WEIGHTS
+  // Check for exact category matches in product name first
+  for (const [category, weight] of Object.entries(CATEGORY_PRIORITY_WEIGHTS)) {
+    if (name.includes(category.toLowerCase())) {
+      return weight;
+    }
+  }
   
-  // Default weight for unknown categories
+  // Extended keyword matching for common variations
+  // Tier 1: Primary anchors (100)
+  if (name.includes('sofa') || name.includes('sectional') || name.includes('couch')) return 100;
+  
+  // Tier 1.5: Beds (95)
+  if (name.includes('bed') && !name.includes('daybed')) return 95;
+  
+  // Tier 2: Dining tables (90)
+  if (name.includes('dining table') || (name.includes('table') && name.includes('dining'))) return 90;
+  
+  // Tier 3: Large storage (80)
+  if (name.includes('cabinet') || name.includes('sideboard') || name.includes('buffet') || 
+      name.includes('armoire') || name.includes('wardrobe') || name.includes('hutch')) return 80;
+  
+  // Tier 3.5: Media furniture (75)
+  if (name.includes('media') || name.includes('entertainment') || name.includes('tv stand') ||
+      name.includes('bookcase') || name.includes('bookshelf') || name.includes('shelving')) return 75;
+  
+  // Tier 4: Console tables (70)
+  if (name.includes('console')) return 70;
+  
+  // Tier 5: Coffee tables (65)
+  if (name.includes('coffee table') || (name.includes('coffee') && name.includes('table'))) return 65;
+  
+  // Tier 5.5: Dining chairs and rugs (60)
+  if (name.includes('dining chair') || name.includes('rug') || name.includes('carpet')) return 60;
+  
+  // Tier 6: Accent seating (55)
+  if (name.includes('accent chair') || name.includes('armchair') || name.includes('lounge chair')) return 55;
+  
+  // Tier 6.5: General chairs and ottomans (50)
+  if (name.includes('chair') || name.includes('ottoman') || name.includes('daybed')) return 50;
+  
+  // Tier 7: Benches and stools (45)
+  if (name.includes('bench') || name.includes('stool')) return 45;
+  
+  // Tier 8: Small tables (40)
+  if (name.includes('side table') || name.includes('accent table') || name.includes('end table') ||
+      name.includes('nightstand') || name.includes('night stand')) return 40;
+  
+  // Tier 8.5: Pedestal sets (35)
+  if (name.includes('pedestal')) return 35;
+  
+  // Tier 9: Floor lamps (30)
+  if (name.includes('floor lamp')) return 30;
+  
+  // Tier 10: Table lamps and pendants (25)
+  if (name.includes('lamp') || name.includes('pendant') || name.includes('chandelier') || 
+      name.includes('sconce') || name.includes('light')) return 25;
+  
+  // Tier 11: Decor (15)
+  if (name.includes('decor') || name.includes('vase') || name.includes('planter') ||
+      name.includes('sculpture') || name.includes('figurine')) return 15;
+  
+  // Tier 12: Art and mirrors (10)
+  if (name.includes('art') || name.includes('mirror') || name.includes('frame') ||
+      name.includes('picture') || name.includes('print')) return 10;
+  
+  // Default weight for unknown items
   return 20;
 }
 
@@ -714,17 +765,28 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
   const style = stylePreference || 'Modern';
   const room = roomType || 'living room';
   
-  // Calculate total steps
-  const productBatches: Product[][] = [];
-  for (let i = 0; i < products.length; i += PRODUCTS_PER_BATCH) {
-    productBatches.push(products.slice(i, i + PRODUCTS_PER_BATCH));
-  }
-  const totalSteps = 1 + productBatches.length; // 1 room lock + N product batches
+  // SORT PRODUCTS: Large anchor items first, small accents last
+  const sortedProducts = orderProductsForBatching(products);
   
   console.log(`\n🔄 MULTI-STEP RENDER PIPELINE`);
   console.log(`   Total products: ${products.length}`);
   console.log(`   Batch size: ${PRODUCTS_PER_BATCH}`);
-  console.log(`   Total steps: ${totalSteps} (1 room lock + ${productBatches.length} product batches)`);
+  
+  // Log the sorted order with weights for debugging
+  console.log(`\n📋 PRODUCT ORDER (large→small):`);
+  sortedProducts.forEach((p, i) => {
+    const weight = getCategoryWeight(p);
+    console.log(`   ${i + 1}. ${p.name} (weight: ${weight})`);
+  });
+  
+  // Create batches from SORTED products
+  const productBatches: Product[][] = [];
+  for (let i = 0; i < sortedProducts.length; i += PRODUCTS_PER_BATCH) {
+    productBatches.push(sortedProducts.slice(i, i + PRODUCTS_PER_BATCH));
+  }
+  const totalSteps = 1 + productBatches.length; // 1 room lock + N product batches
+  
+  console.log(`\n   Total steps: ${totalSteps} (1 room lock + ${productBatches.length} product batches)`);
   
   const allProductsSentToAI: string[] = [];
   let stepsCompleted = 0;
