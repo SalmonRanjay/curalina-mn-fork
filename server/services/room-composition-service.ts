@@ -549,13 +549,34 @@ function detectFunctionalCategory(product: Product): string[] {
     categories.add('bed');
   }
   
+  // IMPORTANT: Detect if product is primarily a chair (word boundary match)
+  // Use word boundary to allow "Chairside Table" while blocking "Dining Chair"
+  // A "Dining Chair" should NEVER be categorized as "dining_table" even if description mentions "dining table"
+  const isChairProduct = /\bchair(s)?\b/i.test(productName) && !productName.toLowerCase().includes('chairside');
+  const isTableProduct = /\btable(s)?\b/i.test(productName);
+  
+  // Seating detection - RUN FIRST to prevent chairs from being categorized as tables
+  if (/\bchair(s)?\b/i.test(text) && !text.includes('armchair')) {
+    if (text.includes('dining') || productName.toLowerCase().includes('dining')) {
+      categories.add('dining_seating');
+    } else if (text.includes('office') || text.includes('desk')) {
+      categories.add('office_seating');
+    } else {
+      categories.add('accent_seating');
+    }
+  }
+  
   // Table detection (check console table first since it's more specific)
   // Note: Only match "console table" specifically, not just "console" to avoid false positives
-  if (text.includes('console table') || productName.includes('console table')) {
+  // For dining table: if product name has "chair" as a word AND "dining", it's dining_seating not dining_table
+  const isDiningChair = isChairProduct && productName.toLowerCase().includes('dining');
+  
+  if (text.includes('console table') || productName.toLowerCase().includes('console table') || productName.toLowerCase().includes('chairside')) {
     categories.add('console_table');
   } else if (text.includes('coffee table')) {
     categories.add('coffee_table');
-  } else if (text.includes('dining table')) {
+  } else if ((text.includes('dining table') || productName.toLowerCase().includes('dining table')) && isTableProduct && !isDiningChair) {
+    // For dining table, require "table" in the product name AND exclude dining chairs
     categories.add('dining_table');
   } else if (text.includes('side table') || text.includes('end table') || text.includes('accent table')) {
     categories.add('side_table');
@@ -563,17 +584,6 @@ function detectFunctionalCategory(product: Product): string[] {
     categories.add('nightstand');
   } else if (text.includes('desk') && !text.includes('desktop')) {
     categories.add('desk');
-  }
-  
-  // Seating detection
-  if (text.includes('chair') && !text.includes('armchair')) {
-    if (text.includes('dining')) {
-      categories.add('dining_seating');
-    } else if (text.includes('office') || text.includes('desk')) {
-      categories.add('office_seating');
-    } else {
-      categories.add('accent_seating');
-    }
   }
   if (text.includes('armchair') || text.includes('accent chair') || text.includes('ottoman') || text.includes('pouf')) {
     categories.add('accent_seating');
