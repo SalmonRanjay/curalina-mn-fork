@@ -1,6 +1,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { Product } from "@shared/schema";
 import { applyQCRefinement } from "./stability-ai-qc";
+import { compositeWithSmoothEdges } from "./room-composite-service";
 
 // Initialize Gemini client using Replit AI Integrations
 const ai = new GoogleGenAI({
@@ -567,11 +568,11 @@ async function processGeminiResponse(
 // ============================================================================
 
 const MAX_PRODUCTS = 7; // Hard limit for model reliability
-const PRODUCTS_PER_BATCH = 7; // SINGLE PASS: All products at once to preserve room architecture
+const PRODUCTS_PER_BATCH = 3; // Back to batched approach for product fidelity
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
 
-// NOTE: Multi-batch was causing room architecture drift because Gemini regenerates
-// the entire image each pass. Single-pass preserves the room perfectly.
+// NOTE: Delta compositing solves room drift - we extract furniture from Gemini output
+// and composite it onto the ORIGINAL room image, preserving architecture perfectly.
 
 /**
  * Limits total products to MAX_PRODUCTS
@@ -874,6 +875,24 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
   
   try {
     // ========================================
+    // STEP 0: Fetch and store TRUE original room image
+    // ========================================
+    console.log(`\n📸 Fetching original room image for architecture preservation...`);
+    const trueOriginalRoom = await fetchImageAsBase64(roomImageUrl);
+    if (!trueOriginalRoom) {
+      return {
+        success: false,
+        error: 'Failed to fetch original room image',
+        productsUsed: 0,
+        productsSentToAI: [],
+        stepsCompleted: 0,
+        totalSteps
+      };
+    }
+    const trueOriginalBase64 = `data:${trueOriginalRoom.mimeType};base64,${trueOriginalRoom.data}`;
+    console.log(`   ✅ Original room stored for delta compositing`);
+    
+    // ========================================
     // STEP 1: Room Lock Pass
     // ========================================
     console.log(`\n📍 STEP 1/${totalSteps}: Room Lock Pass`);
@@ -895,7 +914,7 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     
     stepsCompleted = 1;
     let currentAnchor = roomLockResult.imageBase64;
-    // Store original room for architecture reference in batch 2+
+    // Store room lock result for batch 2+ architecture reference
     const originalRoomBase64 = roomLockResult.imageBase64;
     console.log(`   ✅ Room locked successfully`);
     
@@ -940,21 +959,34 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     console.log(`   Products rendered: ${allProductsSentToAI.length}`);
     
     // ========================================
-    // STABILITY AI REFINEMENT PASS - DISABLED
+    // DELTA COMPOSITING: Preserve Original Room
     // ========================================
-    // NOTE: Stability AI Sketch endpoint does global style transfer, not targeted
-    // furniture refinement. It was making renders WORSE by changing all colors/shapes.
-    // Disabled until we implement per-object masking with ControlNet Reference.
-    // 
-    // To re-enable in future: implement refineRenderWithControlNetReference with
-    // per-product segmentation masks for targeted refinement.
-    console.log(`\n🎨 STABILITY AI REFINEMENT: Skipped (global style transfer was degrading quality)`);
+    // Extract furniture from Gemini render and composite onto TRUE original room
+    // This preserves the user's exact room architecture while keeping good product fidelity
+    console.log(`\n🔧 DELTA COMPOSITING: Preserving original room architecture...`);
+    
+    const compositeResult = await compositeWithSmoothEdges(
+      trueOriginalBase64,  // TRUE original room (user's upload)
+      currentAnchor,       // Gemini's render with good furniture
+      25,                  // Pixel difference threshold
+      2                    // Edge blur for smooth blending
+    );
+    
+    let finalImage = currentAnchor;
+    if (compositeResult.success && compositeResult.imageBase64) {
+      finalImage = compositeResult.imageBase64;
+      console.log(`   ✅ Delta composite successful - ${compositeResult.deltaPercentage?.toFixed(1)}% changed`);
+      console.log(`   📍 Original room architecture PRESERVED`);
+    } else {
+      console.log(`   ⚠️ Delta composite failed, using Gemini render as-is`);
+      console.log(`   Error: ${compositeResult.error}`);
+    }
     
     console.log(`\n✅ MULTI-STEP RENDER PIPELINE COMPLETE`);
     
     return {
       success: true,
-      imageBase64: currentAnchor,
+      imageBase64: finalImage,
       productsUsed: allProductsSentToAI.length,
       productsSentToAI: allProductsSentToAI,
       stepsCompleted,
