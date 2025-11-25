@@ -34,6 +34,12 @@ Preferred communication style: Simple, everyday language.
   - **Database Tracking**: Full audit trail with per-product status, old/new URLs, and rename counts
   - **Auto-Resume on Startup**: Interrupted jobs automatically continue where they left off
 - **Zone-Based Placement System**: Configurable room zones with `ROOM_ZONES` definitions, `assignItemsToZones()` for product-to-zone assignment based on functional categories and design rules, and `generateZoneBasedPlacementMatrix()` to create explicit spatial instructions for AI prompts.
+- **Budget Allocation Framework**: Consistent percentage-based budget distribution across room types with anchor piece emphasis:
+  - **Living Room**: Sofa 40% (anchor), Accent Chairs 20%, Tables 15%, Lighting 15%, Rug/Decor 10%
+  - **Bedroom**: Bed 40% (anchor), Nightstands 20%, Dresser/Storage 15%, Lighting 15%, Decor/Bedding 10%
+  - **Dining Room**: Dining Table 35% (anchor), Dining Chairs 25%, Sideboard/Storage 10%, Lighting 15%, Rug 10%, Decor/Styling 5%
+  - **Home Office**: Desk 35% (anchor), Seating 30%, Storage 20%, Lighting 10%, Decor 5%
+  - **Category Mapping**: Context-aware product-to-budget mapping ensures products resolve to valid categories per room type
 - **Product Fidelity System**: Multi-modal approach combining text and visual inputs for AI generation:
   - **Condensed Descriptions**: 40-50 token generation-ready prompts (vs 300-400 word paragraphs) extracting key visual attributes
   - **Real-World Scale**: Automatic dimension extraction and enforcement, comparative ratios between products, human-scale references
