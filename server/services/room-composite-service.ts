@@ -160,6 +160,19 @@ export async function compositeWithSmoothEdges(
       
       const strictDelta = (strictChangedPixels / pixelCount) * 100;
       console.log(`   📊 After strict filter: ${strictDelta.toFixed(1)}% (was ${deltaPercentage.toFixed(1)}%)`);
+      
+      // SAFETY CHECK: If even strict filter shows >40% change, scene replacement is too extreme
+      // In this case, use original room to avoid severe artifacts
+      if (strictDelta > 40) {
+        console.log(`   ⚠️ SAFETY LIMIT: Even strict filter shows ${strictDelta.toFixed(1)}% change`);
+        console.log(`   🔒 Using original room to avoid artifacts from extreme scene change`);
+        return {
+          success: true,
+          imageBase64: originalRoomBase64,  // Return ORIGINAL room, not Gemini's render
+          deltaPercentage,
+        };
+      }
+      
       workingMask = strictMask;
     }
     

@@ -626,7 +626,7 @@ async function processGeminiResponse(
 // ============================================================================
 
 const MAX_PRODUCTS = 7; // Hard limit for model reliability
-const PRODUCTS_PER_BATCH = 3; // Back to batched approach for product fidelity
+const PRODUCTS_PER_BATCH = 2; // Smaller batches = less hallucination of extra furniture
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
 
 // NOTE: Delta compositing solves room drift - we extract furniture from Gemini output
@@ -1271,9 +1271,19 @@ CRITICAL RULES:
 3. COLOR MATCH: Each new product's color MUST match its reference image EXACTLY
 4. ALL PRODUCTS: Every product listed above MUST appear in the render
 5. NO OVERLAP: Furniture pieces must NOT overlap or hide each other
-6. NO EXTRAS: Do NOT add any furniture not listed above
 
-${style} style interior. Photorealistic render.`
+🚫 ABSOLUTELY FORBIDDEN - DO NOT ADD:
+- NO wall art, paintings, mirrors, or wall decorations unless listed above
+- NO chandeliers, pendant lights, or ceiling fixtures unless listed above
+- NO rugs, carpets, or floor coverings unless listed above
+- NO plants, vases, books, or decorative objects unless listed above
+- NO additional sofas, chairs, benches, or seating unless listed above
+- NO additional tables, shelves, or storage unless listed above
+- ONLY render the ${successfulRefs.length} products listed above - NOTHING ELSE
+- Leave empty wall space EMPTY - do not fill it with anything
+- If a space looks "empty", that is CORRECT - do not add furniture to fill it
+
+${style} style interior. Photorealistic render. ONLY the listed ${successfulRefs.length} products.`
       : `Add these furniture pieces to the room in image 1: ${productListIndexed}.
 
 ⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
@@ -1298,9 +1308,19 @@ CRITICAL RULES:
 2. COLOR MATCH: Each product's color MUST match its reference image EXACTLY
 3. ALL PRODUCTS: Every product listed above MUST appear in the render
 4. NO OVERLAP: Furniture pieces must NOT overlap or hide each other
-5. NO EXTRAS: Do NOT add any furniture not listed above
 
-${style} style interior. Photorealistic render.`;
+🚫 ABSOLUTELY FORBIDDEN - DO NOT ADD:
+- NO wall art, paintings, mirrors, or wall decorations unless listed above
+- NO chandeliers, pendant lights, or ceiling fixtures unless listed above
+- NO rugs, carpets, or floor coverings unless listed above
+- NO plants, vases, books, or decorative objects unless listed above
+- NO additional sofas, chairs, benches, or seating unless listed above
+- NO additional tables, shelves, or storage unless listed above
+- ONLY render the ${successfulRefs.length} products listed above - NOTHING ELSE
+- Leave empty wall space EMPTY - do not fill it with anything
+- If a space looks "empty", that is CORRECT - do not add furniture to fill it
+
+${style} style interior. Photorealistic render. ONLY the listed ${successfulRefs.length} products.`;
     
     // Build parts - for batch 2+, include ORIGINAL room as first image
     const parts: any[] = [{ text: prompt }];
