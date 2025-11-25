@@ -487,8 +487,9 @@ MANDATORY PRODUCT RULES:
 2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 2-${productRefs.length + 1}.
 3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
 4. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
-5. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
-6. Pedestals, side tables, and small accent pieces MUST be included - place them prominently.
+5. CONSOLE TABLES & SIDEBOARDS: Preserve exact leg style (tapered, straight, curved), drawer configuration, hardware finish, and material grain patterns from reference.
+6. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
+7. Pedestals, side tables, and small accent pieces MUST be included - place them prominently.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
@@ -510,8 +511,9 @@ MANDATORY PRODUCT RULES:
 2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 1-${productRefs.length}.
 3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
 4. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
-5. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
-6. Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently.
+5. CONSOLE TABLES & SIDEBOARDS: Preserve exact leg style (tapered, straight, curved), drawer configuration, hardware finish, and material grain patterns from reference.
+6. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
+7. Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.

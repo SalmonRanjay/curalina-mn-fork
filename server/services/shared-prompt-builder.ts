@@ -141,6 +141,7 @@ REQUIREMENTS:
 • All products clearly visible, properly scaled to real-world dimensions
 • Each product must be a PIXEL-PERFECT COPY of its reference image - exact shape, color, texture, material
 • Lamps must match exactly: if reference shows fabric shade, render fabric shade. If metal, render metal.
+• CONSOLE TABLES & SIDEBOARDS: Preserve exact leg style, drawer configuration, hardware finish, and material grain patterns from reference
 • SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through), keep it open - wall visible through it. Do NOT add solid back panels.
 • Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently
 • Natural furniture placement following interior design principles
