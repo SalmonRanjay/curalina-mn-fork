@@ -1887,18 +1887,46 @@ export function registerCuralinaRoutes(app: Express) {
           
           console.log(`\n🎨 Starting render generation...`);
           
-          const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
-          const imageOnlyResult = await generateImageOnlyRender({
-            roomImageUrl: floorplanUrl || '', // Room image URL (empty if text-to-image mode)
-            products: fullSelectedProducts, // Full product objects from database for image extraction
-            roomType: quiz.roomType,
-            stylePreference: quiz.styles?.[0] || 'modern',
-            floorPlanAnalysis, // Pass floor plan analysis for detailed space preservation
-            placementInstructions // Pass zone-based placement instructions for better space preservation
-          });
+          // Use MULTI-STEP pipeline for better quality when we have a room image
+          // Multi-step: 1) Lock room structure, 2) Add products in small batches
+          let imageOnlyResult: { success: boolean; imageBase64?: string; error?: string; productsUsed: number; productsSentToAI?: string[] };
+          
+          if (floorplanUrl && fullSelectedProducts.length > 3) {
+            // Use multi-step pipeline for room images with many products
+            console.log(`🔄 Using MULTI-STEP pipeline for better quality...`);
+            const { generateMultiStepRender } = await import('./services/gemini-image-only-render');
+            const multiStepResult = await generateMultiStepRender({
+              roomImageUrl: floorplanUrl,
+              products: fullSelectedProducts,
+              roomType: quiz.roomType,
+              stylePreference: quiz.styles?.[0] || 'modern'
+            });
+            imageOnlyResult = {
+              success: multiStepResult.success,
+              imageBase64: multiStepResult.imageBase64,
+              error: multiStepResult.error,
+              productsUsed: multiStepResult.productsUsed,
+              productsSentToAI: multiStepResult.productsSentToAI
+            };
+            if (multiStepResult.success) {
+              console.log(`✅ Multi-step complete: ${multiStepResult.stepsCompleted}/${multiStepResult.totalSteps} steps`);
+            }
+          } else {
+            // Use single-step for fewer products or text-to-image mode
+            console.log(`⚡ Using single-step pipeline...`);
+            const { generateImageOnlyRender } = await import('./services/gemini-image-only-render');
+            imageOnlyResult = await generateImageOnlyRender({
+              roomImageUrl: floorplanUrl || '',
+              products: fullSelectedProducts,
+              roomType: quiz.roomType,
+              stylePreference: quiz.styles?.[0] || 'modern',
+              floorPlanAnalysis,
+              placementInstructions
+            });
+          }
           
           if (!imageOnlyResult.success || !imageOnlyResult.imageBase64) {
-            throw new Error(imageOnlyResult.error || 'Image-only generation failed');
+            throw new Error(imageOnlyResult.error || 'Image generation failed');
           }
           
           console.log(`✅ AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images`);

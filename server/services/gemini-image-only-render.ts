@@ -556,3 +556,327 @@ async function processGeminiResponse(
     };
   }
 }
+
+// ============================================================================
+// MULTI-STEP RENDER PIPELINE
+// ============================================================================
+// Breaks render into multiple smaller passes for better fidelity:
+// 1. Room Lock Pass: Establish room baseline
+// 2. Product Batch Passes: Add 2-3 products at a time
+// ============================================================================
+
+const PRODUCTS_PER_BATCH = 2; // Optimal for fidelity
+
+interface MultiStepRenderParams {
+  roomImageUrl: string;
+  products: Product[];
+  roomType?: string;
+  stylePreference?: string;
+}
+
+interface MultiStepRenderResult {
+  success: boolean;
+  imageBase64?: string;
+  error?: string;
+  productsUsed: number;
+  productsSentToAI: string[];
+  stepsCompleted: number;
+  totalSteps: number;
+}
+
+/**
+ * Multi-step render pipeline for improved quality
+ * 
+ * Strategy:
+ * 1. Room Lock Pass: Send room image with "keep exactly the same" to establish baseline
+ * 2. Product Batch Passes: Add 2-3 products at a time, using previous render as new anchor
+ * 
+ * This approach:
+ * - Preserves room structure by locking it first
+ * - Gives each product more "attention" from the model
+ * - Uses previous render as anchor for consistency
+ */
+export async function generateMultiStepRender(params: MultiStepRenderParams): Promise<MultiStepRenderResult> {
+  const { roomImageUrl, products, roomType, stylePreference } = params;
+  
+  const style = stylePreference || 'Modern';
+  const room = roomType || 'living room';
+  
+  // Calculate total steps
+  const productBatches: Product[][] = [];
+  for (let i = 0; i < products.length; i += PRODUCTS_PER_BATCH) {
+    productBatches.push(products.slice(i, i + PRODUCTS_PER_BATCH));
+  }
+  const totalSteps = 1 + productBatches.length; // 1 room lock + N product batches
+  
+  console.log(`\n🔄 MULTI-STEP RENDER PIPELINE`);
+  console.log(`   Total products: ${products.length}`);
+  console.log(`   Batch size: ${PRODUCTS_PER_BATCH}`);
+  console.log(`   Total steps: ${totalSteps} (1 room lock + ${productBatches.length} product batches)`);
+  
+  const allProductsSentToAI: string[] = [];
+  let stepsCompleted = 0;
+  
+  try {
+    // ========================================
+    // STEP 1: Room Lock Pass
+    // ========================================
+    console.log(`\n📍 STEP 1/${totalSteps}: Room Lock Pass`);
+    console.log(`   Establishing room baseline - no products yet`);
+    
+    const roomLockResult = await executeRoomLockPass(roomImageUrl, style, room);
+    
+    if (!roomLockResult.success || !roomLockResult.imageBase64) {
+      console.error(`❌ Room lock pass failed`);
+      return {
+        success: false,
+        error: roomLockResult.error || 'Room lock pass failed',
+        productsUsed: 0,
+        productsSentToAI: [],
+        stepsCompleted: 0,
+        totalSteps
+      };
+    }
+    
+    stepsCompleted = 1;
+    let currentAnchor = roomLockResult.imageBase64;
+    console.log(`   ✅ Room locked successfully`);
+    
+    // ========================================
+    // STEP 2+: Product Batch Passes
+    // ========================================
+    for (let batchIndex = 0; batchIndex < productBatches.length; batchIndex++) {
+      const batch = productBatches[batchIndex];
+      const stepNum = batchIndex + 2;
+      
+      console.log(`\n📦 STEP ${stepNum}/${totalSteps}: Product Batch ${batchIndex + 1}`);
+      console.log(`   Products: ${batch.map(p => p.name).join(', ')}`);
+      
+      const batchResult = await executeProductBatchPass(
+        currentAnchor,
+        batch,
+        style,
+        room,
+        batchIndex,
+        productBatches.length
+      );
+      
+      if (!batchResult.success || !batchResult.imageBase64) {
+        console.error(`❌ Batch ${batchIndex + 1} failed: ${batchResult.error}`);
+        // Continue with current anchor, skip failed products
+        console.log(`   ⚠️ Continuing without failed batch`);
+        continue;
+      }
+      
+      // Update anchor for next pass
+      currentAnchor = batchResult.imageBase64;
+      allProductsSentToAI.push(...batchResult.productsSentToAI);
+      stepsCompleted++;
+      
+      console.log(`   ✅ Batch ${batchIndex + 1} complete: ${batchResult.productsSentToAI.length} products added`);
+    }
+    
+    console.log(`\n✅ MULTI-STEP RENDER COMPLETE`);
+    console.log(`   Steps completed: ${stepsCompleted}/${totalSteps}`);
+    console.log(`   Products rendered: ${allProductsSentToAI.length}`);
+    
+    return {
+      success: true,
+      imageBase64: currentAnchor,
+      productsUsed: allProductsSentToAI.length,
+      productsSentToAI: allProductsSentToAI,
+      stepsCompleted,
+      totalSteps
+    };
+    
+  } catch (error) {
+    console.error(`❌ Multi-step render error:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      productsUsed: allProductsSentToAI.length,
+      productsSentToAI: allProductsSentToAI,
+      stepsCompleted,
+      totalSteps
+    };
+  }
+}
+
+/**
+ * Step 1: Room Lock Pass
+ * Sends just the room image to establish a baseline with preserved architecture
+ */
+async function executeRoomLockPass(
+  roomImageUrl: string,
+  style: string,
+  room: string
+): Promise<{ success: boolean; imageBase64?: string; error?: string }> {
+  try {
+    // Fetch room image
+    const roomImage = await fetchImageAsBase64(roomImageUrl);
+    if (!roomImage) {
+      return { success: false, error: 'Failed to fetch room image' };
+    }
+    
+    // Simple room lock prompt - just preserve the room
+    const prompt = `This is a ${style} ${room}. Create a clean, empty version of this exact room ready for furniture.
+
+Keep the room EXACTLY the same:
+- Same walls, wall colors, wall textures
+- Same windows in exact positions
+- Same floor and flooring
+- Same ceiling
+- Same lighting
+- Same camera angle and perspective
+
+Remove any existing furniture but keep all architectural elements identical. The room should look empty and ready for new furniture to be added.
+
+Photorealistic interior photo.`;
+    
+    const parts = [
+      { text: prompt },
+      { text: `The room to preserve:` },
+      { inlineData: { data: roomImage.data, mimeType: roomImage.mimeType } }
+    ];
+    
+    console.log(`   Calling Gemini for room lock...`);
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+    
+    // Extract image
+    const candidate = response.candidates?.[0];
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+    
+    if (!imagePart?.inlineData?.data) {
+      return { success: false, error: 'No image generated for room lock' };
+    }
+    
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    const imageBase64 = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    
+    return { success: true, imageBase64 };
+    
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Room lock error' 
+    };
+  }
+}
+
+/**
+ * Step 2+: Product Batch Pass
+ * Adds a batch of products to the current anchor image
+ */
+async function executeProductBatchPass(
+  anchorBase64: string,
+  products: Product[],
+  style: string,
+  room: string,
+  batchIndex: number,
+  totalBatches: number
+): Promise<{ success: boolean; imageBase64?: string; error?: string; productsSentToAI: string[] }> {
+  try {
+    // Get product images
+    const productImageRefs = selectProductFrontViewImages(products);
+    
+    if (productImageRefs.length === 0) {
+      return { success: false, error: 'No valid product images', productsSentToAI: [] };
+    }
+    
+    // Fetch product images
+    const productImageParts: any[] = [];
+    const productsSentToAI: string[] = [];
+    
+    for (const productRef of productImageRefs) {
+      const productImage = await fetchImageAsBase64(productRef.url);
+      if (productImage) {
+        productImageParts.push({
+          inlineData: {
+            data: productImage.data,
+            mimeType: productImage.mimeType
+          }
+        });
+        productsSentToAI.push(productRef.sku);
+      }
+    }
+    
+    if (productImageParts.length === 0) {
+      return { success: false, error: 'Failed to fetch product images', productsSentToAI: [] };
+    }
+    
+    // Build product list for prompt
+    const productList = productImageRefs
+      .filter(ref => productsSentToAI.includes(ref.sku))
+      .map((ref, index) => `the ${ref.productName} from image ${index + 2}`)
+      .join(' and ');
+    
+    // Simple batch prompt
+    const prompt = `Using the room in image 1, add ${productList} to the scene.
+
+Keep the room EXACTLY the same - same walls, windows, floor, ceiling, lighting, camera angle. Only add the new furniture.
+
+For each furniture piece, copy the EXACT appearance from its reference image - same shape, same color, same texture, same material.
+
+Arrange naturally with proper perspective and shadows. ${style} style interior.`;
+    
+    // Build parts
+    const parts: any[] = [
+      { text: prompt },
+      { text: `Image 1: The room (keep exactly the same, only add furniture)` }
+    ];
+    
+    // Add anchor image (extract base64 data)
+    const anchorData = anchorBase64.replace(/^data:image\/\w+;base64,/, '');
+    const anchorMimeType = anchorBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    parts.push({
+      inlineData: {
+        data: anchorData,
+        mimeType: anchorMimeType
+      }
+    });
+    
+    // Add product images
+    const successfulRefs = productImageRefs.filter(ref => productsSentToAI.includes(ref.sku));
+    for (let i = 0; i < productImageParts.length; i++) {
+      parts.push({ text: `Image ${i + 2}: ${successfulRefs[i].productName}` });
+      parts.push(productImageParts[i]);
+    }
+    
+    console.log(`   Calling Gemini for batch ${batchIndex + 1}/${totalBatches} (${productsSentToAI.length} products)...`);
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+    
+    // Extract image
+    const candidate = response.candidates?.[0];
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+    
+    if (!imagePart?.inlineData?.data) {
+      return { success: false, error: 'No image generated for batch', productsSentToAI: [] };
+    }
+    
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    const imageBase64 = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    
+    return { success: true, imageBase64, productsSentToAI };
+    
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Batch error',
+      productsSentToAI: []
+    };
+  }
+}
