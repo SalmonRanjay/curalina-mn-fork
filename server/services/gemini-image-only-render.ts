@@ -1032,7 +1032,7 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     const compositeResult = await compositeWithSmoothEdges(
       trueOriginalBase64,  // TRUE original room (user's upload)
       currentAnchor,       // Gemini's render with good furniture
-      45,                  // RAISED threshold to ignore wall changes
+      30,                  // BALANCED threshold - lower to capture furniture
       1                    // MINIMAL edge blur for crisp furniture
     );
     
