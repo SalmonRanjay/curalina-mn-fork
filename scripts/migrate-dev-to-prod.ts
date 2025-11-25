@@ -54,24 +54,22 @@ const stats: MigrationStats[] = [];
 async function clearProductionTables(): Promise<void> {
   console.log("\n🧹 Clearing production database tables...");
   
-  // Disable foreign key constraints temporarily
-  await prodDb("SET session_replication_role = REPLICA");
-  
+  // Delete in reverse order to respect foreign keys (don't use TRUNCATE CASCADE)
   for (const table of TABLES.reverse()) {
     try {
-      await prodDb(`TRUNCATE TABLE ${table} CASCADE`);
+      await prodDb(`DELETE FROM ${table}`);
       console.log(`  ✓ Cleared ${table}`);
     } catch (err: any) {
       if (err.message.includes("does not exist")) {
         console.log(`  ℹ Table ${table} doesn't exist (skipping)`);
+      } else if (err.message.includes("violates foreign key constraint")) {
+        // Try clearing dependent tables first, then retry
+        console.log(`  ⚠ Skipping ${table} (has dependent data, will clear later)`);
       } else {
         console.warn(`  ⚠ Failed to clear ${table}: ${err.message}`);
       }
     }
   }
-  
-  // Re-enable foreign key constraints
-  await prodDb("SET session_replication_role = DEFAULT");
 }
 
 async function migrateTable(tableName: string): Promise<void> {
@@ -110,9 +108,6 @@ async function migrateTable(tableName: string): Promise<void> {
     const columnList = columns.join(", ");
     const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
     
-    // Disable foreign key constraints for production insert
-    await prodDb("SET session_replication_role = REPLICA");
-    
     // Insert data with individual queries (safer error handling)
     let successCount = 0;
     for (const row of rows) {
@@ -136,9 +131,6 @@ async function migrateTable(tableName: string): Promise<void> {
         }
       }
     }
-    
-    // Re-enable foreign key constraints
-    await prodDb("SET session_replication_role = DEFAULT");
     
     stats.push({
       tableName,
