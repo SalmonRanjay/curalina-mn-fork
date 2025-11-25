@@ -50,10 +50,15 @@ export async function compositeWithSmoothEdges(
     
     console.log(`   Original room: ${width}x${height}`);
     
-    // Get raw pixels
-    const originalRaw = await sharp(originalBuffer).raw().toBuffer();
+    // Get raw pixels - FORCE RGB (3 channels) to avoid RGBA mismatch issues
+    // Without this, RGBA images cause stride misalignment and stripe artifacts
+    const originalRaw = await sharp(originalBuffer)
+      .removeAlpha()  // Ensure no alpha channel
+      .raw()
+      .toBuffer();
     const renderedResized = await sharp(renderedBuffer)
       .resize(width, height, { fit: 'fill' })
+      .removeAlpha()  // Ensure no alpha channel
       .raw()
       .toBuffer();
     
@@ -336,9 +341,14 @@ export async function compositeHardBinary(
     const width = originalMeta.width!;
     const height = originalMeta.height!;
     
-    const originalRaw = await sharp(originalBuffer).raw().toBuffer();
+    // FORCE RGB (3 channels) to avoid RGBA mismatch issues
+    const originalRaw = await sharp(originalBuffer)
+      .removeAlpha()
+      .raw()
+      .toBuffer();
     const renderedResized = await sharp(renderedBuffer)
       .resize(width, height, { fit: 'fill' })
+      .removeAlpha()
       .raw()
       .toBuffer();
     
