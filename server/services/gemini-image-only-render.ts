@@ -1115,6 +1115,7 @@ async function executeProductBatchPass(
       : `
 
 ⚠️ CRITICAL PRESERVATION REQUIREMENTS:
+- CAMERA ANGLE: Keep the EXACT same viewpoint, perspective, and camera position - do NOT change the viewing angle
 - ROOM ARCHITECTURE: Keep walls, windows, floor, ceiling, lighting EXACTLY as shown in image 1 - pixel-perfect match
 - EXISTING FURNITURE: Keep all furniture from previous steps exactly where it is - do not remove, move, or modify
 - Only ADD the new pieces listed below to the existing scene`;
@@ -1125,10 +1126,10 @@ NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
 ${productDescriptions.map((desc, i) => `- ${desc}`).join('\n')}
 
 CRITICAL RULES:
-1. PRESERVE ROOM: Walls, windows (exact shape/size), floor, ceiling, camera angle must be IDENTICAL to image 1
-2. PRESERVE FURNITURE: All existing furniture in image 1 stays exactly where it is (same position, color, shape)
-3. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
-4. PERSPECTIVE: New items must match the room's perspective and have proper shadows
+1. LOCK CAMERA: Viewpoint, angle, and perspective must be IDENTICAL to image 1 - same eye level, same direction
+2. PRESERVE ROOM: Walls, windows (exact shape/size), floor, ceiling must be IDENTICAL to image 1
+3. PRESERVE FURNITURE: All existing furniture stays exactly where it is (same position, color, shape)
+4. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
 5. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
 
 ${style} style interior. Photorealistic render.`;
