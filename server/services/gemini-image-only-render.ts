@@ -12,10 +12,36 @@ const ai = new GoogleGenAI({
 });
 
 /**
+ * Room analysis result with architecture description and estimated dimensions
+ */
+interface RoomAnalysisResult {
+  architectureDescription: string;
+  estimatedDimensions: {
+    lengthFeet: number | null;
+    widthFeet: number | null;
+    ceilingHeightFeet: number | null;
+    usableFloorArea: string;
+    wallLengths: string[];
+  };
+}
+
+/**
  * Analyze room architecture using Gemini Vision BEFORE rendering
  * This gives the model a detailed understanding of what to preserve
+ * Now also estimates room dimensions from the image
  */
-async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<string> {
+async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<RoomAnalysisResult> {
+  const emptyResult: RoomAnalysisResult = {
+    architectureDescription: '',
+    estimatedDimensions: {
+      lengthFeet: null,
+      widthFeet: null,
+      ceilingHeightFeet: null,
+      usableFloorArea: 'unknown',
+      wallLengths: []
+    }
+  };
+  
   try {
     console.log(`\n🔍 ANALYZING ROOM ARCHITECTURE with Gemini Vision...`);
     
@@ -29,19 +55,27 @@ async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<str
         role: "user",
         parts: [
           {
-            text: `Analyze this room's architecture in detail. Provide a SHORT, DENSE description (max 150 words) covering:
+            text: `Analyze this room's architecture in detail. Provide TWO sections:
 
-1. WALLS: Color, texture, position of each wall visible
-2. FLOOR: Material, color, pattern
-3. CEILING: Height, color, any features
-4. WINDOWS: Exact position, size, shape, what's visible through them
-5. DOORS: Position, style, color
-6. LIGHTING: Natural light direction, any fixtures
-7. PERSPECTIVE: Camera angle, vanishing points
-8. EXISTING ELEMENTS: Built-ins, moldings, architectural details
+SECTION 1 - ARCHITECTURE DESCRIPTION (max 150 words, dense paragraph):
+Cover walls (color, texture, position), floor (material, color), ceiling (height estimate, features), windows (position, size, shape), doors (position, style), lighting (natural light direction), perspective (camera angle), and existing elements (built-ins, moldings).
 
-Be PRECISE and SPECIFIC. This description will guide an AI to recreate this EXACT room structure.
-Format: Dense paragraph, no bullet points.`
+SECTION 2 - ESTIMATED DIMENSIONS (use visual cues like doors, windows, furniture to estimate):
+Estimate these values based on standard reference sizes:
+- Standard interior door: 80" tall x 36" wide
+- Standard window: 36-48" wide
+- Standard ceiling: 8-10 feet
+- Average sofa: 7 feet long
+
+Provide your estimates in this EXACT format:
+DIMENSIONS:
+- Room length: [X] feet (estimated)
+- Room width: [X] feet (estimated)
+- Ceiling height: [X] feet (estimated)
+- Available wall lengths: [list wall segments and estimated lengths]
+- Usable floor area: [small/medium/large/very large]
+
+Be PRECISE. This will guide furniture placement and scaling.`
           },
           {
             inlineData: {
@@ -53,20 +87,75 @@ Format: Dense paragraph, no bullet points.`
       }]
     });
     
-    const analysis = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const fullAnalysis = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
-    if (analysis.length > 0) {
-      console.log(`   ✅ Room analysis complete (${analysis.length} chars)`);
-      console.log(`   📝 ${analysis.substring(0, 200)}...`);
-      return analysis;
+    if (fullAnalysis.length > 0) {
+      console.log(`   ✅ Room analysis complete (${fullAnalysis.length} chars)`);
+      
+      // Parse the response to extract dimensions
+      const dimensions = parseRoomDimensions(fullAnalysis);
+      
+      // Extract just the architecture description (before DIMENSIONS:)
+      const archDesc = fullAnalysis.split('DIMENSIONS:')[0].trim();
+      
+      console.log(`   📝 Architecture: ${archDesc.substring(0, 150)}...`);
+      console.log(`   📐 Estimated dimensions: ~${dimensions.lengthFeet || '?'}ft x ${dimensions.widthFeet || '?'}ft, ceiling ${dimensions.ceilingHeightFeet || '?'}ft`);
+      console.log(`   📏 Usable area: ${dimensions.usableFloorArea}`);
+      
+      return {
+        architectureDescription: archDesc,
+        estimatedDimensions: dimensions
+      };
     }
     
     console.log(`   ⚠️ Room analysis returned empty`);
-    return '';
+    return emptyResult;
   } catch (error) {
     console.error(`   ❌ Room analysis failed:`, error);
-    return '';
+    return emptyResult;
   }
+}
+
+/**
+ * Parse room dimensions from Gemini Vision analysis text
+ */
+function parseRoomDimensions(analysisText: string): RoomAnalysisResult['estimatedDimensions'] {
+  const result: RoomAnalysisResult['estimatedDimensions'] = {
+    lengthFeet: null,
+    widthFeet: null,
+    ceilingHeightFeet: null,
+    usableFloorArea: 'unknown',
+    wallLengths: []
+  };
+  
+  try {
+    // Extract room length
+    const lengthMatch = analysisText.match(/Room length:\s*(\d+(?:\.\d+)?)\s*feet/i);
+    if (lengthMatch) result.lengthFeet = parseFloat(lengthMatch[1]);
+    
+    // Extract room width
+    const widthMatch = analysisText.match(/Room width:\s*(\d+(?:\.\d+)?)\s*feet/i);
+    if (widthMatch) result.widthFeet = parseFloat(widthMatch[1]);
+    
+    // Extract ceiling height
+    const ceilingMatch = analysisText.match(/Ceiling height:\s*(\d+(?:\.\d+)?)\s*feet/i);
+    if (ceilingMatch) result.ceilingHeightFeet = parseFloat(ceilingMatch[1]);
+    
+    // Extract usable floor area category
+    const areaMatch = analysisText.match(/Usable floor area:\s*(small|medium|large|very large)/i);
+    if (areaMatch) result.usableFloorArea = areaMatch[1].toLowerCase();
+    
+    // Extract wall lengths (capture lines after "Available wall lengths:")
+    const wallSection = analysisText.match(/Available wall lengths?:([^\n]*(?:\n(?!-\s*(?:Room|Ceiling|Usable))[^\n]*)*)/i);
+    if (wallSection) {
+      const wallLines = wallSection[1].split('\n').filter(line => line.trim());
+      result.wallLengths = wallLines.map(line => line.trim()).filter(line => line.length > 0);
+    }
+  } catch (error) {
+    console.warn('   ⚠️ Error parsing room dimensions:', error);
+  }
+  
+  return result;
 }
 
 /**
@@ -952,7 +1041,9 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     // ========================================
     // STEP 0.5: Analyze room architecture with Gemini Vision
     // ========================================
-    const roomArchitectureAnalysis = await analyzeRoomWithGeminiVision(trueOriginalBase64);
+    const roomAnalysisResult = await analyzeRoomWithGeminiVision(trueOriginalBase64);
+    const roomArchitectureAnalysis = roomAnalysisResult.architectureDescription;
+    const roomDimensions = roomAnalysisResult.estimatedDimensions;
     
     // ========================================
     // STEP 1: Room Lock Pass
@@ -990,7 +1081,7 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       console.log(`\n📦 STEP ${stepNum}/${totalSteps}: Product Batch ${batchIndex + 1}`);
       console.log(`   Products: ${batch.map(p => p.name).join(', ')}`);
       
-      // Pass original room image AND analysis for architecture reference
+      // Pass original room image, analysis AND dimensions for architecture reference
       const batchResult = await executeProductBatchPass(
         currentAnchor,
         batch,
@@ -999,7 +1090,8 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
         batchIndex,
         productBatches.length,
         originalRoomBase64,         // Original room image for architecture preservation
-        roomArchitectureAnalysis    // Detailed room analysis from Gemini Vision
+        roomArchitectureAnalysis,   // Detailed room analysis from Gemini Vision
+        roomDimensions              // Estimated room dimensions
       );
       
       if (!batchResult.success || !batchResult.imageBase64) {
@@ -1122,6 +1214,7 @@ Output: The same room ready for furniture, with identical architecture.`;
  * Adds a batch of products to the current anchor image
  * Now includes originalRoomBase64 as a reference for architecture preservation
  * roomArchitectureAnalysis provides detailed text description of the room to preserve
+ * roomDimensions provides estimated measurements for proper furniture scaling
  */
 async function executeProductBatchPass(
   anchorBase64: string,
@@ -1131,7 +1224,8 @@ async function executeProductBatchPass(
   batchIndex: number,
   totalBatches: number,
   originalRoomBase64?: string, // Original room image for architecture reference
-  roomArchitectureAnalysis?: string // Detailed room analysis from Gemini Vision
+  roomArchitectureAnalysis?: string, // Detailed room analysis from Gemini Vision
+  roomDimensions?: RoomAnalysisResult['estimatedDimensions'] // Estimated room dimensions
 ): Promise<{ success: boolean; imageBase64?: string; error?: string; productsSentToAI: string[] }> {
   try {
     // Get product images
@@ -1208,6 +1302,18 @@ async function executeProductBatchPass(
       .map((ref, index) => `the "${ref.productName}" from image ${productImageStartIndex + index}`)
       .join(' and ');
     
+    // Build room dimensions section if available
+    const roomDimensionsSection = roomDimensions && (roomDimensions.lengthFeet || roomDimensions.widthFeet)
+      ? `
+📏 ESTIMATED ROOM DIMENSIONS:
+- Room size: approximately ${roomDimensions.lengthFeet || '?'}ft x ${roomDimensions.widthFeet || '?'}ft
+- Ceiling height: approximately ${roomDimensions.ceilingHeightFeet || 8}ft
+- Usable floor area: ${roomDimensions.usableFloorArea || 'medium'}
+${roomDimensions.wallLengths?.length > 0 ? `- Wall segments: ${roomDimensions.wallLengths.join(', ')}` : ''}
+
+USE THESE DIMENSIONS to ensure furniture is placed at REALISTIC SCALE relative to the room.
+` : '';
+    
     // Build room architecture section from analysis with STRICT LOCK
     const roomArchitectureSection = roomArchitectureAnalysis 
       ? `
@@ -1216,7 +1322,7 @@ async function executeProductBatchPass(
 The room in the reference image is the EXACT space to use - NOT inspiration for a similar space.
 
 ${roomArchitectureAnalysis}
-
+${roomDimensionsSection}
 ⛔ DO NOT CHANGE ANY OF THE FOLLOWING:
 - Walls: Same color, texture, position, moldings, trim
 - Windows: Same size, position, frame style, curtains/blinds
@@ -1265,10 +1371,40 @@ ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 - Sofas are typically ~80-90"W x 35"D x 35"H
 - Every piece of furniture must be FULLY VISIBLE and SEPARATE
 - NO furniture should be hidden behind or under other furniture
-- Ottomans go IN FRONT of sofas, not underneath them
-- Console tables go AGAINST WALLS, not behind sofas
 - Maintain clear floor space between all pieces
 - Each product must have its own distinct footprint
+
+🪑 FURNITURE PLACEMENT RULES BY TYPE:
+SOFAS/SEATING:
+- Place facing into the room, NOT against windows
+- Can float in the room or be against a wall
+- Multiple sofas should face each other or be at 90° angles
+
+COFFEE TABLES:
+- ALWAYS place directly IN FRONT of the main sofa
+- Center it relative to the sofa's width
+- Should be ~18" away from sofa edge
+
+SIDE TABLES / END TABLES:
+- ALWAYS place BESIDE a sofa or chair (at the arm, not in front)
+- One on each side of a sofa, or at least one beside the main seating
+- NEVER place in the middle of an open floor area
+- NEVER place in front of seating
+
+CONSOLE TABLES:
+- ALWAYS place AGAINST A WALL (not floating in the room)
+- Good locations: behind a sofa, along an entry wall, under a window
+- NEVER place in the middle of the room
+
+ACCENT TABLES:
+- Place beside seating OR in corners
+- Can go next to a reading chair or beside a sofa
+- NEVER place randomly in open floor space
+
+OTTOMANS/BENCHES:
+- Place IN FRONT of sofas (like a coffee table position)
+- Or at the FOOT of a bed in bedrooms
+- NEVER under or behind sofas
 
 🚨 CRITICAL RULES - ARCHITECTURE PRESERVATION:
 1. ROOM ARCHITECTURE from Image 1: Walls, windows, floor, ceiling, camera angle IDENTICAL - pixel-for-pixel match
@@ -1321,10 +1457,40 @@ ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 - Sofas are typically ~80-90"W x 35"D x 35"H
 - Every piece of furniture must be FULLY VISIBLE and SEPARATE
 - NO furniture should be hidden behind or under other furniture
-- Ottomans go IN FRONT of sofas, not underneath them
-- Console tables go AGAINST WALLS, not behind sofas
 - Maintain clear floor space between all pieces
 - Each product must have its own distinct footprint
+
+🪑 FURNITURE PLACEMENT RULES BY TYPE:
+SOFAS/SEATING:
+- Place facing into the room, NOT against windows
+- Can float in the room or be against a wall
+- Multiple sofas should face each other or be at 90° angles
+
+COFFEE TABLES:
+- ALWAYS place directly IN FRONT of the main sofa
+- Center it relative to the sofa's width
+- Should be ~18" away from sofa edge
+
+SIDE TABLES / END TABLES:
+- ALWAYS place BESIDE a sofa or chair (at the arm, not in front)
+- One on each side of a sofa, or at least one beside the main seating
+- NEVER place in the middle of an open floor area
+- NEVER place in front of seating
+
+CONSOLE TABLES:
+- ALWAYS place AGAINST A WALL (not floating in the room)
+- Good locations: behind a sofa, along an entry wall, under a window
+- NEVER place in the middle of the room
+
+ACCENT TABLES:
+- Place beside seating OR in corners
+- Can go next to a reading chair or beside a sofa
+- NEVER place randomly in open floor space
+
+OTTOMANS/BENCHES:
+- Place IN FRONT of sofas (like a coffee table position)
+- Or at the FOOT of a bed in bedrooms
+- NEVER under or behind sofas
 
 🚨 CRITICAL RULES - ARCHITECTURE PRESERVATION:
 1. PRESERVE ROOM: Walls, windows, floor, ceiling, camera angle IDENTICAL to image 1 - pixel-for-pixel match
