@@ -933,38 +933,15 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     console.log(`   Products rendered: ${allProductsSentToAI.length}`);
     
     // ========================================
-    // STABILITY AI REFINEMENT PASS
+    // STABILITY AI REFINEMENT PASS - DISABLED
     // ========================================
-    // Use Stability AI to refine product appearance matching
-    console.log(`\n🎨 STABILITY AI REFINEMENT PASS`);
-    
-    // Prepare product images for refinement
-    const productImagesForRefinement = sortedProducts
-      .filter(p => p.images && p.images.length > 0)
-      .map(p => ({
-        url: p.images![0],
-        productName: p.name
-      }));
-    
-    console.log(`   Sending ${productImagesForRefinement.length} product references to Stability AI`);
-    
-    // Build refinement prompt
-    const refinementPrompt = `${style} ${room} interior design render with exact product matching. 
-Furniture must match reference images precisely - same colors, materials, shapes, and proportions.
-Preserve room architecture exactly. Photorealistic quality.`;
-    
-    const refinedImage = await applyQCRefinement(
-      currentAnchor,
-      refinementPrompt,
-      productImagesForRefinement
-    );
-    
-    if (refinedImage) {
-      console.log(`   ✅ Stability AI refinement successful`);
-      currentAnchor = refinedImage;
-    } else {
-      console.log(`   ⚠️ Stability AI refinement skipped or failed - using Gemini result`);
-    }
+    // NOTE: Stability AI Sketch endpoint does global style transfer, not targeted
+    // furniture refinement. It was making renders WORSE by changing all colors/shapes.
+    // Disabled until we implement per-object masking with ControlNet Reference.
+    // 
+    // To re-enable in future: implement refineRenderWithControlNetReference with
+    // per-product segmentation masks for targeted refinement.
+    console.log(`\n🎨 STABILITY AI REFINEMENT: Skipped (global style transfer was degrading quality)`);
     
     console.log(`\n✅ MULTI-STEP RENDER PIPELINE COMPLETE`);
     
