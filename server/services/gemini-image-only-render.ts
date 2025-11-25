@@ -1108,11 +1108,16 @@ async function executeProductBatchPass(
       .map((ref, index) => `the "${ref.productName}" from image ${index + 2}`)
       .join(' and ');
     
-    // Enhanced batch prompt with explicit instruction to KEEP existing furniture
+    // Enhanced batch prompt with explicit instruction to KEEP existing furniture AND room architecture
     const isFirstBatch = batchIndex === 0;
     const keepExistingText = isFirstBatch 
       ? '' 
-      : `\n\nKEEP ALL EXISTING FURNITURE: The room in image 1 already has furniture from previous steps. DO NOT remove or change any existing furniture - only ADD the new pieces listed below.`;
+      : `
+
+⚠️ CRITICAL PRESERVATION REQUIREMENTS:
+- ROOM ARCHITECTURE: Keep walls, windows, floor, ceiling, lighting EXACTLY as shown in image 1 - pixel-perfect match
+- EXISTING FURNITURE: Keep all furniture from previous steps exactly where it is - do not remove, move, or modify
+- Only ADD the new pieces listed below to the existing scene`;
     
     const prompt = `Add these furniture pieces to the room in image 1: ${productList}.${keepExistingText}
 
@@ -1120,11 +1125,11 @@ NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
 ${productDescriptions.map((desc, i) => `- ${desc}`).join('\n')}
 
 CRITICAL RULES:
-1. KEEP all existing furniture in image 1 exactly where it is (do not remove, move, or modify)
-2. KEEP room architecture identical (walls, windows, floor, ceiling, camera angle)
-3. ADD new furniture with EXACT colors, shapes, textures from their reference images
-4. Place new items naturally with proper perspective and shadows
-5. DO NOT ADD ANY FURNITURE OR OBJECTS NOT LISTED ABOVE - no extra tables, stands, pedestals, or any items not in the product list
+1. PRESERVE ROOM: Walls, windows (exact shape/size), floor, ceiling, camera angle must be IDENTICAL to image 1
+2. PRESERVE FURNITURE: All existing furniture in image 1 stays exactly where it is (same position, color, shape)
+3. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
+4. PERSPECTIVE: New items must match the room's perspective and have proper shadows
+5. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
 
 ${style} style interior. Photorealistic render.`;
     
