@@ -302,40 +302,100 @@ Replace only the existing furniture.`;
 Include appropriate walls, flooring, windows, and ceiling for the style.`;
   }
   
-  // Build the full prompt using the Anchor & Composite structure
-  const prompt = `Professional Interior Design Render. 8k Resolution. Photorealistic.
+  // Build the full prompt using Google's recommended Inpainting + Composition pattern
+  // Key insight: Be explicit about what to KEEP and what to TAKE from each image
+  
+  let prompt: string;
+  
+  if (hasRoomImage) {
+    // IMAGE-TO-IMAGE MODE: Use Google's inpainting pattern
+    // "Using the provided image, change only X. Keep everything else exactly the same."
+    
+    const productDescriptions = productRefs.map((ref, index) => {
+      const product = products.find(p => p.sku === ref.sku);
+      const category = product ? detectFunctionalCategory(product) : 'Furniture';
+      const colors = product?.colors?.join(', ') || '';
+      const placementDirective = getPlacementDirective(category, index, totalProducts);
+      const imageNum = index + 2; // Room is image 1
+      
+      return `- Take the EXACT ${ref.productName}${colors ? ` (${colors})` : ''} from REFERENCE IMAGE ${imageNum} and place it in the room. ${placementDirective}`;
+    }).join('\n');
+    
+    prompt = `Using the provided room image (REFERENCE IMAGE 1), replace ONLY the existing furniture with the specific products from the other reference images.
 
-Task: ${hasRoomImage ? 'Redesign the room to look exactly like the user\'s vision using specific products.' : 'Create a stunning interior design using the specific products provided.'}
+CRITICAL PRESERVATION RULES:
+Keep EVERYTHING ELSE in the room EXACTLY the same:
+- Same walls, same wall colors, same wall textures
+- Same windows in the exact same positions
+- Same floor and flooring material
+- Same ceiling and ceiling height
+- Same doors and architectural features
+- Same camera angle and perspective
+- Same lighting conditions and shadows on walls/floor
+- Same room dimensions and proportions
 
-[Style Context]
-Style Vibe: ${style}. Room Type: ${room}.
+DO NOT modify, move, or alter any architectural element. The room structure must be pixel-perfect identical to REFERENCE IMAGE 1.
 
-ARCHITECTURAL INSTRUCTIONS:
-${architecturalInstructions}
-${hasRoomImage ? 'REFERENCE IMAGE 1: The user\'s actual room. Keep walls, windows, floor, and perspective EXACTLY as seen in this image. Replace existing furniture.' : ''}
+FURNITURE PLACEMENT - Take these EXACT items from their reference images:
+${productDescriptions}
 
-CRITICAL PRODUCT PLACEMENT INSTRUCTIONS:
-You are provided with reference images for specific furniture items. You MUST composite these EXACT items into the scene.
+PRODUCT FIDELITY REQUIREMENTS:
+For each product from REFERENCE IMAGE 2 onwards:
+- Copy the EXACT shape - do not simplify or stylize
+- Copy the EXACT color - match the precise hue, saturation, brightness
+- Copy the EXACT texture and material appearance
+- Copy the EXACT proportions and dimensions
+- The furniture must look like a photograph of that exact product
 
-${productInstructions}
+COMPOSITION:
+- Adjust perspective and scale so furniture fits naturally in the room
+- Add realistic shadows beneath furniture matching the room's lighting
+- Products should look grounded on the floor (not floating)
+- Maintain realistic proportions between furniture pieces
+${placementInstructions ? `\n${placementInstructions}` : ''}
 
-COMPOSITION RULES:
-- Harmonious arrangement matching the room's scale.
-- Correct lighting and shadows for the inserted products.
-- Products must look like they BELONG in the space - proper perspective and grounding.
-- Maintain realistic proportions between furniture pieces.
-- Ensure natural flow and walkable pathways.
-- Each product MUST be clearly visible and recognizable.
-- Follow the PLACEMENT directive for each product's location.
-${placementInstructions ? `\nADDITIONAL SPATIAL GUIDANCE:\n${placementInstructions}` : ''}
+Style: ${style} ${room}. Photorealistic, 8K resolution.`;
+    
+  } else {
+    // TEXT-TO-IMAGE MODE: Generate room with specific products
+    const productDescriptions = productRefs.map((ref, index) => {
+      const product = products.find(p => p.sku === ref.sku);
+      const category = product ? detectFunctionalCategory(product) : 'Furniture';
+      const colors = product?.colors?.join(', ') || '';
+      const placementDirective = getPlacementDirective(category, index, totalProducts);
+      const imageNum = index + 1;
+      
+      return `- Take the EXACT ${ref.productName}${colors ? ` (${colors})` : ''} from REFERENCE IMAGE ${imageNum}. ${placementDirective}`;
+    }).join('\n');
+    
+    prompt = `Create a photorealistic ${style} ${room} interior featuring the EXACT furniture products from the provided reference images.
 
-VISUAL FIDELITY REQUIREMENTS:
-- The furniture in the render must EXACTLY match the reference product images.
-- Preserve the exact texture, color, shape, and material of each product.
-- Do NOT hallucinate or substitute similar-looking furniture.
-- Every product from the reference images must appear in the final render.
+ROOM CREATION:
+- Design a beautiful, professionally styled ${room}
+- Include appropriate walls, flooring, windows, and ceiling for a ${style} aesthetic
+- Natural lighting from windows
+- Professional interior photography quality
 
-Generate the photorealistic interior design render now.`;
+FURNITURE - Use these EXACT items from the reference images:
+${productDescriptions}
+
+PRODUCT FIDELITY REQUIREMENTS:
+For each product from the reference images:
+- Copy the EXACT shape - do not simplify or stylize  
+- Copy the EXACT color - match the precise hue, saturation, brightness
+- Copy the EXACT texture and material appearance
+- Copy the EXACT proportions and dimensions
+- The furniture must look like a photograph of that exact product
+
+COMPOSITION:
+- Arrange furniture in a natural, harmonious layout
+- Add realistic shadows matching the room lighting
+- Products should look grounded (not floating)
+- Maintain realistic proportions between pieces
+${placementInstructions ? `\n${placementInstructions}` : ''}
+
+Photorealistic, 8K resolution.`;
+  }
 
   return prompt;
 }
@@ -444,8 +504,20 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     parts.push({ text: prompt });
     
     // Part 2: The Room Image (ANCHOR) - if available
+    // Use Google's inpainting language: "Keep everything else exactly the same"
     if (roomImage) {
-      parts.push({ text: "REFERENCE IMAGE 1 (THE ANCHOR - User's Room):" });
+      parts.push({ 
+        text: `REFERENCE IMAGE 1: The user's room photo.
+CRITICAL PRESERVATION: Keep EVERYTHING in this room EXACTLY the same EXCEPT the furniture.
+- Same walls, wall colors, wall textures - do NOT change
+- Same windows in exact same positions - do NOT move or resize  
+- Same floor and flooring pattern - do NOT change
+- Same ceiling height and style - do NOT change
+- Same doors and architectural features - do NOT modify
+- Same camera angle and perspective - do NOT change
+- Same lighting conditions - match shadows on walls/floor
+The room structure must be IDENTICAL to this image. ONLY the furniture changes.`
+      });
       parts.push({
         inlineData: {
           data: roomImage.data,
@@ -454,7 +526,8 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       });
     }
     
-    // Parts 3...N: Product Images (COMPOSITES) with binding metadata and placement directives
+    // Parts 3...N: Product Images with explicit "TAKE this EXACT item" binding
+    // Following Google's composition pattern: "Take the [element] from [image X]"
     const successfulRefs = productImageRefs.filter(ref => productSkusSentToAI.includes(ref.sku));
     const totalProducts = successfulRefs.length;
     
@@ -466,15 +539,20 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       
       const imageNum = roomImage ? i + 2 : i + 1;
       
-      // CRITICAL: Add product metadata + placement directive BEFORE each image to bind them together
-      let productMeta = `REFERENCE IMAGE ${imageNum} (COMPOSITE - ${category}): ${productRef.productName} (SKU: ${productRef.sku})`;
-      
+      // Build explicit color requirements
+      let colorRequirement = '';
       if (product && product.colors && product.colors.length > 0) {
         const colorList = product.colors.join(', ');
-        productMeta += ` | EXACT COLOR: ${colorList}`;
+        colorRequirement = ` The color MUST be exactly: ${colorList}.`;
       }
       
-      productMeta += `\nACTION: Place this EXACT item. PLACEMENT: ${placementDirective}`;
+      // Use Google's recommended "Take the EXACT" language pattern
+      const productMeta = `REFERENCE IMAGE ${imageNum}: ${productRef.productName}
+INSTRUCTION: Take this EXACT ${category.toLowerCase()} and place it in the room.${colorRequirement}
+- Copy the EXACT shape from this image
+- Copy the EXACT color from this image  
+- Copy the EXACT texture and material from this image
+PLACEMENT: ${placementDirective}`;
       
       parts.push({ text: productMeta });
       parts.push(productImageParts[i]);
