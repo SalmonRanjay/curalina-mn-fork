@@ -1558,6 +1558,10 @@ function generateZoneBasedPlacementMatrix(
   matrix.push(`2. Each item must appear EXACTLY ONCE - do not duplicate any furniture`);
   matrix.push(`3. Respect spatial relationships (items on surfaces, clearances, facing directions)`);
   matrix.push(`4. Maintain natural furniture arrangement - no floating items or unrealistic positions`);
+  matrix.push(`5. FRAME BOUNDARIES: ALL furniture must be FULLY VISIBLE within the image frame`);
+  matrix.push(`   - No products should be cut off at frame edges (left, right, top, or bottom)`);
+  matrix.push(`   - Keep at least 5% margin from frame edges for all furniture items`);
+  matrix.push(`   - If a placement feels too close to an edge, move it slightly toward center`);
   matrix.push(``);
   
   return matrix.join('\n');

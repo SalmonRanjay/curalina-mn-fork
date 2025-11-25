@@ -77,7 +77,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'flanking_right',
       name: 'Right Accent Seating',
-      bounds: { x: 0.8, y: 0.35, width: 0.2, height: 0.35 },
+      bounds: { x: 0.7, y: 0.35, width: 0.2, height: 0.35 },  // Pulled inward from x=0.8 to prevent edge clipping
       priority: 3,
       allowedCategories: ['accent_seating'],
       maxItems: 1,
@@ -113,7 +113,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'lamp_corner',
       name: 'Floor Lamp Corner',
-      bounds: { x: 0.85, y: 0.7, width: 0.15, height: 0.25 },
+      bounds: { x: 0.75, y: 0.7, width: 0.15, height: 0.25 },  // Pulled inward from x=0.85 to prevent edge clipping
       priority: 6,
       allowedCategories: ['lighting'],
       maxItems: 1,
@@ -176,7 +176,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'bedside_right',
       name: 'Right Nightstand Zone',
-      bounds: { x: 0.8, y: 0.65, width: 0.15, height: 0.25 },
+      bounds: { x: 0.75, y: 0.65, width: 0.15, height: 0.25 },  // Pulled inward from x=0.8 to prevent edge clipping
       priority: 2,
       allowedCategories: ['nightstand', 'lighting'],
       maxItems: 2,
@@ -362,7 +362,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     {
       id: 'guest_zone',
       name: 'Guest Seating Area',
-      bounds: { x: 0.75, y: 0.3, width: 0.2, height: 0.35 },
+      bounds: { x: 0.7, y: 0.3, width: 0.2, height: 0.35 },  // Pulled inward from x=0.75 to prevent edge clipping
       priority: 5,
       allowedCategories: ['accent_seating', 'side_table'],
       maxItems: 2,
@@ -716,6 +716,13 @@ function assignItemsToZones(
         const offset = (zoneOccupancy[bestZone.id] / bestZone.maxItems) * 0.3;
         position.x += offset * bestZone.bounds.width;
       }
+      
+      // CRITICAL: Apply 8% safety margin to prevent furniture from being cut off at frame edges
+      // Products centered near edges (e.g., x=0.9) will extend beyond the visible frame
+      // Clamp coordinates to [0.08, 0.92] to ensure all furniture appears fully within the render
+      const FRAME_MARGIN = 0.08; // 8% margin from each edge
+      position.x = Math.max(FRAME_MARGIN, Math.min(1 - FRAME_MARGIN, position.x));
+      position.y = Math.max(FRAME_MARGIN, Math.min(1 - FRAME_MARGIN, position.y));
       
       // Determine orientation based on zone type
       let orientation = 0;
