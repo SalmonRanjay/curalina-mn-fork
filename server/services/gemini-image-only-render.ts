@@ -1248,27 +1248,57 @@ IMAGE REFERENCES:
 - Image 2: CURRENT SCENE - keep all existing furniture from this image
 - Images 3+: NEW FURNITURE to add
 
-NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
+⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 
+🎨 COLOR FIDELITY - CRITICAL:
+- Each product MUST have the EXACT color shown in its reference image
+- White furniture = pure white (not cream, beige, or off-white)
+- Match the EXACT material texture (leather, fabric, wood grain, metal finish)
+- If reference shows a white sofa, render a WHITE sofa - not any other color
+
+📐 SPATIAL RULES - NO OVERLAP:
+- Every piece of furniture must be FULLY VISIBLE and SEPARATE
+- NO furniture should be hidden behind or under other furniture
+- Ottomans go IN FRONT of sofas, not underneath them
+- Console tables go AGAINST WALLS, not behind sofas
+- Maintain clear floor space between all pieces
+- Each product must have its own distinct footprint
+
 CRITICAL RULES:
-1. ROOM ARCHITECTURE from Image 1: Walls, windows (exact shape/size), floor, ceiling, camera angle must be IDENTICAL
-2. EXISTING FURNITURE from Image 2: Keep all furniture exactly as shown (position, color, shape)
-3. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
-4. PERSPECTIVE: New items must match the room's perspective from Image 1
-5. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
+1. ROOM ARCHITECTURE from Image 1: Walls, windows, floor, ceiling, camera angle IDENTICAL
+2. EXISTING FURNITURE from Image 2: Keep all furniture exactly as shown
+3. COLOR MATCH: Each new product's color MUST match its reference image EXACTLY
+4. ALL PRODUCTS: Every product listed above MUST appear in the render
+5. NO OVERLAP: Furniture pieces must NOT overlap or hide each other
+6. NO EXTRAS: Do NOT add any furniture not listed above
 
 ${style} style interior. Photorealistic render.`
       : `Add these furniture pieces to the room in image 1: ${productListIndexed}.
 
-NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
+⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 
+🎨 COLOR FIDELITY - CRITICAL:
+- Each product MUST have the EXACT color shown in its reference image
+- White furniture = pure white (not cream, beige, or off-white)
+- Match the EXACT material texture (leather, fabric, wood grain, metal finish)
+- If reference shows a white sofa, render a WHITE sofa - not any other color
+
+📐 SPATIAL RULES - NO OVERLAP:
+- Every piece of furniture must be FULLY VISIBLE and SEPARATE
+- NO furniture should be hidden behind or under other furniture
+- Ottomans go IN FRONT of sofas, not underneath them
+- Console tables go AGAINST WALLS, not behind sofas
+- Maintain clear floor space between all pieces
+- Each product must have its own distinct footprint
+
 CRITICAL RULES:
-1. PRESERVE ROOM: Walls, windows (exact shape/size), floor, ceiling, camera angle must be IDENTICAL to image 1
-2. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
-3. PERSPECTIVE: New items must match the room's perspective and have proper shadows
-4. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
+1. PRESERVE ROOM: Walls, windows, floor, ceiling, camera angle IDENTICAL to image 1
+2. COLOR MATCH: Each product's color MUST match its reference image EXACTLY
+3. ALL PRODUCTS: Every product listed above MUST appear in the render
+4. NO OVERLAP: Furniture pieces must NOT overlap or hide each other
+5. NO EXTRAS: Do NOT add any furniture not listed above
 
 ${style} style interior. Photorealistic render.`;
     
