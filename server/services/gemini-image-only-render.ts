@@ -473,6 +473,7 @@ MANDATORY PRODUCT RULES:
 1. ALL ${productRefs.length} PRODUCTS MUST APPEAR in the final image - do not omit any product.
 2. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
 3. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
+4. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
@@ -494,6 +495,7 @@ MANDATORY PRODUCT RULES:
 2. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
 3. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
 4. Ottomans and small items MUST be included - place them naturally near seating or as accent pieces.
+5. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
 
 CRITICAL PLACEMENT RULES:
 1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
