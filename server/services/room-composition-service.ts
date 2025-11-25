@@ -442,10 +442,10 @@ const ROOM_TEMPLATES = {
     }
   },
   'Dining Room': {
-    // Pattern: 1 table (anchor), 4-8 matching chairs, 0-1 sideboard, 1 chandelier, 0-1 rug
+    // Pattern: 1 table (anchor), 1-2 chair PRODUCTS (AI renders multiple copies), 0-1 sideboard, 1 chandelier, 0-1 rug
     essentials: {
       'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table (anchor, 35% budget)
-      'dining_seating': { min: 4, max: 8, priority: 2 }, // REQUIRED: Matching chairs (same SKU)
+      'dining_seating': { min: 1, max: 2, priority: 2 }, // Select 1-2 chair products; AI renders multiple copies based on quiz seating count
       'lighting': { min: 1, max: 1, priority: 3 }, // REQUIRED: Chandelier/pendant over table
     },
     complementary: {
