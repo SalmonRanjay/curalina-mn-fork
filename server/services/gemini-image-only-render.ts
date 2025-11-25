@@ -567,8 +567,11 @@ async function processGeminiResponse(
 // ============================================================================
 
 const MAX_PRODUCTS = 7; // Hard limit for model reliability
-const PRODUCTS_PER_BATCH = 3; // 3 products per batch = 3 batches for 7 products (3+3+1)
+const PRODUCTS_PER_BATCH = 7; // SINGLE PASS: All products at once to preserve room architecture
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
+
+// NOTE: Multi-batch was causing room architecture drift because Gemini regenerates
+// the entire image each pass. Single-pass preserves the room perfectly.
 
 /**
  * Limits total products to MAX_PRODUCTS
