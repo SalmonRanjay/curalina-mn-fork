@@ -576,8 +576,9 @@ Design a well-lit room with appropriate walls, windows, and flooring. Arrange th
 
 // Maximum products to send to AI for optimal fidelity
 // More products = lower accuracy per product
-// Google's multi-image composition works best with 3-5 reference images
-const MAX_PRODUCTS_FOR_FIDELITY = 7;
+// Google's multi-image composition works best with 2-3 reference images per batch
+const MAX_PRODUCTS_FOR_FIDELITY = 8;
+const TEXT_TO_IMAGE_BATCH_SIZE = 3; // Batch size for text-to-image mode
 
 /**
  * Generate render using the "Anchor & Composite" multi-modal strategy
@@ -621,6 +622,13 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       }
     } else {
       console.log(`📝 Text-to-image mode (no room photo - no anchor)`);
+    }
+    
+    // TEXT-TO-IMAGE BATCHING: When no room image and more than batch size products,
+    // use batched approach for better fidelity
+    if (!roomImage && limitedProducts.length > TEXT_TO_IMAGE_BATCH_SIZE) {
+      console.log(`\n🔄 TEXT-TO-IMAGE BATCHING: ${limitedProducts.length} products → batches of ${TEXT_TO_IMAGE_BATCH_SIZE}`);
+      return await generateBatchedTextToImageRender(params, limitedProducts);
     }
     
     // Step 2: Select and fetch product front view images (THE COMPOSITES)
@@ -797,15 +805,273 @@ async function processGeminiResponse(
 }
 
 // ============================================================================
-// MULTI-STEP RENDER PIPELINE
+// BATCHED TEXT-TO-IMAGE RENDER
+// ============================================================================
+// For text-to-image mode with many products, batch them for better fidelity:
+// 1. First batch creates the scene with 2-3 products
+// 2. Subsequent batches add products using previous render as anchor
+// ============================================================================
+
+/**
+ * Generate text-to-image render with batching for better product fidelity
+ * Each batch uses the previous render as the anchor image
+ */
+async function generateBatchedTextToImageRender(
+  params: ImageOnlyRenderParams,
+  products: Product[]
+): Promise<ImageOnlyRenderResult> {
+  const { roomType, stylePreference } = params;
+  
+  // Sort products by priority (large items first for scene anchoring)
+  const sortedProducts = [...products].sort((a, b) => {
+    const weightA = getCategoryWeightForBatching(a);
+    const weightB = getCategoryWeightForBatching(b);
+    return weightB - weightA;
+  });
+  
+  // Create batches
+  const batches: Product[][] = [];
+  for (let i = 0; i < sortedProducts.length; i += TEXT_TO_IMAGE_BATCH_SIZE) {
+    batches.push(sortedProducts.slice(i, i + TEXT_TO_IMAGE_BATCH_SIZE));
+  }
+  
+  console.log(`\n📦 TEXT-TO-IMAGE BATCHING:`);
+  console.log(`   Total products: ${products.length}`);
+  console.log(`   Batch size: ${TEXT_TO_IMAGE_BATCH_SIZE}`);
+  console.log(`   Number of batches: ${batches.length}`);
+  
+  // Log batch contents
+  batches.forEach((batch, i) => {
+    console.log(`   Batch ${i + 1}: ${batch.map(p => p.name).join(', ')}`);
+  });
+  
+  let currentAnchor: string | null = null;
+  const allProductsSentToAI: string[] = [];
+  
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    const isFirstBatch = batchIndex === 0;
+    
+    console.log(`\n🎨 BATCH ${batchIndex + 1}/${batches.length}: ${batch.map(p => p.name).join(', ')}`);
+    
+    // Get product images for this batch
+    const { selected: productImageRefs } = selectProductFrontViewImages(batch);
+    
+    if (productImageRefs.length === 0) {
+      console.warn(`   ⚠️ No valid product images in batch ${batchIndex + 1}, skipping`);
+      continue;
+    }
+    
+    // Fetch product images
+    const productImageParts: any[] = [];
+    const batchSkus: string[] = [];
+    
+    for (const productRef of productImageRefs) {
+      const productImage = await fetchImageAsBase64(productRef.url);
+      if (productImage) {
+        productImageParts.push({
+          inlineData: {
+            data: productImage.data,
+            mimeType: productImage.mimeType
+          }
+        });
+        batchSkus.push(productRef.sku);
+        console.log(`   ✅ Loaded: ${productRef.productName}`);
+      }
+    }
+    
+    if (productImageParts.length === 0) {
+      console.warn(`   ⚠️ Failed to fetch any product images for batch ${batchIndex + 1}`);
+      continue;
+    }
+    
+    // Build prompt for this batch
+    const batchPrompt = buildBatchedTextToImagePrompt(
+      batch,
+      productImageRefs.filter(ref => batchSkus.includes(ref.sku)),
+      roomType || 'living room',
+      stylePreference || 'Modern',
+      isFirstBatch,
+      batchIndex,
+      batches.length
+    );
+    
+    // Build parts array
+    const parts: any[] = [];
+    parts.push({ text: batchPrompt });
+    
+    // If we have a previous render, use it as anchor
+    if (currentAnchor && !isFirstBatch) {
+      const anchorData = currentAnchor.replace(/^data:image\/\w+;base64,/, '');
+      const anchorMime = currentAnchor.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+      
+      parts.push({ text: `Image 1: The current room design (ADD the new products to this scene, keep existing furniture)` });
+      parts.push({
+        inlineData: {
+          data: anchorData,
+          mimeType: anchorMime
+        }
+      });
+    }
+    
+    // Add product images
+    const successfulRefs = productImageRefs.filter(ref => batchSkus.includes(ref.sku));
+    const imageOffset = currentAnchor && !isFirstBatch ? 2 : 1;
+    
+    for (let i = 0; i < productImageParts.length; i++) {
+      const productRef = successfulRefs[i];
+      parts.push({ text: `Image ${i + imageOffset}: ${productRef.productName}` });
+      parts.push(productImageParts[i]);
+    }
+    
+    console.log(`   📤 Sending batch ${batchIndex + 1} to Gemini...`);
+    
+    // Call Gemini
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+    
+    // Extract generated image
+    const candidate = response.candidates?.[0];
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+    
+    if (!imagePart?.inlineData?.data) {
+      console.error(`   ❌ Batch ${batchIndex + 1} failed - no image generated`);
+      continue;
+    }
+    
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    currentAnchor = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    allProductsSentToAI.push(...batchSkus);
+    
+    console.log(`   ✅ Batch ${batchIndex + 1} complete`);
+  }
+  
+  if (!currentAnchor) {
+    return {
+      success: false,
+      error: 'All batches failed to generate',
+      productsUsed: 0,
+      productsSentToAI: []
+    };
+  }
+  
+  console.log(`\n✅ BATCHED TEXT-TO-IMAGE COMPLETE`);
+  console.log(`   Total products rendered: ${allProductsSentToAI.length}`);
+  
+  return {
+    success: true,
+    imageBase64: currentAnchor,
+    productsUsed: allProductsSentToAI.length,
+    productsSentToAI: allProductsSentToAI
+  };
+}
+
+/**
+ * Build prompt for batched text-to-image rendering
+ */
+function buildBatchedTextToImagePrompt(
+  products: Product[],
+  productRefs: Array<{ productName: string; sku: string }>,
+  roomType: string,
+  stylePreference: string,
+  isFirstBatch: boolean,
+  batchIndex: number,
+  totalBatches: number
+): string {
+  const style = stylePreference || 'Modern';
+  const room = roomType || 'living room';
+  
+  const productList = productRefs
+    .map((ref, i) => `the ${ref.productName} from image ${isFirstBatch ? i + 1 : i + 2}`)
+    .join(', ');
+  
+  if (isFirstBatch) {
+    // First batch: Create the scene
+    return `Create a beautiful ${style} ${room} interior featuring these exact furniture pieces from the reference images: ${productList}.
+MANDATORY PRODUCT RULES:
+1. EXACTLY ${productRefs.length} PRODUCTS - ALL must appear, NO extras. Count: ${productRefs.length} items only.
+2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 1-${productRefs.length}.
+3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
+4. Lamps must match exactly: if the reference shows a fabric shade, render a fabric shade. If metal, render metal.
+5. CONSOLE TABLES & SIDEBOARDS: Preserve exact leg style (tapered, straight, curved), drawer configuration, hardware finish, and material grain patterns from reference.
+6. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
+7. Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently.
+CRITICAL PLACEMENT RULES:
+1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
+2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
+3. VISIBILITY: ALL furniture must be FULLY VISIBLE. NO furniture should be hidden behind other furniture.
+4. CONSOLE TABLES: Place against SIDE WALLS (left or right), NOT behind sofas. Must be clearly visible in the composition.
+Design a well-lit room with appropriate walls, windows, and flooring. Arrange the furniture naturally with proper perspective and realistic shadows. Photorealistic interior design photo, 8K.`;
+  } else {
+    // Subsequent batches: Add to existing scene
+    return `ADD these exact furniture pieces to the existing room scene from Image 1: ${productList}.
+MANDATORY RULES:
+1. KEEP ALL EXISTING FURNITURE from Image 1 - do NOT remove or change any existing items.
+2. ADD EXACTLY ${productRefs.length} NEW PRODUCTS from the reference images - no more, no less.
+3. Each new product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
+4. Place new items in appropriate empty spaces - do NOT overlap with existing furniture.
+5. Maintain the same room architecture, lighting, and perspective as Image 1.
+6. ALL products (existing + new) must be FULLY VISIBLE - no clipping, no hiding behind other furniture.
+7. Pedestals, side tables, and small accent pieces MUST be prominently placed.
+Photorealistic interior design photo, 8K.`;
+  }
+}
+
+/**
+ * Get category weight for batching order (large items first)
+ */
+function getCategoryWeightForBatching(product: Product): number {
+  const name = product.name.toLowerCase();
+  const description = (product.description || '').toLowerCase();
+  const text = `${name} ${description}`;
+  
+  // Tier 1: Primary anchors (largest visual impact) - first batch
+  if (name.includes('sofa') || name.includes('sectional')) return 100;
+  if (name.includes('bed') && !name.includes('bedside')) return 95;
+  if (name.includes('dining table')) return 90;
+  
+  // Tier 2: Large furniture
+  if (name.includes('cabinet') || name.includes('sideboard') || name.includes('buffet')) return 80;
+  if (name.includes('bookcase') || name.includes('shelf')) return 75;
+  if (name.includes('console table') || name.includes('media console')) return 70;
+  
+  // Tier 3: Tables and rugs
+  if (name.includes('coffee table')) return 65;
+  if (name.includes('dining chair')) return 60;
+  if (name.includes('rug')) return 60;
+  
+  // Tier 4: Accent seating
+  if (name.includes('accent chair') || name.includes('armchair') || name.includes('chair')) return 55;
+  if (name.includes('ottoman') || name.includes('bench')) return 50;
+  
+  // Tier 5: Small tables
+  if (name.includes('side table') || name.includes('end table') || name.includes('nightstand')) return 40;
+  
+  // Tier 6: Lighting
+  if (name.includes('lamp') || name.includes('pendant') || name.includes('chandelier')) return 30;
+  
+  // Tier 7: Small decor (last batch)
+  if (name.includes('vase') || name.includes('bowl') || name.includes('pedestal')) return 20;
+  if (text.includes('decor') || text.includes('accessory') || text.includes('accent')) return 15;
+  
+  return 25; // Default for unknown items
+}
+
+// ============================================================================
+// MULTI-STEP RENDER PIPELINE (for room images)
 // ============================================================================
 // Breaks render into multiple smaller passes for better fidelity:
 // 1. Room Lock Pass: Establish room baseline
 // 2. Product Batch Passes: Add 2-3 products at a time (large items first)
 // ============================================================================
 
-const MAX_PRODUCTS = 7; // Hard limit for model reliability
-const PRODUCTS_PER_BATCH = 2; // Smaller batches = less hallucination of extra furniture
+const MAX_PRODUCTS = 8; // Hard limit for model reliability (was 7)
+const PRODUCTS_PER_BATCH = 3; // 2-3 products per batch for optimal fidelity (was 2)
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
 
 // NOTE: Delta compositing solves room drift - we extract furniture from Gemini output
