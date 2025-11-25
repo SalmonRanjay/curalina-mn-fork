@@ -1208,12 +1208,25 @@ async function executeProductBatchPass(
       .map((ref, index) => `the "${ref.productName}" from image ${productImageStartIndex + index}`)
       .join(' and ');
     
-    // Build room architecture section from analysis
+    // Build room architecture section from analysis with STRICT LOCK
     const roomArchitectureSection = roomArchitectureAnalysis 
       ? `
 
-🏠 ROOM ARCHITECTURE TO PRESERVE EXACTLY:
+🔒 ARCHITECTURE LOCK - ABSOLUTELY NO CHANGES ALLOWED:
+The room in the reference image is the EXACT space to use - NOT inspiration for a similar space.
+
 ${roomArchitectureAnalysis}
+
+⛔ DO NOT CHANGE ANY OF THE FOLLOWING:
+- Walls: Same color, texture, position, moldings, trim
+- Windows: Same size, position, frame style, curtains/blinds
+- Doors: Same position, style, handles
+- Floor: Same material, color, pattern, reflectivity
+- Ceiling: Same height, texture, beams, moldings
+- Built-in elements: Shelves, niches, cabinets, fireplaces
+- Camera angle: Same perspective, focal length, eye level
+- Lighting conditions: Same natural/artificial light sources
+- Any existing furniture/decor that was in the original room
 
 ` : '';
 
@@ -1231,9 +1244,9 @@ ${roomArchitectureSection}
       ? `Add these furniture pieces: ${productListIndexed}.${keepExistingText}
 
 IMAGE REFERENCES:
-- Image 1: ORIGINAL ROOM - architecture must match this EXACTLY (walls, windows, floor, ceiling, perspective)
-- Image 2: CURRENT SCENE - keep all existing furniture from this image
-- Images 3+: NEW FURNITURE to add
+- Image 1: ORIGINAL ROOM - THIS IS THE EXACT ROOM TO USE. Copy every architectural detail pixel-for-pixel: walls, windows, floor, ceiling, perspective, lighting, built-ins. Do NOT reimagine or redesign this space.
+- Image 2: CURRENT SCENE - keep ALL existing furniture from this image in their EXACT positions
+- Images 3+: NEW FURNITURE to add (these are the ONLY new items allowed)
 
 ⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
@@ -1257,12 +1270,25 @@ ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 - Maintain clear floor space between all pieces
 - Each product must have its own distinct footprint
 
-CRITICAL RULES:
-1. ROOM ARCHITECTURE from Image 1: Walls, windows, floor, ceiling, camera angle IDENTICAL
-2. EXISTING FURNITURE from Image 2: Keep all furniture exactly as shown
+🚨 CRITICAL RULES - ARCHITECTURE PRESERVATION:
+1. ROOM ARCHITECTURE from Image 1: Walls, windows, floor, ceiling, camera angle IDENTICAL - pixel-for-pixel match
+2. EXISTING FURNITURE from Image 2: Keep all furniture exactly as shown - same position, same appearance
 3. COLOR MATCH: Each new product's color MUST match its reference image EXACTLY
 4. ALL PRODUCTS: Every product listed above MUST appear in the render
 5. NO OVERLAP: Furniture pieces must NOT overlap or hide each other
+
+⛔ EXPLICITLY FORBIDDEN - DO NOT DO ANY OF THESE:
+- DO NOT add windows, doors, or openings that weren't in the original
+- DO NOT remove windows, doors, or openings that were in the original
+- DO NOT change wall colors, textures, or add wallpaper
+- DO NOT add or remove crown molding, baseboards, or trim
+- DO NOT change the floor material (wood to tile, etc.)
+- DO NOT add or remove built-in shelving, niches, or cabinets
+- DO NOT change the ceiling height or add/remove beams
+- DO NOT change the camera angle, perspective, or zoom level
+- DO NOT transform the room type (living room stays living room, NOT bedroom)
+- DO NOT add a bed to a non-bedroom space
+- DO NOT fill empty space just because it "looks empty" - empty is CORRECT
 
 🚫 ABSOLUTELY FORBIDDEN - DO NOT ADD:
 - NO wall art, paintings, mirrors, or wall decorations unless listed above
@@ -1300,11 +1326,24 @@ ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 - Maintain clear floor space between all pieces
 - Each product must have its own distinct footprint
 
-CRITICAL RULES:
-1. PRESERVE ROOM: Walls, windows, floor, ceiling, camera angle IDENTICAL to image 1
+🚨 CRITICAL RULES - ARCHITECTURE PRESERVATION:
+1. PRESERVE ROOM: Walls, windows, floor, ceiling, camera angle IDENTICAL to image 1 - pixel-for-pixel match
 2. COLOR MATCH: Each product's color MUST match its reference image EXACTLY
 3. ALL PRODUCTS: Every product listed above MUST appear in the render
 4. NO OVERLAP: Furniture pieces must NOT overlap or hide each other
+
+⛔ EXPLICITLY FORBIDDEN - DO NOT DO ANY OF THESE:
+- DO NOT add windows, doors, or openings that weren't in the original
+- DO NOT remove windows, doors, or openings that were in the original
+- DO NOT change wall colors, textures, or add wallpaper
+- DO NOT add or remove crown molding, baseboards, or trim
+- DO NOT change the floor material (wood to tile, etc.)
+- DO NOT add or remove built-in shelving, niches, or cabinets
+- DO NOT change the ceiling height or add/remove beams
+- DO NOT change the camera angle, perspective, or zoom level
+- DO NOT transform the room type (living room stays living room, NOT bedroom)
+- DO NOT add a bed to a non-bedroom space
+- DO NOT fill empty space just because it "looks empty" - empty is CORRECT
 
 🚫 ABSOLUTELY FORBIDDEN - DO NOT ADD:
 - NO wall art, paintings, mirrors, or wall decorations unless listed above
@@ -1323,8 +1362,8 @@ ${style} style interior. Photorealistic render. ONLY the listed ${successfulRefs
     const parts: any[] = [{ text: prompt }];
     
     if (hasOriginalRoomRef) {
-      // Batch 2+: Include original room as Image 1 (architecture reference)
-      parts.push({ text: `Image 1: ORIGINAL ROOM - match this architecture exactly` });
+      // Batch 2+: Include original room as Image 1 (architecture reference) with STRICT instruction
+      parts.push({ text: `Image 1: ORIGINAL ROOM - THIS IS THE EXACT ROOM. Copy every wall, window, floor, ceiling, built-in element EXACTLY. Do NOT redesign, reimagine, or transform this space.` });
       const originalData = originalRoomBase64!.replace(/^data:image\/\w+;base64,/, '');
       const originalMimeType = originalRoomBase64!.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
       parts.push({
@@ -1337,8 +1376,8 @@ ${style} style interior. Photorealistic render. ONLY the listed ${successfulRefs
       // Image 2: Current anchor with existing furniture
       parts.push({ text: `Image 2: CURRENT SCENE - keep all furniture from this` });
     } else {
-      // Batch 1: Just the anchor image
-      parts.push({ text: `Image 1: The room (preserve exactly, only add furniture)` });
+      // Batch 1: Just the anchor image with STRICT preservation instruction
+      parts.push({ text: `Image 1: THE EXACT ROOM TO USE - Copy this room pixel-for-pixel. Do NOT change walls, windows, floor, ceiling, built-ins, or camera angle. Only ADD the furniture listed.` });
     }
     
     // Add anchor image (current state)
