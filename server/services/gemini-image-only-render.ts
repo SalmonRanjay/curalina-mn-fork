@@ -566,6 +566,47 @@ async function processGeminiResponse(
 // ============================================================================
 
 const PRODUCTS_PER_BATCH = 2; // Optimal for fidelity
+const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
+
+/**
+ * Filters products to limit lamps to MAX_LAMPS
+ * Keeps the most expensive lamps (typically higher quality/larger)
+ */
+function limitLamps(products: Product[]): Product[] {
+  const lamps: Product[] = [];
+  const nonLamps: Product[] = [];
+  
+  for (const product of products) {
+    const name = product.name.toLowerCase();
+    if (name.includes('lamp') || name.includes('pendant') || name.includes('chandelier') || name.includes('sconce')) {
+      lamps.push(product);
+    } else {
+      nonLamps.push(product);
+    }
+  }
+  
+  // If we have too many lamps, keep only the most expensive ones
+  if (lamps.length > MAX_LAMPS) {
+    console.log(`\n⚠️ LAMP LIMIT: Found ${lamps.length} lamps, limiting to ${MAX_LAMPS}`);
+    
+    // Sort lamps by price descending (keep most expensive)
+    lamps.sort((a, b) => {
+      const priceA = parseFloat(a.price || '0');
+      const priceB = parseFloat(b.price || '0');
+      return priceB - priceA;
+    });
+    
+    const keptLamps = lamps.slice(0, MAX_LAMPS);
+    const removedLamps = lamps.slice(MAX_LAMPS);
+    
+    console.log(`   Keeping: ${keptLamps.map(l => l.name).join(', ')}`);
+    console.log(`   Removing: ${removedLamps.map(l => l.name).join(', ')}`);
+    
+    return [...nonLamps, ...keptLamps];
+  }
+  
+  return products;
+}
 
 // Category weights for ordering: higher = render first (anchors the scene)
 const CATEGORY_PRIORITY_WEIGHTS: Record<string, number> = {
@@ -765,11 +806,16 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
   const style = stylePreference || 'Modern';
   const room = roomType || 'living room';
   
-  // SORT PRODUCTS: Large anchor items first, small accents last
-  const sortedProducts = orderProductsForBatching(products);
-  
   console.log(`\n🔄 MULTI-STEP RENDER PIPELINE`);
-  console.log(`   Total products: ${products.length}`);
+  console.log(`   Total products received: ${products.length}`);
+  
+  // STEP 1: Limit lamps to avoid cluttered renders
+  const lampsLimited = limitLamps(products);
+  
+  // STEP 2: Sort products - large anchor items first, small accents last
+  const sortedProducts = orderProductsForBatching(lampsLimited);
+  
+  console.log(`   Products after lamp limit: ${sortedProducts.length}`);
   console.log(`   Batch size: ${PRODUCTS_PER_BATCH}`);
   
   // Log the sorted order with weights for debugging
@@ -1033,6 +1079,7 @@ CRITICAL RULES:
 2. KEEP room architecture identical (walls, windows, floor, ceiling, camera angle)
 3. ADD new furniture with EXACT colors, shapes, textures from their reference images
 4. Place new items naturally with proper perspective and shadows
+5. DO NOT ADD ANY FURNITURE OR OBJECTS NOT LISTED ABOVE - no extra tables, stands, pedestals, or any items not in the product list
 
 ${style} style interior. Photorealistic render.`;
     
