@@ -892,6 +892,8 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     
     stepsCompleted = 1;
     let currentAnchor = roomLockResult.imageBase64;
+    // Store original room for architecture reference in batch 2+
+    const originalRoomBase64 = roomLockResult.imageBase64;
     console.log(`   ✅ Room locked successfully`);
     
     // ========================================
@@ -904,13 +906,15 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       console.log(`\n📦 STEP ${stepNum}/${totalSteps}: Product Batch ${batchIndex + 1}`);
       console.log(`   Products: ${batch.map(p => p.name).join(', ')}`);
       
+      // Pass original room image for architecture reference (batch 2+ will use it)
       const batchResult = await executeProductBatchPass(
         currentAnchor,
         batch,
         style,
         room,
         batchIndex,
-        productBatches.length
+        productBatches.length,
+        originalRoomBase64  // Original room for architecture preservation
       );
       
       if (!batchResult.success || !batchResult.imageBase64) {
@@ -1039,6 +1043,7 @@ Output: The same room ready for furniture, with identical architecture.`;
 /**
  * Step 2+: Product Batch Pass
  * Adds a batch of products to the current anchor image
+ * Now includes originalRoomBase64 as a reference for architecture preservation
  */
 async function executeProductBatchPass(
   anchorBase64: string,
@@ -1046,7 +1051,8 @@ async function executeProductBatchPass(
   style: string,
   room: string,
   batchIndex: number,
-  totalBatches: number
+  totalBatches: number,
+  originalRoomBase64?: string // Original room image for architecture reference
 ): Promise<{ success: boolean; imageBase64?: string; error?: string; productsSentToAI: string[] }> {
   try {
     // Get product images
@@ -1077,69 +1083,108 @@ async function executeProductBatchPass(
       return { success: false, error: 'Failed to fetch product images', productsSentToAI: [] };
     }
     
-    // Build detailed product descriptions for better AI recognition
+    // Build list of successful product references
     const successfulRefs = productImageRefs.filter(ref => productsSentToAI.includes(ref.sku));
-    const productDescriptions = successfulRefs.map((ref, index) => {
+    
+    // Determine if we have an original room reference (for batch 2+)
+    const hasOriginalRoomRef = batchIndex > 0 && originalRoomBase64;
+    const isFirstBatch = batchIndex === 0;
+    
+    // Calculate image numbering based on whether we include original room
+    // Batch 1: Image 1 = current anchor, products start at Image 2
+    // Batch 2+: Image 1 = ORIGINAL room (architecture ref), Image 2 = current anchor, products start at Image 3
+    const productImageStartIndex = hasOriginalRoomRef ? 3 : 2;
+    
+    // Update product descriptions with correct image numbering
+    const productDescriptionsIndexed = successfulRefs.map((ref, index) => {
       const product = products.find(p => p.sku === ref.sku);
       const details: string[] = [];
       
-      // Add materials if available (array field)
       if (product?.materials && product.materials.length > 0) {
         details.push(`made of ${product.materials.join(', ')}`);
       }
-      
-      // Add colors if available (array field)
       if (product?.colors && product.colors.length > 0) {
         details.push(`in ${product.colors.join('/')} color`);
       }
-      
-      // Add AI visual description if available (truncated for prompt efficiency)
       if (product?.visualDescription) {
         const shortDesc = product.visualDescription.slice(0, 150);
         details.push(`- ${shortDesc}`);
       }
       
       const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
-      return `Image ${index + 2}: "${ref.productName}"${detailStr}`;
+      return `Image ${productImageStartIndex + index}: "${ref.productName}"${detailStr}`;
     });
     
-    // Build product list for prompt intro
-    const productList = successfulRefs
-      .map((ref, index) => `the "${ref.productName}" from image ${index + 2}`)
+    // Build product list for prompt intro with correct indexing
+    const productListIndexed = successfulRefs
+      .map((ref, index) => `the "${ref.productName}" from image ${productImageStartIndex + index}`)
       .join(' and ');
     
-    // Enhanced batch prompt with explicit instruction to KEEP existing furniture AND room architecture
-    const isFirstBatch = batchIndex === 0;
+    // Enhanced prompt that references ORIGINAL room for batch 2+
     const keepExistingText = isFirstBatch 
       ? '' 
       : `
 
 ⚠️ CRITICAL PRESERVATION REQUIREMENTS:
-- ROOM ARCHITECTURE: Keep walls, windows, floor, ceiling, lighting EXACTLY as shown in image 1 - pixel-perfect match
-- EXISTING FURNITURE: Keep all furniture from previous steps exactly where it is - do not remove, move, or modify
-- Only ADD the new pieces listed below to the existing scene`;
+- ROOM ARCHITECTURE: Match Image 1 (ORIGINAL ROOM) EXACTLY - same walls, windows, floor, ceiling, lighting, camera angle
+- EXISTING FURNITURE: Keep all furniture from Image 2 (current scene) exactly as shown
+- Only ADD the new pieces listed below`;
     
-    const prompt = `Add these furniture pieces to the room in image 1: ${productList}.${keepExistingText}
+    const prompt = hasOriginalRoomRef
+      ? `Add these furniture pieces: ${productListIndexed}.${keepExistingText}
+
+IMAGE REFERENCES:
+- Image 1: ORIGINAL ROOM - architecture must match this EXACTLY (walls, windows, floor, ceiling, perspective)
+- Image 2: CURRENT SCENE - keep all existing furniture from this image
+- Images 3+: NEW FURNITURE to add
 
 NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
-${productDescriptions.map((desc, i) => `- ${desc}`).join('\n')}
+${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
+
+CRITICAL RULES:
+1. ROOM ARCHITECTURE from Image 1: Walls, windows (exact shape/size), floor, ceiling, camera angle must be IDENTICAL
+2. EXISTING FURNITURE from Image 2: Keep all furniture exactly as shown (position, color, shape)
+3. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
+4. PERSPECTIVE: New items must match the room's perspective from Image 1
+5. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
+
+${style} style interior. Photorealistic render.`
+      : `Add these furniture pieces to the room in image 1: ${productListIndexed}.
+
+NEW FURNITURE TO ADD - replicate EXACT appearance from reference images:
+${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 
 CRITICAL RULES:
 1. PRESERVE ROOM: Walls, windows (exact shape/size), floor, ceiling, camera angle must be IDENTICAL to image 1
-2. PRESERVE FURNITURE: All existing furniture in image 1 stays exactly where it is (same position, color, shape)
-3. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
-4. PERSPECTIVE: New items must match the room's perspective and have proper shadows
-5. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
+2. ADD NEW: Place new furniture with EXACT colors, shapes, textures from their reference images
+3. PERSPECTIVE: New items must match the room's perspective and have proper shadows
+4. NO EXTRAS: Do NOT add any furniture or objects not in the product list above
 
 ${style} style interior. Photorealistic render.`;
     
-    // Build parts
-    const parts: any[] = [
-      { text: prompt },
-      { text: `Image 1: The room (preserve exactly, only add furniture)` }
-    ];
+    // Build parts - for batch 2+, include ORIGINAL room as first image
+    const parts: any[] = [{ text: prompt }];
     
-    // Add anchor image (extract base64 data)
+    if (hasOriginalRoomRef) {
+      // Batch 2+: Include original room as Image 1 (architecture reference)
+      parts.push({ text: `Image 1: ORIGINAL ROOM - match this architecture exactly` });
+      const originalData = originalRoomBase64!.replace(/^data:image\/\w+;base64,/, '');
+      const originalMimeType = originalRoomBase64!.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+      parts.push({
+        inlineData: {
+          data: originalData,
+          mimeType: originalMimeType
+        }
+      });
+      
+      // Image 2: Current anchor with existing furniture
+      parts.push({ text: `Image 2: CURRENT SCENE - keep all furniture from this` });
+    } else {
+      // Batch 1: Just the anchor image
+      parts.push({ text: `Image 1: The room (preserve exactly, only add furniture)` });
+    }
+    
+    // Add anchor image (current state)
     const anchorData = anchorBase64.replace(/^data:image\/\w+;base64,/, '');
     const anchorMimeType = anchorBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
     parts.push({
@@ -1149,9 +1194,9 @@ ${style} style interior. Photorealistic render.`;
       }
     });
     
-    // Add product images with detailed labels
+    // Add product images with detailed labels (use indexed descriptions)
     for (let i = 0; i < productImageParts.length; i++) {
-      parts.push({ text: productDescriptions[i] });
+      parts.push({ text: productDescriptionsIndexed[i] });
       parts.push(productImageParts[i]);
     }
     
