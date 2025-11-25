@@ -113,7 +113,7 @@ Output: {
 Now parse the user's description and return ONLY the JSON response.`;
 
     const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
     
