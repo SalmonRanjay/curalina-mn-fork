@@ -110,6 +110,105 @@ function isValidImageUrl(url: string): boolean {
   return isExternalUrl || isObjectStorage || isS3Path;
 }
 
+/**
+ * Detect functional category from product name and description
+ */
+function detectFunctionalCategory(product: Product): string {
+  const name = product.name.toLowerCase();
+  const desc = (product.description || '').toLowerCase();
+  const combined = `${name} ${desc}`;
+  
+  if (combined.includes('sofa') || combined.includes('couch') || combined.includes('sectional')) return 'Seating';
+  if (combined.includes('chair') || combined.includes('armchair') || combined.includes('accent chair')) return 'Seating';
+  if (combined.includes('coffee table')) return 'Coffee Table';
+  if (combined.includes('side table') || combined.includes('end table') || combined.includes('accent table')) return 'Side Table';
+  if (combined.includes('dining table')) return 'Dining Table';
+  if (combined.includes('console') || combined.includes('sideboard') || combined.includes('credenza')) return 'Console';
+  if (combined.includes('bookshelf') || combined.includes('bookcase') || combined.includes('shelf')) return 'Storage';
+  if (combined.includes('cabinet') || combined.includes('dresser') || combined.includes('chest')) return 'Storage';
+  if (combined.includes('floor lamp')) return 'Floor Lamp';
+  if (combined.includes('table lamp')) return 'Table Lamp';
+  if (combined.includes('pendant') || combined.includes('chandelier')) return 'Pendant Light';
+  if (combined.includes('lamp')) return 'Lighting';
+  if (combined.includes('rug') || combined.includes('carpet')) return 'Rug';
+  if (combined.includes('mirror')) return 'Mirror';
+  if (combined.includes('plant') || combined.includes('vase') || combined.includes('art')) return 'Decor';
+  if (combined.includes('ottoman') || combined.includes('pouf')) return 'Ottoman';
+  if (combined.includes('bench')) return 'Bench';
+  if (combined.includes('bed') || combined.includes('headboard')) return 'Bed';
+  if (combined.includes('nightstand') || combined.includes('bedside')) return 'Nightstand';
+  
+  return 'Furniture';
+}
+
+/**
+ * Get smart placement directive based on product category
+ * Returns specific instructions for WHERE to place the product
+ */
+function getPlacementDirective(category: string, productIndex: number, totalProducts: number): string {
+  const placementRules: Record<string, string> = {
+    'Seating': 'Place as the main seating element in the conversation area, facing the focal point. Position with back against or angled toward a wall, leaving walkway clearance.',
+    'Coffee Table': 'Position centrally in front of the main sofa/seating, leaving 16-18 inches between seating and table for comfortable access.',
+    'Side Table': 'Place adjacent to seating - next to a sofa arm or beside an accent chair. Ensure the table top is roughly level with the arm height.',
+    'Dining Table': 'Center in the dining area with equal clearance on all sides for chair pullout. Position under pendant lighting if present.',
+    'Console': 'Position against a wall - behind a sofa, in an entryway, or against a focal wall. Leave 3-4 inches from wall.',
+    'Storage': 'Place against a wall, away from windows. Align with room architecture and other furniture lines.',
+    'Floor Lamp': 'Position behind or beside seating to provide reading/ambient light. Place in a corner or next to a sofa arm.',
+    'Table Lamp': 'Place on a side table or console. Position to provide functional lighting for adjacent seating.',
+    'Pendant Light': 'Suspend from ceiling over dining table, kitchen island, or as a focal point. Center over the furniture below.',
+    'Lighting': 'Position to provide ambient or task lighting. Place near seating areas or as accent lighting.',
+    'Rug': 'Center under the main furniture grouping. Front legs of seating should rest on the rug. Size should define the conversation area.',
+    'Mirror': 'Mount on a wall opposite or adjacent to windows to reflect light. Position at eye level or above a console.',
+    'Decor': 'Place on surfaces (consoles, shelves, coffee tables) or as floor elements in corners. Use to fill vertical space.',
+    'Ottoman': 'Position in front of or adjacent to main seating. Can serve as extra seating or footrest.',
+    'Bench': 'Place at the foot of a bed, in an entryway, or along a wall as additional seating.',
+    'Bed': 'Center against the main wall, with nightstand space on both sides. Position with headboard against the wall.',
+    'Nightstand': 'Place on each side of the bed, close enough for reaching from the bed. Align tops with mattress height.',
+    'Furniture': 'Position in a visually balanced arrangement with other furniture. Maintain walkway clearance and sight lines.'
+  };
+  
+  return placementRules[category] || placementRules['Furniture'];
+}
+
+/**
+ * Get visual details from product for prompt
+ */
+function getProductVisualDetails(product: Product): string {
+  const details: string[] = [];
+  
+  // Add colors
+  if (product.colors && product.colors.length > 0) {
+    details.push(product.colors.join(' and '));
+  }
+  
+  // Add materials
+  if (product.materials && product.materials.length > 0) {
+    details.push(product.materials.slice(0, 2).join(' and '));
+  }
+  
+  // Add condensed description if available
+  if (product.visualDescription) {
+    const condensed = product.visualDescription.substring(0, 150);
+    details.push(condensed);
+  }
+  
+  return details.join('. ') || 'Use the exact appearance from the reference image';
+}
+
+/**
+ * Format dimensions for prompt
+ */
+function formatDimensions(dimensions: any): string {
+  if (!dimensions) return '';
+  
+  if (dimensions.w && dimensions.d && dimensions.h) {
+    const unit = dimensions.unit || 'inches';
+    return `${dimensions.w}x${dimensions.d}x${dimensions.h} ${unit}`;
+  }
+  
+  return '';
+}
+
 export interface ImageOnlyRenderParams {
   roomImageUrl: string;
   products: Product[];
@@ -137,53 +236,161 @@ export interface ImageOnlyRenderResult {
 }
 
 /**
- * Generate render using ONLY images - no text descriptions
- * Mimics the user's AI Studio approach:
- * 1. Upload room photo
- * 2. Upload product front view images
- * 3. Simple prompt: "furnish this space with my products"
+ * Build the "Anchor & Composite" prompt based on Google AI Studio's strategy
  * 
- * This approach bypasses all the visual description generation complexity
+ * Strategy:
+ * 1. The Anchor (Structure): User's room photo as first reference - preserve geometry
+ * 2. The Composites (Products): Actual cropped product images as secondary references
+ * 
+ * The prompt explicitly references each image and instructs Gemini to use THOSE EXACT objects.
+ */
+function buildAnchorCompositePrompt(
+  products: Product[],
+  productRefs: Array<{ url: string; productName: string; sku: string }>,
+  roomType?: string,
+  stylePreference?: string,
+  hasRoomImage?: boolean,
+  floorPlanAnalysis?: any,
+  placementInstructions?: string
+): string {
+  // Extract style context
+  const style = stylePreference || 'Modern';
+  const room = roomType || 'living room';
+  
+  const totalProducts = productRefs.length;
+  
+  // Build product placement instructions with specific spatial directives
+  const productInstructions = productRefs.map((ref, index) => {
+    const product = products.find(p => p.sku === ref.sku);
+    const category = product ? detectFunctionalCategory(product) : 'Furniture';
+    const visualDetails = product ? getProductVisualDetails(product) : '';
+    const dimensions = product ? formatDimensions(product.dimensions) : '';
+    const placementDirective = getPlacementDirective(category, index, totalProducts);
+    
+    const imageNum = hasRoomImage ? index + 2 : index + 1; // Room is REFERENCE IMAGE 1 if present
+    
+    let instruction = `REFERENCE IMAGE ${imageNum}: [${category}] ${ref.productName}.
+ACTION: Place this EXACT item in the room using the following placement:
+PLACEMENT: ${placementDirective}
+Visual Details: ${visualDetails || 'Match the exact appearance from the reference image.'}`;
+    
+    if (dimensions) {
+      instruction += `\nDimensions: ${dimensions}`;
+    }
+    
+    return instruction;
+  }).join('\n\n');
+  
+  // Build architectural preservation instructions
+  let architecturalInstructions = '';
+  if (hasRoomImage) {
+    if (floorPlanAnalysis) {
+      architecturalInstructions = `PRESERVE EXACT ARCHITECTURE from REFERENCE IMAGE 1:
+- Room Dimensions: ${floorPlanAnalysis.roomDimensions || 'As shown in image'}
+- Windows: ${floorPlanAnalysis.windowLocations?.join(', ') || 'As shown in image'}
+- Doors: ${floorPlanAnalysis.doorLocations?.join(', ') || 'As shown in image'}
+- Built-in Features: ${floorPlanAnalysis.builtInFeatures?.join(', ') || 'As shown in image'}
+- Ceiling: ${floorPlanAnalysis.ceilingRoofDesign || 'As shown in image'}
+- Layout: ${floorPlanAnalysis.layoutNotes || 'Preserve exact floor plan'}`;
+    } else {
+      architecturalInstructions = `PRESERVE EXACT ARCHITECTURE from REFERENCE IMAGE 1:
+Keep all walls, windows, floor, ceiling, doors, and perspective EXACTLY as seen in this image.
+Replace only the existing furniture.`;
+    }
+  } else {
+    architecturalInstructions = `Create a beautiful ${style} ${room} interior with professional architecture.
+Include appropriate walls, flooring, windows, and ceiling for the style.`;
+  }
+  
+  // Build the full prompt using the Anchor & Composite structure
+  const prompt = `Professional Interior Design Render. 8k Resolution. Photorealistic.
+
+Task: ${hasRoomImage ? 'Redesign the room to look exactly like the user\'s vision using specific products.' : 'Create a stunning interior design using the specific products provided.'}
+
+[Style Context]
+Style Vibe: ${style}. Room Type: ${room}.
+
+ARCHITECTURAL INSTRUCTIONS:
+${architecturalInstructions}
+${hasRoomImage ? 'REFERENCE IMAGE 1: The user\'s actual room. Keep walls, windows, floor, and perspective EXACTLY as seen in this image. Replace existing furniture.' : ''}
+
+CRITICAL PRODUCT PLACEMENT INSTRUCTIONS:
+You are provided with reference images for specific furniture items. You MUST composite these EXACT items into the scene.
+
+${productInstructions}
+
+COMPOSITION RULES:
+- Harmonious arrangement matching the room's scale.
+- Correct lighting and shadows for the inserted products.
+- Products must look like they BELONG in the space - proper perspective and grounding.
+- Maintain realistic proportions between furniture pieces.
+- Ensure natural flow and walkable pathways.
+- Each product MUST be clearly visible and recognizable.
+- Follow the PLACEMENT directive for each product's location.
+${placementInstructions ? `\nADDITIONAL SPATIAL GUIDANCE:\n${placementInstructions}` : ''}
+
+VISUAL FIDELITY REQUIREMENTS:
+- The furniture in the render must EXACTLY match the reference product images.
+- Preserve the exact texture, color, shape, and material of each product.
+- Do NOT hallucinate or substitute similar-looking furniture.
+- Every product from the reference images must appear in the final render.
+
+Generate the photorealistic interior design render now.`;
+
+  return prompt;
+}
+
+/**
+ * Generate render using the "Anchor & Composite" multi-modal strategy
+ * 
+ * Based on Google AI Studio's approach:
+ * 1. Pass room photo as first reference (Anchor) - preserves geometry
+ * 2. Pass actual product images as secondary references (Composites)
+ * 3. Use structured prompt to instruct Gemini to place THESE EXACT objects
+ * 
+ * This approach achieves:
+ * - Visual Fidelity: Actual pixel data ensures texture/shape replication
+ * - Spatial Integrity: Room photo ensures proper floor/wall boundaries
  */
 export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Promise<ImageOnlyRenderResult> {
   const { roomImageUrl, products, roomType, stylePreference, floorPlanAnalysis, placementInstructions } = params;
   
   try {
-    console.log(`\n🖼️ Starting IMAGE-ONLY render generation...`);
-    console.log(`📍 Room image: ${roomImageUrl || '(none - text-to-image mode)'}`);
-    console.log(`📦 Products to furnish: ${products.length}`);
+    console.log(`\n🖼️ Starting ANCHOR & COMPOSITE render generation...`);
+    console.log(`📍 Room image (Anchor): ${roomImageUrl || '(none - text-to-image mode)'}`);
+    console.log(`📦 Products to furnish (Composites): ${products.length}`);
     
     // Step 1: Fetch room image (optional - skip if empty for text-to-image mode)
     let roomImage: { data: string; mimeType: string } | null = null;
     const hasRoomImage = roomImageUrl && roomImageUrl.trim().length > 0;
     
     if (hasRoomImage) {
-      console.log(`📥 Fetching room image...`);
+      console.log(`📥 Fetching room image (THE ANCHOR)...`);
       roomImage = await fetchImageAsBase64(roomImageUrl);
       if (!roomImage) {
         console.warn(`⚠️ Failed to fetch room image, falling back to text-to-image mode`);
       } else {
-        console.log(`✅ Room image loaded (${roomImage.mimeType})`);
+        console.log(`✅ Room image loaded as ANCHOR (${roomImage.mimeType})`);
       }
     } else {
-      console.log(`📝 Text-to-image mode (no room photo provided)`);
+      console.log(`📝 Text-to-image mode (no room photo - no anchor)`);
     }
     
-    // Step 2: Select and fetch product front view images
+    // Step 2: Select and fetch product front view images (THE COMPOSITES)
     const productImageRefs = selectProductFrontViewImages(products);
-    console.log(`📸 Selected ${productImageRefs.length} product front view images`);
+    console.log(`📸 Selected ${productImageRefs.length} product images (COMPOSITES)`);
     
     if (productImageRefs.length === 0) {
       return {
         success: false,
         error: 'No valid product images found',
         productsUsed: 0,
-        productsSentToAI: [] // No products sent
+        productsSentToAI: []
       };
     }
     
     const productImageParts: any[] = [];
-    const productSkusSentToAI: string[] = []; // CRITICAL: Only products whose images were SUCCESSFULLY fetched
+    const productSkusSentToAI: string[] = [];
     let fetchedCount = 0;
     
     for (const productRef of productImageRefs) {
@@ -195,49 +402,50 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
             mimeType: productImage.mimeType
           }
         });
-        productSkusSentToAI.push(productRef.sku); // Add only after successful fetch
+        productSkusSentToAI.push(productRef.sku);
         fetchedCount++;
-        console.log(`  ✅ ${fetchedCount}. ${productRef.productName} (${productRef.sku})`);
+        console.log(`  ✅ Composite ${fetchedCount}: ${productRef.productName} (${productRef.sku})`);
       } else {
-        console.warn(`  ❌ Failed to fetch image for ${productRef.productName} (${productRef.sku}) - EXCLUDED from AI prompt`);
+        console.warn(`  ❌ Failed to fetch image for ${productRef.productName} (${productRef.sku}) - EXCLUDED`);
       }
     }
     
-    console.log(`✅ Products successfully sent to AI: ${productSkusSentToAI.join(', ')}`);
+    console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} composite images`);
     
-    console.log(`✅ Loaded ${fetchedCount}/${productImageRefs.length} product images`);
-    
-    // Log floor plan analysis if provided
-    if (floorPlanAnalysis) {
-      console.log(`📋 Floor plan analysis received:`, JSON.stringify(floorPlanAnalysis, null, 2));
+    if (fetchedCount === 0) {
+      return {
+        success: false,
+        error: 'Failed to fetch any product images',
+        productsUsed: 0,
+        productsSentToAI: []
+      };
     }
     
-    // Step 3: Use pre-built shared prompt if provided (for fair comparison), otherwise build our own
-    // CRITICAL: Do NOT modify the shared prompt - use it exactly as provided
-    let prompt: string;
-    if (params.sharedPrompt) {
-      prompt = params.sharedPrompt;
-      console.log(`📝 Using pre-built shared prompt (${prompt.length} chars) - EXACT copy for fair comparison`);
-    } else {
-      const { buildSharedPrompt } = await import('./shared-prompt-builder');
-      const sharedPrompt = await buildSharedPrompt({
-        roomImageUrl: params.roomImageUrl,
-        products: params.products,
-        roomType,
-        stylePreference,
-      });
-      prompt = sharedPrompt.mainPrompt;
-      console.log(`📝 Built prompt (${prompt.length} chars)`);
-    }
+    // Step 3: Build the Anchor & Composite prompt
+    const prompt = buildAnchorCompositePrompt(
+      products,
+      productImageRefs.filter(ref => productSkusSentToAI.includes(ref.sku)),
+      roomType,
+      stylePreference,
+      !!roomImage,
+      floorPlanAnalysis,
+      placementInstructions
+    );
     
-    // The shared prompt already includes product image instructions, so no need to append
+    console.log(`\n📝 ANCHOR & COMPOSITE PROMPT:\n${'='.repeat(80)}\n${prompt}\n${'='.repeat(80)}\n`);
     
-    // Step 4: Build parts array - INTERLEAVE text + image per product
-    // This mimics Google AI Studio's sequential upload where each image is bound to preceding text
-    const parts: any[] = [{ text: prompt }];
+    // Step 4: Build parts array following the Anchor & Composite structure
+    // Part 1: The Prompt (Text)
+    // Part 2: The Room (Image) - ANCHOR
+    // Part 3...N: The Products (Images) - COMPOSITES
+    const parts: any[] = [];
     
-    // Add room image if available (image-to-image mode)
+    // Part 1: The main prompt text
+    parts.push({ text: prompt });
+    
+    // Part 2: The Room Image (ANCHOR) - if available
     if (roomImage) {
+      parts.push({ text: "REFERENCE IMAGE 1 (THE ANCHOR - User's Room):" });
       parts.push({
         inlineData: {
           data: roomImage.data,
@@ -246,32 +454,37 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       });
     }
     
-    // Add each product image with CRITICAL metadata (SKU + color)
-    // This ensures Gemini uses the EXACT color variant specified
+    // Parts 3...N: Product Images (COMPOSITES) with binding metadata and placement directives
+    const successfulRefs = productImageRefs.filter(ref => productSkusSentToAI.includes(ref.sku));
+    const totalProducts = successfulRefs.length;
+    
     for (let i = 0; i < productImageParts.length; i++) {
-      const productRef = productImageRefs[i];
+      const productRef = successfulRefs[i];
       const product = products.find(p => p.sku === productRef.sku);
+      const category = product ? detectFunctionalCategory(product) : 'Furniture';
+      const placementDirective = getPlacementDirective(category, i, totalProducts);
       
-      // CRITICAL: Add product metadata BEFORE each image to bind them together
-      // This tells Gemini which exact color variant to use
-      let productMeta = `Product ${i + 1}: ${productRef.productName} (SKU: ${productRef.sku})`;
+      const imageNum = roomImage ? i + 2 : i + 1;
+      
+      // CRITICAL: Add product metadata + placement directive BEFORE each image to bind them together
+      let productMeta = `REFERENCE IMAGE ${imageNum} (COMPOSITE - ${category}): ${productRef.productName} (SKU: ${productRef.sku})`;
       
       if (product && product.colors && product.colors.length > 0) {
         const colorList = product.colors.join(', ');
-        productMeta += ` - ⚠️ REQUIRED COLOR: ${colorList}`;
+        productMeta += ` | EXACT COLOR: ${colorList}`;
       }
+      
+      productMeta += `\nACTION: Place this EXACT item. PLACEMENT: ${placementDirective}`;
       
       parts.push({ text: productMeta });
       parts.push(productImageParts[i]);
     }
     
-    console.log(`🎨 Sending to Gemini 2.5 Flash (image-only mode)...`);
-    console.log(`   Mode: ${roomImage ? 'Image-to-image (room photo provided)' : 'Text-to-image (no room photo)'}`);
-    console.log(`\n📝 FULL PROMPT:\n${'='.repeat(80)}\n${prompt}\n${'='.repeat(80)}\n`);
-    console.log(`   Images: ${roomImage ? '1 room + ' : ''}${productImageParts.length} products`);
+    console.log(`🎨 Sending to Gemini 2.5 Flash (Anchor & Composite mode)...`);
+    console.log(`   Mode: ${roomImage ? 'Image-to-image (ANCHOR provided)' : 'Text-to-image (no ANCHOR)'}`);
+    console.log(`   Parts: 1 prompt + ${roomImage ? '1 anchor + ' : ''}${productImageParts.length} composites`);
     
     // Step 5: Call Gemini with multimodal inputs
-    // Use gemini-2.5-flash-image (same as Google AI Studio "Nano Banana")
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
       contents: [{ role: "user", parts }],
@@ -282,7 +495,7 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     return await processGeminiResponse(response, fetchedCount, productSkusSentToAI);
   } catch (error) {
-    console.error('❌ Image generation error:', error);
+    console.error('❌ Anchor & Composite generation error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -302,7 +515,7 @@ async function processGeminiResponse(
 ): Promise<ImageOnlyRenderResult> {
   try {
     
-    // Step 6: Extract generated image
+    // Extract generated image
     const candidate = response.candidates?.[0];
     const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
     
@@ -319,9 +532,9 @@ async function processGeminiResponse(
     const mimeType = imagePart.inlineData.mimeType || "image/png";
     const imageBase64 = `data:${mimeType};base64,${imagePart.inlineData.data}`;
     
-    console.log(`✅ Image-only render generated successfully!`);
-    console.log(`   Products used: ${productsUsed}`);
-    console.log(`   Products sent to AI: ${productsSentToAI.join(', ')}`);
+    console.log(`✅ Anchor & Composite render generated successfully!`);
+    console.log(`   Products composited: ${productsUsed}`);
+    console.log(`   Product SKUs: ${productsSentToAI.join(', ')}`);
     
     return {
       success: true,
@@ -331,12 +544,12 @@ async function processGeminiResponse(
     };
     
   } catch (error) {
-    console.error(`❌ Image-only render generation failed:`, error);
+    console.error(`❌ Anchor & Composite render generation failed:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       productsUsed: 0,
-      productsSentToAI: [] // Empty list on error
+      productsSentToAI: []
     };
   }
 }
