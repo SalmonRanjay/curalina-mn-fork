@@ -1,7 +1,6 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { Product } from "@shared/schema";
 import { applyQCRefinement } from "./stability-ai-qc";
-import { compositeWithSmoothEdges } from "./room-composite-service";
 
 // Initialize Gemini client using Replit AI Integrations
 const ai = new GoogleGenAI({
@@ -1022,29 +1021,8 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     console.log(`   Steps completed: ${stepsCompleted}/${totalSteps}`);
     console.log(`   Products rendered: ${allProductsSentToAI.length}`);
     
-    // ========================================
-    // DELTA COMPOSITING: Preserve Original Room
-    // ========================================
-    // Extract furniture from Gemini render and composite onto TRUE original room
-    // This preserves the user's exact room architecture while keeping good product fidelity
-    console.log(`\n🔧 DELTA COMPOSITING: Preserving original room architecture...`);
-    
-    const compositeResult = await compositeWithSmoothEdges(
-      trueOriginalBase64,  // TRUE original room (user's upload)
-      currentAnchor,       // Gemini's render with good furniture
-      30,                  // BALANCED threshold - lower to capture furniture
-      1                    // MINIMAL edge blur for crisp furniture
-    );
-    
-    let finalImage = currentAnchor;
-    if (compositeResult.success && compositeResult.imageBase64) {
-      finalImage = compositeResult.imageBase64;
-      console.log(`   ✅ Delta composite successful - ${compositeResult.deltaPercentage?.toFixed(1)}% changed`);
-      console.log(`   📍 Original room architecture PRESERVED`);
-    } else {
-      console.log(`   ⚠️ Delta composite failed, using Gemini render as-is`);
-      console.log(`   Error: ${compositeResult.error}`);
-    }
+    // Use Gemini's render directly (delta compositing removed)
+    const finalImage = currentAnchor;
     
     console.log(`\n✅ MULTI-STEP RENDER PIPELINE COMPLETE`);
     
