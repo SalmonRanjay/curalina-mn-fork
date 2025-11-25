@@ -1,5 +1,6 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { Product } from "@shared/schema";
+import { applyQCRefinement } from "./stability-ai-qc";
 
 // Initialize Gemini client using Replit AI Integrations
 const ai = new GoogleGenAI({
@@ -565,8 +566,36 @@ async function processGeminiResponse(
 // 2. Product Batch Passes: Add 2-3 products at a time (large items first)
 // ============================================================================
 
-const PRODUCTS_PER_BATCH = 2; // Optimal for fidelity
+const MAX_PRODUCTS = 5; // Hard limit for model reliability
+const PRODUCTS_PER_BATCH = 3; // 2-3 products per batch = 2 batches for 5 products
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
+
+/**
+ * Limits total products to MAX_PRODUCTS
+ * Keeps highest priority products (large anchors over small accents)
+ */
+function limitProducts(products: Product[]): Product[] {
+  if (products.length <= MAX_PRODUCTS) {
+    return products;
+  }
+  
+  console.log(`\n⚠️ PRODUCT LIMIT: Found ${products.length} products, limiting to ${MAX_PRODUCTS}`);
+  
+  // Sort by category weight (large items first) then take top MAX_PRODUCTS
+  const sorted = [...products].sort((a, b) => {
+    const weightA = getCategoryWeight(a);
+    const weightB = getCategoryWeight(b);
+    return weightB - weightA;
+  });
+  
+  const kept = sorted.slice(0, MAX_PRODUCTS);
+  const removed = sorted.slice(MAX_PRODUCTS);
+  
+  console.log(`   Keeping: ${kept.map(p => p.name).join(', ')}`);
+  console.log(`   Removing: ${removed.map(p => p.name).join(', ')}`);
+  
+  return kept;
+}
 
 /**
  * Filters products to limit lamps to MAX_LAMPS
@@ -812,10 +841,13 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
   // STEP 1: Limit lamps to avoid cluttered renders
   const lampsLimited = limitLamps(products);
   
-  // STEP 2: Sort products - large anchor items first, small accents last
-  const sortedProducts = orderProductsForBatching(lampsLimited);
+  // STEP 2: Limit total products to MAX_PRODUCTS for model reliability
+  const productsLimited = limitProducts(lampsLimited);
   
-  console.log(`   Products after lamp limit: ${sortedProducts.length}`);
+  // STEP 3: Sort products - large anchor items first, small accents last
+  const sortedProducts = orderProductsForBatching(productsLimited);
+  
+  console.log(`   Products after limits: ${sortedProducts.length} (max ${MAX_PRODUCTS})`);
   console.log(`   Batch size: ${PRODUCTS_PER_BATCH}`);
   
   // Log the sorted order with weights for debugging
@@ -896,9 +928,45 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       console.log(`   ✅ Batch ${batchIndex + 1} complete: ${batchResult.productsSentToAI.length} products added`);
     }
     
-    console.log(`\n✅ MULTI-STEP RENDER COMPLETE`);
+    console.log(`\n✅ GEMINI RENDER COMPLETE`);
     console.log(`   Steps completed: ${stepsCompleted}/${totalSteps}`);
     console.log(`   Products rendered: ${allProductsSentToAI.length}`);
+    
+    // ========================================
+    // STABILITY AI REFINEMENT PASS
+    // ========================================
+    // Use Stability AI to refine product appearance matching
+    console.log(`\n🎨 STABILITY AI REFINEMENT PASS`);
+    
+    // Prepare product images for refinement
+    const productImagesForRefinement = sortedProducts
+      .filter(p => p.images && p.images.length > 0)
+      .map(p => ({
+        url: p.images![0],
+        productName: p.name
+      }));
+    
+    console.log(`   Sending ${productImagesForRefinement.length} product references to Stability AI`);
+    
+    // Build refinement prompt
+    const refinementPrompt = `${style} ${room} interior design render with exact product matching. 
+Furniture must match reference images precisely - same colors, materials, shapes, and proportions.
+Preserve room architecture exactly. Photorealistic quality.`;
+    
+    const refinedImage = await applyQCRefinement(
+      currentAnchor,
+      refinementPrompt,
+      productImagesForRefinement
+    );
+    
+    if (refinedImage) {
+      console.log(`   ✅ Stability AI refinement successful`);
+      currentAnchor = refinedImage;
+    } else {
+      console.log(`   ⚠️ Stability AI refinement skipped or failed - using Gemini result`);
+    }
+    
+    console.log(`\n✅ MULTI-STEP RENDER PIPELINE COMPLETE`);
     
     return {
       success: true,
