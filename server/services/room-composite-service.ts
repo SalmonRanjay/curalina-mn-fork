@@ -123,24 +123,81 @@ export async function compositeWithSmoothEdges(
       };
     }
     
-    // Apply minimal edge feathering ONLY to furniture edges (not entire mask)
-    // Use morphological operations: erode then dilate to clean up noise
+    // Apply minimal edge feathering then RE-BINARIZE to prevent gradient bleed
     let processedMask = maskBuffer;
     
     if (edgeBlur > 0) {
       // Very light blur just to soften edges
-      processedMask = await sharp(maskBuffer, {
+      const blurred = await sharp(maskBuffer, {
         raw: { width, height, channels: 1 }
       })
         .blur(edgeBlur)
         .raw()
         .toBuffer();
+      
+      // RE-BINARIZE after blur to prevent gradients
+      // Only keep a thin soft rim (200-255 becomes 255, 180-199 gets blend, <180 becomes 0)
+      processedMask = Buffer.alloc(pixelCount);
+      for (let i = 0; i < pixelCount; i++) {
+        const val = blurred[i];
+        if (val >= 200) {
+          processedMask[i] = 255; // Hard furniture
+        } else if (val >= 180) {
+          processedMask[i] = val; // Thin soft rim only
+        } else {
+          processedMask[i] = 0;   // Hard room
+        }
+      }
     }
     
-    // HARD BINARY COMPOSITE: Use threshold on blurred mask
-    // This gives crisp furniture interiors with slightly soft edges
+    // Connected component rejection: find large regions that are likely walls
+    // Simple flood-fill based area calculation
+    const maxFurnitureArea = pixelCount * 0.12; // Max 12% for single furniture piece
+    const regionLabels = new Int32Array(pixelCount);
+    let currentLabel = 0;
+    const regionSizes: Map<number, number> = new Map();
+    
+    for (let i = 0; i < pixelCount; i++) {
+      if (processedMask[i] > 0 && regionLabels[i] === 0) {
+        currentLabel++;
+        let regionSize = 0;
+        const stack = [i];
+        
+        while (stack.length > 0) {
+          const idx = stack.pop()!;
+          if (regionLabels[idx] !== 0) continue;
+          if (processedMask[idx] === 0) continue;
+          
+          regionLabels[idx] = currentLabel;
+          regionSize++;
+          
+          const x = idx % width;
+          const y = Math.floor(idx / width);
+          
+          // Check 4-neighbors
+          if (x > 0) stack.push(idx - 1);
+          if (x < width - 1) stack.push(idx + 1);
+          if (y > 0) stack.push(idx - width);
+          if (y < height - 1) stack.push(idx + width);
+        }
+        
+        regionSizes.set(currentLabel, regionSize);
+        
+        // If region is too large, it's probably a wall - reject it
+        if (regionSize > maxFurnitureArea) {
+          console.log(`   🚫 Rejecting large region (${((regionSize / pixelCount) * 100).toFixed(1)}% of image) - likely wall`);
+          for (let j = 0; j < pixelCount; j++) {
+            if (regionLabels[j] === currentLabel) {
+              processedMask[j] = 0;
+            }
+          }
+        }
+      }
+    }
+    
+    // HARD BINARY COMPOSITE with re-binarized mask
     const outputBuffer = Buffer.alloc(pixelCount * 4);
-    const hardThreshold = 128; // 50% - anything above this uses rendered pixel
+    const hardThreshold = 200; // Only blend in very narrow rim (180-199)
     
     for (let i = 0; i < pixelCount; i++) {
       const srcIdx = i * channels;
@@ -157,14 +214,13 @@ export async function compositeWithSmoothEdges(
       const rB = renderedResized[srcIdx + 2];
       
       if (maskValue >= hardThreshold) {
-        // HARD: Use rendered pixel (furniture)
+        // HARD: Use rendered pixel (furniture interior)
         outputBuffer[dstIdx] = rR;
         outputBuffer[dstIdx + 1] = rG;
         outputBuffer[dstIdx + 2] = rB;
-      } else if (maskValue > 0) {
-        // SOFT EDGE: Only blend at the very edge (mask between 1-127)
-        // Use quadratic falloff for sharper transition
-        const alpha = (maskValue / hardThreshold) * (maskValue / hardThreshold);
+      } else if (maskValue >= 180) {
+        // THIN SOFT RIM: Only 20-value range for blending (180-199)
+        const alpha = (maskValue - 180) / 20; // 0.0 to 1.0 in narrow band
         outputBuffer[dstIdx] = Math.round(oR * (1 - alpha) + rR * alpha);
         outputBuffer[dstIdx + 1] = Math.round(oG * (1 - alpha) + rG * alpha);
         outputBuffer[dstIdx + 2] = Math.round(oB * (1 - alpha) + rB * alpha);
