@@ -342,6 +342,11 @@ Design a well-lit room with appropriate walls, windows, and flooring. Arrange th
   return prompt;
 }
 
+// Maximum products to send to AI for optimal fidelity
+// More products = lower accuracy per product
+// Google's multi-image composition works best with 3-5 reference images
+const MAX_PRODUCTS_FOR_FIDELITY = 5;
+
 /**
  * Generate render using the "Anchor & Composite" multi-modal strategy
  * 
@@ -353,14 +358,22 @@ Design a well-lit room with appropriate walls, windows, and flooring. Arrange th
  * This approach achieves:
  * - Visual Fidelity: Actual pixel data ensures texture/shape replication
  * - Spatial Integrity: Room photo ensures proper floor/wall boundaries
+ * 
+ * IMPORTANT: Limited to MAX_PRODUCTS_FOR_FIDELITY products for best results
  */
 export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Promise<ImageOnlyRenderResult> {
   const { roomImageUrl, products, roomType, stylePreference, floorPlanAnalysis, placementInstructions } = params;
   
   try {
+    // Limit products for better fidelity
+    const limitedProducts = products.slice(0, MAX_PRODUCTS_FOR_FIDELITY);
+    if (products.length > MAX_PRODUCTS_FOR_FIDELITY) {
+      console.log(`⚠️ Limiting products from ${products.length} to ${MAX_PRODUCTS_FOR_FIDELITY} for optimal fidelity`);
+    }
+    
     console.log(`\n🖼️ Starting ANCHOR & COMPOSITE render generation...`);
     console.log(`📍 Room image (Anchor): ${roomImageUrl || '(none - text-to-image mode)'}`);
-    console.log(`📦 Products to furnish (Composites): ${products.length}`);
+    console.log(`📦 Products to furnish (Composites): ${limitedProducts.length} (max: ${MAX_PRODUCTS_FOR_FIDELITY})`);
     
     // Step 1: Fetch room image (optional - skip if empty for text-to-image mode)
     let roomImage: { data: string; mimeType: string } | null = null;
@@ -379,7 +392,8 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     }
     
     // Step 2: Select and fetch product front view images (THE COMPOSITES)
-    const productImageRefs = selectProductFrontViewImages(products);
+    // Use limitedProducts for better fidelity
+    const productImageRefs = selectProductFrontViewImages(limitedProducts);
     console.log(`📸 Selected ${productImageRefs.length} product images (COMPOSITES)`);
     
     if (productImageRefs.length === 0) {
@@ -425,7 +439,7 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
     
     // Step 3: Build the Anchor & Composite prompt
     const prompt = buildAnchorCompositePrompt(
-      products,
+      limitedProducts,
       productImageRefs.filter(ref => productSkusSentToAI.includes(ref.sku)),
       roomType,
       stylePreference,
