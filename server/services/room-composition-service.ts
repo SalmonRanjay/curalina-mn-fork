@@ -147,18 +147,20 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
     }
   ],
   'Bedroom': [
+    // Zone 1: Bed centered against headboard wall (anchor piece)
     {
-      id: 'sleep_zone',
+      id: 'bed_zone',
       name: 'Bed Area',
       bounds: { x: 0.25, y: 0.6, width: 0.5, height: 0.35 },
       priority: 1,
-      allowedCategories: ['bed', 'nightstand'],
-      maxItems: 3,
+      allowedCategories: ['bed'],
+      maxItems: 1,
       orientation: 'wall',
       clearance: 0.08,
       adjacentZones: ['bedside_left', 'bedside_right'],
       heightTier: 'floor'
     },
+    // Zone 2: Left nightstand with table lamp
     {
       id: 'bedside_left',
       name: 'Left Nightstand Zone',
@@ -170,6 +172,7 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       clearance: 0.03,
       heightTier: 'surface'
     },
+    // Zone 3: Right nightstand with table lamp
     {
       id: 'bedside_right',
       name: 'Right Nightstand Zone',
@@ -181,17 +184,19 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       clearance: 0.03,
       heightTier: 'surface'
     },
+    // Zone 4: Dresser/storage opposite bed
     {
       id: 'dresser_zone',
       name: 'Dresser/Storage Wall',
       bounds: { x: 0.25, y: 0.05, width: 0.5, height: 0.15 },
       priority: 3,
-      allowedCategories: ['dresser', 'storage', 'decor'],
+      allowedCategories: ['dresser', 'storage'],
       maxItems: 2,
       orientation: 'wall',
       clearance: 0.05,
       heightTier: 'floor'
     },
+    // Zone 5: Reading corner with optional seating
     {
       id: 'seating_corner',
       name: 'Reading/Seating Corner',
@@ -202,6 +207,30 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
       orientation: 'corner',
       clearance: 0.05,
       heightTier: 'floor'
+    },
+    // Zone 6: Area rug under bed extending to seating
+    {
+      id: 'bedroom_rug',
+      name: 'Bedroom Rug Zone',
+      bounds: { x: 0.15, y: 0.3, width: 0.7, height: 0.5 },
+      priority: 5,
+      allowedCategories: ['decor'],
+      maxItems: 1,
+      orientation: 'center',
+      clearance: 0.0,
+      heightTier: 'floor'
+    },
+    // Zone 7: Wall art above headboard
+    {
+      id: 'headboard_art',
+      name: 'Headboard Art Zone',
+      bounds: { x: 0.3, y: 0.85, width: 0.4, height: 0.15 },
+      priority: 6,
+      allowedCategories: ['decor'],
+      maxItems: 1,
+      orientation: 'wall',
+      clearance: 0.0,
+      heightTier: 'wall'
     }
   ],
   'Dining Room': [
@@ -307,40 +336,43 @@ const ROOM_TEMPLATES = {
     }
   },
   'Bedroom': {
+    // Pattern: 1 bed (anchor), 1-2 nightstands, 1-2 table lamps, 0-1 dresser, 0-1 seating, 0-1 decor
     essentials: {
-      'bed': { min: 1, max: 1, priority: 1 }, // PRIMARY REQUIREMENT - bed is mandatory
-      'nightstand': { min: 1, max: 2, priority: 2 }, // Bedside tables
-      'lighting': { min: 1, max: 2, priority: 3 }, // Bedside lamps
+      'bed': { min: 1, max: 1, priority: 1 }, // REQUIRED: Bed (anchor piece, 40% budget)
+      'nightstand': { min: 1, max: 2, priority: 2 }, // REQUIRED: Symmetric pair preferred
+      'lighting': { min: 1, max: 2, priority: 3 }, // REQUIRED: Bedside table lamps
     },
     complementary: {
-      'accent_seating': { min: 1, max: 1, priority: 4 }, // Comfortable seating (bench/chair)
-      'dresser': { min: 0, max: 1, priority: 5 }, // Table/dresser
-      'storage': { min: 0, max: 1, priority: 6 }, // Wardrobe
-      'decor': { min: 1, max: 2, priority: 7 }, // Mirror for fashion setups
+      'dresser': { min: 0, max: 1, priority: 4 }, // Optional: Dresser/chest
+      'storage': { min: 0, max: 1, priority: 5 }, // Optional: Wardrobe/armoire
+      'accent_seating': { min: 0, max: 1, priority: 6 }, // Optional: Bench or reading chair
+      'decor': { min: 0, max: 1, priority: 7 }, // Optional: Rug, mirror, or wall art
     }
   },
   'Dining Room': {
+    // Pattern: 1 table (anchor), 4-8 matching chairs, 0-1 sideboard, 1 chandelier, 0-1 rug
     essentials: {
-      'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table
+      'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table (anchor, 35% budget)
       'dining_seating': { min: 4, max: 8, priority: 2 }, // REQUIRED: Matching chairs (same SKU)
+      'lighting': { min: 1, max: 1, priority: 3 }, // REQUIRED: Chandelier/pendant over table
     },
     complementary: {
-      'storage': { min: 0, max: 1, priority: 3 }, // Buffet, sideboard
-      'lighting': { min: 1, max: 1, priority: 4 }, // Chandelier or pendant
-      'decor': { min: 0, max: 2, priority: 5 },
+      'storage': { min: 0, max: 1, priority: 4 }, // Optional: Buffet/sideboard
+      'decor': { min: 0, max: 1, priority: 5 }, // Optional: Rug or centerpiece
     }
   },
   'Home Office': {
+    // Pattern: 1 desk (anchor), 1 office chair, 1-2 storage, 1 task lamp, 0-1 guest seating
     essentials: {
-      'desk': { min: 1, max: 1, priority: 1 }, // REQUIRED: Professional-quality desk
-      'office_seating': { min: 1, max: 1, priority: 2 }, // REQUIRED: Ergonomic office chair
-      'storage': { min: 1, max: 2, priority: 3 }, // REQUIRED: Cabinets for books/documents
+      'desk': { min: 1, max: 1, priority: 1 }, // REQUIRED: Desk (anchor, 35% budget)
+      'office_seating': { min: 1, max: 1, priority: 2 }, // REQUIRED: Ergonomic chair
+      'storage': { min: 1, max: 2, priority: 3 }, // REQUIRED: Bookshelves/filing
+      'lighting': { min: 1, max: 1, priority: 4 }, // REQUIRED: Task lamp
     },
     complementary: {
-      'lighting': { min: 1, max: 2, priority: 4 }, // Desk lamp
-      'accent_seating': { min: 0, max: 1, priority: 5 }, // Rest area seating
-      'side_table': { min: 0, max: 1, priority: 6 }, // Small table for rest area
-      'decor': { min: 0, max: 2, priority: 7 },
+      'accent_seating': { min: 0, max: 1, priority: 5 }, // Optional: Guest chair
+      'side_table': { min: 0, max: 1, priority: 6 }, // Optional: Side table for guest area
+      'decor': { min: 0, max: 1, priority: 7 }, // Optional: Rug or wall art
     }
   }
 };
