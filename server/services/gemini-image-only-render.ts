@@ -732,6 +732,7 @@ function parseRoomDimensions(analysisText: string): RoomAnalysisResult['estimate
 /**
  * Resolve relative URLs to absolute URLs for fetching
  * Handles /public-objects/... and other relative paths
+ * Works in both development and production environments
  */
 function resolveImageUrl(imageUrl: string): string {
   // If already absolute, return as-is
@@ -739,24 +740,72 @@ function resolveImageUrl(imageUrl: string): string {
     return imageUrl;
   }
   
-  // Resolve relative URLs using domain
-  const domain = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000';
-  const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
-  
   // Ensure URL starts with /
   const normalizedUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
   
-  return `${fullDomain}${normalizedUrl}`;
+  // Determine base URL based on environment
+  let baseUrl: string;
+  
+  // In production deployment, use the deployment URL
+  if (process.env.REPLIT_DEPLOYMENT === '1' && process.env.REPLIT_DEV_DOMAIN) {
+    // Production uses the deployment domain
+    baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  } else if (process.env.REPLIT_DEV_DOMAIN) {
+    // Development environment
+    const domain = process.env.REPLIT_DEV_DOMAIN;
+    baseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+  } else {
+    // Local fallback
+    baseUrl = 'http://localhost:5000';
+  }
+  
+  console.log(`   [resolveImageUrl] Base: ${baseUrl}, Path: ${normalizedUrl}`);
+  return `${baseUrl}${normalizedUrl}`;
 }
 
 /**
  * Helper to fetch image and convert to base64
+ * Tries direct object storage access first, falls back to HTTP fetch
  */
 async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
   try {
-    // Resolve relative URLs to absolute
+    // Check if this is a /public-objects/ path - can read directly from storage
+    if (imageUrl.startsWith('/public-objects/')) {
+      try {
+        const filePath = imageUrl.replace('/public-objects/', '');
+        const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+        
+        if (bucketId) {
+          console.log(`  📥 Fetching from object storage: ${filePath}`);
+          const { objectStorageClient } = await import('../objectStorage');
+          const bucket = objectStorageClient.bucket(bucketId);
+          const file = bucket.file(`public/${filePath}`);
+          
+          const [exists] = await file.exists();
+          if (exists) {
+            const [contents] = await file.download();
+            const base64 = contents.toString('base64');
+            
+            // Determine MIME type from extension
+            const ext = filePath.split('.').pop()?.toLowerCase();
+            const mimeType = ext === 'png' ? 'image/png' : 
+                            ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+                            ext === 'webp' ? 'image/webp' : 'image/jpeg';
+            
+            console.log(`  ✅ Loaded from object storage (${contents.length} bytes)`);
+            return { data: base64, mimeType };
+          } else {
+            console.warn(`  ⚠️ File not found in object storage: public/${filePath}`);
+          }
+        }
+      } catch (storageError) {
+        console.warn(`  ⚠️ Object storage access failed, falling back to HTTP:`, storageError);
+      }
+    }
+    
+    // Fallback to HTTP fetch
     const absoluteUrl = resolveImageUrl(imageUrl);
-    console.log(`  📥 Fetching: ${absoluteUrl}`);
+    console.log(`  📥 Fetching via HTTP: ${absoluteUrl}`);
     
     const response = await fetch(absoluteUrl);
     if (!response.ok) {
