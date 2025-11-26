@@ -976,6 +976,86 @@ export async function selectProductsWithComposition(
           );
           if (hasMatchingColor) score += 20;
         }
+        
+        // Match textures/materials from quiz against product materials
+        if (quizResponse.textures && quizResponse.textures.length > 0 && product.materials) {
+          // Map quiz texture options to material keywords
+          const textureKeywords: Record<string, string[]> = {
+            'Leather, Wool': ['leather', 'wool', 'hide', 'cowhide'],
+            'Rattan, Wicker, Jute': ['rattan', 'wicker', 'jute', 'seagrass', 'cane', 'woven'],
+            'Walnut': ['walnut', 'dark wood', 'espresso', 'mahogany'],
+            'Velvet, Brass, Smoked Glass': ['velvet', 'brass', 'glass', 'smoked', 'gold', 'metal'],
+            'White Oak, Linen, Travertine': ['oak', 'white oak', 'linen', 'travertine', 'stone', 'natural wood'],
+            'Satin, Metallics': ['satin', 'chrome', 'nickel', 'stainless', 'polished', 'metallic', 'silver'],
+          };
+          
+          const hasTextureMatch = quizResponse.textures.some(texture => {
+            const keywords = textureKeywords[texture] || texture.toLowerCase().split(/[,\s]+/);
+            return product.materials?.some(material =>
+              keywords.some(keyword => 
+                material.toLowerCase().includes(keyword) ||
+                keyword.includes(material.toLowerCase())
+              )
+            );
+          });
+          if (hasTextureMatch) {
+            score += 25;
+            console.log(`🧶 Texture match for ${product.name}: +25 pts`);
+          }
+        }
+        
+        // Match lineStyle (design mode) against product design style
+        if (quizResponse.lineStyle && product.designStyle) {
+          // Map quiz line styles to design style keywords
+          const lineStyleKeywords: Record<string, string[]> = {
+            'Classic': ['classic', 'traditional', 'timeless', 'elegant', 'formal'],
+            'Transitional': ['transitional', 'balanced', 'versatile', 'modern traditional'],
+            'Modern': ['modern', 'contemporary', 'minimalist', 'clean', 'sleek'],
+            'Eclectic': ['eclectic', 'bohemian', 'mixed', 'artisan', 'global'],
+            'Relaxed': ['relaxed', 'casual', 'coastal', 'farmhouse', 'cottage', 'organic'],
+          };
+          
+          const keywords = lineStyleKeywords[quizResponse.lineStyle] || [quizResponse.lineStyle.toLowerCase()];
+          const hasLineStyleMatch = product.designStyle.some(style =>
+            keywords.some(keyword => 
+              style.toLowerCase().includes(keyword) ||
+              keyword.includes(style.toLowerCase())
+            )
+          );
+          if (hasLineStyleMatch) {
+            score += 15;
+            console.log(`✨ Line style match for ${product.name}: +15 pts`);
+          }
+        }
+        
+        // Match patternPreference - boost solid-colored products for "Just Solids" preference
+        if (quizResponse.patternPreference) {
+          const productDescription = [
+            product.name,
+            product.visualDescriptionFrontView,
+            product.visualDescriptionGemini,
+            ...(product.colors || [])
+          ].filter(Boolean).join(' ').toLowerCase();
+          
+          // Comprehensive pattern detection regex
+          const hasPattern = /pattern|stripe|plaid|check|floral|geometric|print|motif|damask|ikat|chevron|herringbone|paisley|botanical|embroidered|speckled|marbled|abstract|trellis|lattice|medallion|toile|chinoiserie|argyle|houndstooth|tartan|gingham/.test(productDescription);
+          const isSolid = /solid|plain|monochrome|single color|uniform/.test(productDescription) || !hasPattern;
+          
+          if (quizResponse.patternPreference === 'Just Solids' && isSolid) {
+            score += 15;
+            console.log(`🎨 Solid preference match for ${product.name}: +15 pts`);
+          } else if (quizResponse.patternPreference === 'I Love Patterns' && hasPattern) {
+            score += 20;
+            console.log(`🎨 Pattern preference match for ${product.name}: +20 pts`);
+          } else if (quizResponse.patternPreference === 'Patterned Accents') {
+            // Moderate boost for balanced selection - prefer solids with occasional patterns
+            if (isSolid) {
+              score += 10; // Slight preference for solids as base
+            } else if (hasPattern) {
+              score += 8; // Still include some patterns as accents
+            }
+          }
+        }
       }
       
       // Budget fit scoring (NEW)
