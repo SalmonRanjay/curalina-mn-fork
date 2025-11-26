@@ -8,12 +8,15 @@ import {
 } from './budget-allocation';
 
 // =============================================================================
-// NEW PRIORITIZATION SYSTEM: Space → Fit → Preference → Budget
+// QUALITY-FIRST PRIORITIZATION SYSTEM: Space → Fit → Preference
 // =============================================================================
 // 1. SPACE ANALYSIS: Extract room structure, dimensions, placement zones
 // 2. FIT VALIDATION: Filter products by physical fit BEFORE preference scoring
 // 3. STYLE MATCHING: Score remaining products by user preferences
-// 4. BUDGET CONSTRAINTS: Apply budget as the LAST filter (preserve quality)
+// 4. BUDGET: DISABLED - Focus on render quality, not cost constraints
+// =============================================================================
+// PRIORITY: Render quality > User preference matching > Visual harmony
+// All selected products are rendered without budget-based removal/substitution
 // =============================================================================
 
 // =============================================================================
@@ -2004,140 +2007,25 @@ export async function selectProductsWithComposition(
   }
   
   // =========================================================================
-  // STEP 4: BUDGET CONSTRAINTS - Smart Substitution System
-  // Instead of removing items, substitute with similar but cheaper alternatives
-  // Priority: Replace least visible items first, anchor pieces last
+  // STEP 4: BUDGET CONSTRAINTS - DISABLED FOR RENDER QUALITY
+  // Budget enforcement is disabled to prioritize:
+  // 1. Render quality over cost
+  // 2. Products matching user preferences
+  // 3. Visual harmony between products
+  // 4. All required products being fully rendered
   // =========================================================================
-  console.log('\n💰 STEP 4: BUDGET CONSTRAINTS (smart substitution)');
+  console.log('\n💰 STEP 4: BUDGET CONSTRAINTS (DISABLED - focusing on render quality)');
   
   if (budgetAllocation) {
-    let currentCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+    const currentCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
     const budgetWithFlex = budgetAllocation.totalBudget + budgetAllocation.flexiblePool;
     
-    console.log(`   Pre-budget selection cost: $${currentCost.toFixed(2)}`);
-    console.log(`   Budget limit (with flex): $${budgetWithFlex.toFixed(2)}`);
-    console.log(`   Status: ${currentCost <= budgetWithFlex ? '✅ WITHIN BUDGET' : '⚠️ OVER BUDGET'}`);
-    
-    if (currentCost > budgetWithFlex) {
-      console.log(`   Overage: $${(currentCost - budgetWithFlex).toFixed(2)} - starting smart substitutions...`);
-      
-      // Sort products by visibility impact (substitute least visible first)
-      // Within each visibility tier, sort by price (most expensive first for better savings)
-      const sortedForSubstitution = [...selectedProducts].map(p => ({
-        product: p,
-        visibilityImpact: getVisibilityImpact(p),
-        visibilityPriority: getVisibilityPriority(getVisibilityImpact(p)),
-        price: parseFloat(p.price),
-        essential: detectFunctionalCategory(p).some(cat => (template.essentials as any)[cat])
-      })).sort((a, b) => {
-        // Sort by visibility priority first (lower = substitute first)
-        if (a.visibilityPriority !== b.visibilityPriority) {
-          return a.visibilityPriority - b.visibilityPriority;
-        }
-        // Within same visibility, most expensive first (more potential savings)
-        return b.price - a.price;
-      });
-      
-      let substitutionCount = 0;
-      let removalCount = 0;
-      const MAX_ITERATIONS = 20; // Prevent infinite loops
-      
-      // Iterate through products and try substitutions
-      for (let iteration = 0; iteration < MAX_ITERATIONS && currentCost > budgetWithFlex; iteration++) {
-        let madeChange = false;
-        
-        for (const item of sortedForSubstitution) {
-          if (currentCost <= budgetWithFlex) break;
-          
-          // Skip if product was already removed
-          if (!selectedProducts.find(p => p.id === item.product.id)) continue;
-          
-          // Find substitution candidates
-          const candidates = findSubstitutionCandidates(
-            item.product,
-            candidateProducts,
-            usedProductIds,
-            4 // Don't go below tier 4 (budget)
-          );
-          
-          if (candidates.length > 0) {
-            // Use best matching substitute that provides enough savings
-            const neededSavings = currentCost - budgetWithFlex;
-            const bestCandidate = candidates.find(c => c.priceDiff >= neededSavings * 0.1) || candidates[0];
-            
-            // Perform substitution
-            const oldPrice = parseFloat(item.product.price);
-            const newPrice = parseFloat(bestCandidate.product.price);
-            const savings = oldPrice - newPrice;
-            
-            // Log substitution with image verification
-            const substituteImageCount = bestCandidate.product.images?.length || 0;
-            const originalImageCount = item.product.images?.length || 0;
-            console.log(`   🔄 Substituting ${item.product.name} ($${oldPrice.toFixed(0)}) → ${bestCandidate.product.name} ($${newPrice.toFixed(0)}) [save $${savings.toFixed(0)}, match: ${bestCandidate.matchScore.toFixed(0)}%]`);
-            console.log(`      📸 Images: ${originalImageCount} original → ${substituteImageCount} substitute (ID: ${bestCandidate.product.id})`);
-            
-            // Update arrays - the full product object (with images, dimensions, etc.) is transferred
-            const productIndex = selectedProducts.findIndex(p => p.id === item.product.id);
-            if (productIndex !== -1) {
-              // Replace with the complete substitute product including all fields (images, dimensions, colors, etc.)
-              selectedProducts[productIndex] = bestCandidate.product;
-              usedProductIds.delete(item.product.id);
-              usedProductIds.add(bestCandidate.product.id);
-              
-              // Update composition
-              for (const [cat, prods] of Object.entries(composition)) {
-                const catIndex = prods.findIndex(p => p.id === item.product.id);
-                if (catIndex !== -1) {
-                  prods[catIndex] = bestCandidate.product;
-                }
-              }
-              
-              currentCost -= savings;
-              substitutionCount++;
-              madeChange = true;
-              break; // Re-evaluate order after each substitution
-            }
-          } else if (!item.essential) {
-            // No substitutes available - remove if not essential
-            console.log(`   ❌ Removing ${item.product.name} ($${item.price.toFixed(0)}) - no suitable substitutes`);
-            
-            const productIndex = selectedProducts.findIndex(p => p.id === item.product.id);
-            if (productIndex !== -1) {
-              selectedProducts.splice(productIndex, 1);
-              usedProductIds.delete(item.product.id);
-              
-              // Update composition
-              for (const [cat, prods] of Object.entries(composition)) {
-                const catIndex = prods.findIndex(p => p.id === item.product.id);
-                if (catIndex !== -1) {
-                  prods.splice(catIndex, 1);
-                }
-              }
-              
-              currentCost -= item.price;
-              removalCount++;
-              madeChange = true;
-              break; // Re-evaluate order after each removal
-            }
-          }
-        }
-        
-        if (!madeChange) {
-          console.log(`   ⚠️ No more substitutions or removals possible`);
-          break;
-        }
-      }
-      
-      console.log(`\n   📊 Budget adjustment summary:`);
-      console.log(`      Substitutions made: ${substitutionCount}`);
-      console.log(`      Items removed: ${removalCount}`);
-      console.log(`      Final cost: $${currentCost.toFixed(2)}`);
-      console.log(`      ${currentCost <= budgetWithFlex ? '✅ Within budget' : '⚠️ Still over budget'}`);
-      
-      if (currentCost > budgetWithFlex) {
-        warnings.push(`Could not fit selection within budget of $${budgetWithFlex.toFixed(0)} (final cost: $${currentCost.toFixed(0)}). Consider increasing budget or reducing room complexity.`);
-      }
-    }
+    console.log(`   Selection cost: $${currentCost.toFixed(2)}`);
+    console.log(`   Budget reference: $${budgetWithFlex.toFixed(2)}`);
+    console.log(`   ⚠️ BUDGET ENFORCEMENT DISABLED - All ${selectedProducts.length} products will be rendered`);
+    console.log(`   📊 Priority: Render quality > Style matching > Visual harmony`);
+  } else {
+    console.log(`   No budget specified - all ${selectedProducts.length} products will be rendered`);
   }
   
   // CRITICAL: Substitute table lamps with floor lamps if no supporting surfaces exist
@@ -2165,13 +2053,14 @@ export async function selectProductsWithComposition(
   // Final summary
   const finalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
   console.log('\n' + '='.repeat(70));
-  console.log('✅ PIPELINE COMPLETE: Space → Fit → Preference → Budget');
+  console.log('✅ PIPELINE COMPLETE: Space → Fit → Preference (Quality-First Mode)');
   console.log('='.repeat(70));
   console.log(`   Products selected: ${selectedProducts.length}`);
-  console.log(`   Total cost: $${finalCost.toFixed(2)}`);
+  console.log(`   Total value: $${finalCost.toFixed(2)} (budget not enforced)`);
   console.log(`   Essential items: ${Object.entries(composition).filter(([cat]) => (template.essentials as any)[cat]).length} categories`);
   console.log(`   Missing essentials: ${missingEssentials.length > 0 ? missingEssentials.join(', ') : 'None'}`);
   console.log(`   Warnings: ${warnings.length}`);
+  console.log(`   Mode: QUALITY-FIRST (all products rendered, no budget cuts)`);
   console.log('='.repeat(70) + '\n');
   
   return {
