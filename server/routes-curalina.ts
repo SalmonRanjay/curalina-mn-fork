@@ -1629,31 +1629,10 @@ export function registerCuralinaRoutes(app: Express) {
       // Generate hash from quiz + filtered candidate pool (not full catalog)
       const selectionHash = generateSelectionHash(quiz, candidatePool);
       
-      // Check if we already have a ledger with this hash (idempotency) - UNLESS forceNew is requested
-      const forceNew = req.body.forceNew === true;
-      if (forceNew) {
-        console.log(`⚡ Force new render requested - skipping idempotency cache`);
-      }
-      
-      const existingLedger = forceNew ? null : await curalinaStorage.getSelectionLedgerByHash(selectionHash);
-      if (existingLedger) {
-        console.log(`♻️  Idempotency: Found existing ledger for hash ${selectionHash.substring(0, 8)}...`);
-        const existingRender = await curalinaStorage.getRender(existingLedger.renderId);
-        
-        if (existingRender) {
-          // Happy path: ledger and render both exist
-          console.log(`♻️  Returning existing render ${existingRender.id} (status: ${existingRender.status})`);
-          return res.json(existingRender);
-        } else {
-          // Orphaned ledger: render was deleted but ledger remains
-          console.warn(`⚠️  Orphaned ledger detected (render ${existingLedger.renderId} missing) - deleting orphaned ledger`);
-          await curalinaStorage.deleteSelectionLedger(existingLedger.id);
-          console.log(`🗑️  Deleted orphaned ledger ${existingLedger.id} - will create fresh render`);
-          // Continue to create new render with same hash
-        }
-      }
-      
-      console.log(`✨ New selection hash: ${selectionHash.substring(0, 8)}... - creating fresh render`);
+      // DISABLED: Render caching/idempotency - always generate fresh renders
+      // Previously returned cached renders when quiz settings matched.
+      // Now disabled to ensure users always get new AI-generated designs.
+      console.log(`✨ Creating fresh render (caching disabled) - hash: ${selectionHash.substring(0, 8)}...`);
 
       // Create render record with status 'generating' (placeholder prompt)
       const render = await curalinaStorage.createRender({
