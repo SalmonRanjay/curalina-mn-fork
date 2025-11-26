@@ -1,0 +1,38 @@
+3. Critical Optimization Recommendations
+I have reviewed your generateImageOnlyRender and generateOneByOneRender functions. Here are specific architectural improvements to maximize fidelity:
+
+A. The "Visual Label" Logic (buildConciseVisualLabel)
+Your code currently generates a label like: "Modern, Brass/Gold, Metal, lighting..."
+Critique: This is good, but to get exact replicas, you need to mention Geometrical Primitives.
+Recommendation: Update your helper to include shape analysis.
+
+Current: "Modern wood cabinet."
+Improved: "Tall rectangular cabinet, vertical wood grain, sharp corners, 4 horizontal shelves."
+Why: Stable Diffusion/Flux/Gemini understands simple geometry better than brand names.
+B. The "Placement Directive" (getPlacementDirective)
+You have a great switch statement for placement rules (e.g., "Consoles go against walls").
+Improvement: Add Perspective Context.
+
+Code Change: In analyzeRoomWithGeminiVision, ask the AI to identify the "Vanishing Point" or "Floor Plane Angle".
+Prompt Injection: Pass this to the render: "Align the bottom edges of the furniture with the floor perspective lines converging at [Coordinates]."
+Result: This stops furniture from looking like it is "floating" or angled incorrectly.
+C. The "One-by-One" Pipeline (generateOneByOneRender)
+This is your strongest feature. By rendering one item, locking the image, and then using that new image as the anchor for the next item, you eliminate "Concept Bleed" (where a blue sofa turns the curtains blue).
+
+Code Risk: In executeSingleProductPass, you act on currentAnchor.
+Advice: Ensure you strictly enforce Texture Isolation.
+
+Prompt Addition: In the batch prompt, add:
+"Masking Instruction: Only generate pixels in the area where the new furniture is placed. Do not regenerate the pixels of the existing room."
+
+4. Summary for your Next Step
+To answer your user's prompt request: "How should my prompt be while analyzing?"
+
+You should output the specific analysis that your analyzeRoomWithGeminiVision function generates. If you want to show the user how you are ensuring fidelity, display this intermediate step:
+
+"I have analyzed your room and locked the architecture:
+
+Spatial Geometry: 12x14ft Room, 9ft Ceilings.
+Lighting Map: Natural light from Right (West), Cool tone.
+Perspective: One-point perspective, camera height ~4ft.
+Constraint: I will inject the [Walnut Cabinet] into coordinates [x,y] scaling it to exactly 72 inches high relative to the back wall."

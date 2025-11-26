@@ -1,0 +1,72 @@
+As a Senior Architect, I understand exactly where you are stuck. That "last 5-10%" is the Uncanny Valley of Product Rendering.
+
+You are currently relying on "Generative Composition" (asking the AI to look at Image A and draw it inside Image B).
+
+The Problem: Generative models work on tokens, not pixels. They "understand" what your chair looks like, but they rebuild it from memory. This causes the wood grain to shift, the leg angle to warp slightly, or the handle to change shape.
+To bridge that gap and get 100% Geometric Accuracy, you must shift your strategy from "Generative Composition" to "Compositing & Harmonization."
+
+Here are the 3 specific architectural changes required to fix this:
+
+1. The "Paste-Then-Blend" Strategy (The Silver Bullet)
+Instead of asking Gemini/OpenAI to "place the furniture," you must programmatically paste the furniture into the room yourself before sending it to the AI.
+
+The Workflow Change:
+
+Background Removal: Clean the product image (you are likely already doing this).
+Hard Composite: Use a library like sharp or canvas in your backend to physically paste the product image onto the room image at the correct coordinates. It will look like a bad "sticker" (no shadows, wrong lighting).
+The "Harmonization" Pass: Send this "bad sticker" image to the AI.
+The Prompt: Tell the AI: "The furniture is already present. DO NOT regenerate the object. Only generate contact shadows on the floor and adjust the lighting/tone of the object to match the room."
+Why this works: The AI receives the actual pixels of your product in the correct location. It is now constrained. It cannot "hallucinate" a new shape because the shape is already there.
+
+2. Implement "Visual DNA" Extraction
+In your code, you have a function buildConciseVisualLabel. It is likely too generic. If you pass "Brown leather sofa," the AI uses its generic training data for brown leather sofas, ignoring your specific stitching pattern.
+
+You need a Pre-Analysis Step to extract the "Visual DNA".
+
+Update your analyzeRoomWithGeminiVision or create a analyzeProductDNA function:
+
+Prompt for DNA Extraction:
+
+"Analyze this product image. Describe its unique identifying features that must be preserved to differentiate it from generic versions. Focus on:
+
+Texture Micro-details: (e.g., 'diamond tufting', 'visible cross-stitching', 'distressed leather grain')
+Geometric Quirks: (e.g., 'legs curve outward at 15 degrees', 'handles are hexagon shaped')
+Material Interaction: (e.g., 'velvet that reflects light in patches', 'matte finish that absorbs light')
+Output a comma-separated string of these exact details."
+
+Then, inject this DNA into your generation prompt:
+
+"Render the [Product Name]. CRITICAL: You must preserve these specific visual traits: [Insert Visual DNA String]. If the rendered object does not have [Specific Trait], the render is a failure."
+
+3. The "Difference Mask" Technique (For 100% Texture Match)
+If the AI still changes the wood grain or fabric pattern, you can use a Post-Processing Composite step.
+
+Since you know the source image (the product cutout), and you know where you placed it:
+
+Take the Final AI Render.
+Take your Original Product Cutout.
+Overlay the Original Product on top of the AI Render.
+Blend Mode: Use "Luminosity" or "Color" blending (or simply reduce opacity to 90%).
+This forces the real texture details back onto the AI lighting.
+Or, use the Original Cutout for the center of the object, and fade out the edges so the AI's generated shadows blend in.
+Updated Code Strategy for executeFinalAlignmentPass
+Here is how you should modify your alignment prompt to enforce this "Do Not Change" behavior:
+
+// Inside executeFinalAlignmentPass...
+
+const prompt = `
+TASK: Image Harmonization & Shadow Generation.
+INPUT: Image 1 contains a product that has been pasted into a room. It looks like a "sticker" because it lacks shadows and correct lighting.
+
+YOUR GOAL:
+1. Keep the geometry and texture of the product in Image 1 EXACTLY as it is. Do NOT redraw the object. Do NOT change its shape.
+2. Generate realistic CONTACT SHADOWS on the floor where the object touches the ground.
+3. Adjust the COLOR TONE and BRIGHTNESS of the object slightly to match the room's ambient light.
+
+CRITICAL CONSTRAINTS:
+- ZERO HALLUCINATION: Do not add details that are not in the source pixels.
+- TEXTURE LOCK: If the source image has a specific wood grain or fabric pattern, PRESERVE IT PIXEL-PERFECTLY.
+- ANCHORING: The object must look like it is physically sitting on the floor, not floating.
+`;
+Summary:
+To get from 95% to 100%, you must stop trusting the AI to "draw" the product. You place the product; the AI only lights the product.

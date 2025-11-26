@@ -1419,6 +1419,90 @@ export function registerCuralinaRoutes(app: Express) {
     }
   });
 
+  // Enhanced product analysis (Vertex-style) for rendering-optimized descriptions
+  app.post('/api/admin/products/enhanced-analysis', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { mode = 'missing_only', limit } = req.body;
+      console.log(`\n🔬 Starting Enhanced Product Analysis (mode: ${mode}, limit: ${limit || 'all'})...`);
+      
+      const products = await curalinaStorage.getAllProducts();
+      console.log(`📦 Total products in database: ${products.length}`);
+      
+      const { runBatchEnhancedAnalysis } = await import('./services/enhanced-product-analysis');
+      
+      const progress = await runBatchEnhancedAnalysis(
+        products,
+        curalinaStorage,
+        { mode, limit: limit ? parseInt(limit) : undefined }
+      );
+      
+      res.json({
+        success: true,
+        message: `Enhanced analysis complete`,
+        total: progress.total,
+        successful: progress.successful,
+        failed: progress.failed,
+        skipped: progress.skipped,
+        averageQuality: progress.averageQuality,
+        errors: progress.errors.slice(0, 10)
+      });
+      
+    } catch (error) {
+      console.error("Error running enhanced analysis:", error);
+      res.status(500).json({ error: "Failed to run enhanced analysis" });
+    }
+  });
+
+  // Single product enhanced analysis
+  app.post('/api/admin/products/:id/enhanced-analysis', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const product = await curalinaStorage.getProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      
+      const { 
+        analyzeProductForRendering, 
+        selectBestImageForEnhancedAnalysis 
+      } = await import('./services/enhanced-product-analysis');
+      
+      const selectedImage = selectBestImageForEnhancedAnalysis(product);
+      if (!selectedImage) {
+        return res.status(400).json({ error: 'No images available for analysis' });
+      }
+      
+      console.log(`\n🔬 Running enhanced analysis for: ${product.name}`);
+      const analysis = await analyzeProductForRendering(product, selectedImage.url);
+      
+      if (!analysis) {
+        return res.status(500).json({ error: 'Analysis failed' });
+      }
+      
+      // Save to database
+      await curalinaStorage.updateProduct(product.id, {
+        structuredAnalysis: analysis,
+        structuredAnalysisQuality: String(analysis.qualityScore),
+        structuredAnalysisUpdatedAt: new Date(),
+        visualDescription: analysis.condensedDescription || product.visualDescription,
+      });
+      
+      res.json({
+        success: true,
+        product: {
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+        },
+        analysis,
+        imageUsed: selectedImage
+      });
+      
+    } catch (error) {
+      console.error("Error running single product analysis:", error);
+      res.status(500).json({ error: "Failed to analyze product" });
+    }
+  });
+
   app.get('/api/products/alternatives/:id', async (req, res) => {
     try {
       const alternatives = await curalinaStorage.getProductAlternatives(req.params.id);
