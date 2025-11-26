@@ -828,15 +828,59 @@ function selectBestProductImage(product: Product, context: PlacementContext): st
 }
 
 /**
+ * Build a concise visual description for image labeling
+ * Short and precise: color, material, key visual features
+ * Example: "Dark brown leather sofa, 84x36x34 inches"
+ */
+function buildConciseVisualLabel(product: Product): string {
+  const parts: string[] = [];
+  
+  // Primary color(s) - most important visual identifier
+  if (product.colors && product.colors.length > 0) {
+    const colorStr = product.colors.slice(0, 2).join('/');
+    parts.push(colorStr);
+  }
+  
+  // Primary material - key texture/finish info
+  if (product.materials && product.materials.length > 0) {
+    parts.push(product.materials[0]);
+  }
+  
+  // Product category from name (simplified)
+  const category = detectFunctionalCategory(product);
+  if (category) {
+    parts.push(category.toLowerCase());
+  }
+  
+  // Dimensions for scale accuracy
+  if (product.dimensions) {
+    const dims = product.dimensions as any;
+    if (dims.w && dims.d && dims.h) {
+      parts.push(`${dims.w}x${dims.d}x${dims.h}"`);
+    }
+  }
+  
+  // If we have a visual description, extract key adjectives (first 50 chars)
+  if (product.visualDescription) {
+    const shortDesc = product.visualDescription.substring(0, 50).split('.')[0];
+    if (shortDesc && !parts.some(p => shortDesc.toLowerCase().includes(p.toLowerCase()))) {
+      parts.push(shortDesc);
+    }
+  }
+  
+  return parts.join(', ') || product.name;
+}
+
+/**
  * Select optimal view image for each product with view-angle awareness
  * Returns array of product images to use as references
- * NEW: Uses placement context to select side/angle views for wall-placed items
+ * NEW: Includes concise visual descriptions for each product
  */
 function selectProductFrontViewImages(products: Product[]): { 
-  selected: Array<{ url: string; productName: string; sku: string; viewType: string }>;
+  selected: Array<{ url: string; productName: string; sku: string; viewType: string; visualLabel: string }>;
   dropped: Array<{ productName: string; sku: string; reason: string }>;
 } {
-  const selected: Array<{ url: string; productName: string; sku: string; viewType: string }> = [];
+  const selected: Array<{ url: string; productName: string; sku: string; viewType: string; visualLabel: string }> = [];
   const dropped: Array<{ productName: string; sku: string; reason: string }> = [];
   
   for (const product of products) {
@@ -854,11 +898,15 @@ function selectProductFrontViewImages(products: Product[]): {
       else if (lowerUrl.includes('side') || lowerUrl.includes('profile')) viewType = 'side';
       else if (lowerUrl.includes('angle') || lowerUrl.includes('3-4') || lowerUrl.includes('three')) viewType = 'angle';
       
+      // Build precise visual description for this product
+      const visualLabel = buildConciseVisualLabel(product);
+      
       selected.push({
         url: imageUrl,
         productName: product.name,
         sku: product.sku,
-        viewType
+        viewType,
+        visualLabel
       });
     } else {
       const reason = !imageUrl ? 'No image URL found' : 'Invalid image URL format';
@@ -1378,17 +1426,21 @@ export async function generateImageOnlyRender(params: ImageOnlyRenderParams): Pr
       });
     }
     
-    // Parts 3...N: Product Images with simple, direct binding
-    // Google's advice: Simpler is better - just identify the image clearly
+    // Parts 3...N: Product Images with precise visual descriptions
+    // Each image labeled with color, material, dimensions for accurate rendering
     const successfulRefs = productImageRefs.filter(ref => productSkusSentToAI.includes(ref.sku));
     
     for (let i = 0; i < productImageParts.length; i++) {
       const productRef = successfulRefs[i];
       const imageNum = roomImage ? i + 2 : i + 1;
       
-      // Simple, direct label - let the main prompt do the heavy lifting
-      parts.push({ text: `Image ${imageNum}: ${productRef.productName}` });
+      // Include precise visual description: name + visual attributes
+      // Example: "Image 2: Hensley Table Lamp - Brass/gold, metal, lighting, 15x15x26""
+      const imageLabel = `Image ${imageNum}: ${productRef.productName} - ${productRef.visualLabel}`;
+      parts.push({ text: imageLabel });
       parts.push(productImageParts[i]);
+      
+      console.log(`   📸 ${imageLabel}`);
     }
     
     console.log(`🎨 Sending to Gemini 2.5 Flash (Anchor & Composite mode)...`);
@@ -1576,14 +1628,17 @@ async function generateBatchedTextToImageRender(
       });
     }
     
-    // Add product images
+    // Add product images with precise visual descriptions
     const successfulRefs = productImageRefs.filter(ref => batchSkus.includes(ref.sku));
     const imageOffset = currentAnchor && !isFirstBatch ? 2 : 1;
     
     for (let i = 0; i < productImageParts.length; i++) {
       const productRef = successfulRefs[i];
-      parts.push({ text: `Image ${i + imageOffset}: ${productRef.productName}` });
+      // Include precise visual description: name + visual attributes
+      const imageLabel = `Image ${i + imageOffset}: ${productRef.productName} - ${productRef.visualLabel}`;
+      parts.push({ text: imageLabel });
       parts.push(productImageParts[i]);
+      console.log(`      📸 ${imageLabel}`);
     }
     
     console.log(`   📤 Sending batch ${batchIndex + 1} to Gemini...`);
@@ -2644,7 +2699,7 @@ async function executeProductBatchPass(
     const productImageStartIndex = hasOriginalRoomRef ? 3 : 2;
     
     // Update product descriptions with correct image numbering INCLUDING DIMENSIONS
-    // Enhanced with EXPLICIT per-product fidelity requirements
+    // Enhanced with EXPLICIT per-product fidelity requirements and visual labels
     const productDescriptionsIndexed = successfulRefs.map((ref, index) => {
       const product = products.find(p => p.sku === ref.sku);
       const imageNum = productImageStartIndex + index;
@@ -2689,7 +2744,10 @@ async function executeProductBatchPass(
         matchingInstruction = `\n   → MATCH EXACTLY: shape, color, material, finish, all visible details from Image ${imageNum}`;
       }
       
-      return `Image ${imageNum}: "${ref.productName}"${detailStr}${matchingInstruction}`;
+      // Include the visual label for precise identification
+      const visualDesc = ref.visualLabel ? ` (${ref.visualLabel})` : '';
+      
+      return `Image ${imageNum}: "${ref.productName}"${visualDesc}${detailStr}${matchingInstruction}`;
     });
     
     // Build product list for prompt intro with correct indexing
