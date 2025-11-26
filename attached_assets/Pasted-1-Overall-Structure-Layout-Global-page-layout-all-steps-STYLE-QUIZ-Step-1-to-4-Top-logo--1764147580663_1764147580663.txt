@@ -1,0 +1,543 @@
+1. Overall Structure & Layout
+
+Global page layout (all steps) 
+
+STYLE QUIZ - Step 1 to 4
+
+Top logo & nav bar
+
+Left: small circular monogram logo.
+
+Center: script wordmark (elegant serif/script logo).
+
+Right: three icons in a row:
+
+User/profile icon.
+
+Heart/favourites icon.
+
+Shopping bag/cart icon.
+
+Below logo row: a horizontal text menu:
+
+GET STARTED | HOW WE WORK | EXPLORE STYLES | PRICING | THE CURALINA EDIT
+
+All caps, spaced out, separated by vertical bars.
+
+Announcement bar
+
+A full-width, light grey strip under the main menu.
+
+Centered sentence: “Everyone has their own sense of style | Learn More About Our Design Styles” (or similar variant on step 1). 
+
+STYLE QUIZ - Step 1 to 4
+
+Text is small, sans serif.
+
+Content area
+
+White background.
+
+Content width constrained (think ~1100–1200px max-width, centered).
+
+Top of content shows:
+
+Small label: Step X of 7 in smaller sans serif.
+
+Big question headline in serif, sentence case, left-aligned.
+
+Supporting subtext below in sans serif.
+
+Footer navigation
+
+Bottom left: text link like "< Previous: Reselect your Room Type".
+
+Bottom right: text link like "Next: Your Budget >".
+
+These are text-only, no big button styling. 
+
+STYLE QUIZ - Step 1 to 4
+
+Spacing
+
+Generous vertical spacing between header, question, images/cards, and footer.
+
+The whole quiz feels airy and premium—never cramped.
+
+2. Visual System (Design Tokens)
+2.1 Colors (approximate usage)
+
+You can recreate with these roles (exact hex not given, but the relationships are clear): 
+
+STYLE QUIZ - Step 1 to 4
+
+Backgrounds
+
+Main page: white (#FFFFFF).
+
+Soft section background: pale warm beige behind “Select all that apply” sections and functional feature cards.
+
+Accent rails: a medium warm grey strip sometimes used full-width at the very top or bottom.
+
+Text
+
+Primary: very dark grey (not pure black) for body + headings.
+
+Secondary: mid-grey for helper/secondary text.
+
+Cards & overlays
+
+Option cards with photos: full-bleed photo with a dark translucent overlay bar at the bottom (charcoal at ~60–70% opacity) with white text.
+
+Functional feature cards: light beige fill with a slightly darker beige border.
+
+Use no strong saturated colors except within photography; the UI itself is calm neutrals.
+
+2.2 Typography
+
+From appearance:
+
+Headings / Questions
+
+High-contrast serif (Didot/Bodoni style).
+
+Used for:
+
+Main question (“Which room do you dream of transforming first?”).
+
+Section words like “Mood”, “Textures”, “Lifestyle”, “Functional Features”.
+
+Big, elegant, generous line spacing.
+
+Body + helper text
+
+Clean sans serif.
+
+Used for:
+
+Instructions (“Choose up to 2 styles.”, “Select all that apply”).
+
+Descriptions under each functional feature.
+
+Top navigation menu and announcement bar.
+
+Option labels
+
+Often uppercase sans serif (LIVING ROOM, DINING ROOM, LIGHT NEUTRALS, etc.).
+
+White text on dark overlays (image tiles) or dark text on light card backgrounds.
+
+Keep 2 font families: 1 serif for drama, 1 sans for usability.
+
+2.3 Buttons / Selectable Items
+
+There are no traditional solid buttons; selection is via:
+
+Photo tiles (large choices) 
+
+STYLE QUIZ - Step 1 to 4
+
+Full rectangle photo.
+
+Label bar at bottom:
+
+Background: opaque or semi-transparent dark overlay.
+
+Text: white, centered or aligned left.
+
+Example: 4 tiles in a row for room types.
+
+Image rows (style & palette choices) 
+
+STYLE QUIZ - Step 1 to 4
+
+For each style: left large interior photo, right close-up materials board.
+
+Each style name is top-left in white or light text over the photo.
+
+Pill-like tags (words / mood / lifestyle) 
+
+STYLE QUIZ - Step 1 to 4
+
+Rectangular rounded pills with light background and dark text.
+
+Arranged in rows over a hero image (e.g., “Calm/Serene”, “Clean Lines/Structured”).
+
+Clickable multi-select.
+
+Icon Cards (functional features) 
+
+STYLE QUIZ - Step 1 to 4
+
+Rectangular cards with:
+
+Left: line icon.
+
+Right: bold label + smaller descriptive text.
+
+Light background, subtle border, slight padding.
+
+Cards arranged in a 2×4 or 2×3 grid depending on page.
+
+On hover/selected states you can:
+
+Add a subtle border color change or drop shadow.
+
+Or invert background (slightly darker beige) while keeping the minimal aesthetic.
+
+2.4 Icons
+
+Used heavily in the “Functional Features” steps. 
+
+STYLE QUIZ - Step 1 to 4
+
+Style:
+
+Thin line icons (outline only).
+
+Rounded corners, no heavy visual weight.
+
+Single color (same dark grey as text).
+
+Examples:
+
+Storage Solutions: cabinet icon with two doors.
+
+Workspace Area: desk and computer.
+
+Comfortable Seat: armchair or sofa silhouette.
+
+Accent Lighting: table lamp.
+
+Pet-Friendly: simple pet/animal outline.
+
+Child-Friendly: teddy bear icon.
+
+Media Area: TV/media console.
+
+Multi-Function: sofa bed icon.
+
+Seating counts: numeric buttons [4] [6] [8] [10] [12] in pill shapes (no icons, just text).
+
+Beds: icons representing bed sizes (top-down outline of mattress).
+
+Office step: icons for bookcase, filing storage, reading chair, large/small desk, etc.
+
+Keep all icons from one consistent icon set (stroke width and corner radius must match).
+
+3. Quiz Structure & Step Logic
+
+From the PDF we see Steps 1–4 of 7. Each step follows same top+bottom structure, only the content grid changes. 
+
+STYLE QUIZ - Step 1 to 4
+
+Step 1 – Room Selection
+
+Question: “Which room do you dream of transforming first?”
+Subtext: Clarifies you can explore other rooms later. 
+
+STYLE QUIZ - Step 1 to 4
+
+Layout:
+
+Below question: 4 image tiles in a single row:
+
+Living Room
+
+Dining Room
+
+Bedroom
+
+Home Office
+
+Each tile: lifestyle photo + bottom dark overlay bar with room name in uppercase white text.
+
+Behavior:
+
+Single-select (likely).
+
+Clicking a tile marks it selected (e.g., border highlight).
+
+“Next: Your Design Style >” in bottom right navigates to Step 2.
+
+Step 2 – Design Style Selection
+
+Question: “Which style feels most like home?”
+Instruction: “Choose up to 2 styles. Trust your instincts — There are no wrong answers.” 
+
+STYLE QUIZ - Step 1 to 4
+
+Layout:
+
+Vertical stack of style rows, each row representing 1 style:
+
+Left: full interior image.
+
+Right: flatlay/materials image.
+
+Style names appear top-left of each left image:
+
+ORGANIC MODERN
+
+MODERN FARMHOUSE
+
+MIDCENTURY SCANDI
+
+CONTEMPORARY LUX
+
+WARM TRANSITIONAL 
+
+STYLE QUIZ - Step 1 to 4
+
+Behavior:
+
+Each style row is a selectable block (either tile-level click or checkboxes overlaid).
+
+Multi-select up to 2 (enforce via validation).
+
+Bottom:
+
+< Previous: Reselect your Room Type
+
+Curious about each look? Explore all styles
+
+Next: Your Design Style >
+
+Step 3 – Colour Palette Selection
+
+Question: “Which colour palette feels most like you?”
+Instruction: “Choose up to 2 styles. Trust your instincts — There are no wrong answers.” 
+
+STYLE QUIZ - Step 1 to 4
+
+Layout:
+
+2×2 grid of palette boards (top row, bottom row):
+
+LIGHT NEUTRALS
+
+WARM & COZY
+
+DARK & MOODY
+
+COLOURFUL ACCENT 
+
+STYLE QUIZ - Step 1 to 4
+
+Each tile: photo of materials (fabric, stone, decor) in that palette.
+
+Each tile labeled at bottom on a darker bar, similar to room tiles.
+
+Notes in design:
+
+There’s a red dashed box with internal note listing upcoming palette names (for future update) – you can omit from live UI.
+
+Behavior:
+
+Multi-select up to 2 palette tiles.
+
+Step 4 – Key Features / Functional Features
+
+All Step 4 screens share the same top section text; the center cards change depending on the room type (living/dining/bedroom/office). 
+
+STYLE QUIZ - Step 1 to 4
+
+Top:
+
+Heading: “Functional Features”.
+
+Subheading: “A room should look stunning and live smart. Let’s design for how you live, not just how it looks.”
+
+Instruction: “Select all that apply.”
+
+Then three different versions (for different rooms):
+
+4A. Living Room variant (page 5)
+
+Right side: 2×4 grid of icon cards: 
+
+STYLE QUIZ - Step 1 to 4
+
+Storage Solutions – “Shelves & cabinetry”
+
+Workspace Area – “Integrated office”
+
+Comfortable Seat – “Sectional or deep sofa”
+
+Accent Lighting – “Ambient & Task”
+
+Pet-Friendly – “Durable fabrics”
+
+Child-Friendly – “Toy storage, rounded edges”
+
+Media Area – “Entertainment Cabinet”
+
+Multi-Function – “Sofa Bed”
+
+Left side: large living room photo on beige/white page.
+
+4B. Dining Room variant (page 6)
+
+Similar 2×3 + seating line: 
+
+STYLE QUIZ - Step 1 to 4
+
+Casual Setting – “Relaxed & Everyday”
+
+Formal Setting – “Elevated & Polished”
+
+Bar Storage – “Wine and Liquor”
+
+Storage Solutions – “Organize clutter”
+
+Seating – label “(Please select number of people to be seated)” with pill options [4] [6] [8] [10] [12].
+
+Left side: dining table image.
+
+4C. Bedroom variant (page 7)
+
+Another grid variant: 
+
+STYLE QUIZ - Step 1 to 4
+
+Storage Solutions – “Clothing & Linens”
+
+Workspace Area – “Integrated office”
+
+Comfortable Seat – “Reading Chair”
+
+Media Area – “TV Cabinet”
+
+Twin/Single Bed – with size subtitle 38" wide x 75" wide
+
+Double Bed – 54" wide x 75" wide
+
+Queen Bed – 60" wide x 75" wide
+
+King Bed – (should say 76" but shown as 60" x 75" in document – treat that as copy to revise).
+
+Left: bedroom photo; note box on right indicating “ADD Vanity Table”.
+
+4D. Home Office variant (page 8)
+
+Cards: 
+
+STYLE QUIZ - Step 1 to 4
+
+Concealed Storage – “Keep clutter out”
+
+Bookcase Storage – “Open Shelves”
+
+Filing Storage – “Documents & Files”
+
+Reading Chair – “Comfortable Seat”
+
+Large Desk – “52" to 62"”
+
+Small Desk – “32" to 48"”
+
+Left: office desk photo.
+
+Behavior for all variants:
+
+All functional feature cards are multi-select.
+
+Seating or size options act like small pill buttons (probably single-select within each group).
+
+Bottom right: “Next: Your Budget >”.
+
+4. Background Imagery & Composition
+
+Across pages: 
+
+STYLE QUIZ - Step 1 to 4
+
+Photography style
+
+Soft, natural light.
+
+Warm color grading (creamy whites, warm woods, muted greens).
+
+Slightly desaturated, no harsh contrast.
+
+Use of images
+
+Hero imagery often anchored to left side.
+
+Grids of product/material images in center.
+
+Large decorative words (“Mood”, “Textures”, “Patterns”) overlaid behind interactive elements on Step 4 page (page 4). These words are giant serif text at low contrast for a magazine look.
+
+Overlay pattern
+
+Some sections have a large background photo with dark overlay; cards/pills sit above that within a darker panel.
+
+5. Implementation Checklist (so you can “replate” it)
+
+When you brief your designer/dev, give them this list:
+
+Global
+
+Create a shared layout with:
+
+Fixed header (logo, nav, icons).
+
+Announcement bar.
+
+Constrained central content.
+
+Standard footer nav (Previous/Next text links).
+
+Use 2 fonts: a serif for headings, sans serif for everything else.
+
+Color tokens
+
+bg-page: #FFFFFF
+
+bg-section: warm light beige
+
+bg-accent-rail: medium warm grey
+
+text-primary: very dark grey
+
+text-secondary: mid-grey
+
+card-bg: light beige
+
+card-border: slightly darker beige
+
+overlay-dark: charcoal with ~60–70% opacity
+
+text-on-overlay: white
+
+Components
+
+PhotoTile: image + bottom overlay label.
+
+StyleRow: (image interior + image materials).
+
+PaletteTile: image board + label.
+
+TagPill: pill selection for words/moods.
+
+IconCard: icon + title + description.
+
+NumberPillGroup: for seating / size selections.
+
+Interactions
+
+Multi-step form, Steps 1–7 (we visually see 1–4).
+
+Progress label “Step X of 7” only; no progress bar.
+
+Save state between steps.
+
+Max/min selections enforced (e.g., up to 2).
+
+Responsiveness
+
+On desktop: keep multi-column grids (e.g., 4 room tiles in a row).
+
+On mobile:
+
+Stack tiles 1 per row.
