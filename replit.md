@@ -41,6 +41,14 @@ Preferred communication style: Simple, everyday language.
   - **Home Office (7 zones)**: 1 desk (wall), 1 office chair, 1-2 storage, 1 task lamp (surface), 0-1 guest seating, 0-1 rug/art
   - **Zone Height Tiers**: floor (rugs, furniture), surface (table lamps on surfaces), wall (art, ceiling fixtures)
   - **Template Enforcement**: Selection function respects min/max constraints with priority-based ordering
+- **Quiz-to-Product Matching System**: Multi-factor scoring algorithm in room-composition-service.ts that connects quiz preferences to product selection:
+  - **Style Matching** (+30 pts): Quiz styles matched against product designStyle arrays
+  - **Color Matching** (+20 pts): Quiz colorPalettes matched against product colors
+  - **Texture/Material Matching** (+25 pts): Quiz textures mapped to material keywords (e.g., "Leather, Wool" → leather/wool/hide, "Velvet, Brass, Smoked Glass" → velvet/brass/glass/gold)
+  - **Line Style Matching** (+15 pts): Design mode (Classic, Transitional, Modern, Eclectic, Relaxed) mapped to product design style keywords
+  - **Pattern Preference Matching** (+15-20 pts): Comprehensive pattern detection regex for "Just Solids" (boost solid products), "I Love Patterns" (boost patterned products), and "Patterned Accents" (balanced mix)
+  - **Budget Fit Scoring** (+30 pts): Products scored against allocated category budgets
+  - **Visual Description Quality** (+10-20 pts): Products with better AI-generated descriptions preferred
 - **Budget Allocation Framework**: Consistent percentage-based budget distribution across room types with anchor piece emphasis:
   - **Living Room**: Sofa 40% (anchor), Accent Chairs 20%, Tables 15%, Lighting 15%, Rug/Decor 10%
   - **Bedroom**: Bed 40% (anchor), Nightstands 20%, Dresser/Storage 15%, Lighting 15%, Decor/Bedding 10%
