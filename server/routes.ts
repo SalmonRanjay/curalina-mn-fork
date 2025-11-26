@@ -379,6 +379,286 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== USER DASHBOARD ROUTES =====
+  
+  // Get user dashboard stats
+  app.get('/api/my-dashboard/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const stats = await storage.getUserDashboardStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Get user's renders
+  app.get('/api/my-dashboard/renders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const renders = await storage.getUserRenders(userId);
+      res.json(renders);
+    } catch (error) {
+      console.error("Error fetching user renders:", error);
+      res.status(500).json({ message: "Failed to fetch renders" });
+    }
+  });
+
+  // Get user's quiz responses
+  app.get('/api/my-dashboard/quiz-responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const responses = await storage.getUserQuizResponses(userId);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching quiz responses:", error);
+      res.status(500).json({ message: "Failed to fetch quiz responses" });
+    }
+  });
+
+  // Get user's cart items
+  app.get('/api/my-dashboard/cart', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const items = await storage.getUserCartItems(userId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching cart items:", error);
+      res.status(500).json({ message: "Failed to fetch cart items" });
+    }
+  });
+
+  // Get user's orders
+  app.get('/api/my-dashboard/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const orders = await storage.getUserOrders(userId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Get specific order details
+  app.get('/api/my-dashboard/orders/:orderId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { orderId } = req.params;
+      const order = await storage.getOrderById(orderId, userId);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  // ===== SAVED DESIGNS ROUTES =====
+  
+  // Get user's saved designs
+  app.get('/api/my-dashboard/saved-designs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const designs = await storage.getSavedDesigns(userId);
+      res.json(designs);
+    } catch (error) {
+      console.error("Error fetching saved designs:", error);
+      res.status(500).json({ message: "Failed to fetch saved designs" });
+    }
+  });
+
+  // Save a design
+  app.post('/api/my-dashboard/saved-designs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { renderId, title, notes } = req.body;
+      
+      if (!renderId) {
+        return res.status(400).json({ message: "Render ID is required" });
+      }
+      
+      // Check if already saved
+      const existing = await storage.isRenderSaved(userId, renderId);
+      if (existing) {
+        return res.status(400).json({ message: "Design already saved" });
+      }
+      
+      const saved = await storage.createSavedDesign({
+        userId,
+        renderId,
+        title,
+        notes,
+        isPublic: false,
+      });
+      
+      await storage.createActivityLog({
+        userId,
+        action: "design_saved",
+        description: `Saved design: ${title || renderId}`,
+        metadata: { renderId },
+      });
+      
+      res.json(saved);
+    } catch (error) {
+      console.error("Error saving design:", error);
+      res.status(500).json({ message: "Failed to save design" });
+    }
+  });
+
+  // Update a saved design (title, notes, sharing)
+  app.patch('/api/my-dashboard/saved-designs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      const { title, notes, isPublic } = req.body;
+      
+      const existing = await storage.getSavedDesignById(id, userId);
+      if (!existing) {
+        return res.status(404).json({ message: "Saved design not found" });
+      }
+      
+      // Generate share token if making public and doesn't have one
+      let shareToken = existing.shareToken;
+      if (isPublic && !shareToken) {
+        shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      
+      const updated = await storage.updateSavedDesign(id, userId, {
+        title: title ?? existing.title,
+        notes: notes ?? existing.notes,
+        isPublic: isPublic ?? existing.isPublic,
+        shareToken,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating saved design:", error);
+      res.status(500).json({ message: "Failed to update saved design" });
+    }
+  });
+
+  // Delete a saved design
+  app.delete('/api/my-dashboard/saved-designs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      
+      const existing = await storage.getSavedDesignById(id, userId);
+      if (!existing) {
+        return res.status(404).json({ message: "Saved design not found" });
+      }
+      
+      await storage.deleteSavedDesign(id, userId);
+      
+      await storage.createActivityLog({
+        userId,
+        action: "design_unsaved",
+        description: `Removed saved design`,
+        metadata: { savedDesignId: id },
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting saved design:", error);
+      res.status(500).json({ message: "Failed to delete saved design" });
+    }
+  });
+
+  // Check if a render is saved
+  app.get('/api/my-dashboard/is-saved/:renderId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { renderId } = req.params;
+      const isSaved = await storage.isRenderSaved(userId, renderId);
+      res.json({ isSaved });
+    } catch (error) {
+      console.error("Error checking if render is saved:", error);
+      res.status(500).json({ message: "Failed to check saved status" });
+    }
+  });
+
+  // Public shared design view
+  app.get('/api/shared-design/:shareToken', async (req, res) => {
+    try {
+      const { shareToken } = req.params;
+      const design = await storage.getSavedDesignByShareToken(shareToken);
+      
+      if (!design || !design.isPublic) {
+        return res.status(404).json({ message: "Shared design not found" });
+      }
+      
+      res.json(design);
+    } catch (error) {
+      console.error("Error fetching shared design:", error);
+      res.status(500).json({ message: "Failed to fetch shared design" });
+    }
+  });
+
+  // ===== PRODUCT INTERACTIONS =====
+  
+  // Log product interaction
+  app.post('/api/product-interactions', async (req: any, res) => {
+    try {
+      const { productId, interactionType, metadata, sessionId } = req.body;
+      
+      if (!productId || !interactionType) {
+        return res.status(400).json({ message: "Product ID and interaction type are required" });
+      }
+      
+      const interaction = await storage.createProductInteraction({
+        userId: req.user?.id || null,
+        sessionId: sessionId || null,
+        productId,
+        interactionType,
+        metadata,
+      });
+      
+      res.json(interaction);
+    } catch (error) {
+      console.error("Error logging product interaction:", error);
+      res.status(500).json({ message: "Failed to log interaction" });
+    }
+  });
+
+  // Get user's product interactions
+  app.get('/api/my-dashboard/product-interactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const interactions = await storage.getUserProductInteractions(userId);
+      res.json(interactions);
+    } catch (error) {
+      console.error("Error fetching product interactions:", error);
+      res.status(500).json({ message: "Failed to fetch product interactions" });
+    }
+  });
+
+  // ===== SESSION DATA MIGRATION =====
+  
+  // Migrate anonymous session data to authenticated user
+  app.post('/api/migrate-session-data', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { sessionId } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+      
+      await storage.migrateSessionDataToUser(sessionId, userId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error migrating session data:", error);
+      res.status(500).json({ message: "Failed to migrate session data" });
+    }
+  });
+
   // Object storage routes
   app.get("/public-objects/:filePath(*)", async (req, res) => {
     const filePath = req.params.filePath;
