@@ -57,6 +57,12 @@ The application uses Replit's Object Storage (backed by Google Cloud Storage) fo
 - The flow is: Quiz creates render → passes `?renderId=X&sessionId=Y` to Loading → Loading passes same params to Results
 - Fallback to localStorage session if URL params are not present (backwards compatibility)
 
+### Render Quality System
+- **Auto-Regeneration**: When validation score is below 75/100, the system automatically retries up to 2 times, keeping the best result
+- **Quality Status**: Renders are marked as 'passed' (score >= threshold) or 'warning' (below threshold) based on Gemini Vision validation
+- **Room Dimension Parsing**: Enhanced parser handles various formats (18' x 14', "18 feet long", "approximately 18ft by 14ft") with strict patterns to avoid false positives
+- **Zone Placement Consistency**: Product selection runs once; placements are reused after floor plan analysis to prevent mismatch between selected products and zone assignments
+
 ## External Dependencies
 
 - **Authentication**: Replit OIDC provider

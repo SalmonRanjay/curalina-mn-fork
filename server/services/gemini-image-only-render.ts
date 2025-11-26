@@ -617,6 +617,14 @@ IMPORTANT:
 
 /**
  * Parse room dimensions from Gemini Vision analysis text
+ * Enhanced to handle various formats Gemini may return:
+ * - "Room length: 18 feet" / "Room width: 14 feet"
+ * - "18' x 14'" (foot marks)
+ * - "18ft x 14ft" / "18 ft x 14 ft"
+ * - "Approx. 18' length x 14' width"
+ * - "approximately 18 feet by 14 feet"
+ * - "The room is roughly 18 by 14 feet"
+ * - "18 feet long and 14 feet wide"
  */
 function parseRoomDimensions(analysisText: string): RoomAnalysisResult['estimatedDimensions'] {
   const result: RoomAnalysisResult['estimatedDimensions'] = {
@@ -628,27 +636,91 @@ function parseRoomDimensions(analysisText: string): RoomAnalysisResult['estimate
   };
   
   try {
-    // Extract room length
-    const lengthMatch = analysisText.match(/Room length:\s*(\d+(?:\.\d+)?)\s*feet/i);
+    // Try structured format first: "Room length: X feet"
+    const lengthMatch = analysisText.match(/Room length:\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|')/i);
     if (lengthMatch) result.lengthFeet = parseFloat(lengthMatch[1]);
     
-    // Extract room width
-    const widthMatch = analysisText.match(/Room width:\s*(\d+(?:\.\d+)?)\s*feet/i);
+    const widthMatch = analysisText.match(/Room width:\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|')/i);
     if (widthMatch) result.widthFeet = parseFloat(widthMatch[1]);
     
-    // Extract ceiling height
-    const ceilingMatch = analysisText.match(/Ceiling height:\s*(\d+(?:\.\d+)?)\s*feet/i);
-    if (ceilingMatch) result.ceilingHeightFeet = parseFloat(ceilingMatch[1]);
+    // If structured format didn't work, try natural language patterns
+    // IMPORTANT: Use strict patterns to avoid false positives (e.g., "14 windows" != 14ft width)
+    if (!result.lengthFeet || !result.widthFeet) {
+      // Pattern: "18' x 14'" or "18ft x 14ft" - REQUIRES unit on at least first number
+      // This prevents matching "14 windows x 3 panels"
+      const dimensionWithUnitPattern = /(?:approx\.?|approximately|roughly|about|room\s+(?:is|measures?))?\s*(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet)\s*(?:length|long)?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet?)?/i;
+      const dimMatch = analysisText.match(dimensionWithUnitPattern);
+      if (dimMatch) {
+        result.lengthFeet = result.lengthFeet || parseFloat(dimMatch[1]);
+        result.widthFeet = result.widthFeet || parseFloat(dimMatch[2]);
+      }
+      
+      // Pattern: "18 feet long and 14 feet wide" - REQUIRES "feet/ft" unit
+      const longWidePattern = /(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet)\s*(?:long|in\s+length)\s*(?:and|,|x)?\s*(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet?)?\s*(?:wide|in\s+width)/i;
+      const longWideMatch = analysisText.match(longWidePattern);
+      if (longWideMatch) {
+        result.lengthFeet = result.lengthFeet || parseFloat(longWideMatch[1]);
+        result.widthFeet = result.widthFeet || parseFloat(longWideMatch[2]);
+      }
+      
+      // Pattern: "length of 18 feet" or "room length: 18'" - REQUIRES explicit dimension context
+      const explicitLengthPattern = /(?:room\s+)?length\s*(?:of|:|\s+is)?\s*(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet)/i;
+      const ofLengthMatch = analysisText.match(explicitLengthPattern);
+      if (ofLengthMatch && !result.lengthFeet) {
+        result.lengthFeet = parseFloat(ofLengthMatch[1]);
+      }
+      
+      // Pattern: "width of 14 feet" or "room width: 14'" - REQUIRES explicit dimension context
+      const explicitWidthPattern = /(?:room\s+)?width\s*(?:of|:|\s+is)?\s*(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet)/i;
+      const ofWidthMatch = analysisText.match(explicitWidthPattern);
+      if (ofWidthMatch && !result.widthFeet) {
+        result.widthFeet = parseFloat(ofWidthMatch[1]);
+      }
+    }
+    
+    // Extract ceiling height - multiple formats
+    const ceilingPatterns = [
+      /Ceiling height:\s*(\d+(?:\.\d+)?)\s*(?:feet|ft|')/i,
+      /ceiling[s]?\s*(?:is|are|at)?\s*(?:approximately|about|roughly)?\s*(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet?)/i,
+      /(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet?)?\s*ceiling/i
+    ];
+    for (const pattern of ceilingPatterns) {
+      const ceilingMatch = analysisText.match(pattern);
+      if (ceilingMatch && !result.ceilingHeightFeet) {
+        result.ceilingHeightFeet = parseFloat(ceilingMatch[1]);
+        break;
+      }
+    }
     
     // Extract usable floor area category
-    const areaMatch = analysisText.match(/Usable floor area:\s*(small|medium|large|very large)/i);
+    const areaMatch = analysisText.match(/(?:Usable floor area|floor\s+area|space):\s*(small|medium|large|very large)/i);
     if (areaMatch) result.usableFloorArea = areaMatch[1].toLowerCase();
+    
+    // If dimensions still not found, try to detect square footage and estimate
+    if (!result.lengthFeet && !result.widthFeet) {
+      const sqftMatch = analysisText.match(/(\d+(?:,\d+)?)\s*(?:sq\.?\s*ft\.?|square\s+feet)/i);
+      if (sqftMatch) {
+        const sqft = parseFloat(sqftMatch[1].replace(',', ''));
+        // Estimate assuming roughly square room
+        const side = Math.sqrt(sqft);
+        result.lengthFeet = Math.round(side * 1.2); // Assume slightly rectangular
+        result.widthFeet = Math.round(sqft / result.lengthFeet);
+        console.log(`   📐 Estimated dimensions from ${sqft} sq ft: ${result.lengthFeet}x${result.widthFeet}ft`);
+      }
+    }
     
     // Extract wall lengths (capture lines after "Available wall lengths:")
     const wallSection = analysisText.match(/Available wall lengths?:([^\n]*(?:\n(?!-\s*(?:Room|Ceiling|Usable))[^\n]*)*)/i);
     if (wallSection) {
       const wallLines = wallSection[1].split('\n').filter(line => line.trim());
       result.wallLengths = wallLines.map(line => line.trim()).filter(line => line.length > 0);
+    }
+    
+    // Log parsing success/failure for debugging
+    if (result.lengthFeet && result.widthFeet) {
+      console.log(`   ✅ Parsed dimensions: ${result.lengthFeet}ft x ${result.widthFeet}ft`);
+    } else {
+      console.log(`   ⚠️ Could not parse room dimensions from analysis text`);
     }
   } catch (error) {
     console.warn('   ⚠️ Error parsing room dimensions:', error);

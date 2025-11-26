@@ -1803,6 +1803,7 @@ export function registerCuralinaRoutes(app: Express) {
             priority?: number;
           }> = [];
           let placementInstructions: string | undefined = undefined;
+          let originalPlacements: any[] = []; // Stores PlacementInstruction[] from composition result
           
           if (req.body.productSkus && req.body.productSkus.length > 0) {
             // Use specific product SKUs (from swap/regeneration)
@@ -1874,6 +1875,10 @@ export function registerCuralinaRoutes(app: Express) {
               }));
               console.log(`AI selected ${selectedProducts.length} products with zone-based composition`);
               
+              // Store original placements for later use (after floor plan analysis)
+              // This prevents the zone mismatch bug where re-running selection produces different products
+              originalPlacements = compositionResult.placements || [];
+              
               // Generate zone-based placement instructions if placements are available
               if (compositionResult.placements && compositionResult.placements.length > 0) {
                 console.log(`📍 Generating zone-based placement instructions for ${compositionResult.placements.length} items`);
@@ -1928,45 +1933,26 @@ export function registerCuralinaRoutes(app: Express) {
               floorPlanAnalysis = await analyzeFloorPlan(floorplanUrl);
               console.log(`✅ Floor plan analysis complete: ${floorPlanAnalysis.roomDimensions}`);
               
-              // Regenerate placement instructions with floor plan context if we have placements
-              if (placementInstructions && selectedProducts.length > 0) {
-                const { selectProductsWithComposition } = await import('./services/room-composition-service');
-                // Re-fetch composition to get placements with floor plan context
-                const filteredProducts = filterProductsByQuiz(allProducts, quiz);
+              // Regenerate placement instructions with floor plan context using EXISTING products
+              // IMPORTANT: We do NOT re-run product selection here - that would cause different products
+              // to be selected than what was chosen in the initial selection, breaking the zone placement
+              if (placementInstructions && selectedProducts.length > 0 && originalPlacements) {
+                // Update selectedProducts with empty placement/reasoning fields
+                const productsForMatrix = selectedProducts.map(p => ({
+                  ...p,
+                  placement: '',
+                  reasoning: ''
+                }));
                 
-                // Extract detected dimensions from parsedRoomData if available
-                const detectedDimensions = quiz.parsedRoomData && typeof quiz.parsedRoomData === 'object' ? {
-                  lengthFeet: (quiz.parsedRoomData as any).lengthFeet || null,
-                  widthFeet: (quiz.parsedRoomData as any).widthFeet || null,
-                  ceilingHeightFeet: (quiz.parsedRoomData as any).ceilingHeightFeet || null
-                } : undefined;
-                
-                const compositionResult = await selectProductsWithComposition(
+                // Regenerate matrix with floor plan context but SAME products and placements
+                placementInstructions = generatePlacementMatrix(
+                  productsForMatrix,
                   quiz.roomType,
-                  filteredProducts,
-                  quiz,
-                  15,
-                  undefined, // roomDimensions (for fit validation)
-                  detectedDimensions // detected dimensions for space-aware selection
+                  roomAnalysis,
+                  floorPlanAnalysis,
+                  originalPlacements // Use original placements, not new selection
                 );
-                
-                if (compositionResult.placements && compositionResult.placements.length > 0) {
-                  // Update selectedProducts with empty placement/reasoning fields
-                  const productsForMatrix = selectedProducts.map(p => ({
-                    ...p,
-                    placement: '',
-                    reasoning: ''
-                  }));
-                  
-                  placementInstructions = generatePlacementMatrix(
-                    productsForMatrix,
-                    quiz.roomType,
-                    roomAnalysis,
-                    floorPlanAnalysis,
-                    compositionResult.placements
-                  );
-                  console.log(`✅ Updated placement instructions with floor plan context`);
-                }
+                console.log(`✅ Updated placement instructions with floor plan context`);
               }
             } catch (error) {
               console.error("Floor plan analysis error:", error);
@@ -2090,65 +2076,120 @@ export function registerCuralinaRoutes(app: Express) {
               }
             };
             
-            const multiStepResult = await generateMultiStepRender({
-              roomImageUrl: floorplanUrl,
-              products: fullSelectedProducts,
-              roomType: quiz.roomType,
-              stylePreference: quiz.styles?.[0] || 'modern',
-              seatingCount, // For dining rooms: render this many chairs
-              onProgress
-            });
+            // Auto-regeneration loop for quality assurance
+            const MAX_RENDER_ATTEMPTS = 2;
+            let renderAttempt = 0;
+            let bestResult: Awaited<ReturnType<typeof generateMultiStepRender>> | null = null;
+            let bestValidation: Awaited<ReturnType<typeof generateMultiStepRender>>['validation'] = undefined;
             
-            // Include validation in result for downstream storage
-            const validation = multiStepResult.validation;
+            while (renderAttempt < MAX_RENDER_ATTEMPTS) {
+              renderAttempt++;
+              
+              if (renderAttempt > 1) {
+                console.log(`\n🔄 AUTO-REGENERATION: Attempt ${renderAttempt}/${MAX_RENDER_ATTEMPTS}`);
+                console.log(`   Previous render failed validation (score ${bestValidation?.overallScore || 0}/100)`);
+              }
+              
+              const multiStepResult = await generateMultiStepRender({
+                roomImageUrl: floorplanUrl,
+                products: fullSelectedProducts,
+                roomType: quiz.roomType,
+                stylePreference: quiz.styles?.[0] || 'modern',
+                seatingCount,
+                onProgress
+              });
+              
+              const validation = multiStepResult.validation;
+              
+              // Track best result (for fallback if all attempts fail)
+              if (!bestResult || (validation && (!bestValidation || validation.overallScore > bestValidation.overallScore))) {
+                bestResult = multiStepResult;
+                bestValidation = validation;
+              }
+              
+              if (multiStepResult.success) {
+                console.log(`✅ Multi-step complete: ${multiStepResult.stepsCompleted}/${multiStepResult.totalSteps} steps`);
+                
+                if (validation) {
+                  console.log(`   🔍 Validation: ${validation.overallScore}/100 (${validation.isValid ? 'PASS' : 'WARN'})`);
+                  
+                  // Check if render passes quality threshold
+                  const QUALITY_THRESHOLD = 75;
+                  if (validation.isValid || validation.overallScore >= QUALITY_THRESHOLD) {
+                    console.log(`   ✅ Render meets quality threshold (${validation.overallScore}/${QUALITY_THRESHOLD})`);
+                    bestResult = multiStepResult;
+                    bestValidation = validation;
+                    break; // Accept this render
+                  } else if (renderAttempt < MAX_RENDER_ATTEMPTS) {
+                    console.log(`   ❌ Render below quality threshold (${validation.overallScore}/${QUALITY_THRESHOLD}) - will retry`);
+                    if (validation.issues?.length > 0) {
+                      console.log(`   Issues: ${validation.issues.slice(0, 2).join(', ')}`);
+                    }
+                    continue; // Try again
+                  } else {
+                    console.log(`   ⚠️ Using best available render after ${MAX_RENDER_ATTEMPTS} attempts (score ${bestValidation?.overallScore || 0})`);
+                  }
+                } else {
+                  // No validation available - accept render
+                  break;
+                }
+              } else {
+                // Render failed completely
+                if (renderAttempt >= MAX_RENDER_ATTEMPTS) {
+                  break;
+                }
+              }
+            }
+            
+            // Use best result from all attempts
+            const finalValidation = bestValidation;
             
             imageOnlyResult = {
-              success: multiStepResult.success,
-              imageBase64: multiStepResult.imageBase64,
-              error: multiStepResult.error,
-              productsUsed: multiStepResult.productsUsed,
-              productsSentToAI: multiStepResult.productsSentToAI
+              success: bestResult?.success || false,
+              imageBase64: bestResult?.imageBase64,
+              error: bestResult?.error,
+              productsUsed: bestResult?.productsUsed || 0,
+              productsSentToAI: bestResult?.productsSentToAI || []
             };
             
-            if (multiStepResult.success) {
-              console.log(`✅ Multi-step complete: ${multiStepResult.stepsCompleted}/${multiStepResult.totalSteps} steps`);
-              if (multiStepResult.skippedLockPass) {
+            if (bestResult?.success) {
+              if (renderAttempt > 1) {
+                console.log(`✅ Auto-regeneration completed after ${renderAttempt} attempt(s)`);
+              }
+              if (bestResult.skippedLockPass) {
                 console.log(`   ⚡ Empty room optimization: Lock pass was skipped`);
               }
-              if (validation) {
-                console.log(`   🔍 Validation: ${validation.overallScore}/100 (${validation.isValid ? 'PASS' : 'WARN'})`);
-                if (!validation.isValid && validation.issues?.length > 0) {
-                  console.warn(`   ⚠️ Validation issues: ${validation.issues.join(', ')}`);
-                }
+              if (finalValidation) {
                 // Store validation for later persistence to qaResults
                 renderValidation = {
-                  overallScore: validation.overallScore,
-                  isValid: validation.isValid,
-                  productsPlaced: validation.productsPlaced || [],
-                  missingProducts: validation.missingProducts || [],
-                  architecturalIntegrityScore: validation.architecturalIntegrityScore,
-                  colorFidelityScore: validation.colorFidelityScore,
-                  scaleAccuracyScore: validation.scaleAccuracyScore,
-                  placementQualityScore: validation.placementQualityScore,
-                  issues: validation.issues || []
+                  overallScore: finalValidation.overallScore,
+                  isValid: finalValidation.isValid,
+                  productsPlaced: finalValidation.productsPlaced || [],
+                  missingProducts: finalValidation.missingProducts || [],
+                  architecturalIntegrityScore: finalValidation.architecturalIntegrityScore,
+                  colorFidelityScore: finalValidation.colorFidelityScore,
+                  scaleAccuracyScore: finalValidation.scaleAccuracyScore,
+                  placementQualityScore: finalValidation.placementQualityScore,
+                  issues: finalValidation.issues || []
                 };
                 // Update progress metadata immediately
                 await curalinaStorage.updateRender(render.id, {
                   productMetadata: {
                     progressStage: 'complete',
                     progressPercent: 100,
+                    regenerationAttempts: renderAttempt,
                     validation: {
-                      overallScore: validation.overallScore,
-                      isValid: validation.isValid,
-                      productsPlaced: validation.productsPlaced?.length || 0,
-                      missingProducts: validation.missingProducts?.length || 0,
-                      architecturalIntegrityScore: validation.architecturalIntegrityScore,
-                      colorFidelityScore: validation.colorFidelityScore,
-                      scaleAccuracyScore: validation.scaleAccuracyScore,
-                      placementQualityScore: validation.placementQualityScore,
-                      issues: validation.issues || []
+                      overallScore: finalValidation.overallScore,
+                      isValid: finalValidation.isValid,
+                      productsPlaced: finalValidation.productsPlaced?.length || 0,
+                      missingProducts: finalValidation.missingProducts?.length || 0,
+                      architecturalIntegrityScore: finalValidation.architecturalIntegrityScore,
+                      colorFidelityScore: finalValidation.colorFidelityScore,
+                      scaleAccuracyScore: finalValidation.scaleAccuracyScore,
+                      placementQualityScore: finalValidation.placementQualityScore,
+                      issues: finalValidation.issues || []
                     },
-                    skippedLockPass: multiStepResult.skippedLockPass
+                    skippedLockPass: bestResult.skippedLockPass
                   }
                 } as any);
               }
@@ -2177,14 +2218,18 @@ export function registerCuralinaRoutes(app: Express) {
           console.log(`✅ AI-generated room rendering complete using ${imageOnlyResult.productsUsed} product images`);
           console.log(`   Products sent to AI: ${imageOnlyResult.productsSentToAI?.length || 0}/${fullSelectedProducts.length}`);
           
-          // Use generated render (QA validation disabled)
+          // Use generated render
           imageDataUrl = imageOnlyResult.imageBase64;
           productsSentToAI = imageOnlyResult.productsSentToAI || [];
           
-          console.log(`✅ Render generated successfully (QA validation disabled)`);
+          console.log(`✅ Render generated successfully`);
           
-          // Set quality status to unknown (QA disabled)
-          const qualityStatus: 'passed' | 'warning' | 'unknown' | 'qa_zero_products' | 'qa_unavailable' = 'unknown';
+          // Determine quality status from validation result
+          let qualityStatus: 'passed' | 'warning' | 'unknown' | 'qa_zero_products' | 'qa_unavailable' = 'unknown';
+          if (renderValidation) {
+            qualityStatus = renderValidation.isValid ? 'passed' : 'warning';
+            console.log(`📊 QA Status: ${qualityStatus} (score ${renderValidation.overallScore}/100)`);
+          }
           
           // Extract base64 data and MIME type from final selected render
           const base64Match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
