@@ -46,6 +46,7 @@ import AnalysisDashboard from "@/pages/admin/analysis-dashboard";
 import AdminVisualDescriptions from "@/pages/admin/visual-descriptions";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
+import MyDashboard from "@/pages/my-dashboard";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -107,6 +108,7 @@ function Router() {
           <Route path="/results" component={Results} />
           <Route path="/comparison" component={ComparisonRender} />
           <Route path="/cart" component={Cart} />
+          <Route path="/my-dashboard" component={MyDashboard} />
           <Route component={isLoading ? Landing : NotFound} />
         </Switch>
       </motion.div>
@@ -169,6 +171,7 @@ function Router() {
             <Route path="/results" component={Results} />
             <Route path="/comparison" component={ComparisonRender} />
             <Route path="/cart" component={Cart} />
+            <Route path="/my-dashboard" component={MyDashboard} />
             <Route path="/portal" component={PortalDashboard} />
             <Route path="/portal/settings" component={PortalSettings} />
             <Route component={NotFound} />
@@ -204,6 +207,7 @@ function Router() {
           <Route path="/results" component={Results} />
           <Route path="/comparison" component={ComparisonRender} />
           <Route path="/cart" component={Cart} />
+          <Route path="/my-dashboard" component={MyDashboard} />
           <Route path="/portal" component={PortalDashboard} />
           <Route path="/portal/settings" component={PortalSettings} />
           

@@ -7,9 +7,10 @@ import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight, Sparkles, Heart, Share2, Download, Copy, Check } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } from "@shared/schema";
 
 /**
@@ -71,7 +72,9 @@ export default function Results() {
   const [swappedProducts, setSwappedProducts] = useState<Record<string, string>>({});
   // Track current image index for each product
   const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
+  const [linkCopied, setLinkCopied] = useState(false);
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   // Fetch latest Gemini render for this session (default)
   const { data: render, isLoading: renderLoading, error: renderError } = useQuery<Render>({
@@ -208,6 +211,109 @@ export default function Results() {
       });
     },
   });
+
+  // Check if this render is saved (for authenticated users)
+  const { data: savedDesigns = [] } = useQuery<Array<{ id: number; renderId: number }>>({
+    queryKey: ["/api/user/dashboard/saved-designs"],
+    enabled: isAuthenticated,
+  });
+
+  const isRenderSaved = render?.id ? savedDesigns.some(d => d.renderId === render.id) : false;
+  const savedDesignId = render?.id ? savedDesigns.find(d => d.renderId === render.id)?.id : undefined;
+
+  // Save design mutation
+  const saveDesignMutation = useMutation({
+    mutationFn: async (renderId: number) => {
+      await apiRequest("POST", "/api/user/dashboard/saved-designs", { renderId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/dashboard/saved-designs"] });
+      toast({ title: "Design saved", description: "Your design has been saved to favorites." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save design. Please try again.", variant: "destructive" });
+    },
+  });
+
+  // Remove saved design mutation
+  const removeSavedMutation = useMutation({
+    mutationFn: async (designId: number) => {
+      await apiRequest("DELETE", `/api/user/dashboard/saved-designs/${designId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/dashboard/saved-designs"] });
+      toast({ title: "Removed", description: "Design removed from favorites." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to remove design.", variant: "destructive" });
+    },
+  });
+
+  // Handle save/unsave
+  const handleSaveToggle = () => {
+    if (!render?.id) return;
+    
+    if (!isAuthenticated) {
+      setLocation(`/register?redirectTo=/results?renderId=${render.id}`);
+      return;
+    }
+
+    if (isRenderSaved && savedDesignId) {
+      removeSavedMutation.mutate(savedDesignId);
+    } else {
+      saveDesignMutation.mutate(render.id);
+    }
+  };
+
+  // Handle share
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    
+    // Try native share first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "My AI-Generated Interior Design",
+          text: "Check out my personalized room design created by Curalina AI!",
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+      }
+    }
+
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      toast({ title: "Link copied", description: "Design link copied to clipboard." });
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to copy link.", variant: "destructive" });
+    }
+  };
+
+  // Handle download
+  const handleDownload = async () => {
+    if (!render?.imageUrl) return;
+    
+    try {
+      const response = await fetch(render.imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `curalina-design-${render.id}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Downloaded", description: "Your design has been downloaded." });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to download image.", variant: "destructive" });
+    }
+  };
 
   // Redirect if no session
   useEffect(() => {
@@ -445,15 +551,45 @@ export default function Results() {
                   onClick={() => setShowFullImage(true)}
                   data-testid="img-render"
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="absolute top-6 right-6 bg-card/90 backdrop-blur"
-                  onClick={() => setShowFullImage(true)}
-                  data-testid="button-expand-image"
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
+                <div className="absolute top-6 right-6 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="bg-card/90 backdrop-blur"
+                    onClick={() => setShowFullImage(true)}
+                    data-testid="button-expand-image"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant={isRenderSaved ? "default" : "outline"}
+                    size="icon"
+                    className={!isRenderSaved ? "bg-card/90 backdrop-blur" : ""}
+                    onClick={handleSaveToggle}
+                    disabled={!render?.id || saveDesignMutation.isPending || removeSavedMutation.isPending}
+                    data-testid="button-save-design"
+                  >
+                    <Heart className={`w-4 h-4 ${isRenderSaved ? "fill-current" : ""}`} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="bg-card/90 backdrop-blur"
+                    onClick={handleShare}
+                    data-testid="button-share-design"
+                  >
+                    {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="bg-card/90 backdrop-blur"
+                    onClick={handleDownload}
+                    data-testid="button-download-design"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
               </Card>
             </motion.div>
 
