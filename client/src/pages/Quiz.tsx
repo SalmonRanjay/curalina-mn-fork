@@ -31,6 +31,10 @@ import RoomTypeStepV2 from "@/components/quiz/RoomTypeStepV2";
 import StyleSelectionStepV2 from "@/components/quiz/StyleSelectionStepV2";
 import ColorPaletteStepV2 from "@/components/quiz/ColorPaletteStepV2";
 import FeaturesStepV2 from "@/components/quiz/FeaturesStepV2";
+import { MaterialsStepV2 } from "@/components/quiz/MaterialsStepV2";
+import { BudgetStepV2 } from "@/components/quiz/BudgetStepV2";
+import { VibeCheckStepV2 } from "@/components/quiz/VibeCheckStepV2";
+import { FinalStepV2 } from "@/components/quiz/FinalStepV2";
 import QuizLayout from "@/components/quiz/QuizLayout";
 
 const TOTAL_STEPS = 8;
@@ -721,306 +725,42 @@ export default function Quiz() {
 
   // Step 6: Budget
   const renderStep6 = () => {
-    const budgetRanges = [
-      "$2,000-$5,000",
-      "$5,000-$8,000",
-      "$9,000-$12,000",
-      "$13,000-$16,000",
-      "$17,000-$20,000",
-      "Over $20,000",
-    ];
-
     return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <h2
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            Dream Big, Spend Smart
-          </h2>
-          <div className="stack-tight flex flex-col items-center">
-            <p
-              className="font-semibold text-foreground"
-              style={{ fontSize: "var(--font-size-xl)" }}
-            >
-              Set Your Budget
-            </p>
-            <p
-              className="text-muted-foreground max-w-2xl"
-              style={{ fontSize: "var(--font-size-lg)" }}
-            >
-              Choose a budget range that feels comfortable — enough to elevate
-              your space without stretching your limits
-            </p>
-          </div>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 gap-4 max-w-2xl mx-auto"
-        >
-          {budgetRanges.map((budget) => (
-            <motion.div key={budget} variants={itemVariants}>
-              <Card
-                className={`p-8 text-center cursor-pointer hover-elevate active-elevate-2 transition-all border-card-border ${
-                  quizData.budgetRange === budget
-                    ? "bg-accent/10 border-accent"
-                    : ""
-                }`}
-                onClick={() => updateQuizData("budgetRange", budget)}
-                data-testid={`budget-${budget.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-              >
-                <p
-                  className="font-semibold text-card-foreground"
-                  style={{ fontSize: "var(--font-size-lg)" }}
-                >
-                  {budget}
-                </p>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
+      <BudgetStepV2
+        value={quizData.budgetRange}
+        onChange={(budget) => updateQuizData("budgetRange", budget)}
+      />
     );
   };
 
   // Step 7: Vibe Check
   const renderStep7 = () => {
     return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <h2
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            You Bring the Vibe and We'll Bring the Design
-          </h2>
-          <div className="stack-tight flex flex-col items-center">
-            <p
-              className="font-semibold text-foreground"
-              style={{ fontSize: "var(--font-size-xl)" }}
-            >
-              Vibe Check
-            </p>
-            <p
-              className="text-muted-foreground max-w-2xl"
-              style={{ fontSize: "var(--font-size-lg)" }}
-            >
-              Upload photos from Pinterest
-              <br />
-              Generate your room design based on a Pinterest board or images
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-2xl mx-auto">
-          <Dropzone
-            onDrop={(files) => handleFileUpload(files, "vibe")}
-            accept={{ "image/*": [".png", ".jpg", ".jpeg", ".webp"] }}
-            multiple
-          >
-            {({ getRootProps, getInputProps, isDragActive }) => (
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all ${
-                  isDragActive
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-accent/50 hover:bg-accent/5"
-                }`}
-                data-testid="vibe-upload-area"
-              >
-                <input {...getInputProps()} />
-                <p
-                  className="font-semibold mb-2 text-foreground"
-                  style={{ fontSize: "var(--font-size-lg)" }}
-                >
-                  {uploadingVibe
-                    ? "Uploading..."
-                    : isDragActive
-                      ? "Drop files here"
-                      : "Drag and drop or add photos"}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-4"
-                  disabled={uploadingVibe}
-                  data-testid="button-add-vibe-images"
-                >
-                  Add Link
-                </Button>
-              </div>
-            )}
-          </Dropzone>
-
-          {quizData.vibeImages.length > 0 && (
-            <div className="mt-6 grid grid-cols-3 gap-4">
-              {quizData.vibeImages.map((url, idx) => (
-                <div key={idx} className="relative group">
-                  <img
-                    src={url}
-                    alt={`Vibe ${idx + 1}`}
-                    className="w-full h-32 object-cover rounded-md"
-                  />
-                  <button
-                    onClick={() =>
-                      updateQuizData(
-                        "vibeImages",
-                        quizData.vibeImages.filter((_, i) => i !== idx),
-                      )
-                    }
-                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover-elevate"
-                    data-testid={`remove-vibe-${idx}`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <VibeCheckStepV2
+        vibeImages={quizData.vibeImages}
+        onUpload={(files) => handleFileUpload(files, "vibe")}
+        onRemove={(idx) =>
+          updateQuizData(
+            "vibeImages",
+            quizData.vibeImages.filter((_, i) => i !== idx),
+          )
+        }
+        isUploading={uploadingVibe}
+      />
     );
   };
 
   // Step 8: Final Step
   const renderStep8 = () => {
     return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <motion.h2
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", bounce: 0.5 }}
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            You Made It to the Final Step
-          </motion.h2>
-          <p
-            className="text-muted-foreground font-medium"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Uploading a photo is optional
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Photo Upload */}
-          <div className="stack-base flex flex-col">
-            <h3
-              className="font-semibold text-center text-foreground"
-              style={{ fontSize: "var(--font-size-lg)" }}
-            >
-              Upload a photo of your space
-            </h3>
-            <Dropzone
-              onDrop={(files) => handleFileUpload(files, "floorplan")}
-              accept={{ "image/*": [".png", ".jpg", ".jpeg"] }}
-              maxFiles={1}
-            >
-              {({ getRootProps, getInputProps, isDragActive }) => (
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
-                    isDragActive || quizData.floorplanUrl
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-accent/50"
-                  }`}
-                  data-testid="photo-upload-area"
-                >
-                  <input {...getInputProps()} />
-                  <p className="font-semibold mb-4 text-foreground">
-                    {uploadingFloorplan ? "Uploading..." : "Add Photo"}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    data-testid="button-see-photo-example"
-                  >
-                    See Example
-                  </Button>
-                </div>
-              )}
-            </Dropzone>
-          </div>
-
-          {/* Floorplan Upload */}
-          <div className="stack-base flex flex-col">
-            <h3
-              className="font-semibold text-center text-foreground"
-              style={{ fontSize: "var(--font-size-lg)" }}
-            >
-              Upload your floorplan
-            </h3>
-            <Dropzone
-              onDrop={(files) => handleFileUpload(files, "floorplan")}
-              accept={{ "image/*": [".png", ".jpg", ".jpeg", ".pdf"] }}
-              maxFiles={1}
-            >
-              {({ getRootProps, getInputProps, isDragActive }) => (
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
-                    isDragActive || quizData.floorplanUrl
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-accent/50"
-                  }`}
-                  data-testid="floorplan-upload-area"
-                >
-                  <input {...getInputProps()} />
-                  <p className="font-semibold mb-4 text-foreground">
-                    {uploadingFloorplan ? "Uploading..." : "Add Plan"}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    data-testid="button-see-plan-example"
-                  >
-                    See Example
-                  </Button>
-                </div>
-              )}
-            </Dropzone>
-          </div>
-        </div>
-
-        {/* Room Description - Natural Language Input */}
-        <div className="max-w-4xl mx-auto mt-8">
-          <div className="stack-base flex flex-col">
-            <h3
-              className="font-semibold text-foreground"
-              style={{ fontSize: "var(--font-size-lg)" }}
-            >
-              Describe your space
-            </h3>
-            <p
-              className="text-muted-foreground mb-4"
-              style={{ fontSize: "var(--font-size-sm)" }}
-            >
-              Tell us about your room dimensions, doorway size, and any
-              preferences. For example: "My living room is 15 feet by 12 feet
-              with 8-foot ceilings. Standard 32-inch doorway. I want a modern
-              look with light wood tones."
-            </p>
-            <textarea
-              value={quizData.roomDescription}
-              onChange={(e) =>
-                updateQuizData("roomDescription", e.target.value)
-              }
-              placeholder="Example: Living room is 15x12 feet with 8ft ceilings. Doorway is 32 inches wide. I love cozy, warm vibes with natural materials..."
-              className="w-full min-h-32 p-4 rounded-lg border-2 border-border bg-background text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-              style={{ fontSize: "var(--font-size-base)" }}
-              data-testid="input-room-description"
-            />
-          </div>
-        </div>
-      </div>
+      <FinalStepV2
+        floorplanUrl={quizData.floorplanUrl}
+        roomDescription={quizData.roomDescription}
+        onPhotoUpload={(files) => handleFileUpload(files, "floorplan")}
+        onFloorplanUpload={(files) => handleFileUpload(files, "floorplan")}
+        onDescriptionChange={(desc) => updateQuizData("roomDescription", desc)}
+        isUploadingFloorplan={uploadingFloorplan}
+      />
     );
   };
 
