@@ -280,7 +280,7 @@ async function executeFinalAlignmentPass(
     const productList = productNames.join(', ');
     
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-image",
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
       },
