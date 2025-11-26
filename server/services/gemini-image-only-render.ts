@@ -2261,32 +2261,52 @@ async function executeProductBatchPass(
     const productImageStartIndex = hasOriginalRoomRef ? 3 : 2;
     
     // Update product descriptions with correct image numbering INCLUDING DIMENSIONS
+    // Enhanced with EXPLICIT per-product fidelity requirements
     const productDescriptionsIndexed = successfulRefs.map((ref, index) => {
       const product = products.find(p => p.sku === ref.sku);
+      const imageNum = productImageStartIndex + index;
       const details: string[] = [];
       
       // Add dimensions for proper scale
       if (product?.dimensions) {
         const dims = product.dimensions as any;
         if (dims.w && dims.d && dims.h) {
-          const unit = dims.unit || 'inches';
           details.push(`SIZE: ${dims.w}"W x ${dims.d}"D x ${dims.h}"H`);
         }
       }
       
       if (product?.materials && product.materials.length > 0) {
-        details.push(`made of ${product.materials.join(', ')}`);
+        details.push(`MATERIALS: ${product.materials.join(', ')}`);
       }
       if (product?.colors && product.colors.length > 0) {
-        details.push(`in ${product.colors.join('/')} color`);
-      }
-      if (product?.visualDescription) {
-        const shortDesc = product.visualDescription.slice(0, 100);
-        details.push(`${shortDesc}`);
+        details.push(`COLOR: ${product.colors.join('/')}`);
       }
       
-      const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
-      return `Image ${productImageStartIndex + index}: "${ref.productName}"${detailStr}`;
+      const detailStr = details.length > 0 ? ` [${details.join(' | ')}]` : '';
+      
+      // Build explicit matching instruction for each product
+      const productType = ref.productName.toLowerCase();
+      let matchingInstruction = '';
+      
+      if (productType.includes('console') || productType.includes('sideboard') || productType.includes('credenza')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: leg style, drawer configuration, hardware/pulls, wood grain pattern, edge profile`;
+      } else if (productType.includes('bench') || productType.includes('ottoman')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: upholstery color/texture, leg finish, cushion shape, base design`;
+      } else if (productType.includes('sofa') || productType.includes('sectional')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: arm style, cushion configuration, fabric texture, leg style, overall silhouette`;
+      } else if (productType.includes('chair')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: back shape, arm design, upholstery color, leg style, cushion details`;
+      } else if (productType.includes('table')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: tabletop shape/finish, leg design, base structure, hardware details`;
+      } else if (productType.includes('lamp') || productType.includes('light')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: shade shape/material, base design, finish color, proportions`;
+      } else if (productType.includes('shelf') || productType.includes('bookcase')) {
+        matchingInstruction = `\n   → MATCH EXACTLY: open vs solid back, number of shelves, frame style, finish color`;
+      } else {
+        matchingInstruction = `\n   → MATCH EXACTLY: shape, color, material, finish, all visible details from Image ${imageNum}`;
+      }
+      
+      return `Image ${imageNum}: "${ref.productName}"${detailStr}${matchingInstruction}`;
     });
     
     // Build product list for prompt intro with correct indexing
@@ -2349,11 +2369,15 @@ IMAGE REFERENCES:
 ⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 
-🎨 COLOR FIDELITY - CRITICAL:
-- Each product MUST have the EXACT color shown in its reference image
-- White furniture = pure white (not cream, beige, or off-white)
-- Match the EXACT material texture (leather, fabric, wood grain, metal finish)
-- If reference shows a white sofa, render a WHITE sofa - not any other color
+🎨 PRODUCT FIDELITY - ABSOLUTE REQUIREMENT:
+EACH PRODUCT MUST BE A VISUAL CLONE OF ITS REFERENCE IMAGE:
+- SHAPE: Exact silhouette - if the console has tapered legs, render tapered legs. If curved, render curved.
+- COLOR: Precise color match - walnut is different from oak, cream is different from white
+- MATERIAL: Exact texture - leather grain, fabric weave, wood grain direction, metal brushing
+- DETAILS: All visible features - drawer pulls, stitching, hardware finish, edge treatments
+- CONSTRUCTION: If reference shows open-back shelving, render open-back. If solid, render solid.
+
+⚠️ SIDE-BY-SIDE TEST: If we place the rendered product next to its reference image, they should look like the SAME ITEM photographed in different rooms. Any difference = FAILURE.
 
 📐 SCALE & SPATIAL RULES:
 - USE THE DIMENSIONS PROVIDED for each product to render at CORRECT REAL-WORLD SCALE
@@ -2435,11 +2459,15 @@ ${style} style interior. Photorealistic render. ONLY the listed ${successfulRefs
 ⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
 
-🎨 COLOR FIDELITY - CRITICAL:
-- Each product MUST have the EXACT color shown in its reference image
-- White furniture = pure white (not cream, beige, or off-white)
-- Match the EXACT material texture (leather, fabric, wood grain, metal finish)
-- If reference shows a white sofa, render a WHITE sofa - not any other color
+🎨 PRODUCT FIDELITY - ABSOLUTE REQUIREMENT:
+EACH PRODUCT MUST BE A VISUAL CLONE OF ITS REFERENCE IMAGE:
+- SHAPE: Exact silhouette - if the console has tapered legs, render tapered legs. If curved, render curved.
+- COLOR: Precise color match - walnut is different from oak, cream is different from white
+- MATERIAL: Exact texture - leather grain, fabric weave, wood grain direction, metal brushing
+- DETAILS: All visible features - drawer pulls, stitching, hardware finish, edge treatments
+- CONSTRUCTION: If reference shows open-back shelving, render open-back. If solid, render solid.
+
+⚠️ SIDE-BY-SIDE TEST: If we place the rendered product next to its reference image, they should look like the SAME ITEM photographed in different rooms. Any difference = FAILURE.
 
 📐 SCALE & SPATIAL RULES:
 - USE THE DIMENSIONS PROVIDED for each product to render at CORRECT REAL-WORLD SCALE
