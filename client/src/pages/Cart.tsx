@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { getSessionId } from "@/lib/session";
+import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Minus, Plus, Trash2, ArrowLeft } from "lucide-react";
@@ -23,7 +24,6 @@ export default function Cart() {
   const sessionId = getSessionId();
   const { toast } = useToast();
 
-  // Fetch cart items
   const { data: cartItems, isLoading } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart", sessionId],
     queryFn: async () => {
@@ -35,7 +35,6 @@ export default function Cart() {
     enabled: !!sessionId,
   });
 
-  // Update quantity mutation
   const updateQuantityMutation = useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
       return apiRequest("PATCH", `/api/cart/${itemId}`, { quantity });
@@ -52,7 +51,6 @@ export default function Cart() {
     },
   });
 
-  // Remove item mutation
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
       return apiRequest("DELETE", `/api/cart/${itemId}`);
@@ -73,7 +71,6 @@ export default function Cart() {
     },
   });
 
-  // Calculate totals
   const subtotal = cartItems?.reduce((sum, item) => {
     const price = parseFloat(item.product.price);
     const discount = parseFloat(item.product.discount || "0");
@@ -86,54 +83,74 @@ export default function Cart() {
 
   if (!sessionId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4">No Session Found</h1>
-          <p className="text-stone-600 dark:text-stone-400 mb-6">
-            Please start by taking the design quiz.
-          </p>
-          <Button onClick={() => setLocation("/")} data-testid="button-start-quiz">
-            Start Quiz
-          </Button>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center p-4 py-24">
+          <div className="text-center">
+            <h1 
+              className="font-cormorant text-foreground mb-4"
+              style={{ fontSize: "var(--font-size-3xl)", fontWeight: 500 }}
+            >
+              No Session Found
+            </h1>
+            <p 
+              className="text-muted-foreground mb-6 font-inter"
+              style={{ fontSize: "var(--font-size-base)" }}
+            >
+              Please start by taking the design quiz.
+            </p>
+            <Button onClick={() => setLocation("/")} data-testid="button-start-quiz">
+              Start Quiz
+            </Button>
+          </div>
         </div>
-      </div>
+      </GlobalLayout>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-stone-400 animate-pulse" />
-          <p className="text-stone-600 dark:text-stone-400">Loading your cart...</p>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center py-24">
+          <div className="text-center">
+            <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-muted-foreground animate-pulse" />
+            <p className="text-muted-foreground font-inter">Loading your cart...</p>
+          </div>
         </div>
-      </div>
+      </GlobalLayout>
     );
   }
 
   if (!cartItems || cartItems.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-stone-400" />
-          <h1 className="text-3xl font-bold mb-4" data-testid="heading-empty-cart">
-            Your cart is empty
-          </h1>
-          <p className="text-stone-600 dark:text-stone-400 mb-6">
-            Browse our AI-generated design results to find furniture that matches your style.
-          </p>
-          <Button onClick={() => setLocation("/results")} data-testid="button-browse-products">
-            Browse Products
-          </Button>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center p-4 py-24">
+          <div className="text-center max-w-md">
+            <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+            <h1 
+              className="font-cormorant text-foreground mb-4"
+              style={{ fontSize: "var(--font-size-3xl)", fontWeight: 500 }}
+              data-testid="heading-empty-cart"
+            >
+              Your cart is empty
+            </h1>
+            <p 
+              className="text-muted-foreground mb-6 font-inter"
+              style={{ fontSize: "var(--font-size-base)" }}
+            >
+              Browse our AI-generated design results to find furniture that matches your style.
+            </p>
+            <Button onClick={() => setLocation("/results")} data-testid="button-browse-products">
+              Browse Products
+            </Button>
+          </div>
         </div>
-      </div>
+      </GlobalLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
+    <GlobalLayout>
+      <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-12">
         <div className="flex items-center gap-4 mb-8">
           <Button
             variant="outline"
@@ -143,13 +160,16 @@ export default function Cart() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-4xl font-bold" data-testid="heading-cart">
+          <h1 
+            className="font-cormorant text-foreground"
+            style={{ fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 500 }}
+            data-testid="heading-cart"
+          >
             Shopping Cart
           </h1>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cartItems.map((item, index) => (
               <motion.div
@@ -160,8 +180,7 @@ export default function Cart() {
               >
                 <Card className="p-6" data-testid={`card-cart-item-${item.id}`}>
                   <div className="flex gap-6">
-                    {/* Product Image */}
-                    <div className="w-32 h-32 flex-shrink-0 bg-stone-100 dark:bg-stone-800 rounded-md overflow-hidden">
+                    <div className="w-32 h-32 flex-shrink-0 bg-muted rounded-md overflow-hidden">
                       {item.product.images && item.product.images.length > 0 ? (
                         <img
                           src={item.product.images[0]}
@@ -169,40 +188,54 @@ export default function Cart() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-stone-400">
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           No image
                         </div>
                       )}
                     </div>
 
-                    {/* Product Details */}
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold mb-2" data-testid={`text-product-name-${item.id}`}>
+                      <h3 
+                        className="font-cormorant text-foreground mb-2"
+                        style={{ fontSize: "var(--font-size-xl)", fontWeight: 500 }}
+                        data-testid={`text-product-name-${item.id}`}
+                      >
                         {item.product.name}
                       </h3>
-                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-4 line-clamp-2">
+                      <p 
+                        className="text-muted-foreground mb-4 line-clamp-2 font-inter"
+                        style={{ fontSize: "var(--font-size-sm)" }}
+                      >
                         {item.product.description}
                       </p>
 
-                      {/* Price */}
                       <div className="mb-4">
                         {item.product.discount && parseFloat(item.product.discount) > 0 ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                            <span 
+                              className="text-success font-semibold font-inter"
+                              style={{ fontSize: "var(--font-size-2xl)" }}
+                            >
                               ${(parseFloat(item.product.price) * (1 - parseFloat(item.product.discount) / 100)).toFixed(2)}
                             </span>
-                            <span className="text-sm text-stone-500 line-through">
+                            <span 
+                              className="text-muted-foreground line-through font-inter"
+                              style={{ fontSize: "var(--font-size-sm)" }}
+                            >
                               ${item.product.price}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-2xl font-bold" data-testid={`text-price-${item.id}`}>
+                          <span 
+                            className="font-semibold text-foreground font-inter"
+                            style={{ fontSize: "var(--font-size-2xl)" }}
+                            data-testid={`text-price-${item.id}`}
+                          >
                             ${item.product.price}
                           </span>
                         )}
                       </div>
 
-                      {/* Quantity Controls */}
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <Button
@@ -221,7 +254,10 @@ export default function Cart() {
                           >
                             <Minus className="w-4 h-4" />
                           </Button>
-                          <span className="w-12 text-center font-semibold" data-testid={`text-quantity-${item.id}`}>
+                          <span 
+                            className="w-12 text-center font-semibold font-inter"
+                            data-testid={`text-quantity-${item.id}`}
+                          >
                             {item.quantity}
                           </span>
                           <Button
@@ -258,34 +294,48 @@ export default function Cart() {
             ))}
           </div>
 
-          {/* Order Summary */}
           <div>
-            <Card className="p-6 sticky top-4">
-              <h2 className="text-2xl font-bold mb-6" data-testid="heading-order-summary">
+            <Card className="p-6 sticky top-24">
+              <h2 
+                className="font-cormorant text-foreground mb-6"
+                style={{ fontSize: "var(--font-size-2xl)", fontWeight: 500 }}
+                data-testid="heading-order-summary"
+              >
                 Order Summary
               </h2>
 
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between">
-                  <span className="text-stone-600 dark:text-stone-400">Subtotal</span>
-                  <span className="font-semibold" data-testid="text-subtotal">
+                  <span className="text-muted-foreground font-inter">Subtotal</span>
+                  <span className="font-semibold font-inter" data-testid="text-subtotal">
                     ${subtotal.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-600 dark:text-stone-400">Shipping</span>
-                  <span className="font-semibold" data-testid="text-shipping">
+                  <span className="text-muted-foreground font-inter">Shipping</span>
+                  <span className="font-semibold font-inter" data-testid="text-shipping">
                     {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
                   </span>
                 </div>
                 {shipping === 0 && (
-                  <p className="text-xs text-green-600 dark:text-green-400">
+                  <p 
+                    className="text-xs text-success font-inter"
+                  >
                     Free shipping on orders over $100
                   </p>
                 )}
-                <div className="border-t pt-4 flex justify-between text-xl">
-                  <span className="font-bold">Total</span>
-                  <span className="font-bold" data-testid="text-total">
+                <div className="border-t border-border pt-4 flex justify-between">
+                  <span 
+                    className="font-semibold text-foreground font-inter"
+                    style={{ fontSize: "var(--font-size-xl)" }}
+                  >
+                    Total
+                  </span>
+                  <span 
+                    className="font-semibold text-foreground font-inter"
+                    style={{ fontSize: "var(--font-size-xl)" }}
+                    data-testid="text-total"
+                  >
                     ${total.toFixed(2)}
                   </span>
                 </div>
@@ -312,6 +362,6 @@ export default function Cart() {
           </div>
         </div>
       </div>
-    </div>
+    </GlobalLayout>
   );
 }

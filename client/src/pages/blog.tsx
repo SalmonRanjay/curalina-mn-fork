@@ -1,4 +1,4 @@
-import Navigation from "@/components/Navigation";
+import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
 
 const blogPosts = [
@@ -30,33 +30,58 @@ const blogPosts = [
 
 export default function Blog() {
   return (
-    <div className="min-h-screen bg-white dark:bg-stone-950">
-      <Navigation />
-      <div className="h-28"></div>
-
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <h1 className="text-5xl font-bold mb-4" data-testid="heading-blog">Design Blog</h1>
-        <p className="text-xl text-stone-600 dark:text-stone-400 mb-12">
+    <GlobalLayout>
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 py-16">
+        <h1 
+          className="font-cormorant text-foreground mb-4" 
+          style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 500 }}
+          data-testid="heading-blog"
+        >
+          The Edit
+        </h1>
+        <p 
+          className="text-muted-foreground mb-12 font-inter"
+          style={{ fontSize: "var(--font-size-lg)" }}
+        >
           Tips, trends, and inspiration for your interior design journey
         </p>
 
         <div className="grid md:grid-cols-2 gap-8">
           {blogPosts.map((post, idx) => (
-            <Card key={idx} className="overflow-hidden hover-elevate cursor-pointer" data-testid={`blog-post-${idx}`}>
+            <Card 
+              key={idx} 
+              className="overflow-hidden hover-elevate cursor-pointer border-border" 
+              data-testid={`blog-post-${idx}`}
+            >
               <img
                 src={post.image}
                 alt={post.title}
                 className="w-full h-64 object-cover"
               />
               <div className="p-6">
-                <p className="text-sm text-green-500 font-semibold mb-2">{post.date}</p>
-                <h3 className="text-2xl font-bold mb-3">{post.title}</h3>
-                <p className="text-stone-600 dark:text-stone-400">{post.excerpt}</p>
+                <p 
+                  className="text-accent font-semibold mb-2 font-inter"
+                  style={{ fontSize: "var(--font-size-sm)" }}
+                >
+                  {post.date}
+                </p>
+                <h3 
+                  className="font-cormorant text-foreground mb-3"
+                  style={{ fontSize: "var(--font-size-2xl)", fontWeight: 500 }}
+                >
+                  {post.title}
+                </h3>
+                <p 
+                  className="text-muted-foreground font-inter"
+                  style={{ fontSize: "var(--font-size-base)" }}
+                >
+                  {post.excerpt}
+                </p>
               </div>
             </Card>
           ))}
         </div>
       </div>
-    </div>
+    </GlobalLayout>
   );
 }

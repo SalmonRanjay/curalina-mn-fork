@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import GlobalLayout from "@/components/GlobalLayout";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -55,7 +56,6 @@ export default function Register() {
         throw new Error(error.message || "Registration failed");
       }
 
-      // Invalidate user query to refetch user data
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
       toast({
@@ -76,121 +76,125 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create an Account</CardTitle>
-          <CardDescription>
-            Enter your details to create a new account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+    <GlobalLayout>
+      <div className="flex-1 flex items-center justify-center p-4 py-16">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="font-cormorant" style={{ fontSize: "var(--font-size-2xl)", fontWeight: 500 }}>
+              Create an Account
+            </CardTitle>
+            <CardDescription className="font-inter" style={{ fontSize: "var(--font-size-sm)" }}>
+              Enter your details to get started
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="font-inter">First Name</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="John"
+                    {...form.register("firstName")}
+                    data-testid="input-firstName"
+                  />
+                  {form.formState.errors.firstName && (
+                    <p className="text-sm text-destructive font-inter">
+                      {form.formState.errors.firstName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="font-inter">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Doe"
+                    {...form.register("lastName")}
+                    data-testid="input-lastName"
+                  />
+                  {form.formState.errors.lastName && (
+                    <p className="text-sm text-destructive font-inter">
+                      {form.formState.errors.lastName.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="email" className="font-inter">Email</Label>
                 <Input
-                  id="firstName"
-                  placeholder="John"
-                  {...form.register("firstName")}
-                  data-testid="input-firstName"
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  {...form.register("email")}
+                  data-testid="input-email"
                 />
-                {form.formState.errors.firstName && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.firstName.message}
+                {form.formState.errors.email && (
+                  <p className="text-sm text-destructive font-inter">
+                    {form.formState.errors.email.message}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="password" className="font-inter">Password</Label>
                 <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  {...form.register("lastName")}
-                  data-testid="input-lastName"
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  {...form.register("password")}
+                  data-testid="input-password"
                 />
-                {form.formState.errors.lastName && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.lastName.message}
+                {form.formState.errors.password && (
+                  <p className="text-sm text-destructive font-inter">
+                    {form.formState.errors.password.message}
                   </p>
                 )}
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                {...form.register("email")}
-                data-testid="input-email"
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.email.message}
-                </p>
-              )}
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="font-inter">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  {...form.register("confirmPassword")}
+                  data-testid="input-confirmPassword"
+                />
+                {form.formState.errors.confirmPassword && (
+                  <p className="text-sm text-destructive font-inter">
+                    {form.formState.errors.confirmPassword.message}
+                  </p>
+                )}
+              </div>
+            </CardContent>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...form.register("password")}
-                data-testid="input-password"
-              />
-              {form.formState.errors.password && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                {...form.register("confirmPassword")}
-                data-testid="input-confirmPassword"
-              />
-              {form.formState.errors.confirmPassword && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-              data-testid="button-register"
-            >
-              {isLoading ? "Creating account..." : "Create Account"}
-            </Button>
-
-            <div className="text-sm text-center text-muted-foreground">
-              Already have an account?{" "}
-              <button
-                type="button"
-                className="text-green-500 hover:underline"
-                onClick={() => setLocation("/login")}
-                data-testid="link-login"
+            <CardFooter className="flex flex-col gap-4">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+                data-testid="button-register"
               >
-                Login here
-              </button>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+                {isLoading ? "Creating account..." : "Create Account"}
+              </Button>
+
+              <div className="text-sm text-center text-muted-foreground font-inter">
+                Already have an account?{" "}
+                <Link href="/login">
+                  <span 
+                    className="text-primary hover:underline cursor-pointer"
+                    data-testid="link-login"
+                  >
+                    Login here
+                  </span>
+                </Link>
+              </div>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </GlobalLayout>
   );
 }

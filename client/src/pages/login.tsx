@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import GlobalLayout from "@/components/GlobalLayout";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -44,7 +45,6 @@ export default function Login() {
         throw new Error(error.message || "Login failed");
       }
 
-      // Invalidate user query to refetch user data
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
       toast({
@@ -52,12 +52,10 @@ export default function Login() {
         description: "Logged in successfully",
       });
 
-      // Fetch user data to determine redirect
       try {
         const userResponse = await fetch("/api/auth/user");
         if (userResponse.ok) {
           const userData = await userResponse.json();
-          // Redirect admin users to admin dashboard, regular users to home
           if (userData.role === "admin") {
             setLocation("/admin");
             return;
@@ -67,7 +65,6 @@ export default function Login() {
         console.error("Error fetching user data for redirect:", error);
       }
       
-      // Default redirect to home
       setLocation("/");
     } catch (error) {
       toast({
@@ -81,73 +78,77 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Login</CardTitle>
-          <CardDescription>
-            Enter your email and password to login
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                {...form.register("email")}
-                data-testid="input-email"
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.email.message}
-                </p>
-              )}
-            </div>
+    <GlobalLayout>
+      <div className="flex-1 flex items-center justify-center p-4 py-16">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="font-cormorant" style={{ fontSize: "var(--font-size-2xl)", fontWeight: 500 }}>
+              Welcome Back
+            </CardTitle>
+            <CardDescription className="font-inter" style={{ fontSize: "var(--font-size-sm)" }}>
+              Enter your email and password to login
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="font-inter">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  {...form.register("email")}
+                  data-testid="input-email"
+                />
+                {form.formState.errors.email && (
+                  <p className="text-sm text-destructive font-inter">
+                    {form.formState.errors.email.message}
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...form.register("password")}
-                data-testid="input-password"
-              />
-              {form.formState.errors.password && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.password.message}
-                </p>
-              )}
-            </div>
-          </CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="font-inter">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  {...form.register("password")}
+                  data-testid="input-password"
+                />
+                {form.formState.errors.password && (
+                  <p className="text-sm text-destructive font-inter">
+                    {form.formState.errors.password.message}
+                  </p>
+                )}
+              </div>
+            </CardContent>
 
-          <CardFooter className="flex flex-col gap-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-              data-testid="button-login"
-            >
-              {isLoading ? "Logging in..." : "Login"}
-            </Button>
-
-            <div className="text-sm text-center text-muted-foreground">
-              Don't have an account?{" "}
-              <button
-                type="button"
-                className="text-green-500 hover:underline"
-                onClick={() => setLocation("/register")}
-                data-testid="link-register"
+            <CardFooter className="flex flex-col gap-4">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+                data-testid="button-login"
               >
-                Register here
-              </button>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+                {isLoading ? "Logging in..." : "Login"}
+              </Button>
+
+              <div className="text-sm text-center text-muted-foreground font-inter">
+                Don't have an account?{" "}
+                <Link href="/register">
+                  <span 
+                    className="text-primary hover:underline cursor-pointer"
+                    data-testid="link-register"
+                  >
+                    Register here
+                  </span>
+                </Link>
+              </div>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </GlobalLayout>
   );
 }

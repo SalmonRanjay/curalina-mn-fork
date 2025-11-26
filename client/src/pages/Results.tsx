@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSessionId } from "@/lib/session";
 import { useLocation } from "wouter";
+import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -221,28 +222,32 @@ export default function Results() {
 
   if (renderLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-foreground" style={{ fontSize: 'var(--font-size-lg)' }}>Loading your design...</p>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center py-24">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-foreground font-inter" style={{ fontSize: 'var(--font-size-lg)' }}>Loading your design...</p>
+          </div>
         </div>
-      </div>
+      </GlobalLayout>
     );
   }
 
   if (renderError || !render) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Card className="p-8 max-w-md text-center">
-          <h2 className="font-bold mb-4" style={{ fontSize: 'var(--font-size-2xl)' }}>No Design Found</h2>
-          <p className="text-muted-foreground mb-6" style={{ fontSize: 'var(--font-size-base)' }}>
-            We couldn't find your design. Please start a new quiz.
-          </p>
-          <Button onClick={() => setLocation("/quiz")} data-testid="button-start-quiz">
-            Start New Quiz
-          </Button>
-        </Card>
-      </div>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center p-6 py-24">
+          <Card className="p-8 max-w-md text-center">
+            <h2 className="font-cormorant text-foreground mb-4" style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 500 }}>No Design Found</h2>
+            <p className="text-muted-foreground mb-6 font-inter" style={{ fontSize: 'var(--font-size-base)' }}>
+              We couldn't find your design. Please start a new quiz.
+            </p>
+            <Button onClick={() => setLocation("/quiz")} data-testid="button-start-quiz">
+              Start New Quiz
+            </Button>
+          </Card>
+        </div>
+      </GlobalLayout>
     );
   }
 
@@ -288,107 +293,111 @@ export default function Results() {
     };
     
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Card className="p-8 max-w-lg w-full">
-          <div className="text-center mb-8">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-16 h-16 mx-auto mb-6"
-            >
-              <Sparkles className="w-16 h-16 text-accent" />
-            </motion.div>
-            <h2 className="font-bold mb-2" style={{ fontSize: 'var(--font-size-2xl)' }} data-testid="text-generating">
-              Creating Your Design
-            </h2>
-            <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-base)' }}>
-              {stageLabels[stage] || 'Working on it...'}
-            </p>
-          </div>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center p-6 py-24">
+          <Card className="p-8 max-w-lg w-full">
+            <div className="text-center mb-8">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 mx-auto mb-6"
+              >
+                <Sparkles className="w-16 h-16 text-accent" />
+              </motion.div>
+              <h2 className="font-cormorant text-foreground mb-2" style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 500 }} data-testid="text-generating">
+                Creating Your Design
+              </h2>
+              <p className="text-muted-foreground font-inter" style={{ fontSize: 'var(--font-size-base)' }}>
+                {stageLabels[stage] || 'Working on it...'}
+              </p>
+            </div>
           
-          {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>Step {currentStep} of {totalSteps}</span>
-              <span>{percent}%</span>
+            {/* Progress Bar */}
+            <div className="mb-6">
+              <div className="flex justify-between text-sm text-muted-foreground mb-2 font-inter">
+                <span>Step {currentStep} of {totalSteps}</span>
+                <span>{percent}%</span>
+              </div>
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-accent rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(percent, 5)}%` }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                />
+              </div>
             </div>
-            <div className="h-3 bg-muted rounded-full overflow-hidden">
-              <motion.div 
-                className="h-full bg-accent rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.max(percent, 5)}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              />
-            </div>
-          </div>
           
-          {/* Stage Details */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-sm">
-              <div className={`w-2 h-2 rounded-full ${stage === 'analyzing' ? 'bg-accent animate-pulse' : percent > 10 ? 'bg-green-500' : 'bg-muted'}`} />
-              <span className={stage === 'analyzing' ? 'text-foreground' : 'text-muted-foreground'}>
-                Analyzing room architecture
-              </span>
+            {/* Stage Details */}
+            <div className="space-y-3 font-inter">
+              <div className="flex items-center gap-3 text-sm">
+                <div className={`w-2 h-2 rounded-full ${stage === 'analyzing' ? 'bg-accent animate-pulse' : percent > 10 ? 'bg-success' : 'bg-muted'}`} />
+                <span className={stage === 'analyzing' ? 'text-foreground' : 'text-muted-foreground'}>
+                  Analyzing room architecture
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <div className={`w-2 h-2 rounded-full ${stage === 'locking' ? 'bg-accent animate-pulse' : percent > 20 ? 'bg-success' : 'bg-muted'}`} />
+                <span className={stage === 'locking' ? 'text-foreground' : 'text-muted-foreground'}>
+                  Preparing room for furniture
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <div className={`w-2 h-2 rounded-full ${stage === 'batch' ? 'bg-accent animate-pulse' : percent > 80 ? 'bg-success' : 'bg-muted'}`} />
+                <span className={stage === 'batch' ? 'text-foreground' : 'text-muted-foreground'}>
+                  Placing your furniture pieces
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <div className={`w-2 h-2 rounded-full ${stage === 'complete' ? 'bg-success' : 'bg-muted'}`} />
+                <span className={stage === 'complete' ? 'text-foreground' : 'text-muted-foreground'}>
+                  Finalizing design
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className={`w-2 h-2 rounded-full ${stage === 'locking' ? 'bg-accent animate-pulse' : percent > 20 ? 'bg-green-500' : 'bg-muted'}`} />
-              <span className={stage === 'locking' ? 'text-foreground' : 'text-muted-foreground'}>
-                Preparing room for furniture
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className={`w-2 h-2 rounded-full ${stage === 'batch' ? 'bg-accent animate-pulse' : percent > 80 ? 'bg-green-500' : 'bg-muted'}`} />
-              <span className={stage === 'batch' ? 'text-foreground' : 'text-muted-foreground'}>
-                Placing your furniture pieces
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className={`w-2 h-2 rounded-full ${stage === 'complete' ? 'bg-green-500' : 'bg-muted'}`} />
-              <span className={stage === 'complete' ? 'text-foreground' : 'text-muted-foreground'}>
-                Finalizing design
-              </span>
-            </div>
-          </div>
           
-          {/* Estimated Time */}
-          {estimatedTime && estimatedTime > 0 && (
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              Estimated time remaining: ~{Math.ceil(estimatedTime / 10) * 10} seconds
-            </div>
-          )}
+            {/* Estimated Time */}
+            {estimatedTime && estimatedTime > 0 && (
+              <div className="mt-6 text-center text-sm text-muted-foreground font-inter">
+                Estimated time remaining: ~{Math.ceil(estimatedTime / 10) * 10} seconds
+              </div>
+            )}
           
-          {/* Fun Tip */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground text-center">
-              {stageIcons[stage] || 'Our AI is working its magic'}
-            </p>
-          </div>
-        </Card>
-      </div>
+            {/* Fun Tip */}
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground text-center font-inter">
+                {stageIcons[stage] || 'Our AI is working its magic'}
+              </p>
+            </div>
+          </Card>
+        </div>
+      </GlobalLayout>
     );
   }
 
   if (render.status === 'failed') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Card className="p-8 max-w-md text-center">
-          <h2 className="font-bold text-destructive mb-4" style={{ fontSize: 'var(--font-size-2xl)' }}>
-            Generation Failed
-          </h2>
-          <p className="text-muted-foreground mb-6" style={{ fontSize: 'var(--font-size-base)' }}>
-            {render.errorMessage || "Something went wrong while generating your design."}
-          </p>
-          <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz">
-            Try Again
-          </Button>
-        </Card>
-      </div>
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center p-6 py-24">
+          <Card className="p-8 max-w-md text-center">
+            <h2 className="font-cormorant text-destructive mb-4" style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 500 }}>
+              Generation Failed
+            </h2>
+            <p className="text-muted-foreground mb-6 font-inter" style={{ fontSize: 'var(--font-size-base)' }}>
+              {render.errorMessage || "Something went wrong while generating your design."}
+            </p>
+            <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz">
+              Try Again
+            </Button>
+          </Card>
+        </div>
+      </GlobalLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    <GlobalLayout>
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 py-12">
         {/* Header */}
         <div className="flex justify-between items-start mb-12">
           <motion.div
@@ -396,10 +405,10 @@ export default function Results() {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1"
           >
-            <h1 className="font-bold mb-4" style={{ fontSize: 'var(--font-size-4xl)' }} data-testid="heading-results">
+            <h1 className="font-cormorant text-foreground mb-4" style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 500 }} data-testid="heading-results">
               Your AI-Generated Design
             </h1>
-            <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-lg)' }}>
+            <p className="text-muted-foreground font-inter" style={{ fontSize: 'var(--font-size-lg)' }}>
               Personalized just for you
             </p>
           </motion.div>
@@ -903,6 +912,7 @@ export default function Results() {
           />
         </div>
       )}
-    </div>
+      </div>
+    </GlobalLayout>
   );
 }
