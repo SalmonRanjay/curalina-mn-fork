@@ -693,6 +693,8 @@ export default function Quiz() {
       { id: "Clean Lines/Structured", label: "Clean Lines/Structured" },
       { id: "Upscale/Chic", label: "Upscale/Chic" },
       { id: "Elegant/Balanced", label: "Elegant/Balanced" },
+      { id: "Calm/Serene", label: "Calm/Serene" },
+      { id: "Rustic/Inviting", label: "Rustic/Inviting" },
     ];
 
     const textures = [
@@ -764,7 +766,7 @@ export default function Quiz() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-3 gap-4"
+            className="grid grid-cols-2 md:grid-cols-5 gap-4"
           >
             {lineStyles.map((style) => {
               const isSelected = quizData.lineStyle === style.id;
