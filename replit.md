@@ -49,6 +49,7 @@ The application uses Replit's Object Storage (backed by Google Cloud Storage) fo
 - Quiz always starts at step 1 when entering the quiz page (preserves data but resets step)
 - Quiz data (preferences, room type, styles) is persisted in localStorage for convenience
 - Step restoration was removed to ensure fresh quiz starts for returning users
+- **Migration Pattern**: The `migrateQuizData()` function merges loaded localStorage data with `INITIAL_QUIZ_DATA` defaults and ensures all array fields (styles, colorPalettes, textures, keyFeatures, vibeImages) are properly initialized. This prevents "Cannot read properties of undefined" errors when loading old localStorage data that may be missing newer fields.
 
 ## External Dependencies
 

@@ -64,12 +64,26 @@ const VALID_COLOR_PALETTES = [
   "Dark & Moody",
 ];
 
-function migrateQuizData(data: QuizData): QuizData {
-  const migratedPalettes = data.colorPalettes.filter((p) =>
+function migrateQuizData(data: Partial<QuizData>): QuizData {
+  // Merge with defaults to ensure all fields exist (handles old localStorage data)
+  const merged: QuizData = {
+    ...INITIAL_QUIZ_DATA,
+    ...data,
+    // Ensure arrays are always arrays (not undefined)
+    styles: Array.isArray(data.styles) ? data.styles : [],
+    colorPalettes: Array.isArray(data.colorPalettes) ? data.colorPalettes : [],
+    textures: Array.isArray(data.textures) ? data.textures : [],
+    keyFeatures: Array.isArray(data.keyFeatures) ? data.keyFeatures : [],
+    vibeImages: Array.isArray(data.vibeImages) ? data.vibeImages : [],
+  };
+  
+  // Filter to only valid color palettes
+  const migratedPalettes = merged.colorPalettes.filter((p) =>
     VALID_COLOR_PALETTES.includes(p)
   );
+  
   return {
-    ...data,
+    ...merged,
     colorPalettes: migratedPalettes,
   };
 }
