@@ -1730,8 +1730,10 @@ export function registerCuralinaRoutes(app: Express) {
       
       // Generate hash from quiz + filtered candidate pool (not full catalog)
       // Add timestamp to ensure unique hash when caching is disabled
-      const baseHash = generateSelectionHash(quiz, candidatePool);
-      const selectionHash = `${baseHash}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      // Truncate to 64 chars to fit database column constraint
+      const baseHash = generateSelectionHash(quiz, candidatePool).substring(0, 40);
+      const uniqueSuffix = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 8)}`;
+      const selectionHash = `${baseHash}-${uniqueSuffix}`.substring(0, 64);
       
       // DISABLED: Render caching/idempotency - always generate fresh renders
       // Previously returned cached renders when quiz settings matched.
