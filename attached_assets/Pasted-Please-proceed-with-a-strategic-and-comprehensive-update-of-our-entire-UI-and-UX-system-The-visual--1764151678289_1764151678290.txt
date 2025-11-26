@@ -1,0 +1,77 @@
+Please proceed with a strategic and comprehensive update of our entire UI and UX system. The visual identity must strongly reflect our business and the themes found throughout our website — including our room types, color palettes, textures, and interior design styles.
+
+1. Global UI/UX Enhancements
+
+Refine our color system so it aligns with our brand and interior-design-driven aesthetic.
+
+Ensure all visual elements feel cohesive, modern, elegant, and representative of our design philosophy.
+
+Update typography, text styling, spacing, and formatting to create a polished and professional appearance.
+
+Maintain consistent structure across all pages, while improving readability, interactivity, and the overall user journey.
+
+2. Navigation and Header Improvements
+
+Redesign the top navigation bar to feel premium and uniquely tailored to an interior design platform.
+
+Make the header visually distinct from the rest of the website, yet fully cohesive with the brand’s vibe.
+
+Ensure the Login, Shopping Cart, and all menu items are fully functional.
+
+Apply subtle stylistic differentiation to highlight the Login button without breaking the aesthetic.
+
+3. Quiz Interface Overhaul
+
+Rework all quiz screens so they visually align with the rest of the website — unified color schemes, typography, and layout.
+
+Make the quiz visually stunning, creative, and deeply reflective of our brand’s interior design language.
+
+Use the correct images for each room type, style, and color category.
+
+Ensure all steps follow a consistent design structure, flow smoothly, and captivate the user.
+
+Improve UI spacing, button styling, animations, and micro-interactions to create a delightful experience.
+
+4. Design Render Loading Experience
+
+Redesign the loading page shown during design rendering:
+
+Improve animations and transitions.
+
+Optimize speed and perceived performance.
+
+Make the loading state beautiful, engaging, and on-brand.
+
+Ensure the user remains visually engaged while waiting for results.
+
+5. Render Results Page
+
+Redesign the results page to reflect a premium interior design platform:
+
+Add a clean, intuitive sidebar for the Shop the Look products.
+
+Ensure each product displays images, price, details, and a smooth swipe/replace option.
+
+The main render image container should be visually appealing and user-friendly.
+
+Add a Regenerate Design button that refreshes the render using the updated quiz data.
+
+When users swap a product, the system should only replace that specific product in the render — no other elements should change.
+
+6. Dashboard Design (Admin & User)
+
+Update both dashboards with the new UI framework.
+
+Ensure everything matches our design language: colors, textures, tones, typography, and layouts.
+
+Make the interface clean, intelligent, and visually aligned with a cutting-edge interior design platform.
+
+7. Homepage Redesign
+
+Redesign the homepage using our updated UI standards.
+
+Ensure it delivers a strong interior design vibe and reflects all content themes from the website.
+
+Use the correct images for the right sections, consistent with how we handle visuals in the quiz.
+
+Every section should feel cohesive, beautiful, polished, and perfectly aligned with the brand.
