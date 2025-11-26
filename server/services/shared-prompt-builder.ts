@@ -170,27 +170,53 @@ ${roomSpec}
   
   const mainPrompt = `${roomDescription}.${architecturalContext}
 
-Furnish with these products (${roomAnalysis ? 'preserve ALL room structure, only change furniture' : 'create cohesive design'}):
+Furnish with these EXACT products - reference images are provided for each:
 ${productDescriptions}
 
-REQUIREMENTS:
-• Photorealistic quality with professional lighting${roomAnalysis ? ' matching the original room' : ' and shadows'}
-• EXACTLY ${params.products.length} PRODUCTS - ALL must appear, NO extras. Count: ${params.products.length} items only.
-• DO NOT ADD any furniture, mirrors, art, or decor NOT in the product list above. Only render the listed items.
-• All products clearly visible, properly scaled to real-world dimensions
-• Each product must be a PIXEL-PERFECT COPY of its reference image - exact shape, color, texture, material
-• Lamps must match exactly: if reference shows fabric shade, render fabric shade. If metal, render metal.
-• CONSOLE TABLES & SIDEBOARDS: Preserve exact leg style, drawer configuration, hardware finish, and material grain patterns from reference
-• SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through), keep it open - wall visible through it. Do NOT add solid back panels.
-• Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently
-• Natural furniture placement following interior design principles
-• High-resolution, magazine-quality composition
-${roomAnalysis ? '• Room structure (walls, floor, ceiling, windows, doors, built-ins) must be IDENTICAL to description' : '• Cohesive color palette and style throughout'}
-• Only furniture is new - everything else preserved precisely
-• CRITICAL: All furniture must appear FULLY within the frame - no clipping at edges. Keep adequate margin from all frame boundaries.
-• ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
+═══════════════════════════════════════════════════════════════════════════════
+🎯 PRODUCT FIDELITY REQUIREMENTS (MANDATORY - WILL BE VERIFIED)
+═══════════════════════════════════════════════════════════════════════════════
 
-${roomAnalysis ? 'Now, furnish this space with the product images provided.' : 'Use the product images provided to create this design.'}`;
+📸 EXACT VISUAL MATCH - Each rendered product MUST be INDISTINGUISHABLE from its reference image:
+• SHAPE: Exact silhouette, proportions, curves, angles - no artistic interpretation
+• COLOR: Precise color matching - if reference shows "warm walnut", render warm walnut, not "dark brown"
+• MATERIAL: Exact texture and finish - leather must look like leather, velvet like velvet, metal like metal
+• DETAILS: All visible features must match - drawer pulls, leg style, stitching patterns, hardware finishes
+• CONSTRUCTION: If reference shows open-back shelving, render open-back. If solid, render solid.
+
+🔍 SIDE-BY-SIDE COMPARISON TEST: The rendered product placed next to its reference image should look like the SAME OBJECT photographed in a different room.
+
+═══════════════════════════════════════════════════════════════════════════════
+🚫 ANTI-OVERLAP & VISIBILITY REQUIREMENTS (MANDATORY)
+═══════════════════════════════════════════════════════════════════════════════
+
+• ZERO OCCLUSION: No product may hide, overlap, or obscure ANY part of another product
+• FULL VISIBILITY: Every product must be 100% visible - no partial hiding behind larger items
+• SPATIAL SEPARATION: Maintain minimum 18 inches (real-world scale) between all furniture pieces
+• LAYER ORDERING: Smaller items (side tables, lamps, accent pieces) must be placed WHERE THEY ARE FULLY VISIBLE
+• FOREGROUND PRIORITY: If a small item would be hidden behind a large item, move it to an open area
+• FRAME MARGINS: All furniture must appear FULLY within frame with 10% margin from all edges
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 PLACEMENT RULES
+═══════════════════════════════════════════════════════════════════════════════
+
+• EXACTLY ${params.products.length} PRODUCTS - ALL ${params.products.length} must appear clearly, NO extras
+• DO NOT ADD any furniture, mirrors, art, or decor NOT in the product list
+• ALIGNMENT: Sofas and beds STRAIGHT and PARALLEL to walls - never diagonal
+• SCALE: Real-world dimensions - a 36" side table should look 36" relative to an 84" sofa
+• Small accent pieces (pedestals, ottomans, side tables) MUST be prominently visible - place in open areas
+
+═══════════════════════════════════════════════════════════════════════════════
+✨ QUALITY STANDARDS
+═══════════════════════════════════════════════════════════════════════════════
+
+• Photorealistic quality with professional interior photography lighting${roomAnalysis ? ' matching the original room' : ''}
+• Magazine-quality composition following interior design principles
+• Natural, believable furniture arrangement
+${roomAnalysis ? '• Room structure (walls, floor, ceiling, windows, doors) IDENTICAL to original' : '• Cohesive color palette and style'}
+
+${roomAnalysis ? 'Now, furnish this space using the product reference images provided. Match each product EXACTLY.' : 'Use the product reference images provided. Match each product EXACTLY.'}`;
 
   console.log(`   ✅ Shared prompt built (${mainPrompt.length} chars)`);
   

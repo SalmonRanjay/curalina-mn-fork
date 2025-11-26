@@ -233,46 +233,72 @@ export async function validateRender(
     
     const parts: any[] = [
       {
-        text: `Analyze this interior design render and provide a quality assessment.
+        text: `Analyze this interior design render and provide a detailed quality assessment.
 
-EXPECTED PRODUCTS TO FIND:
+EXPECTED PRODUCTS TO FIND (ALL ${expectedProducts.length} must be 100% visible):
 ${expectedProducts.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-Evaluate the render on these criteria:
+═══════════════════════════════════════════════════════════════════════════════
+EVALUATE EACH CRITERIA CAREFULLY:
+═══════════════════════════════════════════════════════════════════════════════
 
-1. PRODUCTS PLACED: List each product you can identify in the image. Match against the expected list above.
+1. PRODUCTS PLACED: List ONLY products you can FULLY see. Match against the expected list.
 
 2. ARCHITECTURAL INTEGRITY (0-100): 
-   - Are walls, windows, floors, ceilings realistic and consistent?
-   - Is the perspective correct and natural?
-   - Is the lighting believable?
+   - Walls, windows, floors, ceilings realistic and consistent?
+   - Perspective correct and natural?
+   - Lighting believable?
 
 3. COLOR FIDELITY (0-100):
-   - Do furniture pieces have realistic colors?
-   - Are there any obvious color artifacts or unnaturally saturated colors?
+   - Furniture colors realistic (no artifacts or unnatural saturation)?
+   - Colors appropriate for the materials shown?
 
 4. SCALE ACCURACY (0-100):
-   - Are furniture pieces properly scaled relative to the room?
-   - Is anything too large or too small for the space?
-   - Are pieces proportional to each other?
+   - Furniture properly scaled relative to room and each other?
+   - Nothing too large or small for the space?
 
 5. PLACEMENT QUALITY (0-100):
-   - Are furniture pieces properly grounded (not floating)?
-   - Is furniture placed logically (sofas not blocking doors, etc.)?
-   - Is there good visual composition?
+   - Furniture properly grounded (not floating)?
+   - Logical placement (no blocking doors, adequate walkways)?
+   - Good visual composition?
+
+═══════════════════════════════════════════════════════════════════════════════
+🚨 CRITICAL - OCCLUSION & VISIBILITY CHECK:
+═══════════════════════════════════════════════════════════════════════════════
+
+6. OCCLUSION ANALYSIS - For EACH expected product, assess:
+   - Is it 100% visible (no part hidden)?
+   - Is any part obscured by another furniture piece?
+   - Estimate visibility percentage (0-100%)
+
+List ANY products that are:
+- Partially hidden behind other furniture
+- Obscured by larger items
+- Cut off at frame edges
+- Missing entirely
+
+═══════════════════════════════════════════════════════════════════════════════
 
 Respond in this EXACT JSON format:
 {
   "productsPlaced": ["Product Name 1", "Product Name 2"],
   "missingProducts": ["Product Name 3"],
+  "occludedProducts": [
+    {"name": "Product Name", "visibilityPercent": 60, "occludedBy": "Sofa", "issue": "back half hidden"}
+  ],
   "architecturalIntegrityScore": 85,
   "colorFidelityScore": 90,
   "scaleAccuracyScore": 80,
   "placementQualityScore": 75,
+  "occlusionScore": 90,
   "issues": ["Issue 1 if any", "Issue 2 if any"]
 }
 
-Be critical but fair. Only list real issues.`
+IMPORTANT: 
+- occlusionScore should be 100 if ALL products are 100% visible
+- Deduct points for each partially hidden or overlapping product
+- A product that is <80% visible should significantly lower the occlusionScore
+- Be strict about visibility - this is critical for e-commerce accuracy`
       },
       { text: 'Rendered image to analyze:' },
       {
@@ -323,17 +349,30 @@ Be critical but fair. Only list real issues.`
     
     const parsed = JSON.parse(jsonStr);
     
-    // Calculate overall score (weighted average)
+    // Extract occlusion data
+    const occludedProducts = parsed.occludedProducts || [];
+    const occlusionScore = parsed.occlusionScore ?? 100;
+    
+    // Calculate overall score (weighted average - now includes occlusion)
     const overallScore = Math.round(
-      (parsed.architecturalIntegrityScore || 0) * 0.30 +
-      (parsed.colorFidelityScore || 0) * 0.25 +
-      (parsed.scaleAccuracyScore || 0) * 0.25 +
-      (parsed.placementQualityScore || 0) * 0.20
+      (parsed.architecturalIntegrityScore || 0) * 0.25 +
+      (parsed.colorFidelityScore || 0) * 0.20 +
+      (parsed.scaleAccuracyScore || 0) * 0.20 +
+      (parsed.placementQualityScore || 0) * 0.15 +
+      (occlusionScore) * 0.20
     );
     
-    // Determine if render is valid (threshold: 60 overall, at least 50% products placed)
+    // Determine if render is valid
+    // - At least 70 overall score
+    // - At least 80% products placed
+    // - Occlusion score at least 75 (most products visible)
+    // - No product with less than 50% visibility
     const productPlacementRate = parsed.productsPlaced?.length / expectedProducts.length || 0;
-    const isValid = overallScore >= 60 && productPlacementRate >= 0.5;
+    const hasSevereOcclusion = occludedProducts.some((p: any) => p.visibilityPercent < 50);
+    const isValid = overallScore >= 70 && 
+                    productPlacementRate >= 0.8 && 
+                    occlusionScore >= 75 &&
+                    !hasSevereOcclusion;
     
     const validation: RenderValidation = {
       productsPlaced: parsed.productsPlaced || [],
@@ -350,7 +389,22 @@ Be critical but fair. Only list real issues.`
     console.log(`   ✅ Validation complete:`);
     console.log(`      Products: ${validation.productsPlaced.length}/${expectedProducts.length} placed`);
     console.log(`      Scores: Arch=${validation.architecturalIntegrityScore}, Color=${validation.colorFidelityScore}, Scale=${validation.scaleAccuracyScore}, Placement=${validation.placementQualityScore}`);
+    console.log(`      Occlusion: ${occlusionScore}/100 (${occludedProducts.length} products with visibility issues)`);
+    if (occludedProducts.length > 0) {
+      console.log(`      Occluded products:`);
+      occludedProducts.forEach((p: any) => {
+        console.log(`         - ${p.name}: ${p.visibilityPercent}% visible (${p.issue})`);
+      });
+    }
     console.log(`      Overall: ${overallScore}/100 - ${isValid ? 'PASS' : 'FAIL'}`);
+    if (!isValid) {
+      const reasons = [];
+      if (overallScore < 70) reasons.push(`low overall score (${overallScore})`);
+      if (productPlacementRate < 0.8) reasons.push(`too few products visible (${Math.round(productPlacementRate * 100)}%)`);
+      if (occlusionScore < 75) reasons.push(`occlusion issues (score ${occlusionScore})`);
+      if (hasSevereOcclusion) reasons.push('severe occlusion (<50% visibility on some products)');
+      console.log(`      Fail reasons: ${reasons.join(', ')}`);
+    }
     if (validation.issues.length > 0) {
       console.log(`      Issues: ${validation.issues.join(', ')}`);
     }
