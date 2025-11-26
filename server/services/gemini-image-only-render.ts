@@ -2527,9 +2527,9 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     
     // Only run alignment pass if we have products and a room image to align to
     if (allProductsSentToAI.length > 0 && currentAnchor && roomArchitectureAnalysis) {
-      // Use Gemini for final alignment (same method as other render steps)
-      // Switched from OpenAI gpt-image-1 back to Gemini for consistency
-      const useOpenAIAlignment = false; // Use Gemini for all render steps
+      // Use OpenAI for final alignment (better product placement accuracy)
+      // User feedback: OpenAI gpt-image-1 works better for compositing furniture into space
+      const useOpenAIAlignment = true; // Use OpenAI for final alignment pass
       
       console.log(`\n🎯 STEP 3: FINAL ALIGNMENT PASS (${useOpenAIAlignment ? 'OpenAI gpt-image-1' : 'Gemini'})`);
       
