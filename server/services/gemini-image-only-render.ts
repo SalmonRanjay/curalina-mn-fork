@@ -557,16 +557,18 @@ IMPORTANT:
       (occlusionScore) * 0.20
     );
     
-    // Determine if render is valid
-    // - At least 70 overall score
-    // - At least 80% products placed
-    // - Occlusion score at least 75 (most products visible)
-    // - No product with less than 50% visibility
+    // Determine if render is valid - STRICT requirements for e-commerce accuracy
+    // - At least 75 overall score (raised from 70)
+    // - 100% products placed (raised from 80% - ALL products must be visible)
+    // - Occlusion score at least 80 (raised from 75)
+    // - No product with less than 60% visibility (raised from 50%)
     const productPlacementRate = parsed.productsPlaced?.length / expectedProducts.length || 0;
-    const hasSevereOcclusion = occludedProducts.some((p: any) => p.visibilityPercent < 50);
-    const isValid = overallScore >= 70 && 
-                    productPlacementRate >= 0.8 && 
-                    occlusionScore >= 75 &&
+    const hasSevereOcclusion = occludedProducts.some((p: any) => p.visibilityPercent < 60);
+    const hasMissingProducts = (parsed.missingProducts?.length || 0) > 0;
+    const isValid = overallScore >= 75 && 
+                    productPlacementRate >= 1.0 &&  // ALL products must be placed
+                    !hasMissingProducts &&          // No missing products allowed
+                    occlusionScore >= 80 &&
                     !hasSevereOcclusion;
     
     const validation: RenderValidation = {
@@ -594,11 +596,12 @@ IMPORTANT:
     console.log(`      Overall: ${overallScore}/100 - ${isValid ? 'PASS' : 'FAIL'}`);
     if (!isValid) {
       const reasons = [];
-      if (overallScore < 70) reasons.push(`low overall score (${overallScore})`);
-      if (productPlacementRate < 0.8) reasons.push(`too few products visible (${Math.round(productPlacementRate * 100)}%)`);
-      if (occlusionScore < 75) reasons.push(`occlusion issues (score ${occlusionScore})`);
-      if (hasSevereOcclusion) reasons.push('severe occlusion (<50% visibility on some products)');
-      console.log(`      Fail reasons: ${reasons.join(', ')}`);
+      if (overallScore < 75) reasons.push(`low overall score (${overallScore}/75 required)`);
+      if (productPlacementRate < 1.0) reasons.push(`missing products (${Math.round(productPlacementRate * 100)}% visible, 100% required)`);
+      if (hasMissingProducts) reasons.push(`${parsed.missingProducts?.length} products missing: ${parsed.missingProducts?.join(', ')}`);
+      if (occlusionScore < 80) reasons.push(`occlusion issues (score ${occlusionScore}/80 required)`);
+      if (hasSevereOcclusion) reasons.push('severe occlusion (<60% visibility on some products)');
+      console.log(`      ❌ Fail reasons: ${reasons.join(', ')}`);
     }
     if (validation.issues.length > 0) {
       console.log(`      Issues: ${validation.issues.join(', ')}`);

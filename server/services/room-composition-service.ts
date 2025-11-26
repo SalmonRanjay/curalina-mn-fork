@@ -284,8 +284,9 @@ export function findSubstitutionCandidates(
       matchScore += (matchingMaterials.length / Math.max(original.materials.length, 1)) * 30;
     }
     
-    // Only consider candidates with reasonable match (>40%)
-    if (matchScore >= 40) {
+    // Only consider candidates with HIGH match (>65%) to maintain visual cohesion
+    // Lower matches (40-65%) result in products that look visibly different
+    if (matchScore >= 65) {
       candidates.push({
         product: candidate,
         matchScore,
