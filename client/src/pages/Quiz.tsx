@@ -184,6 +184,10 @@ export default function Quiz() {
         roomType: data.roomType,
         styles: data.styles, // Now supports array of 1-2 styles
         colorPalettes: data.colorPalettes,
+        lineStyle: data.lineStyle || null,
+        textures: data.textures,
+        lifestyleCue: data.lifestyleCue || null,
+        patternPreference: data.patternPreference || null,
         keyFeatures: data.keyFeatures,
         budgetRange: data.budgetRange,
         vibeImages: data.vibeImages,
@@ -296,6 +300,24 @@ export default function Quiz() {
       );
     } else {
       updateQuizData("keyFeatures", [...current, feature]);
+    }
+  };
+
+  const toggleTexture = (texture: string) => {
+    const currentTextures = quizData.textures;
+    if (currentTextures.includes(texture)) {
+      updateQuizData(
+        "textures",
+        currentTextures.filter((t) => t !== texture),
+      );
+    } else if (currentTextures.length < 2) {
+      updateQuizData("textures", [...currentTextures, texture]);
+    } else {
+      toast({
+        title: "Maximum Selections",
+        description: "You can select up to 2 textures only.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -607,8 +629,48 @@ export default function Quiz() {
       "Dark & Moody",
     ];
 
+    const lineStyles = [
+      { id: "Clean Lines/Structured", label: "Clean Lines/Structured" },
+      { id: "Upscale/Chic", label: "Upscale/Chic" },
+      { id: "Elegant/Balanced", label: "Elegant/Balanced" },
+    ];
+
+    const textures = [
+      { id: "Walnut", label: "Walnut" },
+      { id: "Velvet, Brass, Smoked Glass", label: "Velvet, Brass, Smoked Glass" },
+      { id: "Shiplap, Wrought Iron", label: "Shiplap, Wrought Iron" },
+      { id: "White Oak, Linen, Travertine", label: "White Oak, Linen, Travertine" },
+      { id: "Satin, Metallics", label: "Satin, Metallics" },
+    ];
+
+    const lifestyleCues = [
+      { id: "Everyday Elegance/Gracious", label: "Everyday Elegance/Gracious" },
+      { id: "Relaxed Sophistication/Minimalist", label: "Relaxed Sophistication/Minimalist" },
+      { id: "Nurturing/Refined", label: "Nurturing/Refined" },
+      { id: "Family Gatherings/Humble", label: "Family Gatherings/Humble" },
+    ];
+
+    const patternPreferences = [
+      {
+        id: "Just Solids",
+        label: "Just Solids",
+        description: "You love clean lines, calm energy, and a timeless, uncluttered look. Solids keep your space feeling serene and easy.",
+      },
+      {
+        id: "Patterned Accents",
+        label: "Patterned Accents",
+        description: "You enjoy a touch of personality and flair without going overboard. A patterned pillow, or rug is just enough.",
+      },
+      {
+        id: "I Love Patterns",
+        label: "I Love Patterns — Don't Hold Back",
+        description: "Bold, expressive, and adventurous. You see your home as a canvas and aren't afraid of mixing and vibrant energy.",
+      },
+    ];
+
     return (
       <div className="stack-roomy flex flex-col">
+        {/* Color Palette Section */}
         <div className="text-center stack-base flex flex-col items-center">
           <p
             className="text-muted-foreground font-medium"
@@ -661,6 +723,187 @@ export default function Quiz() {
             );
           })}
         </motion.div>
+
+        {/* Line Style Section */}
+        <div className="mt-12 max-w-4xl mx-auto w-full">
+          <h3
+            className="font-serif font-medium text-foreground text-center mb-6"
+            style={{ fontSize: "var(--font-size-xl)" }}
+          >
+            Line Style
+          </h3>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-3 gap-4"
+          >
+            {lineStyles.map((style) => {
+              const isSelected = quizData.lineStyle === style.id;
+
+              return (
+                <motion.div key={style.id} variants={itemVariants}>
+                  <Card
+                    className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
+                      isSelected ? "bg-accent/10 border-accent" : ""
+                    }`}
+                    onClick={() => updateQuizData("lineStyle", style.id)}
+                    data-testid={`line-style-${style.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  >
+                    <p
+                      className="font-semibold text-card-foreground"
+                      style={{ fontSize: "var(--font-size-sm)" }}
+                    >
+                      {style.label}
+                    </p>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+
+        {/* Textures Section */}
+        <div className="mt-12 max-w-5xl mx-auto w-full">
+          <h3
+            className="font-serif font-medium text-foreground text-center mb-2"
+            style={{ fontSize: "var(--font-size-xl)" }}
+          >
+            Textures
+          </h3>
+          <p
+            className="text-muted-foreground text-center mb-6"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
+            Select up to 2 textures
+          </p>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 md:grid-cols-5 gap-4"
+          >
+            {textures.map((texture) => {
+              const isSelected = quizData.textures.includes(texture.id);
+
+              return (
+                <motion.div key={texture.id} variants={itemVariants}>
+                  <Card
+                    className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 min-h-24 flex items-center justify-center ${
+                      isSelected ? "bg-accent/10 border-accent" : ""
+                    }`}
+                    onClick={() => toggleTexture(texture.id)}
+                    data-testid={`texture-${texture.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  >
+                    <p
+                      className="font-semibold text-card-foreground"
+                      style={{ fontSize: "var(--font-size-sm)" }}
+                    >
+                      {texture.label}
+                    </p>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+
+        {/* Lifestyle Cues Section */}
+        <div className="mt-12 max-w-4xl mx-auto w-full">
+          <h3
+            className="font-serif font-medium text-foreground text-center mb-6"
+            style={{ fontSize: "var(--font-size-xl)" }}
+          >
+            Lifestyle Cues
+          </h3>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          >
+            {lifestyleCues.map((cue) => {
+              const isSelected = quizData.lifestyleCue === cue.id;
+
+              return (
+                <motion.div key={cue.id} variants={itemVariants}>
+                  <Card
+                    className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 min-h-24 flex items-center justify-center ${
+                      isSelected ? "bg-accent/10 border-accent" : ""
+                    }`}
+                    onClick={() => updateQuizData("lifestyleCue", cue.id)}
+                    data-testid={`lifestyle-${cue.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  >
+                    <p
+                      className="font-semibold text-card-foreground"
+                      style={{ fontSize: "var(--font-size-sm)" }}
+                    >
+                      {cue.label}
+                    </p>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+
+        {/* Pattern Preferences Section */}
+        <div className="mt-12 max-w-4xl mx-auto w-full">
+          <h3
+            className="font-serif font-medium text-foreground text-center mb-6"
+            style={{ fontSize: "var(--font-size-xl)" }}
+          >
+            Pattern Preferences
+          </h3>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="stack-base flex flex-col"
+          >
+            {patternPreferences.map((pattern) => {
+              const isSelected = quizData.patternPreference === pattern.id;
+
+              return (
+                <motion.div key={pattern.id} variants={itemVariants}>
+                  <Card
+                    className={`p-6 cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
+                      isSelected ? "bg-accent/10 border-accent" : ""
+                    }`}
+                    onClick={() => updateQuizData("patternPreference", pattern.id)}
+                    data-testid={`pattern-${pattern.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          isSelected
+                            ? "bg-accent border-accent"
+                            : "border-border"
+                        }`}
+                      >
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-accent-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-card-foreground mb-1">
+                          {pattern.label}
+                        </p>
+                        <p
+                          className="text-muted-foreground"
+                          style={{ fontSize: "var(--font-size-sm)" }}
+                        >
+                          <span className="font-medium">Lifestyle cue:</span>{" "}
+                          {pattern.description}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
       </div>
     );
   };

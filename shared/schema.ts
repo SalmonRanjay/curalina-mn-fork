@@ -294,6 +294,10 @@ export const quizResponses = pgTable("quiz_responses", {
   roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
   styles: text("styles").array().notNull(), // ['Organic Modern', 'Midcentury Scandi'] - max 2
   colorPalettes: text("color_palettes").array(), // ['Light Neutrals', 'Warm & Cozy'] - max 2
+  lineStyle: text("line_style"), // 'Clean Lines/Structured', 'Upscale/Chic', 'Elegant/Balanced'
+  textures: text("textures").array(), // ['Walnut', 'Velvet, Brass, Smoked Glass'] - max 2
+  lifestyleCue: text("lifestyle_cue"), // 'Everyday Elegance/Gracious', etc.
+  patternPreference: text("pattern_preference"), // 'Just Solids', 'Patterned Accents', 'I Love Patterns'
   keyFeatures: text("key_features").array(), // ['Comfortable Seat', 'Storage']
   budgetRange: text("budget_range").notNull(), // '$2K-$5K', etc.
   vibeImages: text("vibe_images").array(), // User-uploaded reference images

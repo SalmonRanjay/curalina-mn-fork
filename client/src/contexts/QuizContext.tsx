@@ -4,6 +4,10 @@ export interface QuizData {
   roomType: string;
   styles: string[];
   colorPalettes: string[];
+  lineStyle: string;
+  textures: string[];
+  lifestyleCue: string;
+  patternPreference: string;
   keyFeatures: string[];
   budgetRange: string;
   vibeImages: string[];
@@ -32,6 +36,10 @@ const INITIAL_QUIZ_DATA: QuizData = {
   roomType: "",
   styles: [],
   colorPalettes: [],
+  lineStyle: "",
+  textures: [],
+  lifestyleCue: "",
+  patternPreference: "",
   keyFeatures: [],
   budgetRange: "",
   vibeImages: [],
