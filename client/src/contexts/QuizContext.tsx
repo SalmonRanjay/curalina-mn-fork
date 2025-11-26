@@ -50,7 +50,7 @@ const INITIAL_QUIZ_DATA: QuizData = {
   roomDescription: "",
 };
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 7;
 const QUIZ_STORAGE_KEY = "curalina_quiz_progress";
 
 export function QuizProvider({ children }: { children: ReactNode }) {
@@ -88,16 +88,14 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       case 2:
         return quizData.styles.length >= 1 && quizData.styles.length <= 2;
       case 3:
-        return quizData.colorPalettes.length >= 1 && quizData.colorPalettes.length <= 2;
+        return quizData.colorPalettes.length >= 1; // Combined Color & Materials step
       case 4:
-        return true; // Design preferences (Mode, Textures, Lifestyle, Patterns) - optional
+        return quizData.keyFeatures.length > 0; // Features
       case 5:
-        return quizData.keyFeatures.length > 0;
+        return quizData.budgetRange.length > 0; // Budget
       case 6:
-        return quizData.budgetRange.length > 0;
-      case 7:
         return true; // Vibe check - optional
-      case 8:
+      case 7:
         return true; // Final step - optional
       default:
         return false;
@@ -107,13 +105,12 @@ export function QuizProvider({ children }: { children: ReactNode }) {
   const getStepContext = (step: number): { previous: string; next: string } => {
     const contexts = {
       1: { previous: "Home", next: "Style" },
-      2: { previous: "Room", next: "Colors" },
-      3: { previous: "Style", next: "Preferences" },
-      4: { previous: "Colors", next: "Features" },
-      5: { previous: "Preferences", next: "Budget" },
-      6: { previous: "Features", next: "Vibe" },
-      7: { previous: "Budget", next: "Final" },
-      8: { previous: "Vibe", next: "Results" },
+      2: { previous: "Room", next: "Palette" },
+      3: { previous: "Style", next: "Features" },
+      4: { previous: "Palette", next: "Budget" },
+      5: { previous: "Features", next: "Vibe" },
+      6: { previous: "Budget", next: "Final" },
+      7: { previous: "Vibe", next: "Results" },
     };
     return contexts[step as keyof typeof contexts] || { previous: "", next: "" };
   };

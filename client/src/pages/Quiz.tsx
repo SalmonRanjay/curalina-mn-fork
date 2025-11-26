@@ -29,15 +29,14 @@ import colorPalette from "@assets/image001_1762335467188.png";
 import RoomTypeStep from "@/components/quiz/RoomTypeStep";
 import RoomTypeStepV2 from "@/components/quiz/RoomTypeStepV2";
 import StyleSelectionStepV2 from "@/components/quiz/StyleSelectionStepV2";
-import ColorPaletteStepV2 from "@/components/quiz/ColorPaletteStepV2";
+import ColorMaterialsStepV2 from "@/components/quiz/ColorMaterialsStepV2";
 import FeaturesStepV2 from "@/components/quiz/FeaturesStepV2";
-import { MaterialsStepV2 } from "@/components/quiz/MaterialsStepV2";
 import { BudgetStepV2 } from "@/components/quiz/BudgetStepV2";
 import { VibeCheckStepV2 } from "@/components/quiz/VibeCheckStepV2";
 import { FinalStepV2 } from "@/components/quiz/FinalStepV2";
 import QuizLayout from "@/components/quiz/QuizLayout";
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 7;
 
 // Style data with Key Characteristics
 const STYLES_DATA = {
@@ -451,269 +450,26 @@ export default function Quiz() {
     );
   };
 
+  // Step 3: Combined Color Palette & Materials
   const renderStep3 = () => {
     return (
-      <ColorPaletteStepV2
-        value={quizData.colorPalettes}
-        onChange={(palettes) => updateQuizData("colorPalettes", palettes)}
-        maxSelections={2}
+      <ColorMaterialsStepV2
+        colorPalettes={quizData.colorPalettes}
+        lineStyle={quizData.lineStyle}
+        selectedTextures={quizData.textures}
+        patternPreference={quizData.patternPreference}
+        onColorChange={(palettes) => updateQuizData("colorPalettes", palettes)}
+        onLineStyleChange={(style) => updateQuizData("lineStyle", style)}
+        onTexturesChange={(textures) => updateQuizData("textures", textures)}
+        onPatternChange={(pattern) => updateQuizData("patternPreference", pattern)}
+        maxColorSelections={2}
+        maxTextureSelections={2}
       />
     );
   };
 
-  // Step 4: Design Preferences (Mode, Textures, Lifestyle, Patterns)
+  // Step 4: Functional Features
   const renderStep4 = () => {
-    const lineStyles = [
-      { id: "Clean Lines/Structured", label: "Clean Lines/Structured" },
-      { id: "Upscale/Chic", label: "Upscale/Chic" },
-      { id: "Elegant/Balanced", label: "Elegant/Balanced" },
-      { id: "Calm/Serene", label: "Calm/Serene" },
-      { id: "Rustic/Inviting", label: "Rustic/Inviting" },
-    ];
-
-    const textures = [
-      { id: "Walnut", label: "Walnut" },
-      { id: "Velvet, Brass, Smoked Glass", label: "Velvet, Brass, Smoked Glass" },
-      { id: "Shiplap, Wrought Iron", label: "Shiplap, Wrought Iron" },
-      { id: "White Oak, Linen, Travertine", label: "White Oak, Linen, Travertine" },
-      { id: "Satin, Metallics", label: "Satin, Metallics" },
-    ];
-
-    const lifestyleCues = [
-      { id: "Everyday Elegance/Gracious", label: "Everyday Elegance/Gracious" },
-      { id: "Relaxed Sophistication/Minimalist", label: "Relaxed Sophistication/Minimalist" },
-      { id: "Nurturing/Refined", label: "Nurturing/Refined" },
-      { id: "Family Gatherings/Humble", label: "Family Gatherings/Humble" },
-    ];
-
-    const patternPreferences = [
-      {
-        id: "Just Solids",
-        label: "Just Solids",
-        description: "You love clean lines, calm energy, and a timeless, uncluttered look. Solids keep your space feeling serene and easy.",
-      },
-      {
-        id: "Patterned Accents",
-        label: "Patterned Accents",
-        description: "You enjoy a touch of personality and flair without going overboard. A patterned pillow, or rug is just enough.",
-      },
-      {
-        id: "I Love Patterns",
-        label: "I Love Patterns — Don't Hold Back",
-        description: "Bold, expressive, and adventurous. You see your home as a canvas and aren't afraid of mixing and vibrant energy.",
-      },
-    ];
-
-    return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <p
-            className="text-muted-foreground font-medium"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Everyone has their own sense of style | Learn More About Our Design
-            Styles
-          </p>
-          <h2
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            Define Your Design Preferences
-          </h2>
-          <p
-            className="text-muted-foreground max-w-2xl"
-            style={{ fontSize: "var(--font-size-lg)" }}
-          >
-            Select your preferred mode, textures, lifestyle, and pattern preferences.
-          </p>
-        </div>
-
-        {/* Mode/Line Style Section */}
-        <div className="max-w-4xl mx-auto w-full">
-          <h3
-            className="font-serif font-medium text-foreground text-center mb-6"
-            style={{ fontSize: "var(--font-size-xl)" }}
-          >
-            Mode
-          </h3>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 md:grid-cols-5 gap-4"
-          >
-            {lineStyles.map((style) => {
-              const isSelected = quizData.lineStyle === style.id;
-
-              return (
-                <motion.div key={style.id} variants={itemVariants}>
-                  <Card
-                    className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
-                      isSelected ? "bg-accent/10 border-accent" : ""
-                    }`}
-                    onClick={() => updateQuizData("lineStyle", style.id)}
-                    data-testid={`line-style-${style.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                  >
-                    <p
-                      className="font-semibold text-card-foreground"
-                      style={{ fontSize: "var(--font-size-sm)" }}
-                    >
-                      {style.label}
-                    </p>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-
-        {/* Textures Section */}
-        <div className="mt-12 max-w-5xl mx-auto w-full">
-          <h3
-            className="font-serif font-medium text-foreground text-center mb-2"
-            style={{ fontSize: "var(--font-size-xl)" }}
-          >
-            Textures
-          </h3>
-          <p
-            className="text-muted-foreground text-center mb-6"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Select up to 2 textures
-          </p>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 md:grid-cols-5 gap-4"
-          >
-            {textures.map((texture) => {
-              const isSelected = quizData.textures.includes(texture.id);
-
-              return (
-                <motion.div key={texture.id} variants={itemVariants}>
-                  <Card
-                    className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 min-h-24 flex items-center justify-center ${
-                      isSelected ? "bg-accent/10 border-accent" : ""
-                    }`}
-                    onClick={() => toggleTexture(texture.id)}
-                    data-testid={`texture-${texture.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                  >
-                    <p
-                      className="font-semibold text-card-foreground"
-                      style={{ fontSize: "var(--font-size-sm)" }}
-                    >
-                      {texture.label}
-                    </p>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-
-        {/* Lifestyle Cues Section */}
-        <div className="mt-12 max-w-4xl mx-auto w-full">
-          <h3
-            className="font-serif font-medium text-foreground text-center mb-6"
-            style={{ fontSize: "var(--font-size-xl)" }}
-          >
-            Lifestyle Cues
-          </h3>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 md:grid-cols-4 gap-4"
-          >
-            {lifestyleCues.map((cue) => {
-              const isSelected = quizData.lifestyleCue === cue.id;
-
-              return (
-                <motion.div key={cue.id} variants={itemVariants}>
-                  <Card
-                    className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 min-h-24 flex items-center justify-center ${
-                      isSelected ? "bg-accent/10 border-accent" : ""
-                    }`}
-                    onClick={() => updateQuizData("lifestyleCue", cue.id)}
-                    data-testid={`lifestyle-${cue.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                  >
-                    <p
-                      className="font-semibold text-card-foreground"
-                      style={{ fontSize: "var(--font-size-sm)" }}
-                    >
-                      {cue.label}
-                    </p>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-
-        {/* Pattern Preferences Section */}
-        <div className="mt-12 max-w-4xl mx-auto w-full">
-          <h3
-            className="font-serif font-medium text-foreground text-center mb-6"
-            style={{ fontSize: "var(--font-size-xl)" }}
-          >
-            Pattern Preferences
-          </h3>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="stack-base flex flex-col"
-          >
-            {patternPreferences.map((pattern) => {
-              const isSelected = quizData.patternPreference === pattern.id;
-
-              return (
-                <motion.div key={pattern.id} variants={itemVariants}>
-                  <Card
-                    className={`p-6 cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
-                      isSelected ? "bg-accent/10 border-accent" : ""
-                    }`}
-                    onClick={() => updateQuizData("patternPreference", pattern.id)}
-                    data-testid={`pattern-${pattern.id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          isSelected
-                            ? "bg-accent border-accent"
-                            : "border-border"
-                        }`}
-                      >
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-accent-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-card-foreground mb-1">
-                          {pattern.label}
-                        </p>
-                        <p
-                          className="text-muted-foreground"
-                          style={{ fontSize: "var(--font-size-sm)" }}
-                        >
-                          <span className="font-medium">Lifestyle cue:</span>{" "}
-                          {pattern.description}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </div>
-    );
-  };
-
-  // Step 5: Functional Features
-  const renderStep5 = () => {
     return (
       <FeaturesStepV2
         roomType={quizData.roomType}
@@ -723,8 +479,8 @@ export default function Quiz() {
     );
   };
 
-  // Step 6: Budget
-  const renderStep6 = () => {
+  // Step 5: Budget
+  const renderStep5 = () => {
     return (
       <BudgetStepV2
         value={quizData.budgetRange}
@@ -733,8 +489,8 @@ export default function Quiz() {
     );
   };
 
-  // Step 7: Vibe Check
-  const renderStep7 = () => {
+  // Step 6: Vibe Check
+  const renderStep6 = () => {
     return (
       <VibeCheckStepV2
         vibeImages={quizData.vibeImages}
@@ -750,8 +506,8 @@ export default function Quiz() {
     );
   };
 
-  // Step 8: Final Step
-  const renderStep8 = () => {
+  // Step 7: Final Step
+  const renderStep7 = () => {
     return (
       <FinalStepV2
         floorplanUrl={quizData.floorplanUrl}
@@ -780,8 +536,6 @@ export default function Quiz() {
         return renderStep6();
       case 7:
         return renderStep7();
-      case 8:
-        return renderStep8();
       default:
         return null;
     }
