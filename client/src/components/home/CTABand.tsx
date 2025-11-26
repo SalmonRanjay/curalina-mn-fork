@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
+import { AuthenticatedQuizButton } from "@/components/AuthenticatedQuizButton";
 
 export default function CTABand() {
   return (
@@ -16,22 +16,19 @@ export default function CTABand() {
           It takes about 3 minutes. There are no wrong answers.
         </p>
         <div className="flex flex-col items-center gap-4">
-          <Link href="/quiz">
-            <Button 
-              size="lg"
-              className="font-semibold px-10 min-h-14"
-              data-testid="button-start-quiz-cta"
-            >
-              Start the Quiz
-            </Button>
-          </Link>
+          <AuthenticatedQuizButton
+            className="font-semibold px-10 min-h-14"
+            data-testid="button-start-quiz-cta"
+          >
+            Start the Quiz
+          </AuthenticatedQuizButton>
           <Link href="/results">
             <span 
               className="font-medium text-foreground/70 hover:text-accent transition-colors cursor-pointer"
               style={{ fontSize: 'var(--font-size-sm)' }}
               data-testid="link-see-example-cta"
             >
-              See an example room first →
+              See an example room first
             </span>
           </Link>
         </div>

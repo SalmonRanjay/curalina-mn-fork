@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { AuthenticatedQuizButton } from "@/components/AuthenticatedQuizButton";
 import heroImage from "@assets/stock_images/beautiful_modern_liv_cc3ef764.jpg";
 import renderThumb from "@assets/stock_images/organic_modern_bedro_d4118219.jpg";
 
@@ -37,16 +38,10 @@ export default function HeroSection() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
-              <Link href="/quiz">
-                <Button 
-                  size="lg"
-                  className="font-semibold min-h-12 px-8"
-                  data-testid="button-take-quiz-hero"
-                >
-                  Take the Style Quiz
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
+              <AuthenticatedQuizButton 
+                className="font-semibold min-h-12 px-8"
+                data-testid="button-take-quiz-hero"
+              />
               <Button 
                 asChild
                 variant="outline"

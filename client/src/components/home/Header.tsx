@@ -2,9 +2,18 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, ShoppingBag, User, ChevronRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Menu, X, ShoppingBag, User, ChevronRight, LogOut, LayoutDashboard } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CartItem {
   id: string;
@@ -15,7 +24,28 @@ interface CartItem {
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setLocation("/");
+    },
+  });
+
+  const handleQuizClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isAuthenticated) {
+      setLocation("/quiz");
+    } else {
+      setLocation("/register?redirectTo=/quiz");
+    }
+    setIsMobileMenuOpen(false);
+  };
 
   const { data: cartItems = [] } = useQuery<CartItem[]>({
     queryKey: ["/api/cart"],
@@ -119,28 +149,59 @@ export default function Header() {
               </Button>
             </Link>
 
-            {/* Sign In */}
-            <Link href="/login">
-              <Button 
-                variant="ghost"
-                className="gap-2 font-medium"
-                data-testid="link-sign-in"
-              >
-                <User className="w-4 h-4" />
-                Sign In
-              </Button>
-            </Link>
+            {isAuthenticated && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost"
+                    className="gap-2 font-medium"
+                    data-testid="button-user-menu"
+                  >
+                    <User className="w-4 h-4" />
+                    {user.firstName || 'Account'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-dashboard">
+                      <span className="flex items-center gap-2 cursor-pointer w-full" data-testid="link-my-dashboard">
+                        <LayoutDashboard className="w-4 h-4" />
+                        My Dashboard
+                      </span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => logoutMutation.mutate()}
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login">
+                <Button 
+                  variant="ghost"
+                  className="gap-2 font-medium"
+                  data-testid="link-sign-in"
+                >
+                  <User className="w-4 h-4" />
+                  Sign In
+                </Button>
+              </Link>
+            )}
 
             {/* Primary CTA */}
-            <Link href="/quiz">
-              <Button 
-                className="font-semibold gap-1.5 px-5"
-                data-testid="button-start-quiz-header"
-              >
-                Start the Quiz
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </Link>
+            <Button 
+              className="font-semibold gap-1.5 px-5"
+              onClick={handleQuizClick}
+              data-testid="button-start-quiz-header"
+            >
+              Start the Quiz
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* Mobile Actions */}
@@ -236,17 +297,45 @@ export default function Header() {
                   transition={{ delay: navLinks.length * 0.05 }}
                   className="mt-2 pt-4 border-t border-border"
                 >
-                  <Link href="/login">
-                    <span 
-                      className="flex items-center gap-2 py-3 px-2 text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer font-medium"
-                      style={{ fontSize: 'var(--font-size-base)' }}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      data-testid="link-mobile-sign-in"
-                    >
-                      <User className="w-4 h-4" />
-                      Sign In
-                    </span>
-                  </Link>
+                  {isAuthenticated && user ? (
+                    <>
+                      <Link href="/my-dashboard">
+                        <span 
+                          className="flex items-center gap-2 py-3 px-2 text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer font-medium"
+                          style={{ fontSize: 'var(--font-size-base)' }}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          data-testid="link-mobile-my-dashboard"
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          My Dashboard
+                        </span>
+                      </Link>
+                      <span 
+                        className="flex items-center gap-2 py-3 px-2 text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer font-medium"
+                        style={{ fontSize: 'var(--font-size-base)' }}
+                        onClick={() => {
+                          logoutMutation.mutate();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        data-testid="button-mobile-logout"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </span>
+                    </>
+                  ) : (
+                    <Link href="/login">
+                      <span 
+                        className="flex items-center gap-2 py-3 px-2 text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer font-medium"
+                        style={{ fontSize: 'var(--font-size-base)' }}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        data-testid="link-mobile-sign-in"
+                      >
+                        <User className="w-4 h-4" />
+                        Sign In
+                      </span>
+                    </Link>
+                  )}
                 </motion.div>
 
                 <motion.div
@@ -255,17 +344,15 @@ export default function Header() {
                   transition={{ delay: (navLinks.length + 1) * 0.05 }}
                   className="mt-4 px-2"
                 >
-                  <Link href="/quiz">
-                    <Button 
-                      className="w-full font-semibold gap-1.5"
-                      size="lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      data-testid="button-start-quiz-mobile"
-                    >
-                      Start the Quiz
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    className="w-full font-semibold gap-1.5"
+                    size="lg"
+                    onClick={handleQuizClick}
+                    data-testid="button-start-quiz-mobile"
+                  >
+                    Start the Quiz
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </motion.div>
               </nav>
             </motion.div>
