@@ -92,6 +92,15 @@ export default {
         cta: {
           band: "hsl(var(--cta-band) / <alpha-value>)",
         },
+        neutral: {
+          linen: "hsl(var(--neutral-linen) / <alpha-value>)",
+          greige: "hsl(var(--neutral-greige) / <alpha-value>)",
+          espresso: "hsl(var(--neutral-espresso) / <alpha-value>)",
+          warm: "hsl(var(--neutral-warm) / <alpha-value>)",
+          "soft-onyx": "hsl(var(--soft-onyx) / <alpha-value>)",
+          "warm-gray": "hsl(var(--warm-gray) / <alpha-value>)",
+          "deep-charcoal": "hsl(var(--deep-charcoal) / <alpha-value>)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

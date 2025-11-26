@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Interior Design Premium Palette */
+/* LIGHT MODE - Modern Organic Luxe Theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -16,50 +16,61 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Core Semantic Tokens - Warm Off-White, Greige, Espresso Palette */
-  --background: 40 33% 97%;
-  --foreground: 20 15% 20%;
-  --border: 35 18% 85%;
+  /* Core Semantic Tokens - Modern Organic Luxe Palette */
+  /* Soft warm beige background - #E6E1DB inspired */
+  --background: 35 18% 94%;
+  /* Dark cocoa brown text - #413530 */
+  --foreground: 20 14% 22%;
+  /* Warm gray border - #DCD7D0 */
+  --border: 35 15% 84%;
 
+  /* Card - Pure white for premium feel */
   --card: 0 0% 100%;
-  --card-foreground: 20 15% 22%;
-  --card-border: 35 16% 88%;
+  --card-foreground: 20 14% 22%;
+  --card-border: 35 18% 85%;
 
-  --sidebar: 35 22% 94%;
-  --sidebar-foreground: 20 18% 22%;
-  --sidebar-border: 32 16% 82%;
-  --sidebar-primary: 174 60% 41%;
+  /* Sidebar - Soft warm beige */
+  --sidebar: 35 18% 91%;
+  --sidebar-foreground: 20 14% 22%;
+  --sidebar-border: 35 15% 82%;
+  /* Deep modern green-blue primary - #355454 */
+  --sidebar-primary: 180 24% 27%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 174 50% 45%;
+  --sidebar-accent: 27 36% 58%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 174 60% 41%;
+  --sidebar-ring: 180 24% 27%;
 
+  /* Popover - White with dark text */
   --popover: 0 0% 100%;
-  --popover-foreground: 20 15% 20%;
-  --popover-border: 35 18% 88%;
+  --popover-foreground: 20 17% 20%;
+  --popover-border: 35 18% 85%;
 
-  /* Brand Teal as Primary - #24A8AE */
-  --primary: 180deg 22.63% 26.86%;
+  /* Primary - Deep modern green-blue #355454 */
+  --primary: 180 24% 27%;
   --primary-foreground: 0 0% 100%;
 
+  /* Secondary - Soft warm beige #E6E1DB */
   --secondary: 35 18% 88%;
-  --secondary-foreground: 20 15% 22%;
+  --secondary-foreground: 20 14% 22%;
 
-  --muted: 38 20% 92%;
-  --muted-foreground: 20 10% 45%;
+  /* Muted - Slightly warmer beige */
+  --muted: 35 20% 92%;
+  --muted-foreground: 20 12% 38%;
 
-  /* Teal Accent for selections and highlights */
-  --accent: 26.92deg 36.11% 57.65%;
+  /* Accent - Premium clay/bronze #BA8F6C */
+  --accent: 27 36% 58%;
   --accent-foreground: 0 0% 100%;
 
-  /* Selection mint green */
-  --selection: 145 48% 91%;
-  --selection-foreground: 160 40% 25%;
-  --selection-border: 160 45% 75%;
+  /* Selection - Soft teal highlight */
+  --selection: 174 45% 92%;
+  --selection-foreground: 180 24% 20%;
+  --selection-border: 174 40% 75%;
 
+  /* Destructive - #D22D2D */
   --destructive: 0 65% 50%;
   --destructive-foreground: 0 0% 100%;
 
+  /* Input - Soft beige with teal focus */
   --input: 35 18% 88%;
   --ring: 174 60% 41%;
 
@@ -67,7 +78,7 @@
   --success: 145 55% 42%;
   --success-foreground: 0 0% 100%;
 
-  /* Chart Colors - Refined for Interior Design */
+  /* Chart Colors - Interior Design Harmonized */
   --chart-1: 174 60% 41%;
   --chart-2: 26 70% 48%;
   --chart-3: 145 45% 42%;
@@ -75,18 +86,23 @@
   --chart-5: 0 65% 50%;
 
   /* Core Neutral Foundation */
-  --neutral-linen: 40 33% 97%;
-  --neutral-greige: 35 18% 85%;
-  --neutral-espresso: 20 15% 22%;
-  --neutral-warm: 35 25% 92%;
+  --neutral-linen: 35 18% 94%;
+  --neutral-greige: 35 15% 84%;
+  --neutral-espresso: 20 14% 22%;
+  --neutral-warm: 35 20% 92%;
+
+  /* Extended Neutrals for Premium Structure */
+  --soft-onyx: 240 4% 17%;
+  --warm-gray: 35 15% 84%;
+  --deep-charcoal: 240 6% 11%;
 
   /* Supplemental Surfaces */
-  --surface-soft: 38 22% 94%;
+  --surface-soft: 35 18% 94%;
   --surface-elevated: 0 0% 100%;
   --surface-inset: 35 18% 90%;
 
   /* CTA Band Background */
-  --cta-band: 38 18% 93%;
+  --cta-band: 35 18% 93%;
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -206,58 +222,67 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* Core Semantic Tokens - Dark Mode (Rich, warm dark) */
-  --background: 25 18% 9%;
-  --foreground: 40 25% 92%;
-  --border: 25 14% 22%;
+  /* Core Semantic Tokens - Dark Mode (Modern Organic Luxe) */
+  /* Deep charcoal background - #1A1A1C inspired */
+  --background: 240 6% 11%;
+  --foreground: 35 18% 92%;
+  --border: 240 4% 22%;
 
-  --card: 25 16% 13%;
-  --card-foreground: 40 22% 90%;
-  --card-border: 25 12% 20%;
+  /* Card - Slightly elevated dark */
+  --card: 240 5% 14%;
+  --card-foreground: 35 18% 90%;
+  --card-border: 240 4% 20%;
 
-  --sidebar: 25 16% 11%;
-  --sidebar-foreground: 40 22% 88%;
-  --sidebar-border: 25 12% 18%;
-  --sidebar-primary: 174 55% 50%;
+  /* Sidebar - Rich dark with organic warmth */
+  --sidebar: 240 5% 12%;
+  --sidebar-foreground: 35 18% 88%;
+  --sidebar-border: 240 4% 18%;
+  /* Brightened primary for dark mode visibility */
+  --sidebar-primary: 180 35% 42%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 174 50% 48%;
+  --sidebar-accent: 27 45% 62%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 174 55% 50%;
+  --sidebar-ring: 180 35% 42%;
 
-  --popover: 25 16% 11%;
-  --popover-foreground: 40 25% 92%;
-  --popover-border: 25 14% 22%;
+  /* Popover - Dark elevated surface */
+  --popover: 240 5% 12%;
+  --popover-foreground: 35 18% 92%;
+  --popover-border: 240 4% 22%;
 
-  /* Brand Teal - Dark Mode */
-  --primary: 174 55% 50%;
+  /* Primary - Brightened deep green-blue for dark mode */
+  --primary: 180 35% 42%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 25 14% 22%;
-  --secondary-foreground: 40 22% 90%;
+  /* Secondary - Dark warm surface */
+  --secondary: 25 12% 20%;
+  --secondary-foreground: 35 18% 90%;
 
-  --muted: 25 12% 16%;
-  --muted-foreground: 40 12% 60%;
+  /* Muted - Subtle dark surface */
+  --muted: 240 4% 16%;
+  --muted-foreground: 35 12% 55%;
 
-  /* Teal Accent - Dark Mode */
-  --accent: 174 50% 48%;
+  /* Accent - Brightened clay/bronze for dark mode */
+  --accent: 27 45% 62%;
   --accent-foreground: 0 0% 100%;
 
-  /* Selection mint - Dark Mode */
-  --selection: 160 30% 18%;
-  --selection-foreground: 145 35% 75%;
-  --selection-border: 160 35% 30%;
+  /* Selection - Dark teal highlight */
+  --selection: 180 25% 18%;
+  --selection-foreground: 174 40% 75%;
+  --selection-border: 180 30% 30%;
 
+  /* Destructive - Brightened for dark mode */
   --destructive: 0 60% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 25 14% 22%;
+  /* Input with teal focus */
+  --input: 240 4% 22%;
   --ring: 174 55% 50%;
 
   /* Success state - Dark Mode */
   --success: 145 50% 48%;
   --success-foreground: 0 0% 100%;
 
-  /* Chart Colors - Dark Mode */
+  /* Chart Colors - Dark Mode (brightened) */
   --chart-1: 174 55% 50%;
   --chart-2: 26 65% 55%;
   --chart-3: 145 40% 48%;
@@ -265,18 +290,23 @@
   --chart-5: 0 60% 55%;
 
   /* Core Neutral Foundation - Dark Mode */
-  --neutral-linen: 25 16% 13%;
-  --neutral-greige: 25 14% 18%;
-  --neutral-espresso: 40 22% 80%;
-  --neutral-warm: 25 14% 16%;
+  --neutral-linen: 240 5% 14%;
+  --neutral-greige: 240 4% 18%;
+  --neutral-espresso: 35 18% 80%;
+  --neutral-warm: 25 12% 16%;
+
+  /* Extended Neutrals - Dark Mode */
+  --soft-onyx: 240 4% 24%;
+  --warm-gray: 240 4% 28%;
+  --deep-charcoal: 240 6% 8%;
 
   /* Supplemental Surfaces - Dark Mode */
-  --surface-soft: 25 14% 15%;
-  --surface-elevated: 25 16% 17%;
-  --surface-inset: 25 12% 10%;
+  --surface-soft: 240 4% 15%;
+  --surface-elevated: 240 5% 17%;
+  --surface-inset: 240 5% 10%;
 
   /* CTA Band Background - Dark Mode */
-  --cta-band: 25 14% 14%;
+  --cta-band: 240 4% 14%;
 
   /* Shadows - Dark Mode */
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.15);
