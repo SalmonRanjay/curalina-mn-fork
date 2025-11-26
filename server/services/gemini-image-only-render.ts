@@ -52,10 +52,26 @@ interface PlacementContext {
 }
 
 /**
- * Analyze room architecture using Gemini Vision BEFORE rendering
- * This gives the model a detailed understanding of what to preserve
- * Now also estimates room dimensions from the image
- * NEW: Detects if room is empty (no furniture) to optimize render pipeline
+ * Comprehensive room analysis result with enhanced details for the three-step workflow
+ */
+interface EnhancedRoomAnalysis extends RoomAnalysisResult {
+  wallDetails: string;           // Detailed wall description (color, texture, trim)
+  floorDetails: string;          // Floor material, color, pattern
+  windowDetails: string;         // Window positions, sizes, treatments
+  lightingDetails: string;       // Natural and artificial lighting
+  perspectiveDetails: string;    // Camera angle and viewpoint
+  architecturalFeatures: string; // Built-ins, moldings, special features
+}
+
+/**
+ * STEP 1: Enhanced Space Analysis
+ * Thoroughly analyzes room architecture BEFORE any rendering
+ * This comprehensive analysis is used for the final alignment pass
+ * 
+ * Workflow:
+ * 1. Initial Space Analysis (this function) - Extract all room details
+ * 2. First Render Generation - Focus on furniture/styling from quiz
+ * 3. Final Alignment Pass - Composite furniture into original space
  */
 async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<RoomAnalysisResult> {
   const emptyResult: RoomAnalysisResult = {
@@ -71,7 +87,7 @@ async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<Roo
   };
   
   try {
-    console.log(`\n🔍 ANALYZING ROOM ARCHITECTURE with Gemini Vision...`);
+    console.log(`\n🔍 STEP 1: COMPREHENSIVE SPACE ANALYSIS with Gemini Vision...`);
     
     // Extract base64 data
     const base64Data = roomImageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -83,32 +99,93 @@ async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<Roo
         role: "user",
         parts: [
           {
-            text: `Analyze this room's architecture in detail. Provide THREE sections:
+            text: `Perform a COMPREHENSIVE architectural analysis of this room. This analysis will guide furniture placement and room preservation.
 
-SECTION 1 - FURNITURE STATUS:
+═══════════════════════════════════════════════════════════════════════════
+SECTION 1 - FURNITURE STATUS
+═══════════════════════════════════════════════════════════════════════════
 Is this room EMPTY (no furniture) or FURNISHED (has existing furniture)?
 Answer: [EMPTY or FURNISHED]
-If FURNISHED, list the existing furniture pieces.
+If FURNISHED, list each furniture piece with its approximate position.
 
-SECTION 2 - ARCHITECTURE DESCRIPTION (max 150 words, dense paragraph):
-Cover walls (color, texture, position), floor (material, color), ceiling (height estimate, features), windows (position, size, shape), doors (position, style), lighting (natural light direction), perspective (camera angle), and existing elements (built-ins, moldings).
+═══════════════════════════════════════════════════════════════════════════
+SECTION 2 - DETAILED ARCHITECTURE BREAKDOWN
+═══════════════════════════════════════════════════════════════════════════
 
-SECTION 3 - ESTIMATED DIMENSIONS (use visual cues like doors, windows, furniture to estimate):
-Estimate these values based on standard reference sizes:
-- Standard interior door: 80" tall x 36" wide
+WALLS:
+- Colors: [exact colors for each visible wall]
+- Texture: [smooth, textured, wallpapered, etc.]
+- Trim/Molding: [crown molding, baseboards, chair rails]
+- Special features: [accent walls, wainscoting, exposed brick]
+
+FLOOR:
+- Material: [hardwood, tile, carpet, concrete, etc.]
+- Color: [exact color/finish]
+- Pattern: [herringbone, plank direction, tile pattern]
+- Condition: [new, aged, distressed, polished]
+
+WINDOWS:
+- Count and positions: [left wall, right wall, back wall]
+- Sizes: [small, medium, large, floor-to-ceiling]
+- Treatments: [curtains, blinds, bare, sheers]
+- Natural light: [direction, intensity, time of day feel]
+
+DOORS:
+- Count and positions: [where in the room]
+- Style: [panel, glass, French, sliding]
+- Color/finish: [match walls, contrasting, natural wood]
+
+CEILING:
+- Height: [standard ~8ft, tall ~10ft+, vaulted]
+- Features: [beams, coffers, medallions, recessed]
+- Color: [white, tinted, matching walls]
+
+LIGHTING:
+- Natural light direction: [from left, right, behind camera, multiple sources]
+- Artificial fixtures: [visible fixtures, recessed lights, chandeliers]
+- Overall mood: [bright and airy, moody, warm, cool]
+
+PERSPECTIVE:
+- Camera height: [eye level, low, elevated]
+- Camera angle: [straight-on, angled left/right]
+- Focal length feel: [wide angle, normal, compressed]
+- Depth: [shallow room, deep room, L-shaped]
+
+ARCHITECTURAL FEATURES:
+- Built-ins: [shelving, fireplace, entertainment center]
+- Niches/alcoves: [positions and sizes]
+- Special elements: [columns, arches, exposed beams]
+
+═══════════════════════════════════════════════════════════════════════════
+SECTION 3 - SPATIAL DIMENSIONS
+═══════════════════════════════════════════════════════════════════════════
+
+Use these reference sizes for estimation:
+- Standard door: 80"H x 36"W (6.7ft x 3ft)
 - Standard window: 36-48" wide
 - Standard ceiling: 8-10 feet
-- Average sofa: 7 feet long
+- Average person height: 5.5-6 feet
 
-Provide your estimates in this EXACT format:
 DIMENSIONS:
 - Room length: [X] feet (estimated)
 - Room width: [X] feet (estimated)
 - Ceiling height: [X] feet (estimated)
-- Available wall lengths: [list wall segments and estimated lengths]
+- Primary furniture zone: [X] x [X] feet (main usable area)
+- Available wall lengths: [list each wall with length]
 - Usable floor area: [small/medium/large/very large]
 
-Be PRECISE. This will guide furniture placement and scaling.`
+═══════════════════════════════════════════════════════════════════════════
+SECTION 4 - PRESERVATION PRIORITY (for final alignment)
+═══════════════════════════════════════════════════════════════════════════
+
+List the TOP 5 architectural elements that MUST be preserved exactly:
+1. [Most important element and why]
+2. [Second most important]
+3. [Third most important]
+4. [Fourth most important]
+5. [Fifth most important]
+
+Be PRECISE and DETAILED. This analysis ensures the final render matches your real space exactly.`
           },
           {
             inlineData: {
@@ -123,7 +200,7 @@ Be PRECISE. This will guide furniture placement and scaling.`
     const fullAnalysis = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     if (fullAnalysis.length > 0) {
-      console.log(`   ✅ Room analysis complete (${fullAnalysis.length} chars)`);
+      console.log(`   ✅ Comprehensive space analysis complete (${fullAnalysis.length} chars)`);
       
       // Parse the response to extract dimensions
       const dimensions = parseRoomDimensions(fullAnalysis);
@@ -131,22 +208,38 @@ Be PRECISE. This will guide furniture placement and scaling.`
       // Check if room is empty (no existing furniture)
       const isEmptyRoom = detectEmptyRoom(fullAnalysis);
       
-      // Extract just the architecture description (before DIMENSIONS:)
-      let archDesc = fullAnalysis.split('DIMENSIONS:')[0];
-      // Remove SECTION 1 content (furniture status) to get just architecture description
+      // Extract detailed architecture description (everything between SECTION 2 and SECTION 3)
+      let archDesc = fullAnalysis;
       const section2Start = archDesc.indexOf('SECTION 2');
-      if (section2Start > 0) {
-        archDesc = archDesc.substring(section2Start);
+      const section3Start = archDesc.indexOf('SECTION 3');
+      if (section2Start > 0 && section3Start > section2Start) {
+        archDesc = archDesc.substring(section2Start, section3Start);
       }
-      archDesc = archDesc.replace('SECTION 2 - ARCHITECTURE DESCRIPTION', '').replace(/^\(max \d+ words.*?\):?/i, '').trim();
+      archDesc = archDesc.replace(/SECTION 2[^\n]*\n[═]+/g, '').trim();
       
-      console.log(`   📝 Architecture: ${archDesc.substring(0, 150)}...`);
+      // Extract preservation priorities (Section 4)
+      let preservationPriorities = '';
+      const section4Start = fullAnalysis.indexOf('SECTION 4');
+      if (section4Start > 0) {
+        preservationPriorities = fullAnalysis.substring(section4Start);
+        preservationPriorities = preservationPriorities.replace(/SECTION 4[^\n]*\n[═]+/g, '').trim();
+      }
+      
+      console.log(`   📝 Architecture details extracted`);
       console.log(`   📐 Estimated dimensions: ~${dimensions.lengthFeet || '?'}ft x ${dimensions.widthFeet || '?'}ft, ceiling ${dimensions.ceilingHeightFeet || '?'}ft`);
       console.log(`   📏 Usable area: ${dimensions.usableFloorArea}`);
-      console.log(`   🏠 Room status: ${isEmptyRoom ? 'EMPTY (can skip lock pass)' : 'FURNISHED (needs lock pass)'}`);
+      console.log(`   🏠 Room status: ${isEmptyRoom ? 'EMPTY (optimized workflow)' : 'FURNISHED (full workflow)'}`);
+      if (preservationPriorities) {
+        console.log(`   🔒 Preservation priorities identified`);
+      }
+      
+      // Combine architecture description with preservation priorities
+      const fullArchDescription = preservationPriorities 
+        ? `${archDesc}\n\n🔒 PRESERVATION PRIORITIES:\n${preservationPriorities}`
+        : archDesc;
       
       return {
-        architectureDescription: archDesc,
+        architectureDescription: fullArchDescription,
         estimatedDimensions: dimensions,
         isEmptyRoom
       };
@@ -157,6 +250,130 @@ Be PRECISE. This will guide furniture placement and scaling.`
   } catch (error) {
     console.error(`   ❌ Room analysis failed:`, error);
     return emptyResult;
+  }
+}
+
+/**
+ * STEP 3: Final Alignment Pass
+ * Takes the generated furniture render and composites it into the original space
+ * while preserving exact architectural details (walls, windows, floor, lighting, perspective)
+ * 
+ * This is the key to making rendered furniture look like it was photographed IN the user's actual room.
+ */
+async function executeFinalAlignmentPass(
+  originalRoomBase64: string,
+  furnishedRenderBase64: string,
+  roomArchitectureAnalysis: string,
+  productNames: string[]
+): Promise<{ success: boolean; imageBase64?: string; error?: string }> {
+  try {
+    console.log(`\n🎯 STEP 3: FINAL ALIGNMENT PASS`);
+    console.log(`   Moving ${productNames.length} furniture pieces into original space...`);
+    
+    // Extract base64 data for both images
+    const originalData = originalRoomBase64.replace(/^data:image\/\w+;base64,/, '');
+    const originalMimeType = originalRoomBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    
+    const renderData = furnishedRenderBase64.replace(/^data:image\/\w+;base64,/, '');
+    const renderMimeType = furnishedRenderBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    
+    const productList = productNames.join(', ');
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+      contents: [{
+        role: "user",
+        parts: [
+          {
+            text: `FINAL ALIGNMENT TASK: Composite the furniture from Image 2 into the exact space shown in Image 1.
+
+═══════════════════════════════════════════════════════════════════════════
+IMAGE 1: USER'S ORIGINAL SPACE (THE EXACT ROOM TO USE)
+═══════════════════════════════════════════════════════════════════════════
+This is the user's actual room. Every architectural detail must be preserved EXACTLY:
+- Walls: Same color, texture, trim, and moldings - pixel perfect
+- Floor: Same material, color, pattern, reflections
+- Windows: Same position, size, shape, treatments, and lighting
+- Doors: Same position, style, and color
+- Ceiling: Same height, color, features
+- Camera angle: Same perspective, focal length, viewpoint
+- Lighting: Same natural light direction and intensity
+- Any existing built-ins or architectural features
+
+${roomArchitectureAnalysis ? `ROOM ANALYSIS:\n${roomArchitectureAnalysis}` : ''}
+
+═══════════════════════════════════════════════════════════════════════════
+IMAGE 2: STYLED ROOM WITH FURNITURE (SOURCE OF FURNITURE)
+═══════════════════════════════════════════════════════════════════════════
+This image contains the styled furniture: ${productList}
+
+Extract ONLY the furniture pieces from this image. Do NOT use the room/background from Image 2.
+
+═══════════════════════════════════════════════════════════════════════════
+YOUR TASK: CREATE THE FINAL COMPOSITE
+═══════════════════════════════════════════════════════════════════════════
+
+1. START with Image 1 as your base - this IS the room. Not inspiration. THE ACTUAL ROOM.
+
+2. EXTRACT FURNITURE from Image 2:
+   - Take each furniture piece exactly as it appears (shape, color, material, details)
+   - Maintain the exact product appearance - these are specific products for purchase
+
+3. PLACE FURNITURE into Image 1's space:
+   - Position furniture naturally within Image 1's floor area
+   - Match the lighting and shadows to Image 1's light sources
+   - Ensure furniture scale matches Image 1's room proportions
+   - All furniture must be fully visible and not overlapping
+
+4. PRESERVE Image 1's architecture 100%:
+   - Walls: Exact same color and texture
+   - Floor: Exact same material and reflections
+   - Windows: Same position with same light coming through
+   - Ceiling: Same height and color
+   - Camera perspective: Same viewpoint and angle
+
+The result should look like the furniture was ACTUALLY PHOTOGRAPHED in the user's real room.
+Any architectural changes = FAILURE. The room MUST look identical to Image 1, just with furniture added.`
+          },
+          {
+            inlineData: {
+              data: originalData,
+              mimeType: originalMimeType
+            }
+          },
+          {
+            inlineData: {
+              data: renderData,
+              mimeType: renderMimeType
+            }
+          }
+        ]
+      }]
+    });
+    
+    const candidate = response.candidates?.[0];
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+    
+    if (!imagePart?.inlineData?.data) {
+      console.log(`   ❌ Final alignment failed: No image generated`);
+      return { success: false, error: 'No image generated in alignment pass' };
+    }
+    
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    const imageBase64 = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+    
+    console.log(`   ✅ Final alignment complete - furniture composited into original space`);
+    
+    return {
+      success: true,
+      imageBase64
+    };
+  } catch (error) {
+    console.error(`   ❌ Final alignment failed:`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -970,15 +1187,48 @@ CRITICAL PLACEMENT RULES:
 Arrange the furniture naturally in the room with proper perspective and realistic shadows. ${style} style. Photorealistic interior design photo.`;
     
   } else {
-    // TEXT-TO-IMAGE MODE: Generate room with specific products
+    // TEXT-TO-IMAGE MODE: Generate premium, magazine-quality room with specific products
+    // Focus on bright, clean, well-lit, beautifully staged spaces
     const productList = productRefs.map((ref, index) => {
       const imageNum = index + 1;
       return `the ${ref.productName} from image ${imageNum}`;
     }).join(', ');
     
-    prompt = `Create a beautiful ${style} ${room} interior featuring these exact furniture pieces from the reference images: ${productList}.
+    prompt = `Create a stunning, PREMIUM ${style} ${room} interior featuring these exact furniture pieces from the reference images: ${productList}.
 
-MANDATORY PRODUCT RULES:
+═══════════════════════════════════════════════════════════════════════════
+PREMIUM ROOM QUALITY - MAGAZINE AESTHETIC
+═══════════════════════════════════════════════════════════════════════════
+LIGHTING: Bright, natural daylight streaming through windows. Airy, open feel.
+- Large windows with sheer white or neutral curtains
+- Golden hour or midday lighting - warm and inviting
+- Multiple light sources for balanced illumination
+- Shadows should be soft, not harsh
+
+SPACE: Clean, uncluttered, well-proportioned room
+- Spacious floor area - furniture should have room to breathe
+- High ceilings (9-10 feet preferred) for grandeur
+- Clear sight lines - avoid cramped arrangements
+- Empty space is elegant - don't over-fill
+
+WALLS & FINISHES: Premium, sophisticated
+- Clean walls in warm whites, soft greys, or warm neutrals
+- Subtle architectural details (crown molding, baseboards)
+- Quality finishes - no flat or cheap-looking surfaces
+
+FLOOR: High-quality flooring
+- Light-to-medium hardwood (oak, walnut) OR elegant tile
+- Polished, well-maintained appearance
+- Natural wood grain visible
+
+ATMOSPHERE: Interior design magazine quality
+- Editorial, aspirational aesthetic
+- The kind of room featured in Architectural Digest or Elle Decor
+- Professional staging - every piece intentionally placed
+
+═══════════════════════════════════════════════════════════════════════════
+MANDATORY PRODUCT RULES
+═══════════════════════════════════════════════════════════════════════════
 1. EXACTLY ${productRefs.length} PRODUCTS - ALL must appear, NO extras. Count: ${productRefs.length} items only.
 2. DO NOT ADD any furniture, mirrors, art, or decor NOT in the reference images. Only render items from images 1-${productRefs.length}.
 3. Each product must be a PIXEL-PERFECT COPY of its reference image - exact same shape, color, texture, material, and proportions.
@@ -987,14 +1237,17 @@ MANDATORY PRODUCT RULES:
 6. SHELVING STRUCTURE: If a bookcase/shelf has an OPEN BACK (see-through with no back panel), keep it open - the wall should be visible through it. Do NOT add solid back panels to open-frame shelving.
 7. Pedestals, side tables, ottomans and small accent pieces MUST be included - place them prominently.
 
-CRITICAL PLACEMENT RULES:
-1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image.
+═══════════════════════════════════════════════════════════════════════════
+CRITICAL PLACEMENT RULES
+═══════════════════════════════════════════════════════════════════════════
+1. All furniture must appear FULLY within the frame - no clipping at edges. Keep furniture away from the left and right edges of the image (10% margin).
 2. ALIGNMENT: Sofas and beds MUST be placed STRAIGHT and PARALLEL to walls - never at diagonal angles.
-3. VISIBILITY: ALL furniture must be FULLY VISIBLE. NO furniture should be hidden behind other furniture.
-4. CONSOLE TABLES: Place against SIDE WALLS (left or right), NOT behind sofas. Must be clearly visible in the composition.
-5. SOFAS: When there's ample wall space on the left side of the room, consider positioning the sofa against the LEFT WALL to leave the rest of the room open for other furniture placement.
+3. VISIBILITY: ALL furniture must be FULLY VISIBLE. NO furniture should be hidden behind or overlapping other furniture.
+4. CONSOLE TABLES: Place against SIDE WALLS (left or right), NOT behind sofas. Must be clearly visible.
+5. SOFAS: Position against a wall with windows nearby for natural light. Leave ample floor space in front.
+6. SPACING: Generous breathing room between all pieces - this is premium design, not budget furniture showroom.
 
-Design a well-lit room with appropriate walls, windows, and flooring. Arrange the furniture naturally with proper perspective and realistic shadows. Photorealistic interior design photo, 8K.`;
+Create a photorealistic interior design photograph, 8K resolution, professional architectural photography, bright daylight, magazine-quality staging.`;
   }
 
   return prompt;
@@ -1417,16 +1670,40 @@ function buildBatchedTextToImagePrompt(
     .join(', ');
   
   if (isFirstBatch) {
-    // First batch: Create the scene
-    return `You are placing EXACTLY ${productRefs.length} REAL FURNITURE PRODUCTS into a ${style} ${room}.
+    // First batch: Create the premium scene - bright, clean, magazine-quality
+    return `Create a stunning, PREMIUM ${style} ${room} featuring EXACTLY ${productRefs.length} REAL FURNITURE PRODUCTS.
 
-ZERO TOLERANCE - ABSOLUTELY NO EXTRA FURNITURE:
+═══════════════════════════════════════════════════════════════════════════
+PREMIUM ROOM QUALITY - MAGAZINE AESTHETIC
+═══════════════════════════════════════════════════════════════════════════
+LIGHTING: Bright, natural daylight - airy and inviting
+- Large windows with abundant natural light streaming in
+- Warm, golden hour quality - never dark or moody
+- Soft, flattering shadows - not harsh
+
+SPACE: Clean, spacious, editorial-quality
+- Room size: 15x18 feet with 10-foot ceilings - grand but not overwhelming
+- THREE VISIBLE WALLS framing the scene beautifully
+- Uncluttered with generous breathing room between furniture
+- The kind of room featured in Architectural Digest
+
+FINISHES: Premium, sophisticated
+- Walls: Warm white or soft neutral (Benjamin Moore White Dove or similar)
+- Floor: Beautiful light-to-medium hardwood with visible grain (oak or walnut)
+- Subtle architectural details: crown molding, quality baseboards
+- Quality window treatments: sheer white or neutral curtains
+
+═══════════════════════════════════════════════════════════════════════════
+ZERO TOLERANCE - ABSOLUTELY NO EXTRA FURNITURE
+═══════════════════════════════════════════════════════════════════════════
 - The room should contain ONLY ${productRefs.length} furniture items - the EXACT items from the reference images.
 - DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, mirrors, ottomans, or ANY other furniture/decor.
 - If you add ANYTHING not in the reference images, the render is FAILED.
 - Count before generating: There must be EXACTLY ${productRefs.length} pieces of furniture. No more.
 
-PIXEL-PERFECT PRODUCT COPYING (CRITICAL):
+═══════════════════════════════════════════════════════════════════════════
+PIXEL-PERFECT PRODUCT COPYING (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════
 - Each product MUST be an EXACT VISUAL CLONE of its reference image.
 - SOFA/CHAIR COLORS: Copy the EXACT upholstery color from reference. If the sofa is gray, render gray. If beige, render beige. Do NOT change colors.
 - PEDESTALS/TABLES: Copy the EXACT shape, material, and finish. If the reference shows a sculptural white pedestal, render that exact sculptural white pedestal - NOT a different table.
@@ -1436,45 +1713,74 @@ PIXEL-PERFECT PRODUCT COPYING (CRITICAL):
 
 The products to copy EXACTLY are: ${productList}
 
-ROOM STRUCTURE:
-1. THREE VISIBLE WALLS - back wall and two side walls framing the scene.
-2. Camera positioned at entrance looking into the room.
-3. Room size approximately 15x12 feet with 9-foot ceilings.
-4. One window with natural light. Neutral wall color.
-5. Hardwood or carpet floor appropriate for ${room}.
-
-PLACEMENT:
-1. ALL furniture 100% within frame - no cropping at edges.
+═══════════════════════════════════════════════════════════════════════════
+PLACEMENT RULES
+═══════════════════════════════════════════════════════════════════════════
+1. ALL furniture 100% within frame - 10% margin from all edges.
 2. Sofas/beds STRAIGHT and parallel to walls, never diagonal.
-3. Leave 2+ feet between furniture and image edges.
+3. Generous spacing between all pieces - premium staging, not cramped.
+4. Camera at entrance level looking into the beautifully lit space.
 
-Professional interior design photography, natural window lighting, 8K.`;
+Professional architectural photography, bright natural daylight, 8K resolution, magazine-quality staging.`;
   } else {
-    // Subsequent batches: Add to existing scene
-    return `Image 1 shows the current room with existing furniture. ADD EXACTLY ${productRefs.length} MORE products: ${productList}.
+    // Subsequent batches: Add to existing premium scene - VERBATIM PARITY with first batch
+    return `Image 1 shows the current premium ${style} ${room} with existing furniture. ADD EXACTLY ${productRefs.length} MORE products: ${productList}.
 
-ZERO TOLERANCE - NO EXTRA FURNITURE:
+═══════════════════════════════════════════════════════════════════════════
+PREMIUM ROOM QUALITY - MAGAZINE AESTHETIC (MUST PRESERVE FROM IMAGE 1)
+═══════════════════════════════════════════════════════════════════════════
+LIGHTING: Bright, natural daylight - airy and inviting
+- Large windows with abundant natural light streaming in
+- Warm, golden hour quality - never dark or moody
+- Soft, flattering shadows - not harsh
+
+SPACE: Clean, spacious, editorial-quality
+- Room size: 15x18 feet with 10-foot ceilings - grand but not overwhelming
+- THREE VISIBLE WALLS framing the scene beautifully
+- Uncluttered with generous breathing room between furniture
+- The kind of room featured in Architectural Digest
+
+FINISHES: Premium, sophisticated
+- Walls: Warm white or soft neutral (Benjamin Moore White Dove or similar)
+- Floor: Beautiful light-to-medium hardwood with visible grain (oak or walnut)
+- Subtle architectural details: crown molding, quality baseboards
+- Quality window treatments: sheer white or neutral curtains
+
+═══════════════════════════════════════════════════════════════════════════
+ZERO TOLERANCE - NO EXTRA FURNITURE
+═══════════════════════════════════════════════════════════════════════════
 - After this batch, the room should contain ONLY the existing furniture from Image 1 PLUS the ${productRefs.length} new items from reference images.
-- DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, or ANY other furniture/decor not in references.
-- Count the new items: EXACTLY ${productRefs.length} new pieces. No more.
+- DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, mirrors, ottomans, or ANY other furniture/decor.
+- If you add ANYTHING not in the reference images, the render is FAILED.
+- Count: EXACTLY ${productRefs.length} new pieces. No more.
 
-PRESERVE EXISTING FURNITURE (CRITICAL):
+═══════════════════════════════════════════════════════════════════════════
+PRESERVE EXISTING FURNITURE (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════
 - Every piece of furniture from Image 1 MUST remain EXACTLY as shown - same position, same color, same appearance.
 - Do NOT remove, move, recolor, or modify ANY existing furniture.
 - The existing sofa color must stay EXACTLY the same.
 
-PIXEL-PERFECT NEW PRODUCT COPYING:
+═══════════════════════════════════════════════════════════════════════════
+PIXEL-PERFECT NEW PRODUCT COPYING (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════
 - Each new product MUST be an EXACT VISUAL CLONE of its reference image.
-- SOFA/CHAIR COLORS: Copy EXACT upholstery color. Do NOT change colors.
-- PEDESTALS/TABLES: Copy EXACT shape, material, finish. If reference shows sculptural white pedestal, render THAT - not a different table.
-- WOOD/METAL: Match exact grain pattern and finish from reference.
+- SOFA/CHAIR COLORS: Copy the EXACT upholstery color from reference. If the sofa is gray, render gray. If beige, render beige. Do NOT change colors.
+- PEDESTALS/TABLES: Copy the EXACT shape, material, and finish. If the reference shows a sculptural white pedestal, render that exact sculptural white pedestal - NOT a different table.
+- WOOD GRAIN: If reference shows walnut, render walnut. If oak, render oak. Match the exact tone.
+- METAL FINISHES: If reference shows brass legs, render brass. If chrome, render chrome.
+- LEG STYLES: Match exact leg shape - tapered, straight, or curved as shown in reference.
 
-PLACEMENT:
-1. ALL furniture (existing + new) 100% within frame - no cropping.
+═══════════════════════════════════════════════════════════════════════════
+PLACEMENT RULES
+═══════════════════════════════════════════════════════════════════════════
+1. ALL furniture (existing + new) 100% within frame - 10% margin from all edges.
 2. Place new items in empty spaces - no overlap with existing furniture.
-3. Keep same room walls, windows, floor, camera angle, lighting as Image 1.
+3. Sofas/beds STRAIGHT and parallel to walls, never diagonal.
+4. Generous spacing between all pieces - premium staging, not cramped.
+5. Camera at entrance level looking into the beautifully lit space.
 
-Professional interior design photography, 8K.`;
+Professional architectural photography, bright natural daylight, 8K resolution, magazine-quality staging.`;
   }
 }
 
@@ -1775,7 +2081,7 @@ interface MultiStepRenderParams {
  * Progress update for render pipeline - used for enhanced loading UX
  */
 export interface RenderProgress {
-  stage: 'analyzing' | 'locking' | 'batch' | 'validating' | 'complete' | 'error';
+  stage: 'analyzing' | 'locking' | 'batch' | 'aligning' | 'validating' | 'complete' | 'error';
   stageLabel: string;           // Human-readable stage description
   currentStep: number;          // Current step (1-indexed)
   totalSteps: number;           // Total steps in pipeline
@@ -2040,13 +2346,50 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       console.log(`   ✅ Batch ${batchIndex + 1} complete: ${batchResult.productsSentToAI.length} products added`);
     }
     
-    console.log(`\n✅ GEMINI RENDER COMPLETE`);
+    console.log(`\n✅ STEP 2 COMPLETE: Furniture rendering finished`);
     console.log(`   Steps completed: ${stepsCompleted}/${actualTotalSteps}`);
     console.log(`   Products rendered: ${allProductsSentToAI.length}`);
     console.log(`   Lock pass: ${skippedLockPass ? 'SKIPPED (empty room)' : 'EXECUTED'}`);
     
-    // Use Gemini's render directly (delta compositing removed)
-    const finalImage = currentAnchor;
+    // ========================================
+    // STEP 3: FINAL ALIGNMENT PASS
+    // Composite furniture into the ORIGINAL space while preserving architecture
+    // ========================================
+    let finalImage = currentAnchor;
+    
+    // Only run alignment pass if we have products and a room image to align to
+    if (allProductsSentToAI.length > 0 && currentAnchor && roomArchitectureAnalysis) {
+      console.log(`\n🎯 STEP 3: FINAL ALIGNMENT PASS`);
+      
+      sendProgress({
+        stage: 'aligning',
+        stageLabel: 'Aligning furniture to your space...',
+        currentStep: stepsCompleted + 1,
+        totalSteps: actualTotalSteps + 1,
+        percentComplete: 92,
+        estimatedTimeRemaining: 8
+      });
+      
+      // Get product names for the alignment pass
+      const productNames = sortedProducts.map(p => p.name);
+      
+      const alignmentResult = await executeFinalAlignmentPass(
+        trueOriginalBase64,      // Original user's room
+        currentAnchor,           // Generated render with furniture
+        roomArchitectureAnalysis, // Detailed room analysis
+        productNames             // Products to composite
+      );
+      
+      if (alignmentResult.success && alignmentResult.imageBase64) {
+        finalImage = alignmentResult.imageBase64;
+        console.log(`   ✅ Final alignment successful - furniture composited into original space`);
+      } else {
+        console.log(`   ⚠️ Final alignment failed, using pre-alignment render`);
+        // Keep currentAnchor as finalImage (fallback)
+      }
+    }
+    
+    console.log(`\n✅ FULL RENDER PIPELINE COMPLETE`);
     
     // ========================================
     // OPTIONAL: Validate final render quality
