@@ -912,7 +912,6 @@ export default function Results() {
           />
         </div>
       )}
-      </div>
     </GlobalLayout>
   );
 }
