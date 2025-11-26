@@ -1473,7 +1473,7 @@ function getCategoryWeightForBatching(product: Product): number {
 // ============================================================================
 
 const MAX_PRODUCTS = 8; // Hard limit for model reliability (was 7)
-const PRODUCTS_PER_BATCH = 4; // 4 products per batch for faster rendering (reduced API calls)
+const PRODUCTS_PER_BATCH = 3; // 3 products per batch for better fidelity
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
 
 // NOTE: Delta compositing solves room drift - we extract furniture from Gemini output
