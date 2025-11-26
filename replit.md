@@ -116,7 +116,12 @@ Preferred communication style: Simple, everyday language.
     - Stability AI SDXL (for structure-preserving image-to-image rendering)
     - Google Gemini 2.5 Flash via Replit AI Integrations (for text-to-image generation, AI image matching)
     - Google Gemini Vision via Replit AI Integrations (for multi-modal image analysis)
-    - **Note**: Uses Replit AI Integrations for Gemini access (no API key required, billed to Replit credits)
+    - OpenAI gpt-image-1 via Replit AI Integrations (for final alignment/compositing pass - experimental)
+    - **Note**: Uses Replit AI Integrations for Gemini and OpenAI access (no API key required, billed to Replit credits)
+    - **Three-Step Render Pipeline**:
+      1. **Space Analysis** (Gemini): Analyze user's room architecture, dimensions, lighting
+      2. **Furniture Rendering** (Gemini): Generate furniture render based on quiz selections with product reference images
+      3. **Final Alignment** (OpenAI gpt-image-1): Composite furniture from render into original space while preserving architecture
 - **Image Processing**:
     - Sharp
 - **Payment Processing**:

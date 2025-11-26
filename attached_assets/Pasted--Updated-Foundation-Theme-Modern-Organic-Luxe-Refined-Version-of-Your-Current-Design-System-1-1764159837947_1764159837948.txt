@@ -1,0 +1,198 @@
+🌿 Updated Foundation Theme
+Modern Organic Luxe — Refined Version of Your Current Design System
+🎨 1. Colors (Upgraded & Harmonized)
+Primary Palette (Core Identity)
+Role	Color	Description
+Primary Background	#355454	Deep modern green-blue — luxury organic tone
+Primary Text	#FFFFFF	Clean contrast, premium readability
+Secondary Palette (Warm & Organic)
+Role	Color	Description
+Secondary Background	#E6E1DB	Soft warm beige — aligns with organic, Scandinavian, modern interiors
+Secondary Text	#413530	Dark cocoa brown — earthy, warm, readable
+Accent Palette (Modern Design Highlights)
+Role	Color	Description
+Accent Background	#BA8F6C	Premium clay/bronze tone — perfect for modern interiors
+Accent Text	#FFFFFF	Clean bright highlight
+Destructive Palette
+Role	Color
+Background	#D22D2D
+Text	#FFFFFF
+Neutral / Structural Grays
+
+Add these for better structure in UI:
+
+Soft Onyx — #2A2A2C
+
+Warm Gray — #DCD7D0
+
+Deep Charcoal — #1A1A1C
+
+This gives you flexibility for light/dark sections and premium tone separation.
+
+✒️ 2. Typography (Perfect for Interior Design Aesthetic)
+
+Your current choices are excellent. Let's lock them in:
+
+Sans-serif (UI + Clean Text)
+
+Inter
+
+Modern
+
+Legible
+
+Ideal for UI elements
+
+Serif (Luxury, Premium, Editorial)
+
+Cormorant Garamond
+
+Beautiful, refined
+
+Perfect for headings, hero sections, and design-focused text
+
+Monospace (Technical Areas Only)
+
+JetBrains Mono
+
+⭕ 3. Shape & Spacing
+Border Radius: 0.5rem
+
+✔ Perfect — modern but not overly rounded
+✔ Works well with interior design aesthetics
+✔ Use consistently across cards, buttons, inputs
+
+Spacing Scale
+
+Add a simple spacing scale for consistency:
+
+4px
+
+8px
+
+12px
+
+16px
+
+24px
+
+32px
+
+Keeps layouts clean and breathable — exactly what a design platform needs.
+
+🧩 4. Components (Refined for a Design-Driven App)
+✔ Actions (Buttons)
+
+The colors you have are strong — now polished with purpose:
+
+Primary Button
+
+Background: #355454
+
+Text: #FFFFFF
+
+Hover: Darker shade of primary
+
+Style: Solid, premium
+
+Secondary Button
+
+Background: #E6E1DB
+
+Text: #413530
+
+Hover: Slight shadow, warm highlight
+
+Accent Button
+
+Background: #BA8F6C
+
+Text: #FFFFFF
+
+Use for highlights (Shop the Look, important CTAs)
+
+Destructive Button
+
+Background: #D22D2D
+
+Text: #FFFFFF
+
+📝 5. Forms (Improved Visual Consistency)
+Inputs
+
+Background: #E6E1DB
+
+Border: #E0DAD2
+
+Focus Border: #2AA79B (excellent choice — modern and fresh!)
+
+Placeholder Text: #6B5E55 (add this for readability)
+
+Input Shape
+
+0.4–0.5rem radius
+
+14–15px font
+
+12–16px padding
+
+📦 6. Containers (Modern Interior-Design Inspired)
+Card
+
+Background: #FFFFFF
+
+Text: #413530
+
+Shadow: Soft warm-gray shadow
+
+Rounded: 0.5rem
+
+Spacing: Wide, airy (interior design feel)
+
+Popover
+
+Background: #FFFFFF
+
+Text: #3B302B
+
+Minimal border: #E0DAD2
+
+Soft shadow
+
+📊 7. Charts (Keep but Harmonize)
+
+Your palette is strong.
+To make them feel more interior-design compatible:
+
+Chart 1 — #2AA79B (fresh modern mint green)
+
+Chart 2 — #D06F25 (earthy burnt orange)
+
+Chart 3 — #3B9B63 (organic green)
+
+Chart 4 — #C68B39 (warm brass)
+
+Chart 5 — #D22D2D (alert red)
+
+These colors support dashboards while matching the design language.
+
+🌟 Final Summary: Your Updated Design System
+Theme Name:
+
+Modern Organic Luxe
+
+Key Characteristics:
+
+Modern + organic + luxury tones
+
+Warm neutrals blended with deep modern hues
+
+Editorial serif + clean sans-serif typography
+
+Soft shapes, interior-inspired shadows
+
+Premium, professional vibe
+
+Works across all quiz styles, room types, and color schemes
+
+Balanced light and dark usage

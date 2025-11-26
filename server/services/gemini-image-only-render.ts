@@ -1,6 +1,15 @@
 import { GoogleGenAI, Modality } from "@google/genai";
+import OpenAI, { toFile } from "openai";
 import type { Product } from "@shared/schema";
 import { applyQCRefinement } from "./stability-ai-qc";
+import { Readable } from "stream";
+
+// Initialize OpenAI client using Replit AI Integrations (no API key required, charges billed to credits)
+// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+const openai = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+});
 
 // Initialize Gemini client using Replit AI Integrations
 const ai = new GoogleGenAI({
@@ -248,6 +257,100 @@ Result must look like furniture was photographed IN the user's real room - brigh
     };
   } catch (error) {
     console.error(`   ❌ Final alignment failed:`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * STEP 3 (ALTERNATIVE): OpenAI-based Final Alignment Pass
+ * Uses OpenAI's gpt-image-1 model to composite furniture render into original room
+ * This is an experimental alternative to the Gemini-based alignment
+ * 
+ * Uses Replit AI Integrations - no API key required, charges billed to credits
+ */
+async function executeFinalAlignmentPassOpenAI(
+  originalRoomBase64: string,
+  furnishedRenderBase64: string,
+  roomArchitectureAnalysis: string,
+  productNames: string[]
+): Promise<{ success: boolean; imageBase64?: string; error?: string }> {
+  try {
+    console.log(`\n🎯 STEP 3 (OpenAI): FINAL ALIGNMENT PASS`);
+    console.log(`   Moving ${productNames.length} furniture pieces into original space using OpenAI gpt-image-1...`);
+    
+    const startTime = Date.now();
+    
+    // Extract base64 data for both images
+    const originalData = originalRoomBase64.replace(/^data:image\/\w+;base64,/, '');
+    const renderData = furnishedRenderBase64.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Convert base64 to buffers for OpenAI file upload
+    const originalBuffer = Buffer.from(originalData, 'base64');
+    const renderBuffer = Buffer.from(renderData, 'base64');
+    
+    // Create file objects for OpenAI images.edit API
+    const originalFile = await toFile(
+      Readable.from(originalBuffer),
+      'original_room.png',
+      { type: 'image/png' }
+    );
+    const renderFile = await toFile(
+      Readable.from(renderBuffer),
+      'furniture_render.png',
+      { type: 'image/png' }
+    );
+    
+    const productList = productNames.join(', ');
+    
+    // Build the compositing prompt
+    const prompt = `Transfer the furniture from the second image into the first image (the user's actual room).
+
+FIRST IMAGE: The user's real room - preserve EXACTLY all walls, floor, ceiling, windows, doors, lighting, and perspective.
+${roomArchitectureAnalysis ? `Room details: ${roomArchitectureAnalysis}` : ''}
+
+SECOND IMAGE: Design render containing these furniture pieces to transfer: ${productList}
+
+TASK:
+1. Keep the first image's room architecture completely unchanged - same walls, floors, lighting, perspective.
+2. Extract ONLY the furniture items from the second image and place them into the first image's space.
+3. Each piece of furniture must maintain its exact appearance from the second image (shape, color, material, details).
+4. Position furniture naturally with realistic shadows matching the first image's light sources.
+5. Ensure all furniture is fully visible, properly scaled, and not overlapping.
+
+The result must look like the furniture was actually photographed IN the user's real room - photorealistic, bright, and clean.`;
+
+    console.log(`   📝 Prompt length: ${prompt.length} chars`);
+    console.log(`   🎨 Calling OpenAI gpt-image-1 images.edit...`);
+    
+    // Call OpenAI's image edit API with both images
+    // Note: gpt-image-1 can take multiple images as input for compositing
+    const response = await openai.images.edit({
+      model: "gpt-image-1",
+      image: [originalFile, renderFile],
+      prompt: prompt,
+      size: "1024x1024",
+    });
+    
+    const generationTime = Date.now() - startTime;
+    
+    // gpt-image-1 always returns base64 format
+    const imageBase64Data = response.data?.[0]?.b64_json;
+    
+    if (!imageBase64Data) {
+      console.log(`   ❌ OpenAI alignment failed: No image generated`);
+      return { success: false, error: 'No image generated from OpenAI' };
+    }
+    
+    const imageBase64 = `data:image/png;base64,${imageBase64Data}`;
+    
+    console.log(`   ✅ OpenAI alignment complete in ${(generationTime / 1000).toFixed(1)}s - furniture composited into original space`);
+    
+    return {
+      success: true,
+      imageBase64
+    };
+  } catch (error) {
+    console.error(`   ❌ OpenAI alignment failed:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -2279,11 +2382,15 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     
     // Only run alignment pass if we have products and a room image to align to
     if (allProductsSentToAI.length > 0 && currentAnchor && roomArchitectureAnalysis) {
-      console.log(`\n🎯 STEP 3: FINAL ALIGNMENT PASS`);
+      // EXPERIMENTAL: Use OpenAI gpt-image-1 for final alignment instead of Gemini
+      // This uses Replit AI Integrations - no API key required, charges billed to credits
+      const useOpenAIAlignment = true; // Toggle to test OpenAI vs Gemini
+      
+      console.log(`\n🎯 STEP 3: FINAL ALIGNMENT PASS (${useOpenAIAlignment ? 'OpenAI gpt-image-1' : 'Gemini'})`);
       
       sendProgress({
         stage: 'aligning',
-        stageLabel: 'Aligning furniture to your space...',
+        stageLabel: useOpenAIAlignment ? 'Compositing with OpenAI...' : 'Aligning furniture to your space...',
         currentStep: stepsCompleted + 1,
         totalSteps: actualTotalSteps + 1,
         percentComplete: 92,
@@ -2293,16 +2400,24 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       // Get product names for the alignment pass
       const productNames = sortedProducts.map(p => p.name);
       
-      const alignmentResult = await executeFinalAlignmentPass(
-        trueOriginalBase64,      // Original user's room
-        currentAnchor,           // Generated render with furniture
-        roomArchitectureAnalysis, // Detailed room analysis
-        productNames             // Products to composite
-      );
+      // Choose alignment model based on flag
+      const alignmentResult = useOpenAIAlignment
+        ? await executeFinalAlignmentPassOpenAI(
+            trueOriginalBase64,      // Original user's room
+            currentAnchor,           // Generated render with furniture
+            roomArchitectureAnalysis, // Detailed room analysis
+            productNames             // Products to composite
+          )
+        : await executeFinalAlignmentPass(
+            trueOriginalBase64,      // Original user's room
+            currentAnchor,           // Generated render with furniture
+            roomArchitectureAnalysis, // Detailed room analysis
+            productNames             // Products to composite
+          );
       
       if (alignmentResult.success && alignmentResult.imageBase64) {
         finalImage = alignmentResult.imageBase64;
-        console.log(`   ✅ Final alignment successful - furniture composited into original space`);
+        console.log(`   ✅ Final alignment successful (${useOpenAIAlignment ? 'OpenAI' : 'Gemini'}) - furniture composited into original space`);
       } else {
         console.log(`   ⚠️ Final alignment failed, using pre-alignment render`);
         // Keep currentAnchor as finalImage (fallback)
