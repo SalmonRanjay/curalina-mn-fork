@@ -823,6 +823,196 @@ export interface PlacementInstruction {
   confidence: number; // 0-1 score for placement quality
 }
 
+// =============================================================================
+// PRODUCT INSTANCE SYSTEM - One-by-One Rendering with Duplicates
+// =============================================================================
+// Each ProductInstance represents a SINGLE placement in the render
+// The same product can have multiple instances (e.g., 4 dining chairs)
+// =============================================================================
+
+export interface ProductInstance {
+  product: Product;
+  instanceId: string;       // Unique ID for this instance (e.g., "dining_chair_1")
+  instanceNumber: number;   // Which instance (1, 2, 3, 4...)
+  totalInstances: number;   // How many of this product
+  placementSlot: string;    // Specific placement position (e.g., "head_of_table", "left_side_1")
+  placementDescription: string; // Human-readable placement instruction
+}
+
+/**
+ * Duplication rules by room type and category
+ * Defines how many copies of each product type should be rendered
+ */
+const DUPLICATION_RULES: Record<string, Record<string, { 
+  count: number | 'dynamic'; 
+  slots: string[];
+  descriptions: string[];
+}>> = {
+  'Dining Room': {
+    'dining_seating': {
+      count: 'dynamic', // Based on table size (4-6)
+      slots: ['head_table', 'opposite_head', 'left_1', 'left_2', 'right_1', 'right_2'],
+      descriptions: [
+        'at the head of the dining table',
+        'at the opposite end of the dining table',
+        'on the left side of the table, closest to head',
+        'on the left side of the table, toward middle',
+        'on the right side of the table, closest to head',
+        'on the right side of the table, toward middle'
+      ]
+    }
+  },
+  'Bedroom': {
+    'nightstand': {
+      count: 2,
+      slots: ['left_of_bed', 'right_of_bed'],
+      descriptions: [
+        'on the left side of the bed',
+        'on the right side of the bed'
+      ]
+    },
+    'lighting': {
+      count: 2, // Matching table lamps
+      slots: ['lamp_left', 'lamp_right'],
+      descriptions: [
+        'on the left nightstand',
+        'on the right nightstand'
+      ]
+    }
+  },
+  'Living Room': {
+    'side_table': {
+      count: 2,
+      slots: ['sofa_left', 'sofa_right'],
+      descriptions: [
+        'at the left end of the sofa',
+        'at the right end of the sofa'
+      ]
+    }
+  },
+  'Home Office': {
+    // No duplicates needed - most items are singular
+  }
+};
+
+/**
+ * Expand selected products into individual placement instances
+ * Handles duplication for items like dining chairs, nightstands, etc.
+ */
+export function expandProductsToInstances(
+  products: Product[],
+  roomType: string,
+  spaceProfile: SpaceProfile
+): ProductInstance[] {
+  const instances: ProductInstance[] = [];
+  const roomRules = DUPLICATION_RULES[roomType] || {};
+  
+  console.log(`\n🔢 PRODUCT DUPLICATION: Expanding ${products.length} products for ${roomType}`);
+  
+  for (const product of products) {
+    const categories = detectFunctionalCategory(product);
+    let duplicated = false;
+    
+    // Check if this product category needs duplication
+    for (const category of categories) {
+      const rule = roomRules[category];
+      
+      if (rule) {
+        // Determine count (dynamic or fixed)
+        let count = typeof rule.count === 'number' ? rule.count : 4; // Default 4 for dining
+        
+        // For dynamic counts (dining chairs), adjust based on space
+        if (rule.count === 'dynamic' && category === 'dining_seating') {
+          if (spaceProfile.tier === 'small') {
+            count = 4;
+          } else if (spaceProfile.tier === 'medium') {
+            count = 4;
+          } else if (spaceProfile.tier === 'large') {
+            count = 6;
+          } else {
+            count = 6;
+          }
+        }
+        
+        // Create instances for each copy
+        const actualCount = Math.min(count, rule.slots.length);
+        console.log(`   📋 ${product.name}: Creating ${actualCount} instances (${category})`);
+        
+        for (let i = 0; i < actualCount; i++) {
+          instances.push({
+            product,
+            instanceId: `${product.sku}_${i + 1}`,
+            instanceNumber: i + 1,
+            totalInstances: actualCount,
+            placementSlot: rule.slots[i],
+            placementDescription: rule.descriptions[i] || `position ${i + 1}`
+          });
+        }
+        
+        duplicated = true;
+        break; // Only apply first matching rule
+      }
+    }
+    
+    // No duplication rule - single instance
+    if (!duplicated) {
+      instances.push({
+        product,
+        instanceId: `${product.sku}_1`,
+        instanceNumber: 1,
+        totalInstances: 1,
+        placementSlot: 'default',
+        placementDescription: getDefaultPlacementDescription(product, roomType)
+      });
+    }
+  }
+  
+  console.log(`   ✅ Expanded ${products.length} products → ${instances.length} placement instances`);
+  return instances;
+}
+
+/**
+ * Get default placement description for a product based on its category
+ */
+function getDefaultPlacementDescription(product: Product, roomType: string): string {
+  const categories = detectFunctionalCategory(product);
+  const primaryCategory = categories[0] || 'decor';
+  
+  const descriptions: Record<string, Record<string, string>> = {
+    'Living Room': {
+      'primary_seating': 'centered against the main wall',
+      'coffee_table': 'centered in front of the sofa',
+      'accent_seating': 'angled toward the sofa for conversation',
+      'storage': 'against the wall opposite the seating area',
+      'lighting': 'in the corner near the seating area',
+      'decor': 'on the coffee table or side table',
+      'console_table': 'against the side wall or entry area'
+    },
+    'Bedroom': {
+      'bed': 'centered against the main wall',
+      'dresser': 'against the wall opposite the bed',
+      'accent_seating': 'in the corner or at the foot of the bed',
+      'storage': 'against a side wall',
+      'decor': 'on the dresser or nightstand'
+    },
+    'Dining Room': {
+      'dining_table': 'centered in the room',
+      'storage': 'against the wall for serving and storage',
+      'lighting': 'centered above the dining table',
+      'decor': 'on the sideboard or as table centerpiece'
+    },
+    'Home Office': {
+      'desk': 'against the wall with good lighting',
+      'office_seating': 'at the desk',
+      'storage': 'next to or behind the desk',
+      'accent_seating': 'for guests, facing the desk',
+      'lighting': 'on the desk for task lighting'
+    }
+  };
+  
+  return descriptions[roomType]?.[primaryCategory] || 'in an appropriate location';
+}
+
 // Room zone configurations for organized layouts
 // Based on professional interior design floor plans (PDF analysis)
 const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {

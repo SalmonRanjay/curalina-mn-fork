@@ -2700,6 +2700,488 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
   }
 }
 
+// =============================================================================
+// ONE-BY-ONE RENDERING PIPELINE - Maximum Accuracy Mode
+// =============================================================================
+// Each product is rendered individually for 100% accuracy on product-image match
+// Supports duplicate products (e.g., 4 dining chairs) with specific placement
+// =============================================================================
+
+import type { ProductInstance, SpaceProfile } from './room-composition-service';
+import { expandProductsToInstances, calculateSpaceTier } from './room-composition-service';
+
+interface OneByOneRenderParams {
+  roomImageUrl: string;
+  products: Product[];
+  roomType: string;
+  stylePreference?: string;
+  spaceProfile?: SpaceProfile;
+  onProgress?: (progress: RenderProgress) => void;
+}
+
+interface OneByOneRenderResult extends MultiStepRenderResult {
+  instancesRendered: number;
+  duplicatesCreated: number;
+}
+
+/**
+ * ONE-BY-ONE RENDER PIPELINE
+ * Renders each product instance individually for maximum accuracy
+ * 
+ * Pipeline:
+ * 1. Analyze room architecture
+ * 2. Expand products to instances (handles duplicates)
+ * 3. Lock room architecture (preserve walls, windows, etc.)
+ * 4. Render each product instance ONE AT A TIME
+ * 5. Final alignment pass with OpenAI
+ * 6. Validate render quality
+ */
+export async function generateOneByOneRender(params: OneByOneRenderParams): Promise<OneByOneRenderResult> {
+  const { roomImageUrl, products, roomType, stylePreference, spaceProfile, onProgress } = params;
+  
+  const style = stylePreference || 'Modern';
+  const room = roomType || 'living room';
+  
+  // Progress helper
+  const sendProgress = (progress: RenderProgress) => {
+    if (onProgress) {
+      try {
+        onProgress(progress);
+      } catch (e) {
+        console.warn('Progress callback error:', e);
+      }
+    }
+  };
+  
+  // Timing constants
+  const AVG_PRODUCT_TIME = 8; // seconds per product
+  
+  console.log(`\n🎯 ONE-BY-ONE RENDER PIPELINE (Maximum Accuracy)`);
+  console.log(`   Room type: ${room}`);
+  console.log(`   Style: ${style}`);
+  console.log(`   Products: ${products.length}`);
+  
+  // STEP 1: Limit and sort products
+  const lampsLimited = limitLamps(products);
+  const productsLimited = limitProducts(lampsLimited);
+  const sortedProducts = orderProductsForBatching(productsLimited);
+  
+  // STEP 2: Expand products to instances (handles duplicates)
+  const profile = spaceProfile || calculateSpaceTier(null, null);
+  const instances = expandProductsToInstances(sortedProducts, room, profile);
+  
+  const uniqueProductCount = new Set(instances.map(i => i.product.sku)).size;
+  const duplicatesCreated = instances.length - uniqueProductCount;
+  
+  console.log(`   Instances to render: ${instances.length} (${duplicatesCreated} duplicates)`);
+  
+  const allProductsSentToAI: string[] = [];
+  let stepsCompleted = 0;
+  const totalSteps = instances.length + 2; // Analysis + Lock + Products
+  
+  try {
+    // ========================================
+    // STEP 1: Fetch original room image
+    // ========================================
+    console.log(`\n📸 Fetching original room image...`);
+    const trueOriginalRoom = await fetchImageAsBase64(roomImageUrl);
+    if (!trueOriginalRoom) {
+      sendProgress({ stage: 'error', stageLabel: 'Failed to load room image', currentStep: 0, totalSteps, percentComplete: 0 });
+      return {
+        success: false, error: 'Failed to fetch original room image',
+        productsUsed: 0, productsSentToAI: [], stepsCompleted: 0, totalSteps,
+        instancesRendered: 0, duplicatesCreated: 0
+      };
+    }
+    const trueOriginalBase64 = `data:${trueOriginalRoom.mimeType};base64,${trueOriginalRoom.data}`;
+    console.log(`   ✅ Original room loaded`);
+    
+    // ========================================
+    // STEP 2: Analyze room architecture
+    // ========================================
+    sendProgress({
+      stage: 'analyzing',
+      stageLabel: 'Analyzing room architecture...',
+      currentStep: 1,
+      totalSteps,
+      percentComplete: 5
+    });
+    
+    const roomAnalysisResult = await analyzeRoomWithGeminiVision(trueOriginalBase64);
+    const roomArchitectureAnalysis = roomAnalysisResult.architectureDescription;
+    const isEmptyRoom = roomAnalysisResult.isEmptyRoom || false;
+    
+    console.log(`   ✅ Room analyzed: ${isEmptyRoom ? 'Empty room' : 'Furnished room'}`);
+    
+    // ========================================
+    // STEP 3: Room Lock Pass (if needed)
+    // ========================================
+    let currentAnchor: string;
+    
+    if (isEmptyRoom) {
+      console.log(`\n📍 Room Lock: SKIPPED (empty room)`);
+      currentAnchor = trueOriginalBase64;
+    } else {
+      console.log(`\n📍 Room Lock: Preserving architecture...`);
+      sendProgress({
+        stage: 'locking',
+        stageLabel: 'Preparing room for new furniture...',
+        currentStep: 1,
+        totalSteps,
+        percentComplete: 10
+      });
+      
+      const roomLockResult = await executeRoomLockPass(roomImageUrl, style, room);
+      if (!roomLockResult.success || !roomLockResult.imageBase64) {
+        return {
+          success: false, error: 'Room lock pass failed',
+          productsUsed: 0, productsSentToAI: [], stepsCompleted: 0, totalSteps,
+          instancesRendered: 0, duplicatesCreated: 0
+        };
+      }
+      currentAnchor = roomLockResult.imageBase64;
+      console.log(`   ✅ Room locked`);
+    }
+    stepsCompleted = 1;
+    
+    // ========================================
+    // STEP 4: Render each product instance ONE BY ONE
+    // ========================================
+    console.log(`\n🔄 RENDERING ${instances.length} PRODUCT INSTANCES ONE-BY-ONE:`);
+    
+    for (let i = 0; i < instances.length; i++) {
+      const instance = instances[i];
+      const stepNum = i + 2; // After analysis + lock
+      
+      const progressLabel = instance.totalInstances > 1
+        ? `Placing ${instance.product.name} (${instance.instanceNumber}/${instance.totalInstances})...`
+        : `Placing ${instance.product.name}...`;
+      
+      console.log(`\n📦 INSTANCE ${i + 1}/${instances.length}: ${instance.product.name}`);
+      console.log(`   Placement: ${instance.placementDescription}`);
+      
+      sendProgress({
+        stage: 'batch',
+        stageLabel: progressLabel,
+        currentStep: stepNum,
+        totalSteps,
+        percentComplete: Math.round(15 + ((i + 0.5) / instances.length) * 70),
+        currentBatch: i + 1,
+        totalBatches: instances.length,
+        productsInBatch: [instance.product.name]
+      });
+      
+      // Render this single instance
+      const singleResult = await executeSingleProductPass(
+        currentAnchor,
+        instance,
+        style,
+        room,
+        roomArchitectureAnalysis
+      );
+      
+      if (!singleResult.success || !singleResult.imageBase64) {
+        console.log(`   ⚠️ Failed to place ${instance.product.name}, continuing...`);
+        continue;
+      }
+      
+      // Update anchor for next product
+      currentAnchor = singleResult.imageBase64;
+      allProductsSentToAI.push(instance.product.sku);
+      stepsCompleted++;
+      
+      console.log(`   ✅ ${instance.product.name} placed successfully`);
+    }
+    
+    console.log(`\n✅ PRODUCT PLACEMENT COMPLETE: ${allProductsSentToAI.length}/${instances.length} instances`);
+    
+    // ========================================
+    // STEP 5: Final Alignment Pass (OpenAI)
+    // ========================================
+    let finalImage = currentAnchor;
+    
+    if (allProductsSentToAI.length > 0) {
+      console.log(`\n🎯 FINAL ALIGNMENT PASS (OpenAI)...`);
+      sendProgress({
+        stage: 'aligning',
+        stageLabel: 'Compositing furniture into space...',
+        currentStep: totalSteps - 1,
+        totalSteps,
+        percentComplete: 90
+      });
+      
+      const productNames = instances.map(i => i.product.name);
+      const alignmentResult = await executeFinalAlignmentPassOpenAI(
+        trueOriginalBase64,
+        currentAnchor,
+        roomArchitectureAnalysis,
+        productNames
+      );
+      
+      if (alignmentResult.success && alignmentResult.imageBase64) {
+        finalImage = alignmentResult.imageBase64;
+        console.log(`   ✅ Final alignment complete`);
+      } else {
+        console.log(`   ⚠️ Alignment failed, using pre-alignment render`);
+      }
+    }
+    
+    // ========================================
+    // STEP 6: Validate render quality
+    // ========================================
+    let validation: RenderValidation | undefined;
+    
+    if (allProductsSentToAI.length > 0 && finalImage) {
+      sendProgress({
+        stage: 'validating',
+        stageLabel: 'Checking design quality...',
+        currentStep: totalSteps,
+        totalSteps,
+        percentComplete: 95
+      });
+      
+      try {
+        validation = await validateRender(finalImage, allProductsSentToAI, trueOriginalBase64);
+        console.log(`   ✅ Validation: ${validation.overallScore}/100`);
+      } catch (e) {
+        console.warn('   ⚠️ Validation skipped:', e);
+      }
+    }
+    
+    sendProgress({
+      stage: 'complete',
+      stageLabel: 'Design complete!',
+      currentStep: totalSteps,
+      totalSteps,
+      percentComplete: 100
+    });
+    
+    console.log(`\n✅ ONE-BY-ONE RENDER COMPLETE`);
+    console.log(`   Products rendered: ${allProductsSentToAI.length}`);
+    console.log(`   Instances placed: ${allProductsSentToAI.length}/${instances.length}`);
+    console.log(`   Duplicates: ${duplicatesCreated}`);
+    
+    return {
+      success: true,
+      imageBase64: finalImage,
+      productsUsed: allProductsSentToAI.length,
+      productsSentToAI: allProductsSentToAI,
+      stepsCompleted,
+      totalSteps,
+      instancesRendered: allProductsSentToAI.length,
+      duplicatesCreated,
+      validation
+    };
+    
+  } catch (error) {
+    console.error(`❌ One-by-one render error:`, error);
+    sendProgress({ stage: 'error', stageLabel: 'An error occurred', currentStep: stepsCompleted, totalSteps, percentComplete: 0 });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      productsUsed: allProductsSentToAI.length,
+      productsSentToAI: allProductsSentToAI,
+      stepsCompleted,
+      totalSteps,
+      instancesRendered: allProductsSentToAI.length,
+      duplicatesCreated
+    };
+  }
+}
+
+/**
+ * Execute a single product placement pass
+ * Renders ONE product at a time with specific placement instructions
+ */
+async function executeSingleProductPass(
+  anchorImage: string,
+  instance: ProductInstance,
+  style: string,
+  room: string,
+  roomArchitecture: string
+): Promise<{ success: boolean; imageBase64?: string; error?: string; productSku?: string }> {
+  try {
+    const product = instance.product;
+    
+    // Get product image
+    const productImageRef = selectSingleProductImage(product);
+    if (!productImageRef) {
+      return { success: false, error: `No valid image for ${product.name}` };
+    }
+    
+    const productImage = await fetchImageAsBase64(productImageRef.url);
+    if (!productImage) {
+      return { success: false, error: `Failed to fetch image for ${product.name}` };
+    }
+    
+    // Build specific placement prompt
+    const placementPrompt = buildSingleProductPrompt(instance, style, room, roomArchitecture);
+    
+    // Extract anchor image data
+    const anchorMatch = anchorImage.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!anchorMatch) {
+      return { success: false, error: 'Invalid anchor image format' };
+    }
+    const anchorMimeType = anchorMatch[1];
+    const anchorData = anchorMatch[2];
+    
+    // Build parts for Gemini
+    const parts = [
+      { text: placementPrompt },
+      { text: 'The current room state:' },
+      { inlineData: { data: anchorData, mimeType: anchorMimeType } },
+      { text: `The ${product.name} to add (${productImageRef.viewType} view):` },
+      { inlineData: { data: productImage.data, mimeType: productImage.mimeType } }
+    ];
+    
+    // Call Gemini
+    console.log(`   Calling Gemini for ${product.name}...`);
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts
+      }],
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      }
+    });
+    
+    // Extract image from response
+    if (!response.candidates || response.candidates.length === 0) {
+      return { success: false, error: 'No response from Gemini' };
+    }
+    
+    const candidate = response.candidates[0];
+    if (!candidate.content?.parts) {
+      return { success: false, error: 'No content parts in response' };
+    }
+    
+    // Find image in response parts
+    let imageData: string | undefined;
+    for (const part of candidate.content.parts) {
+      if (part.inlineData?.data && part.inlineData?.mimeType?.startsWith('image/')) {
+        const mimeType = part.inlineData.mimeType;
+        imageData = `data:${mimeType};base64,${part.inlineData.data}`;
+        break;
+      }
+    }
+    
+    if (!imageData) {
+      return { success: false, error: 'No image in response' };
+    }
+    
+    return {
+      success: true,
+      imageBase64: imageData,
+      productSku: product.sku
+    };
+    
+  } catch (error) {
+    console.error(`Error placing ${instance.product.name}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Select the best image for a single product
+ * Uses the same logic as selectBestProductImage but returns structured data
+ */
+function selectSingleProductImage(product: Product): { url: string; viewType: string } | null {
+  if (!product.images || !Array.isArray(product.images) || product.images.length === 0) {
+    return null;
+  }
+  
+  const images = product.images.filter(img => img && typeof img === 'string' && img.trim().length > 0);
+  if (images.length === 0) return null;
+  
+  // Helper to check URL for view type
+  const urlContains = (url: string, patterns: string[]) => {
+    const lowerUrl = url.toLowerCase();
+    return patterns.some(p => lowerUrl.includes(p));
+  };
+  
+  const viewPatterns = {
+    front: ['front%20view', 'front_view', 'front view', 'frontview', 'front-view'],
+    side: ['side%20view', 'side_view', 'side view', 'sideview', 'side-view', 'profile'],
+    angle: ['angle%20view', 'angle_view', 'angle view', 'angleview', '3-4', '3_4', 'three-quarter', 'angled']
+  };
+  
+  // Priority: Front View → Angle View → Side View → Any valid image
+  const frontView = images.find(url => urlContains(url, viewPatterns.front));
+  if (frontView && isValidImageUrl(frontView)) {
+    return { url: frontView, viewType: 'front' };
+  }
+  
+  const angleView = images.find(url => urlContains(url, viewPatterns.angle));
+  if (angleView && isValidImageUrl(angleView)) {
+    return { url: angleView, viewType: 'angle' };
+  }
+  
+  const sideView = images.find(url => urlContains(url, viewPatterns.side));
+  if (sideView && isValidImageUrl(sideView)) {
+    return { url: sideView, viewType: 'side' };
+  }
+  
+  // Fall back to first valid image
+  const firstValid = images.find(url => isValidImageUrl(url));
+  if (firstValid) {
+    return { url: firstValid, viewType: 'unknown' };
+  }
+  
+  return null;
+}
+
+/**
+ * Build a specific prompt for placing a single product instance
+ */
+function buildSingleProductPrompt(
+  instance: ProductInstance,
+  style: string,
+  room: string,
+  roomArchitecture: string
+): string {
+  const product = instance.product;
+  
+  // Build dimensions string
+  const dims = product.dimensions as Record<string, number> | null;
+  const dimStr = dims 
+    ? `${dims.width || dims.W || '?'}"W x ${dims.depth || dims.D || '?'}"D x ${dims.height || dims.H || '?'}"H`
+    : 'standard size';
+  
+  // Instance-specific placement
+  const instanceInfo = instance.totalInstances > 1
+    ? `This is instance ${instance.instanceNumber} of ${instance.totalInstances}. Place it ${instance.placementDescription}.`
+    : `Place this item ${instance.placementDescription}.`;
+  
+  return `ADD ONE FURNITURE PIECE to this ${style} ${room}.
+
+ROOM ARCHITECTURE (PRESERVE EXACTLY):
+${roomArchitecture}
+
+PRODUCT TO ADD:
+- Name: ${product.name}
+- Dimensions: ${dimStr}
+- Color: ${product.colors?.join(', ') || 'neutral'}
+- Material: ${product.materials?.join(', ') || 'as shown'}
+
+PLACEMENT INSTRUCTION:
+${instanceInfo}
+
+CRITICAL RULES:
+1. Add ONLY this one product - do not add anything else
+2. Keep the product's exact appearance from the reference image
+3. Scale correctly for ${room} proportions
+4. Preserve all room architecture (walls, windows, floors, existing furniture)
+5. Natural lighting and shadows
+6. Product should look like it belongs in this space
+
+Output: The room with this ONE new furniture piece added.`;
+}
+
 /**
  * Step 1: Room Lock Pass
  * Sends just the room image to establish a baseline with preserved architecture

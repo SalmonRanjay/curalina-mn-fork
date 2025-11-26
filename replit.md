@@ -63,6 +63,19 @@ The application uses Replit's Object Storage (backed by Google Cloud Storage) fo
 - **Room Dimension Parsing**: Enhanced parser handles various formats (18' x 14', "18 feet long", "approximately 18ft by 14ft") with strict patterns to avoid false positives
 - **Zone Placement Consistency**: Product selection runs once; placements are reused after floor plan analysis to prevent mismatch between selected products and zone assignments
 
+### Sequential One-by-One Rendering
+The platform now supports a sequential rendering pipeline (`POST /api/render/sequential`) for maximum product-image accuracy:
+- **ProductInstance System**: Products are expanded to individual instances with `expandProductsToInstances()`, enabling product duplication (e.g., 4 dining chairs, 2 nightstands, matching lamps)
+- **Room Templates**: Predefined templates specify duplication rules per room type (e.g., dining_seating: max 8, nightstand: max 2, accent_lighting: max 2)
+- **Dynamic Product Count**: Up to 8 product instances per render, adjusted based on room dimensions
+- **Pipeline Steps**:
+    1. Room lock pass (preserve architecture)
+    2. Individual product placement (one at a time with specific zone instructions)
+    3. Final alignment pass (OpenAI gpt-image-1 for compositing)
+    4. Quality validation
+- **Progress Tracking**: Real-time progress updates via render record metadata for frontend polling
+- **Key Functions**: `generateOneByOneRender()`, `executeSingleProductPass()`, `buildSingleProductPrompt()`
+
 ## External Dependencies
 
 - **Authentication**: Replit OIDC provider

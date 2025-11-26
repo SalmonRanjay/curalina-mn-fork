@@ -1992,8 +1992,9 @@ export function registerCuralinaRoutes(app: Express) {
           
           // Parse seating count from quiz response for dining room chair multiplication
           let seatingCount: number | undefined;
-          if (quiz.seating && quiz.roomType?.toLowerCase().includes('dining')) {
-            const seatingText = quiz.seating.toString().toLowerCase();
+          const parsedData = quiz.parsedRoomData as { seating?: string | number } | null;
+          if (parsedData?.seating && quiz.roomType?.toLowerCase().includes('dining')) {
+            const seatingText = parsedData.seating.toString().toLowerCase();
             
             // Map spelled-out numbers (includes teens) - ordered from highest to lowest for proper matching
             const wordToNum: Array<[string, number]> = [
@@ -2030,7 +2031,7 @@ export function registerCuralinaRoutes(app: Express) {
             }
             
             if (seatingCount) {
-              console.log(`🪑 Dining room seating count: ${seatingCount} chairs (parsed from "${quiz.seating}")`);
+              console.log(`🪑 Dining room seating count: ${seatingCount} chairs (parsed from "${parsedData.seating}")`);
             }
           }
           
@@ -2505,6 +2506,202 @@ export function registerCuralinaRoutes(app: Express) {
     } catch (error) {
       console.error("Error creating image-only render:", error);
       res.status(500).json({ error: "Failed to create image-only render" });
+    }
+  });
+
+  // ONE-BY-ONE rendering endpoint - Sequential product placement for maximum accuracy
+  // Renders each product instance individually with product duplication support
+  app.post('/api/render/sequential', async (req, res) => {
+    try {
+      const { roomImageUrl, productSkus, quizResponseId, sessionId, roomType, style, spaceProfile } = req.body;
+      
+      if (!roomImageUrl) {
+        return res.status(400).json({ error: "roomImageUrl is required for sequential rendering" });
+      }
+      
+      if (!productSkus || productSkus.length === 0) {
+        return res.status(400).json({ error: "productSkus array is required" });
+      }
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: "sessionId is required" });
+      }
+      
+      console.log(`\n🔢 ONE-BY-ONE SEQUENTIAL RENDER REQUEST`);
+      console.log(`   Room image: ${roomImageUrl}`);
+      console.log(`   Products: ${productSkus.length} SKUs`);
+      console.log(`   Room type: ${roomType || 'not specified'}`);
+      console.log(`   Style: ${style || 'not specified'}`);
+      
+      // Fetch products by SKUs
+      const allProducts = await curalinaStorage.getAllProducts();
+      const selectedProducts = allProducts.filter(p => productSkus.includes(p.sku));
+      
+      if (selectedProducts.length === 0) {
+        return res.status(404).json({ error: "No matching products found for provided SKUs" });
+      }
+      
+      console.log(`✅ Found ${selectedProducts.length}/${productSkus.length} products`);
+      
+      // Create render record
+      const render = await curalinaStorage.createRender({
+        quizResponseId: quizResponseId || null,
+        sessionId,
+        prompt: `Sequential one-by-one render: ${roomType || 'room'} in ${style || 'modern'} style`,
+        productSkus,
+        status: "generating",
+      });
+      
+      // Start async one-by-one generation
+      (async () => {
+        try {
+          const { generateOneByOneRender, generateMultiStepRender } = await import('./services/gemini-image-only-render');
+          
+          // Track current metadata to merge updates (don't overwrite)
+          let currentMetadata: Record<string, unknown> = {};
+          
+          // Progress callback to update render record (MERGES instead of overwrites)
+          const onProgress = async (progress: {
+            stage: string;
+            stageLabel?: string;
+            percentComplete: number;
+            currentStep: number;
+            totalSteps: number;
+            currentBatch?: number;
+            totalBatches?: number;
+            productsInBatch?: string[];
+          }) => {
+            try {
+              // Merge progress into existing metadata
+              currentMetadata = {
+                ...currentMetadata,
+                progressStage: progress.stage,
+                progressLabel: progress.stageLabel,
+                progressPercent: progress.percentComplete,
+                currentStep: progress.currentStep,
+                totalSteps: progress.totalSteps,
+                currentBatch: progress.currentBatch,
+                totalBatches: progress.totalBatches,
+                productsInBatch: progress.productsInBatch,
+              };
+              await curalinaStorage.updateRender(render.id, {
+                productMetadata: currentMetadata
+              });
+            } catch (e) {
+              console.warn('Progress update failed:', e);
+            }
+          };
+          
+          // Call one-by-one rendering service
+          let result = await generateOneByOneRender({
+            roomImageUrl,
+            products: selectedProducts,
+            roomType: roomType || 'living room',
+            stylePreference: style,
+            spaceProfile,
+            onProgress
+          });
+          
+          // Fallback to multi-step if sequential fails with products
+          if (!result.success && selectedProducts.length > 0) {
+            console.log(`⚠️ Sequential render failed, falling back to multi-step pipeline...`);
+            const multiResult = await generateMultiStepRender({
+              roomImageUrl,
+              products: selectedProducts,
+              roomType: roomType || 'living room',
+              stylePreference: style,
+              onProgress
+            });
+            result = {
+              ...multiResult,
+              instancesRendered: multiResult.productsUsed,
+              duplicatesCreated: 0
+            };
+          }
+          
+          if (!result.success || !result.imageBase64) {
+            throw new Error(result.error || 'Sequential generation failed');
+          }
+          
+          console.log(`✅ Sequential render generated`);
+          console.log(`   Products used: ${result.productsUsed}`);
+          console.log(`   Instances rendered: ${result.instancesRendered}`);
+          console.log(`   Duplicates created: ${result.duplicatesCreated}`);
+          
+          // Extract base64 data and MIME type from data URL
+          const base64Match = result.imageBase64.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (!base64Match) {
+            throw new Error("Invalid image data format");
+          }
+          const mimeType = base64Match[1];
+          const base64Data = base64Match[2];
+          
+          // Convert to buffer for storage
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+          
+          // Upload to object storage
+          const fileExtension = mimeType === 'image/jpeg' ? 'jpg' : 'png';
+          const imageName = `render-${render.id}-sequential.${fileExtension}`;
+          
+          const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+          const publicDir = publicPaths[0];
+          const objectPath = `${publicDir}/renders/${imageName}`;
+          
+          const { bucketName, objectName } = parseObjectPath(objectPath);
+          const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          
+          await file.save(imageBuffer, {
+            metadata: {
+              contentType: mimeType,
+            },
+          });
+          
+          const imageUrl = `/public-objects/renders/${imageName}`;
+          
+          // Update render with success (merge metadata to preserve any existing data)
+          currentMetadata = {
+            ...currentMetadata,
+            progressStage: 'complete',
+            progressPercent: 100,
+            instancesRendered: result.instancesRendered,
+            duplicatesCreated: result.duplicatesCreated,
+            stepsCompleted: result.stepsCompleted,
+            totalSteps: result.totalSteps
+          };
+          
+          await curalinaStorage.updateRender(render.id, {
+            status: 'completed',
+            imageUrl,
+            productSkus: result.productsSentToAI,
+            qaResults: result.validation ? {
+              overallScore: result.validation.overallScore,
+              isValid: result.validation.isValid,
+              productsPlaced: result.validation.productsPlaced,
+              missingProducts: result.validation.missingProducts,
+              issues: result.validation.issues
+            } : null,
+            productMetadata: currentMetadata
+          });
+          
+          console.log(`✅ Sequential render ${render.id} completed successfully`);
+          
+        } catch (error) {
+          console.error("Sequential generation error:", error);
+          
+          await curalinaStorage.updateRender(render.id, {
+            status: 'failed',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      })();
+      
+      // Return render immediately (generation happens async)
+      res.json(render);
+      
+    } catch (error) {
+      console.error("Error creating sequential render:", error);
+      res.status(500).json({ error: "Failed to create sequential render" });
     }
   });
 
