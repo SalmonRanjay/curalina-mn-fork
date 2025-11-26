@@ -972,57 +972,61 @@ const ROOM_ZONES: Record<string, ZoneBlueprint[]> = {
 // Based on professional interior design packages (see PDF analysis)
 const ROOM_TEMPLATES = {
   'Living Room': {
-    // Pattern from PDF: 1 sofa, 1 coffee table, 1-2 accent chairs, 0-1 side table, 0-1 storage, 0-1 lamp, 0-1 decor
+    // Full design: 7-8 products for a complete, cohesive living space
+    // Pattern: 1 sofa, 1 coffee table, 1-2 accent chairs, 1 side table, 1 storage, 1 lamp, 1 decor
     essentials: {
       'primary_seating': { min: 1, max: 1, priority: 1 }, // REQUIRED: 1 Sofa/Sectional (anchor piece)
       'coffee_table': { min: 1, max: 1, priority: 2 }, // REQUIRED: Center table
       'accent_seating': { min: 1, max: 2, priority: 3 }, // REQUIRED: 1-2 accent chairs/ottomans/stools
     },
     complementary: {
-      'side_table': { min: 0, max: 1, priority: 4 }, // Optional: 0-1 side/end table
-      'storage': { min: 0, max: 1, priority: 5 }, // Optional: Sideboard/cabinet
-      'lighting': { min: 0, max: 1, priority: 6 }, // Optional: 0-1 floor lamp
-      'decor': { min: 0, max: 1, priority: 7 }, // Optional: 0-1 pillow/rug/art
+      'side_table': { min: 1, max: 2, priority: 4 }, // 1-2 side/end tables for functional balance
+      'storage': { min: 1, max: 1, priority: 5 }, // Console table, sideboard, or bookshelf
+      'lighting': { min: 1, max: 2, priority: 6 }, // 1-2 floor/table lamps for ambiance
+      'decor': { min: 1, max: 1, priority: 7 }, // Rug, mirror, or accent piece
     }
   },
   'Bedroom': {
-    // Pattern: 1 bed (anchor), 1-2 nightstands, 1-2 table lamps, 0-1 dresser, 0-1 seating, 0-1 decor
+    // Full design: 7-8 products for a complete, restful bedroom
+    // Pattern: 1 bed, 2 nightstands, 2 table lamps, 1 dresser, 1 seating, 1 decor
     essentials: {
-      'bed': { min: 1, max: 1, priority: 1 }, // REQUIRED: Bed (anchor piece, 40% budget)
+      'bed': { min: 1, max: 1, priority: 1 }, // REQUIRED: Bed (anchor piece)
       'nightstand': { min: 1, max: 2, priority: 2 }, // REQUIRED: Symmetric pair preferred
       'lighting': { min: 1, max: 2, priority: 3 }, // REQUIRED: Bedside table lamps
     },
     complementary: {
-      'dresser': { min: 0, max: 1, priority: 4 }, // Optional: Dresser/chest
-      'storage': { min: 0, max: 1, priority: 5 }, // Optional: Wardrobe/armoire
-      'accent_seating': { min: 0, max: 1, priority: 6 }, // Optional: Bench or reading chair
-      'decor': { min: 0, max: 1, priority: 7 }, // Optional: Rug, mirror, or wall art
+      'dresser': { min: 1, max: 1, priority: 4 }, // Dresser/chest for storage
+      'storage': { min: 0, max: 1, priority: 5 }, // Optional: Wardrobe/armoire if space allows
+      'accent_seating': { min: 1, max: 1, priority: 6 }, // Bench at foot of bed or reading chair
+      'decor': { min: 1, max: 1, priority: 7 }, // Rug, mirror, or wall art
     }
   },
   'Dining Room': {
-    // Pattern: 1 table (anchor), 1-2 chair PRODUCTS (AI renders multiple copies), 0-1 sideboard, 1 chandelier, 0-1 rug
+    // Full design: 6-7 products for an elegant dining experience
+    // Pattern: 1 table, 1-2 chair styles, 1 chandelier, 1 sideboard, 1-2 decor
     essentials: {
-      'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table (anchor, 35% budget)
-      'dining_seating': { min: 1, max: 2, priority: 2 }, // Select 1-2 chair products; AI renders multiple copies based on quiz seating count
+      'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table (anchor)
+      'dining_seating': { min: 1, max: 2, priority: 2 }, // 1-2 chair products; AI renders multiple copies
       'lighting': { min: 1, max: 1, priority: 3 }, // REQUIRED: Chandelier/pendant over table
     },
     complementary: {
-      'storage': { min: 0, max: 1, priority: 4 }, // Optional: Buffet/sideboard
-      'decor': { min: 0, max: 1, priority: 5 }, // Optional: Rug or centerpiece
+      'storage': { min: 1, max: 1, priority: 4 }, // Buffet/sideboard for dishes and serving
+      'decor': { min: 1, max: 2, priority: 5 }, // Rug, centerpiece, wall art, or mirror
     }
   },
   'Home Office': {
-    // Pattern: 1 desk (anchor), 1 office chair, 1-2 storage, 1 task lamp, 0-1 guest seating
+    // Full design: 7-8 products for a productive workspace
+    // Pattern: 1 desk, 1 chair, 2 storage, 1-2 lamps, 1 guest seating, 1 decor
     essentials: {
-      'desk': { min: 1, max: 1, priority: 1 }, // REQUIRED: Desk (anchor, 35% budget)
+      'desk': { min: 1, max: 1, priority: 1 }, // REQUIRED: Desk (anchor)
       'office_seating': { min: 1, max: 1, priority: 2 }, // REQUIRED: Ergonomic chair
       'storage': { min: 1, max: 2, priority: 3 }, // REQUIRED: Bookshelves/filing
-      'lighting': { min: 1, max: 1, priority: 4 }, // REQUIRED: Task lamp
+      'lighting': { min: 1, max: 2, priority: 4 }, // REQUIRED: Task lamp + ambient
     },
     complementary: {
-      'accent_seating': { min: 0, max: 1, priority: 5 }, // Optional: Guest chair
-      'side_table': { min: 0, max: 1, priority: 6 }, // Optional: Side table for guest area
-      'decor': { min: 0, max: 1, priority: 7 }, // Optional: Rug or wall art
+      'accent_seating': { min: 1, max: 1, priority: 5 }, // Guest chair for meetings
+      'side_table': { min: 1, max: 1, priority: 6 }, // Side table for guest area
+      'decor': { min: 1, max: 1, priority: 7 }, // Rug, plant, or wall art
     }
   }
 };
