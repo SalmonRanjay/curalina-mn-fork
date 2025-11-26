@@ -33,6 +33,23 @@ Core architectural decisions include:
 ### Data Storage
 PostgreSQL via Neon serverless driver using Drizzle ORM is the primary database, with Google Cloud Storage for user uploads and AWS S3 for product images.
 
+### Object Storage Configuration
+The application uses Replit's Object Storage (backed by Google Cloud Storage) for user-uploaded images (room photos, floorplans, inspiration images). Key configuration:
+- **Health Check Endpoint**: `GET /api/health/storage` - Returns storage configuration status and connection test results
+- **Upload Endpoint**: `POST /api/upload` - Handles file uploads with detailed error logging
+- **Public Assets**: Served via `/public-objects/:filePath` route
+- **Environment Variables Required**: `PUBLIC_OBJECT_SEARCH_PATHS`, `PRIVATE_OBJECT_DIR`, `DEFAULT_OBJECT_STORAGE_BUCKET_ID`
+
+**Production Considerations**: The object storage uses Replit's sidecar authentication (`http://127.0.0.1:1106`). If uploads fail in production with permission errors, verify that:
+1. The deployment has proper access to the storage bucket
+2. Environment variables are correctly set in the production environment
+3. Check `/api/health/storage` endpoint for diagnostic information
+
+### Quiz System
+- Quiz always starts at step 1 when entering the quiz page (preserves data but resets step)
+- Quiz data (preferences, room type, styles) is persisted in localStorage for convenience
+- Step restoration was removed to ensure fresh quiz starts for returning users
+
 ## External Dependencies
 
 - **Authentication**: Replit OIDC provider

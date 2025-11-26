@@ -87,6 +87,62 @@ function transformProductsImages(products: any[]) {
 }
 
 export function registerCuralinaRoutes(app: Express) {
+  // Health check endpoint for object storage (useful for diagnosing production issues)
+  app.get('/api/health/storage', async (req, res) => {
+    try {
+      const publicPaths = process.env.PUBLIC_OBJECT_SEARCH_PATHS;
+      const privateDir = process.env.PRIVATE_OBJECT_DIR;
+      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+      
+      const status: any = {
+        configured: !!(publicPaths && privateDir),
+        publicPathsCount: publicPaths ? publicPaths.split(',').length : 0,
+        privateDir: !!privateDir,
+        bucketId: !!bucketId,
+        environment: process.env.NODE_ENV || 'development',
+        ready: false
+      };
+      
+      // Check if basic configuration is missing
+      if (!status.configured) {
+        status.error = "Object storage not configured";
+        status.missingVars = [];
+        if (!publicPaths) status.missingVars.push('PUBLIC_OBJECT_SEARCH_PATHS');
+        if (!privateDir) status.missingVars.push('PRIVATE_OBJECT_DIR');
+        return res.status(503).json(status);
+      }
+      
+      // Try to validate configuration
+      try {
+        const paths = objectStorageService.getPublicObjectSearchPaths();
+        status.publicPathsCount = paths.length;
+        status.samplePath = paths[0];
+        
+        // Parse bucket info
+        const { bucketName, objectName } = parseObjectPath(paths[0]);
+        status.bucketName = bucketName;
+        status.objectPrefix = objectName;
+        
+        // Configuration is valid, mark as ready
+        // Note: bucket.exists() may fail with permission errors but uploads still work
+        // The sidecar has different permissions for different operations
+        status.ready = true;
+        res.json(status);
+      } catch (testError: any) {
+        status.ready = false;
+        status.error = "Object storage configuration error";
+        status.connectionError = testError.message;
+        return res.status(503).json(status);
+      }
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "Health check failed", 
+        details: error.message,
+        ready: false
+      });
+    }
+  });
+
   // Admin endpoints for categories, suppliers, products (protected)
   
   // Categories
@@ -1113,41 +1169,84 @@ export function registerCuralinaRoutes(app: Express) {
       const folder = req.body.folder || 'uploads';
       const uploadedUrls: string[] = [];
 
+      // Check if object storage is configured
+      let publicPaths: string[];
+      try {
+        publicPaths = objectStorageService.getPublicObjectSearchPaths();
+      } catch (configError: any) {
+        console.error("[Upload] Object storage configuration error:", configError.message);
+        console.error("[Upload] PUBLIC_OBJECT_SEARCH_PATHS:", process.env.PUBLIC_OBJECT_SEARCH_PATHS || "NOT SET");
+        return res.status(503).json({ 
+          error: "Object storage not configured", 
+          details: "PUBLIC_OBJECT_SEARCH_PATHS environment variable is not set"
+        });
+      }
+
+      const publicDir = publicPaths[0];
+      console.log(`[Upload] Using public directory: ${publicDir}`);
+
       // Upload each file to object storage
       for (const file of req.files) {
         // Sanitize filename: remove spaces and special characters
         const sanitizedName = file.originalname
           .toLowerCase()
-          .replace(/\s+/g, '-') // Replace spaces with hyphens
-          .replace(/[^a-z0-9.\-_]/g, ''); // Remove special characters
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9.\-_]/g, '');
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${sanitizedName}`;
-        
-        // Use public directory so files are accessible via /public-objects route
-        const publicPaths = objectStorageService.getPublicObjectSearchPaths();
-        const publicDir = publicPaths[0]; // Use first public path
         const objectPath = `${publicDir}/${folder}/${fileName}`;
+
+        console.log(`[Upload] Uploading file: ${file.originalname} -> ${objectPath}`);
 
         // Upload to object storage
         const { bucketName, objectName } = parseObjectPath(objectPath);
-        const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
-        const storageFile = bucket.file(objectName);
-
-        await storageFile.save(file.buffer, {
-          metadata: {
-            contentType: file.mimetype,
-          },
-        });
         
-        // URL encode the file path for proper browser handling
-        const encodedFileName = encodeURIComponent(fileName);
-        const publicUrl = `/public-objects/${folder}/${encodedFileName}`;
-        uploadedUrls.push(publicUrl);
+        try {
+          const bucket = (await import('./objectStorage')).objectStorageClient.bucket(bucketName);
+          const storageFile = bucket.file(objectName);
+
+          await storageFile.save(file.buffer, {
+            metadata: {
+              contentType: file.mimetype,
+            },
+          });
+          
+          console.log(`[Upload] Successfully uploaded: ${objectPath}`);
+          
+          // URL encode the file path for proper browser handling
+          const encodedFileName = encodeURIComponent(fileName);
+          const publicUrl = `/public-objects/${folder}/${encodedFileName}`;
+          uploadedUrls.push(publicUrl);
+        } catch (uploadError: any) {
+          console.error(`[Upload] Failed to upload file ${file.originalname}:`, uploadError.message);
+          console.error(`[Upload] Error details:`, {
+            code: uploadError.code,
+            status: uploadError.status,
+            bucket: bucketName,
+            object: objectName
+          });
+          throw uploadError;
+        }
       }
       
       res.json({ urls: uploadedUrls });
-    } catch (error) {
-      console.error("File upload error:", error);
-      res.status(500).json({ error: "Failed to upload files" });
+    } catch (error: any) {
+      console.error("[Upload] File upload error:", error.message || error);
+      console.error("[Upload] Full error:", error);
+      
+      // Return more specific error message
+      let errorMessage = "Failed to upload files";
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = "Object storage service unavailable - connection refused";
+      } else if (error.message?.includes('credentials')) {
+        errorMessage = "Object storage credentials error";
+      } else if (error.message?.includes('permission')) {
+        errorMessage = "Object storage permission denied";
+      }
+      
+      res.status(500).json({ 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 

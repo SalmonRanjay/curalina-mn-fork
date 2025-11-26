@@ -86,7 +86,10 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         const loadedData = parsed.data || INITIAL_QUIZ_DATA;
         const migratedData = migrateQuizData(loadedData);
         setQuizData(migratedData);
-        setCurrentStep(parsed.step || 1);
+        // ALWAYS start at step 1 when entering the quiz
+        // This ensures users start fresh instead of resuming from a previous session
+        // The quiz data (preferences) are kept for convenience
+        setCurrentStep(1);
       } catch (e) {
         console.error("Failed to load saved quiz progress:", e);
       }
