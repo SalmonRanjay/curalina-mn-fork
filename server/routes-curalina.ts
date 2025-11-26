@@ -1898,6 +1898,50 @@ export function registerCuralinaRoutes(app: Express) {
           
           console.log(`\n🎨 Starting render generation...`);
           
+          // Parse seating count from quiz response for dining room chair multiplication
+          let seatingCount: number | undefined;
+          if (quiz.seating && quiz.roomType?.toLowerCase().includes('dining')) {
+            const seatingText = quiz.seating.toString().toLowerCase();
+            
+            // Map spelled-out numbers (includes teens) - ordered from highest to lowest for proper matching
+            const wordToNum: Array<[string, number]> = [
+              ['twenty', 20], ['nineteen', 19], ['eighteen', 18], ['seventeen', 17],
+              ['sixteen', 16], ['fifteen', 15], ['fourteen', 14], ['thirteen', 13],
+              ['twelve', 12], ['eleven', 11], ['ten', 10], ['nine', 9], ['eight', 8],
+              ['seven', 7], ['six', 6], ['five', 5], ['four', 4], ['three', 3], ['two', 2]
+            ];
+            
+            // Tokenize the text and find spelled-out numbers using word boundaries
+            // This prevents "sixteen" from matching "six"
+            const foundWordNums: number[] = [];
+            const words = seatingText.split(/[\s,\-]+/); // Split on spaces, commas, hyphens
+            for (let token of words) {
+              // Strip leading/trailing punctuation (handles "fourteen.", "sixteen?", etc.)
+              token = token.replace(/^[^\w]+|[^\w]+$/g, '');
+              for (const [word, num] of wordToNum) {
+                if (token === word || token === word + 's') { // Handle "sixes" etc
+                  foundWordNums.push(num);
+                  break; // Only match once per token
+                }
+              }
+            }
+            if (foundWordNums.length > 0) {
+              seatingCount = Math.max(...foundWordNums);
+            }
+            
+            // Also parse numeric values and take the overall maximum
+            // Handles: "3-4 people", "4 to 6 seats", or mixed "four to 6"
+            const numericMatches = seatingText.match(/\d+/g);
+            if (numericMatches && numericMatches.length > 0) {
+              const maxNumeric = Math.max(...numericMatches.map(n => parseInt(n, 10)));
+              seatingCount = seatingCount ? Math.max(seatingCount, maxNumeric) : maxNumeric;
+            }
+            
+            if (seatingCount) {
+              console.log(`🪑 Dining room seating count: ${seatingCount} chairs (parsed from "${quiz.seating}")`);
+            }
+          }
+          
           // Use MULTI-STEP pipeline for better quality when we have a room image
           // Multi-step: 1) Lock room structure, 2) Add products in small batches
           let imageOnlyResult: { success: boolean; imageBase64?: string; error?: string; productsUsed: number; productsSentToAI?: string[] };
@@ -1945,6 +1989,7 @@ export function registerCuralinaRoutes(app: Express) {
               products: fullSelectedProducts,
               roomType: quiz.roomType,
               stylePreference: quiz.styles?.[0] || 'modern',
+              seatingCount, // For dining rooms: render this many chairs
               onProgress
             });
             
@@ -2011,6 +2056,7 @@ export function registerCuralinaRoutes(app: Express) {
               products: fullSelectedProducts,
               roomType: quiz.roomType,
               stylePreference: quiz.styles?.[0] || 'modern',
+              seatingCount, // For dining rooms: render this many chairs
               floorPlanAnalysis,
               placementInstructions,
               roomDescription: quiz.roomDescription || undefined,

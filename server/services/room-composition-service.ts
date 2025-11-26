@@ -470,50 +470,121 @@ const ROOM_TEMPLATES = {
 };
 
 // Map product categories to functional categories
+// IMPORTANT: Include BOTH singular and plural forms to match actual database category names
 const CATEGORY_TO_FUNCTIONAL: Record<string, string[]> = {
+  // Primary seating (singular and plural)
+  'Sofa': ['primary_seating'],
   'Sofas': ['primary_seating'],
   'Sofas & Sectionals': ['primary_seating'],
+  'Sectional': ['primary_seating'],
   'Sectionals': ['primary_seating'],
+  
+  // Accent seating (singular and plural)
+  'Chair': ['accent_seating'],
   'Chairs': ['accent_seating'],
+  'Accent Chair': ['accent_seating'],
   'Accent Chairs': ['accent_seating'],
+  'Armchair': ['accent_seating'],
   'Armchairs': ['accent_seating'],
+  'Ottoman': ['accent_seating'],
   'Ottomans': ['accent_seating'],
+  'Bench': ['accent_seating', 'bedroom_seating'],
   'Benches': ['accent_seating', 'bedroom_seating'],
+  'Stool': ['accent_seating'],
+  'Stools': ['accent_seating'],
+  'Reading Chair': ['accent_seating'],
+  'Swivel Chair': ['accent_seating'],
+  'Chaise Lounge': ['accent_seating'],
+  
+  // Tables (singular and plural)
+  'Coffee Table': ['coffee_table'],
   'Coffee Tables': ['coffee_table'],
+  'Side Table': ['side_table'],
   'Side Tables': ['side_table'],
+  'End Table': ['side_table'],
   'End Tables': ['side_table'],
-  'Console Tables': ['console_table'],
+  'End/Side Table': ['side_table'],
+  'Console Table': ['console_table', 'storage'],
+  'Console Tables': ['console_table', 'storage'],
+  'Table': ['side_table'],
+  
+  // Storage (singular and plural)
+  'Cabinet': ['storage'],
   'Cabinets': ['storage'],
+  'Sideboard': ['storage'],
   'Sideboards': ['storage'],
+  'Buffet': ['storage'],
+  'Buffets': ['storage'],
+  'Bar Cabinet': ['storage'],
+  'Cabinet / Sideboard / Buffet': ['storage'],
+  'Bookcase': ['storage'],
   'Bookcases': ['storage'],
+  'Shelving Unit': ['storage'],
   'Shelving': ['storage'],
+  'Media Unit': ['storage'],
+  'Storage': ['storage'],
+  
+  // Bedroom furniture (singular and plural)
+  'Dresser': ['dresser', 'storage'],
   'Dressers': ['dresser', 'storage'],
+  'Nightstand': ['nightstand'],
   'Nightstands': ['nightstand'],
+  'Bed': ['bed'],
   'Beds': ['bed'],
+  
+  // Dining (singular and plural)
+  'Dining Table': ['dining_table'],
   'Dining Tables': ['dining_table'],
+  'Dining Chair': ['dining_seating'],
   'Dining Chairs': ['dining_seating'],
+  'Dining Bench': ['dining_seating'],
+  
+  // Office (singular and plural)
+  'Desk': ['desk'],
   'Desks': ['desk'],
+  'Large Desk': ['desk'],
+  'Secretary Desk': ['desk'],
+  'Office Chair': ['office_seating'],
   'Office Chairs': ['office_seating'],
+  
+  // Lighting (singular and plural)
+  'Table Lamp': ['lighting'],
   'Table Lamps': ['lighting'],
+  'Floor Lamp': ['lighting'],
   'Floor Lamps': ['lighting'],
+  'Pendant Light': ['lighting'],
   'Pendant Lights': ['lighting'],
+  'Chandelier': ['lighting'],
   'Chandeliers': ['lighting'],
+  'Lighting': ['lighting'],
+  'Outdoor Lamp': ['lighting'],
+  
+  // Decor (singular and plural)
   'Wall Art': ['decor'],
+  'Mirror': ['decor'],
   'Mirrors': ['decor'],
+  'Rug': ['decor'],
   'Rugs': ['decor'],
+  'Vase': ['decor'],
   'Vases': ['decor'],
+  'Home Decor': ['decor'],
+  'Decor': ['decor'],
+  'Accessory': ['decor'],
 };
 
-// Detect functional category from product name and description
-function detectFunctionalCategory(product: Product): string[] {
+// Detect functional category from product name, description, and database category
+// categoryMap is optional - if provided, it maps categoryId UUID to category name
+function detectFunctionalCategory(product: Product, categoryMap?: Map<string, string>): string[] {
   const categories: Set<string> = new Set();
   
-  // Check explicit category mapping
-  if (product.categoryId) {
-    const categoryName = product.categoryId; // This would need category lookup
-    const mapped = CATEGORY_TO_FUNCTIONAL[categoryName];
-    if (mapped) {
-      mapped.forEach(cat => categories.add(cat));
+  // Check explicit category mapping using the categoryMap
+  if (product.categoryId && categoryMap) {
+    const categoryName = categoryMap.get(product.categoryId);
+    if (categoryName) {
+      const mapped = CATEGORY_TO_FUNCTIONAL[categoryName];
+      if (mapped) {
+        mapped.forEach(cat => categories.add(cat));
+      }
     }
   }
   
@@ -890,12 +961,12 @@ export async function selectProductsWithComposition(
     categoryMap.set(cat.id, cat.name);
   });
   
-  // Categorize all candidate products
+  // Categorize all candidate products using the categoryMap for accurate lookups
   const productsByCategory: Record<string, Product[]> = {};
   const uncategorized: Product[] = [];
   
   for (const product of candidateProducts) {
-    const categories = detectFunctionalCategory(product);
+    const categories = detectFunctionalCategory(product, categoryMap);
     if (categories.length === 0) {
       uncategorized.push(product);
     } else {

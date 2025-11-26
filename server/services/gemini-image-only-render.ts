@@ -892,6 +892,7 @@ export interface ImageOnlyRenderParams {
   products: Product[];
   roomType?: string;
   stylePreference?: string;
+  seatingCount?: number; // Number of seats for dining room (e.g., 6 chairs)
   sharedPrompt?: string; // Pre-built prompt from shared-prompt-builder (for fair comparison)
   floorPlanAnalysis?: {
     roomDimensions: string;
@@ -1374,7 +1375,7 @@ async function generateBatchedTextToImageRender(
   params: ImageOnlyRenderParams,
   products: Product[]
 ): Promise<ImageOnlyRenderResult> {
-  const { roomType, stylePreference } = params;
+  const { roomType, stylePreference, seatingCount } = params;
   
   // Sort products by priority (large items first for scene anchoring)
   const sortedProducts = [...products].sort((a, b) => {
@@ -1447,7 +1448,8 @@ async function generateBatchedTextToImageRender(
       stylePreference || 'Modern',
       isFirstBatch,
       batchIndex,
-      batches.length
+      batches.length,
+      seatingCount // Pass dining chair count for multiplied rendering
     );
     
     // Build parts array
@@ -1535,10 +1537,42 @@ function buildBatchedTextToImagePrompt(
   stylePreference: string,
   isFirstBatch: boolean,
   batchIndex: number,
-  totalBatches: number
+  totalBatches: number,
+  seatingCount?: number // Number of dining chairs to render
 ): string {
   const style = stylePreference || 'Modern';
   const room = roomType || 'living room';
+  const isDiningRoom = room.toLowerCase().includes('dining');
+  
+  // Find ALL dining chairs in product list for special handling
+  // Check for: "dining chair", "chair" in dining context, or products that are seating for dining
+  const diningChairRefs = productRefs.filter(ref => {
+    const name = ref.productName.toLowerCase();
+    // Explicit dining chair
+    if (name.includes('dining') && name.includes('chair')) return true;
+    // Chair in a dining room context (not accent/arm chair)
+    if (isDiningRoom && name.includes('chair') && 
+        !name.includes('accent') && !name.includes('arm') && !name.includes('lounge')) return true;
+    return false;
+  });
+  const numChairsToRender = isDiningRoom && diningChairRefs.length > 0 && seatingCount ? seatingCount : 0;
+  // Distribute chairs precisely among different chair product types
+  // For 5 seats with 2 types: first type gets 3, second gets 2 (floor + remainder handling)
+  // For single SKU: still emit explicit count for determinism
+  const getChairDistribution = (total: number): string => {
+    if (diningChairRefs.length === 0) return '';
+    if (diningChairRefs.length === 1) {
+      return `${diningChairRefs[0].productName}: ${total}`;
+    }
+    const base = Math.floor(total / diningChairRefs.length);
+    const remainder = total % diningChairRefs.length;
+    const distribution = diningChairRefs.map((ref, i) => {
+      const count = base + (i < remainder ? 1 : 0);
+      return `${ref.productName}: ${count}`;
+    });
+    return distribution.join(', ');
+  };
+  const chairDistribution = numChairsToRender > 0 ? getChairDistribution(numChairsToRender) : '';
   
   const productList = productRefs
     .map((ref, i) => `the ${ref.productName} from image ${isFirstBatch ? i + 1 : i + 2}`)
@@ -1569,12 +1603,17 @@ FINISHES: Premium, sophisticated
 - Quality window treatments: sheer white or neutral curtains
 
 ═══════════════════════════════════════════════════════════════════════════
-ZERO TOLERANCE - ABSOLUTELY NO EXTRA FURNITURE
+FURNITURE COUNT RULES
 ═══════════════════════════════════════════════════════════════════════════
-- The room should contain ONLY ${productRefs.length} furniture items - the EXACT items from the reference images.
+${numChairsToRender > 0 
+  ? `- DINING CHAIRS: Render EXACTLY ${numChairsToRender} TOTAL chairs around the dining table.
+- Exact distribution: ${chairDistribution}. Each chair must be an EXACT CLONE of its reference - same upholstery, legs, back shape, and color.
+- Arrange chairs evenly: ${Math.floor(numChairsToRender / 2)} on each long side of the table${numChairsToRender % 2 === 1 ? ', 1 at the head' : ''}.
+- Total dining seating: ${numChairsToRender} chairs total around the table.`
+  : `- The room should contain ONLY the EXACT items from reference images.
+- Count before generating: ${productRefs.length} distinct product types from the reference images.`}
 - DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, mirrors, ottomans, or ANY other furniture/decor.
 - If you add ANYTHING not in the reference images, the render is FAILED.
-- Count before generating: There must be EXACTLY ${productRefs.length} pieces of furniture. No more.
 
 ═══════════════════════════════════════════════════════════════════════════
 PIXEL-PERFECT PRODUCT COPYING (CRITICAL)
@@ -1622,12 +1661,15 @@ FINISHES: Premium, sophisticated
 - Quality window treatments: sheer white or neutral curtains
 
 ═══════════════════════════════════════════════════════════════════════════
-ZERO TOLERANCE - NO EXTRA FURNITURE
+FURNITURE COUNT RULES
 ═══════════════════════════════════════════════════════════════════════════
-- After this batch, the room should contain ONLY the existing furniture from Image 1 PLUS the ${productRefs.length} new items from reference images.
+${numChairsToRender > 0 
+  ? `- DINING CHAIRS: Render EXACTLY ${numChairsToRender} TOTAL chairs around the dining table.
+- Exact distribution: ${chairDistribution}. Each chair must be an EXACT CLONE of its reference - same upholstery, legs, back shape, and color.
+- Arrange chairs evenly: ${Math.floor(numChairsToRender / 2)} on each long side of the table${numChairsToRender % 2 === 1 ? ', 1 at the head' : ''}.`
+  : `- After this batch: existing furniture from Image 1 PLUS the ${productRefs.length} new items.`}
 - DO NOT add: coffee tables, side tables, lamps, rugs, plants, books, vases, art, mirrors, ottomans, or ANY other furniture/decor.
 - If you add ANYTHING not in the reference images, the render is FAILED.
-- Count: EXACTLY ${productRefs.length} new pieces. No more.
 
 ═══════════════════════════════════════════════════════════════════════════
 PRESERVE EXISTING FURNITURE (CRITICAL)
@@ -1949,6 +1991,7 @@ interface MultiStepRenderParams {
   products: Product[];
   roomType?: string;
   stylePreference?: string;
+  seatingCount?: number; // Number of seats for dining room (e.g., 6 chairs)
   onProgress?: (progress: RenderProgress) => void; // Progress callback for UI updates
 }
 
@@ -1996,10 +2039,11 @@ interface MultiStepRenderResult {
  * - Sends progress updates for enhanced loading UX
  */
 export async function generateMultiStepRender(params: MultiStepRenderParams): Promise<MultiStepRenderResult> {
-  const { roomImageUrl, products, roomType, stylePreference, onProgress } = params;
+  const { roomImageUrl, products, roomType, stylePreference, seatingCount, onProgress } = params;
   
   const style = stylePreference || 'Modern';
   const room = roomType || 'living room';
+  const isDiningRoom = room.toLowerCase().includes('dining');
   
   // Helper to send progress updates
   const sendProgress = (progress: RenderProgress) => {
@@ -2203,7 +2247,8 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
         productBatches.length,
         originalRoomBase64,         // Original room image for architecture preservation
         roomArchitectureAnalysis,   // Detailed room analysis from Gemini Vision
-        roomDimensions              // Estimated room dimensions
+        roomDimensions,             // Estimated room dimensions
+        isDiningRoom ? seatingCount : undefined // Dining room chair count
       );
       
       if (!batchResult.success || !batchResult.imageBase64) {
@@ -2421,6 +2466,7 @@ Output: The same room ready for furniture, with identical architecture.`;
  * Now includes originalRoomBase64 as a reference for architecture preservation
  * roomArchitectureAnalysis provides detailed text description of the room to preserve
  * roomDimensions provides estimated measurements for proper furniture scaling
+ * seatingCount specifies how many dining chairs to render (for dining rooms)
  */
 async function executeProductBatchPass(
   anchorBase64: string,
@@ -2431,7 +2477,8 @@ async function executeProductBatchPass(
   totalBatches: number,
   originalRoomBase64?: string, // Original room image for architecture reference
   roomArchitectureAnalysis?: string, // Detailed room analysis from Gemini Vision
-  roomDimensions?: RoomAnalysisResult['estimatedDimensions'] // Estimated room dimensions
+  roomDimensions?: RoomAnalysisResult['estimatedDimensions'], // Estimated room dimensions
+  seatingCount?: number // Number of dining chairs to render (for dining rooms)
 ): Promise<{ success: boolean; imageBase64?: string; error?: string; productsSentToAI: string[] }> {
   try {
     // Get product images
@@ -2543,6 +2590,44 @@ ${roomDimensions.wallLengths?.length > 0 ? `- Wall segments: ${roomDimensions.wa
 
 USE THESE DIMENSIONS to ensure furniture is placed at REALISTIC SCALE relative to the room.
 ` : '';
+
+    // Build dining chair multiplication section for dining rooms
+    // Improved chair detection: check for dining chair, or any chair in dining room context
+    const isDiningRoom = room.toLowerCase().includes('dining');
+    const diningChairRefs = successfulRefs.filter(ref => {
+      const name = ref.productName.toLowerCase();
+      // Explicit dining chair
+      if (name.includes('dining') && name.includes('chair')) return true;
+      // Chair in a dining room context (not accent/arm/lounge chair)
+      if (isDiningRoom && name.includes('chair') && 
+          !name.includes('accent') && !name.includes('arm') && !name.includes('lounge')) return true;
+      return false;
+    });
+    // Distribute chairs precisely among different chair product types
+    // For 5 seats with 2 types: first type gets 3, second gets 2 (floor + remainder handling)
+    // For single SKU: still emit explicit count for determinism
+    const getChairDistribution = (total: number): string => {
+      if (diningChairRefs.length === 0) return '';
+      if (diningChairRefs.length === 1) {
+        return `${diningChairRefs[0].productName}: ${total}`;
+      }
+      const base = Math.floor(total / diningChairRefs.length);
+      const remainder = total % diningChairRefs.length;
+      const distribution = diningChairRefs.map((ref, i) => {
+        const count = base + (i < remainder ? 1 : 0);
+        return `${ref.productName}: ${count}`;
+      });
+      return distribution.join(', ');
+    };
+    const chairDistribution = seatingCount ? getChairDistribution(seatingCount) : '';
+    const diningChairMultiplicationSection = seatingCount && diningChairRefs.length > 0
+      ? `
+🪑 DINING CHAIR MULTIPLICATION - CRITICAL:
+- Render EXACTLY ${seatingCount} TOTAL chairs around the dining table.
+- Exact distribution: ${chairDistribution}. Each chair must be an EXACT CLONE of its reference: same upholstery, legs, back shape, color.
+- Arrange chairs evenly: ${Math.floor(seatingCount / 2)} on each long side of the table${seatingCount % 2 === 1 ? ', 1 at the head' : ''}
+- Total dining seating: ${seatingCount} chairs total around the table.
+` : '';
     
     // Build room architecture section from analysis with STRICT LOCK
     const roomArchitectureSection = roomArchitectureAnalysis 
@@ -2586,7 +2671,7 @@ IMAGE REFERENCES:
 
 ⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
-
+${diningChairMultiplicationSection}
 🎨 PRODUCT FIDELITY - ABSOLUTE REQUIREMENT:
 EACH PRODUCT MUST BE A VISUAL CLONE OF ITS REFERENCE IMAGE:
 - SHAPE: Exact silhouette - if the console has tapered legs, render tapered legs. If curved, render curved.
@@ -2676,7 +2761,7 @@ ${style} style interior. Photorealistic render. ONLY the listed ${successfulRefs
 
 ⚠️ MANDATORY - ALL ${successfulRefs.length} PRODUCTS MUST APPEAR:
 ${productDescriptionsIndexed.map((desc, i) => `- ${desc}`).join('\n')}
-
+${diningChairMultiplicationSection}
 🎨 PRODUCT FIDELITY - ABSOLUTE REQUIREMENT:
 EACH PRODUCT MUST BE A VISUAL CLONE OF ITS REFERENCE IMAGE:
 - SHAPE: Exact silhouette - if the console has tapered legs, render tapered legs. If curved, render curved.
