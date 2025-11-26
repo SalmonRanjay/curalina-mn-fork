@@ -80,6 +80,13 @@ export default function AdminProducts() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
+  const [showCleanupDialog, setShowCleanupDialog] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{
+    noImagesCount: number;
+    allBrokenCount: number;
+    productsToDelete: Array<{ id: string; sku: string; reason: string }>;
+  } | null>(null);
+  const [cleanupExecuting, setCleanupExecuting] = useState(false);
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -581,6 +588,66 @@ export default function AdminProducts() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  // Cleanup: Identify products with invalid images
+  const identifyCleanupMutation = useMutation({
+    mutationFn: async (validateImages: boolean) => {
+      const response = await apiRequest("POST", "/api/admin/products/cleanup/identify", {
+        validateImages,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      setCleanupResult(data);
+      if (data.productsToDelete.length === 0) {
+        toast({
+          title: "No cleanup needed",
+          description: "All products have valid images",
+        });
+      } else {
+        toast({
+          title: "Cleanup scan complete",
+          description: `Found ${data.productsToDelete.length} product(s) with invalid images`,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to scan products",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Cleanup: Execute deletion of products with invalid images
+  const executeCleanupMutation = useMutation({
+    mutationFn: async (productIds: string[]) => {
+      setCleanupExecuting(true);
+      const response = await apiRequest("POST", "/api/admin/products/cleanup/execute", {
+        productIds,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Cleanup complete",
+        description: `Deleted ${data.deleted} product(s), ${data.failed} failed`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setCleanupResult(null);
+      setShowCleanupDialog(false);
+      setCleanupExecuting(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Cleanup failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setCleanupExecuting(false);
     },
   });
 
@@ -1794,6 +1861,16 @@ export default function AdminProducts() {
               <Sparkles className="w-4 h-4 mr-2" />
               {regenerateVisualDescriptionsMutation.isPending ? "Regenerating..." : "Regenerate Descriptions"}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowCleanupDialog(true)}
+              disabled={identifyCleanupMutation.isPending}
+              data-testid="button-cleanup-products"
+            >
+              <CircleX className="w-4 h-4 mr-2" />
+              Cleanup Invalid Images
+            </Button>
           </div>
         </div>
       </Card>
@@ -2279,6 +2356,158 @@ export default function AdminProducts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Cleanup Invalid Images Dialog */}
+      <Dialog open={showCleanupDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowCleanupDialog(false);
+          setCleanupResult(null);
+        } else {
+          setShowCleanupDialog(true);
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cleanup Products with Invalid Images</DialogTitle>
+            <DialogDescription>
+              Identify and delete products that have no images or only broken image URLs
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {!cleanupResult ? (
+              <div className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This will scan all products and identify those with missing or invalid images.
+                    You can then choose to delete them.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => identifyCleanupMutation.mutate(false)}
+                    disabled={identifyCleanupMutation.isPending}
+                    data-testid="button-quick-scan"
+                  >
+                    {identifyCleanupMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <Scan className="w-4 h-4 mr-2" />
+                        Quick Scan (No Image Array)
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => identifyCleanupMutation.mutate(true)}
+                    disabled={identifyCleanupMutation.isPending}
+                    data-testid="button-deep-scan"
+                  >
+                    {identifyCleanupMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <ScanText className="w-4 h-4 mr-2" />
+                        Deep Scan (Validate URLs)
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <div className="text-2xl font-bold text-amber-600">{cleanupResult.noImagesCount}</div>
+                    <div className="text-sm text-muted-foreground">No Image Array</div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="text-2xl font-bold text-red-600">{cleanupResult.allBrokenCount}</div>
+                    <div className="text-sm text-muted-foreground">Broken Image URLs</div>
+                  </Card>
+                </div>
+
+                {cleanupResult.productsToDelete.length > 0 ? (
+                  <>
+                    <div className="border rounded-lg max-h-60 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>SKU</TableHead>
+                            <TableHead>Reason</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {cleanupResult.productsToDelete.map((p) => (
+                            <TableRow key={p.id}>
+                              <TableCell className="font-mono text-sm">{p.sku}</TableCell>
+                              <TableCell>
+                                <Badge variant={p.reason === 'no_images' ? 'secondary' : 'destructive'}>
+                                  {p.reason === 'no_images' ? 'No Images' : 'Broken URLs'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Deleting these products will also remove their associated cart items, order history, and other related data.
+                      </AlertDescription>
+                    </Alert>
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCleanupResult(null)}
+                      >
+                        Scan Again
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => executeCleanupMutation.mutate(cleanupResult.productsToDelete.map(p => p.id))}
+                        disabled={cleanupExecuting}
+                        data-testid="button-execute-cleanup"
+                      >
+                        {cleanupExecuting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete {cleanupResult.productsToDelete.length} Product(s)
+                          </>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </>
+                ) : (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription>
+                      All products have valid images. No cleanup needed.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Remove Images Confirmation Dialog */}
       <AlertDialog open={!!removeImagesProduct} onOpenChange={(open) => !open && setRemoveImagesProduct(null)}>
