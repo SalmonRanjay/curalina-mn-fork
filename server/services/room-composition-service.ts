@@ -1410,11 +1410,11 @@ function assignItemsToZones(
       // Determine support surface for table lamps
       let supportSurface: string | undefined;
       if (categories.includes('lighting') && detectLightingType(product) === 'table') {
-        // Find a surface in the same zone
+        // Find a surface in the same zone (use SKU for matching)
         const surfaceProducts = placements.filter(p => 
           p.zoneId === bestZone.id && 
           ['side_table', 'nightstand', 'dresser'].some(cat => 
-            detectFunctionalCategory(sortedProducts.find(sp => sp.id === p.productId) || {} as Product).includes(cat)
+            detectFunctionalCategory(sortedProducts.find(sp => sp.sku === p.productId) || {} as Product).includes(cat)
           )
         );
         if (surfaceProducts.length > 0) {
@@ -1426,7 +1426,7 @@ function assignItemsToZones(
       const confidence = Math.max(0, Math.min(1, bestScore / 100));
       
       placements.push({
-        productId: product.id,
+        productId: product.sku,
         zoneId: bestZone.id,
         position,
         orientation,

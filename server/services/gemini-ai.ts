@@ -1483,6 +1483,10 @@ function generateZoneBasedPlacementMatrix(
   placements: PlacementInstruction[],
   matrixHeader: string[]
 ): string {
+  console.log(`📍 Zone-based placement: ${placements.length} placements for ${selectedProducts.length} products`);
+  console.log(`   Available SKUs: ${selectedProducts.map(p => p.sku).join(', ')}`);
+  console.log(`   Placement product IDs: ${placements.map(p => p.productId).join(', ')}`);
+  
   const matrix = [...matrixHeader];
   
   matrix.push(`CAMERA VIEWPOINT: You are viewing the room from the entrance/doorway, looking into the space.`);
@@ -1506,9 +1510,14 @@ function generateZoneBasedPlacementMatrix(
   });
   
   // Generate step-by-step instructions
+  let matchedCount = 0;
   sortedPlacements.forEach((placement, idx) => {
     const product = selectedProducts.find(p => p.sku === placement.productId);
-    if (!product) return;
+    if (!product) {
+      console.warn(`   ⚠️ No product match for placement: ${placement.productId} (zone: ${placement.zoneId})`);
+      return;
+    }
+    matchedCount++;
     
     const step = idx + 1;
     const semanticLocation = getSemanticPosition(placement.zoneId, placement.position, placement.anchorPoint);
@@ -1551,6 +1560,8 @@ function generateZoneBasedPlacementMatrix(
     
     matrix.push(``);
   });
+  
+  console.log(`   ✅ Matched ${matchedCount}/${sortedPlacements.length} placements to products`);
   
   matrix.push(`═══════════════════════════════════════════════════════════════════════════`);
   matrix.push(`CRITICAL RULES:`);
@@ -1626,7 +1637,8 @@ export function generatePlacementMatrix(
   if (placements && placements.length > 0) {
     const zonedMatrix = generateZoneBasedPlacementMatrix(selectedProducts, placements, matrix);
     // Verify zone-based matrix generated successfully (has actual placement content)
-    if (zonedMatrix && zonedMatrix.includes('ZONE:')) {
+    if (zonedMatrix && zonedMatrix.includes('Step 1:')) {
+      console.log('✅ Zone-based placement matrix generated successfully');
       return zonedMatrix;
     }
     // Fall back to legacy if zone generation failed
