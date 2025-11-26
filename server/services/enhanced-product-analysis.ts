@@ -19,9 +19,19 @@ export interface TechnicalDeconstruction {
   lightingShadows: string;
 }
 
+export interface VisualDNA {
+  geometricPrimitives: string;
+  textureMicroDetails: string[];
+  geometricQuirks: string[];
+  materialInteraction: string[];
+  uniqueIdentifiers: string;
+}
+
 export interface EnhancedProductAnalysis {
   technicalDeconstruction: TechnicalDeconstruction;
+  visualDNA: VisualDNA;
   generationPrompt: string;
+  harmonizationPrompt: string;
   condensedDescription: string;
   renderingKeywords: string[];
   qualityScore: number;
@@ -51,11 +61,28 @@ Analyze the image using these EXACT categories:
 
 7. **Lighting & Shadows**: Describe lighting setup (e.g., "Soft even studio lighting", "Natural ambient light from left", "No harsh shadows")
 
-**PART 2: THE GENERATION PROMPT**
-Based on your analysis, create a single optimized prompt for AI image generation using this format:
-"[Subject], [Material Details], [Hardware Details], [Lighting], [Viewpoint], isolated on a pure white background, high fidelity, 8k, photorealistic"
+**PART 2: VISUAL DNA EXTRACTION**
+Extract the unique identifying features that MUST be preserved to differentiate this from generic versions:
 
-**PART 3: RENDERING KEYWORDS**
+1. **Geometric Primitives**: Describe using simple shapes with exact counts (e.g., "Tall rectangular cabinet, 4 horizontal shelves, 2 door panels", "Square ottoman with 4 cylindrical legs")
+
+2. **Texture Micro-Details**: List specific texture patterns (e.g., "diamond tufting", "visible cross-stitching", "herringbone wood grain", "distressed leather patina")
+
+3. **Geometric Quirks**: Note any distinctive angles or shapes (e.g., "legs curve outward at 15 degrees", "hexagonal handles", "asymmetric armrest height")
+
+4. **Material Interaction**: How the material responds to light (e.g., "velvet reflects light in patches", "matte wood absorbs light", "brass shows subtle reflection")
+
+5. **Unique Identifiers**: A comma-separated string of traits that MUST be present or the render fails
+
+**PART 3: THE GENERATION PROMPT**
+Based on your analysis, create a single optimized prompt for AI image generation using this format:
+"[Subject], [Geometric Primitives], [Material Details], [Hardware Details], [Lighting], [Viewpoint], isolated on a pure white background, high fidelity, 8k, photorealistic"
+
+**PART 4: HARMONIZATION PROMPT**
+Create a prompt for when this product is pasted as a "sticker" into a room image and needs lighting/shadow adjustment ONLY:
+"The [Product] is already placed. DO NOT regenerate the object geometry. ONLY: 1) Generate contact shadows on floor, 2) Adjust color tone to match room ambient light, 3) Preserve exact [list critical visual traits]"
+
+**PART 5: RENDERING KEYWORDS**
 List 8-12 key visual attributes that MUST be present for accurate rendering (single words or short phrases).
 
 **OUTPUT FORMAT:**
@@ -70,7 +97,15 @@ Return ONLY valid JSON in this exact structure:
     "cameraAngle": "...",
     "lightingShadows": "..."
   },
+  "visualDNA": {
+    "geometricPrimitives": "e.g., Rectangular 3-drawer dresser with 4 tapered legs",
+    "textureMicroDetails": ["detail1", "detail2", "detail3"],
+    "geometricQuirks": ["quirk1", "quirk2"],
+    "materialInteraction": ["interaction1", "interaction2"],
+    "uniqueIdentifiers": "comma-separated critical traits"
+  },
   "generationPrompt": "...",
+  "harmonizationPrompt": "...",
   "condensedDescription": "30-40 word comma-separated description for quick reference",
   "renderingKeywords": ["keyword1", "keyword2", ...]
 }`;
