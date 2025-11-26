@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import GlobalLayout from "@/components/GlobalLayout";
+import { Phone } from "lucide-react";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -17,6 +18,9 @@ const registerSchema = z.object({
   confirmPassword: z.string().min(1, "Please confirm your password"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  phoneNumber: z.string()
+    .min(10, "Phone number must be at least 10 digits")
+    .regex(/^[\d\s\-+()]+$/, "Invalid phone number format"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -28,6 +32,15 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirectTo");
+    if (redirect) {
+      setRedirectTo(redirect);
+    }
+  }, []);
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -37,6 +50,7 @@ export default function Register() {
       confirmPassword: "",
       firstName: "",
       lastName: "",
+      phoneNumber: "",
     },
   });
 
@@ -63,7 +77,7 @@ export default function Register() {
         description: "Account created successfully",
       });
 
-      setLocation("/");
+      setLocation(redirectTo || "/");
     } catch (error) {
       toast({
         title: "Error",
@@ -133,6 +147,26 @@ export default function Register() {
                 {form.formState.errors.email && (
                   <p className="text-sm text-destructive font-inter">
                     {form.formState.errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="font-inter">Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    className="pl-10"
+                    {...form.register("phoneNumber")}
+                    data-testid="input-phoneNumber"
+                  />
+                </div>
+                {form.formState.errors.phoneNumber && (
+                  <p className="text-sm text-destructive font-inter">
+                    {form.formState.errors.phoneNumber.message}
                   </p>
                 )}
               </div>
