@@ -222,8 +222,33 @@ interface SubstitutionCandidate {
 }
 
 /**
+ * Validate that a product has valid images for rendering
+ * Products without images will be invisible in renders
+ */
+function hasValidImages(product: Product): boolean {
+  if (!product.images || !Array.isArray(product.images)) return false;
+  
+  // Check if at least one valid image URL exists
+  const validImages = product.images.filter(img => {
+    if (!img || typeof img !== 'string') return false;
+    const trimmed = img.trim();
+    if (trimmed.length === 0) return false;
+    
+    // Check for valid URL formats
+    const isExternalUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+    const isObjectStorage = trimmed.startsWith('/public-objects/') || trimmed.startsWith('/private-objects/');
+    const isS3Path = trimmed.includes('s3.amazonaws.com') || trimmed.includes('curalina');
+    
+    return isExternalUrl || isObjectStorage || isS3Path;
+  });
+  
+  return validImages.length > 0;
+}
+
+/**
  * Find substitution candidates for a product
  * Returns products with same style/color/material but lower price
+ * IMPORTANT: Only returns products with valid images for rendering
  */
 export function findSubstitutionCandidates(
   original: Product,
@@ -248,6 +273,11 @@ export function findSubstitutionCandidates(
     
     const candidatePrice = parseFloat(candidate.price);
     if (candidatePrice >= originalPrice) continue; // Must be cheaper
+    
+    // CRITICAL: Skip products without valid images - they won't render!
+    if (!hasValidImages(candidate)) {
+      continue;
+    }
     
     // Must be same functional category
     const candidateCategories = detectFunctionalCategory(candidate);
@@ -1893,11 +1923,16 @@ export async function selectProductsWithComposition(
             const newPrice = parseFloat(bestCandidate.product.price);
             const savings = oldPrice - newPrice;
             
+            // Log substitution with image verification
+            const substituteImageCount = bestCandidate.product.images?.length || 0;
+            const originalImageCount = item.product.images?.length || 0;
             console.log(`   🔄 Substituting ${item.product.name} ($${oldPrice.toFixed(0)}) → ${bestCandidate.product.name} ($${newPrice.toFixed(0)}) [save $${savings.toFixed(0)}, match: ${bestCandidate.matchScore.toFixed(0)}%]`);
+            console.log(`      📸 Images: ${originalImageCount} original → ${substituteImageCount} substitute (ID: ${bestCandidate.product.id})`);
             
-            // Update arrays
+            // Update arrays - the full product object (with images, dimensions, etc.) is transferred
             const productIndex = selectedProducts.findIndex(p => p.id === item.product.id);
             if (productIndex !== -1) {
+              // Replace with the complete substitute product including all fields (images, dimensions, colors, etc.)
               selectedProducts[productIndex] = bestCandidate.product;
               usedProductIds.delete(item.product.id);
               usedProductIds.add(bestCandidate.product.id);
