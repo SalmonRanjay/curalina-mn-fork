@@ -51,6 +51,12 @@ The application uses Replit's Object Storage (backed by Google Cloud Storage) fo
 - Step restoration was removed to ensure fresh quiz starts for returning users
 - **Migration Pattern**: The `migrateQuizData()` function merges loaded localStorage data with `INITIAL_QUIZ_DATA` defaults and ensures all array fields (styles, colorPalettes, textures, keyFeatures, vibeImages) are properly initialized. This prevents "Cannot read properties of undefined" errors when loading old localStorage data that may be missing newer fields.
 
+### Render Session Management
+- Render ID and session ID are passed through URL params from Quiz → Loading → Results pages
+- This ensures the correct render is displayed even if the localStorage session changes between pages
+- The flow is: Quiz creates render → passes `?renderId=X&sessionId=Y` to Loading → Loading passes same params to Results
+- Fallback to localStorage session if URL params are not present (backwards compatibility)
+
 ## External Dependencies
 
 - **Authentication**: Replit OIDC provider

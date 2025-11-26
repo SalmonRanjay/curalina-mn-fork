@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useState, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionId } from "@/lib/session";
@@ -41,18 +41,34 @@ const designFacts = [
 
 export default function Loading() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const sessionId = getSessionId();
+  
+  // Get render info from URL params (preferred) or fall back to localStorage session
+  const { renderId, sessionId } = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return {
+      renderId: params.get("renderId"),
+      sessionId: params.get("sessionId") || getSessionId(),
+    };
+  }, [searchString]);
 
+  // If we have a specific render ID, fetch that directly; otherwise fall back to latest by session
   const { data: render } = useQuery<Render>({
-    queryKey: ["/api/render/latest", sessionId],
+    queryKey: renderId ? ["/api/render", renderId] : ["/api/render/latest", sessionId],
     queryFn: async () => {
-      const res = await fetch(`/api/render/latest?sessionId=${sessionId}`);
-      if (!res.ok) throw new Error("Failed to fetch render");
-      return res.json();
+      if (renderId) {
+        const res = await fetch(`/api/render/${renderId}`);
+        if (!res.ok) throw new Error("Failed to fetch render");
+        return res.json();
+      } else {
+        const res = await fetch(`/api/render/latest?sessionId=${sessionId}`);
+        if (!res.ok) throw new Error("Failed to fetch render");
+        return res.json();
+      }
     },
-    enabled: !!sessionId,
+    enabled: !!(renderId || sessionId),
     refetchInterval: 2000,
   });
 
@@ -79,7 +95,10 @@ export default function Loading() {
     if (render && (render.status === 'completed' || render.status === 'failed')) {
       setProgress(100);
       setTimeout(() => {
-        setLocation("/results");
+        // Pass render ID to results page to ensure correct render is displayed
+        const actualRenderId = render.id;
+        const actualSessionId = render.sessionId;
+        setLocation(`/results?renderId=${actualRenderId}&sessionId=${actualSessionId}`);
       }, 300);
     }
   }, [render, setLocation]);

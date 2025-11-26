@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSessionId } from "@/lib/session";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ function getVisualDescriptionBadgeVariant(source: string): "default" | "secondar
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const sessionId = getSessionId();
+  const searchString = useSearch();
   const [showFullImage, setShowFullImage] = useState(false);
   const [swapProductId, setSwapProductId] = useState<string | null>(null);
   // Map original SKU → replacement product ID
@@ -75,16 +75,31 @@ export default function Results() {
   const [linkCopied, setLinkCopied] = useState(false);
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
+  
+  // Get render info from URL params (preferred) or fall back to localStorage session
+  const { renderId, sessionId } = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return {
+      renderId: params.get("renderId"),
+      sessionId: params.get("sessionId") || getSessionId(),
+    };
+  }, [searchString]);
 
-  // Fetch latest Gemini render for this session (default)
+  // If we have a specific render ID, fetch that directly; otherwise fall back to latest by session
   const { data: render, isLoading: renderLoading, error: renderError } = useQuery<Render>({
-    queryKey: ["/api/render/latest", sessionId],
+    queryKey: renderId ? ["/api/render", renderId] : ["/api/render/latest", sessionId],
     queryFn: async () => {
-      const res = await fetch(`/api/render/latest?sessionId=${sessionId}`);
-      if (!res.ok) throw new Error("Failed to fetch render");
-      return res.json();
+      if (renderId) {
+        const res = await fetch(`/api/render/${renderId}`);
+        if (!res.ok) throw new Error("Failed to fetch render");
+        return res.json();
+      } else {
+        const res = await fetch(`/api/render/latest?sessionId=${sessionId}`);
+        if (!res.ok) throw new Error("Failed to fetch render");
+        return res.json();
+      }
     },
-    enabled: !!sessionId,
+    enabled: !!(renderId || sessionId),
     refetchInterval: (query) => {
       // Poll every 2 seconds if status is still 'generating'
       return query.state.data?.status === 'generating' ? 2000 : false;

@@ -237,9 +237,13 @@ export default function Quiz() {
         throw new Error(errorData.error || "Failed to start AI generation");
       }
 
-      return quiz;
+      const render = await renderResponse.json();
+      
+      // Return both quiz and render data
+      return { quiz, renderId: render.id, sessionId };
     },
-    onSuccess: (quiz) => {
+    onSuccess: (data) => {
+      const { quiz, renderId, sessionId: renderSessionId } = data;
       // If room dimensions were parsed, show confirmation dialog
       if (
         quiz.parsedRoomData &&
@@ -247,10 +251,12 @@ export default function Quiz() {
         Object.keys(quiz.parsedRoomData).length > 0
       ) {
         setParsedDimensions(quiz.parsedRoomData);
+        // Store render info for after confirmation
+        (window as any).__pendingRenderInfo = { renderId, sessionId: renderSessionId };
         setShowDimensionConfirmation(true);
       } else {
-        // No dimensions to confirm, proceed directly
-        setLocation("/loading");
+        // No dimensions to confirm, proceed directly with render info in URL
+        setLocation(`/loading?renderId=${renderId}&sessionId=${renderSessionId}`);
       }
     },
     onError: (error: any) => {
@@ -687,7 +693,14 @@ export default function Quiz() {
               onClick={() => {
                 setShowDimensionConfirmation(false);
                 setParsedDimensions(null);
-                setLocation("/loading");
+                // Use stored render info from submission
+                const renderInfo = (window as any).__pendingRenderInfo;
+                if (renderInfo) {
+                  setLocation(`/loading?renderId=${renderInfo.renderId}&sessionId=${renderInfo.sessionId}`);
+                  delete (window as any).__pendingRenderInfo;
+                } else {
+                  setLocation("/loading");
+                }
               }}
               className="flex-1"
               data-testid="button-confirm-dimensions"
