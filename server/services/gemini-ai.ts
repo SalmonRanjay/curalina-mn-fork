@@ -2253,6 +2253,14 @@ You MUST NOT add, invent, hallucinate, or include ANY other furniture or decor i
 ❌ NO bookcases or shelving units
 ❌ NO decorative accessories
 
+⚠️ CRITICAL LIGHTING RULE - NO INVENTED SURFACES:
+If any lighting fixture appears that would typically need a surface (like a lamp):
+❌ NEVER invent or add a table, nightstand, console, or any surface to support it
+❌ NEVER create furniture that is not explicitly listed in this product list
+✅ Only render products that are explicitly listed above - nothing more
+✅ Floor lamps and pendant lights do not need surfaces - they stand alone or hang from ceiling
+✅ If a product list does not include a surface for a table lamp, that lamp was already substituted with a floor lamp
+
 ⚠️ IF THE PRODUCT IS NOT IN THE ABOVE LIST → DO NOT INCLUDE IT IN THE IMAGE
 
 ⚠️ IF THE ROOM FEELS EMPTY → That is intentional. Focus on architectural beauty, lighting, and the ${selectedProducts.length} specified products only.

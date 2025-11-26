@@ -1274,6 +1274,153 @@ function detectLightingType(product: Product): 'floor' | 'table' | 'ceiling' | '
 }
 
 /**
+ * Categories that represent surfaces suitable for table lamps
+ */
+const SURFACE_CATEGORIES = new Set([
+  'side_table',
+  'nightstand',
+  'console_table',
+  'dresser',
+  'desk',
+  'coffee_table'
+]);
+
+/**
+ * Check if a product is a supporting surface for table lamps
+ */
+function isSupportingSurface(product: Product): boolean {
+  const categories = detectFunctionalCategory(product);
+  return categories.some(cat => SURFACE_CATEGORIES.has(cat));
+}
+
+/**
+ * Substitute table lamps with floor lamps when no supporting surface exists
+ * This prevents the AI from inventing tables that aren't in the product catalog
+ * 
+ * @param selectedProducts - Current product selection
+ * @param allProducts - Full product catalog for finding floor lamp alternatives
+ * @param composition - Category-based composition map to update
+ * @returns Updated product selection with substitutions applied
+ */
+async function substituteTableLampsIfNoSurface(
+  selectedProducts: Product[],
+  allProducts: Product[],
+  composition: Record<string, Product[]>
+): Promise<{ products: Product[]; substitutionsMade: number; warnings: string[] }> {
+  const warnings: string[] = [];
+  
+  // Find all table lamps in selection
+  const tableLamps = selectedProducts.filter(p => detectLightingType(p) === 'table');
+  
+  if (tableLamps.length === 0) {
+    return { products: selectedProducts, substitutionsMade: 0, warnings };
+  }
+  
+  // Check if there's at least one supporting surface in the selection
+  const hasSupportingSurface = selectedProducts.some(p => isSupportingSurface(p));
+  
+  if (hasSupportingSurface) {
+    console.log(`💡 Table lamps have supporting surfaces - no substitution needed`);
+    return { products: selectedProducts, substitutionsMade: 0, warnings };
+  }
+  
+  console.log(`⚠️ No supporting surfaces found for ${tableLamps.length} table lamp(s) - substituting with floor lamps`);
+  
+  // Get IDs of products already in selection to avoid duplicates
+  const selectedProductIds = new Set(selectedProducts.map(p => p.id));
+  
+  // Find floor lamp alternatives from the catalog (excluding already selected ones)
+  const availableFloorLamps = allProducts.filter(p => {
+    // Must be a floor lamp
+    const lightType = detectLightingType(p);
+    if (lightType !== 'floor') return false;
+    
+    // Must NOT already be in selection
+    if (selectedProductIds.has(p.id)) return false;
+    
+    // Ensure floor lamp has valid images
+    if (!p.images || !Array.isArray(p.images) || p.images.length === 0) return false;
+    const hasValidImage = p.images.some(img => 
+      img && typeof img === 'string' && 
+      (img.startsWith('http://') || img.startsWith('https://'))
+    );
+    return hasValidImage;
+  });
+  
+  if (availableFloorLamps.length === 0) {
+    // No floor lamps available - remove table lamps entirely rather than let AI invent tables
+    console.warn(`   ⚠️ No floor lamps available in catalog - removing table lamps to prevent invented furniture`);
+    const updatedProducts = selectedProducts.filter(p => detectLightingType(p) !== 'table');
+    
+    // Update composition
+    if (composition['lighting']) {
+      composition['lighting'] = composition['lighting'].filter(p => detectLightingType(p) !== 'table');
+    }
+    
+    warnings.push(`Removed ${tableLamps.length} table lamp(s) - no supporting surfaces or floor lamp alternatives available`);
+    return { products: updatedProducts, substitutionsMade: tableLamps.length, warnings };
+  }
+  
+  // Sort floor lamps by quality (prefer those with visual descriptions)
+  availableFloorLamps.sort((a, b) => {
+    const aHasDesc = (a.visualDescription || a.visualDescriptionGemini) ? 1 : 0;
+    const bHasDesc = (b.visualDescription || b.visualDescriptionGemini) ? 1 : 0;
+    return bHasDesc - aHasDesc;
+  });
+  
+  // Substitute each table lamp with a floor lamp
+  const updatedProducts = [...selectedProducts];
+  let substitutionsMade = 0;
+  let floorLampIndex = 0;
+  
+  for (const tableLamp of tableLamps) {
+    if (floorLampIndex >= availableFloorLamps.length) {
+      // No more floor lamps available - remove remaining table lamps
+      console.warn(`   ⚠️ Not enough floor lamps - removing remaining table lamp "${tableLamp.name}"`);
+      const tableLampIdx = updatedProducts.findIndex(p => p.id === tableLamp.id);
+      if (tableLampIdx !== -1) {
+        updatedProducts.splice(tableLampIdx, 1);
+        
+        // Update composition
+        if (composition['lighting']) {
+          const compIdx = composition['lighting'].findIndex(p => p.id === tableLamp.id);
+          if (compIdx !== -1) {
+            composition['lighting'].splice(compIdx, 1);
+          }
+        }
+        substitutionsMade++;
+      }
+      continue;
+    }
+    
+    const floorLamp = availableFloorLamps[floorLampIndex];
+    floorLampIndex++;
+    
+    // Find and replace the table lamp in the product list
+    const tableLampIndex = updatedProducts.findIndex(p => p.id === tableLamp.id);
+    if (tableLampIndex !== -1) {
+      updatedProducts[tableLampIndex] = floorLamp;
+      selectedProductIds.add(floorLamp.id); // Mark as used to prevent duplicates
+      
+      // Update composition map
+      if (composition['lighting']) {
+        const compIndex = composition['lighting'].findIndex(p => p.id === tableLamp.id);
+        if (compIndex !== -1) {
+          composition['lighting'][compIndex] = floorLamp;
+        }
+      }
+      
+      console.log(`   🔄 Substituted table lamp "${tableLamp.name}" ($${tableLamp.price}) → floor lamp "${floorLamp.name}" ($${floorLamp.price})`);
+      substitutionsMade++;
+    }
+  }
+  
+  console.log(`   ✅ Made ${substitutionsMade} table lamp substitution(s)`);
+  
+  return { products: updatedProducts, substitutionsMade, warnings };
+}
+
+/**
  * Assign products to room zones based on functional categories and zone rules
  */
 function assignItemsToZones(
@@ -1991,6 +2138,25 @@ export async function selectProductsWithComposition(
         warnings.push(`Could not fit selection within budget of $${budgetWithFlex.toFixed(0)} (final cost: $${currentCost.toFixed(0)}). Consider increasing budget or reducing room complexity.`);
       }
     }
+  }
+  
+  // CRITICAL: Substitute table lamps with floor lamps if no supporting surfaces exist
+  // This prevents AI from inventing tables that aren't in our product catalog
+  const substitutionResult = await substituteTableLampsIfNoSurface(
+    selectedProducts,
+    candidateProducts,
+    composition
+  );
+  
+  // Update selectedProducts with substitutions
+  if (substitutionResult.substitutionsMade > 0) {
+    selectedProducts.length = 0;
+    selectedProducts.push(...substitutionResult.products);
+  }
+  
+  // Add any warnings from the substitution
+  if (substitutionResult.warnings.length > 0) {
+    warnings.push(...substitutionResult.warnings);
   }
   
   // Generate zone-based placements
