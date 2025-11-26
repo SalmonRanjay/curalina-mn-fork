@@ -1,100 +1,59 @@
-import { useLocation } from "wouter";
 import Navigation from "@/components/Navigation";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { motion } from "framer-motion";
+import { CreditCard } from "lucide-react";
 
 export default function Pricing() {
-  const [, setLocation] = useLocation();
-
-  const plans = [
-    {
-      name: "Single Room",
-      price: "$99",
-      description: "Perfect for trying out our service",
-      features: [
-        "1 Room Design",
-        "AI-Generated Render",
-        "Curated Furniture List",
-        "Shopping Links",
-        "Email Support"
-      ]
-    },
-    {
-      name: "Full Home",
-      price: "$299",
-      description: "Most popular for complete homes",
-      features: [
-        "Up to 5 Rooms",
-        "AI-Generated Renders",
-        "Priority Support",
-        "Custom Modifications",
-        "Designer Consultation (30 min)"
-      ],
-      popular: true
-    },
-    {
-      name: "Professional",
-      price: "$599",
-      description: "For designers and real estate professionals",
-      features: [
-        "Unlimited Rooms",
-        "White-Label Options",
-        "Priority Rendering",
-        "Dedicated Account Manager",
-        "Commercial License"
-      ]
-    }
-  ];
-
   return (
-    <div className="min-h-screen bg-white dark:bg-stone-950">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="h-28"></div>
 
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-4" data-testid="heading-pricing">Pricing & Plans</h1>
-          <p className="text-xl text-stone-600 dark:text-stone-400">
-            Choose the perfect plan for your interior design needs
+      <div className="max-w-4xl mx-auto px-6 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center"
+        >
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-accent/10 mb-8">
+            <CreditCard className="w-10 h-10 text-muted-foreground" />
+          </div>
+          
+          <p
+            className="uppercase tracking-[0.3em] text-muted-foreground mb-6"
+            style={{ fontSize: "11px" }}
+            data-testid="text-maintenance-label-pricing"
+          >
+            Coming Soon
           </p>
-        </div>
+          
+          <h1
+            className="font-serif text-foreground mb-6"
+            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 400 }}
+            data-testid="heading-pricing"
+          >
+            Pricing & Plans
+          </h1>
+          
+          <p
+            className="text-muted-foreground max-w-xl mx-auto leading-relaxed mb-12"
+            style={{ fontSize: "var(--font-size-base)" }}
+            data-testid="text-maintenance-description-pricing"
+          >
+            We're finalizing our pricing structure to offer you the best value 
+            for professional interior design services. Stay tuned for our launch.
+          </p>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {plans.map((plan, idx) => (
-            <Card
-              key={idx}
-              className={`p-8 ${plan.popular ? "border-green-500 border-2 relative" : ""}`}
-              data-testid={`pricing-card-${idx}`}
+          <div className="inline-block border-t border-border pt-8">
+            <p 
+              className="text-muted-foreground italic" 
+              style={{ fontSize: "var(--font-size-sm)" }}
+              data-testid="text-maintenance-cta-pricing"
             >
-              {plan.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                  Most Popular
-                </div>
-              )}
-              <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-              <div className="text-4xl font-bold text-green-500 mb-2">{plan.price}</div>
-              <p className="text-stone-600 dark:text-stone-400 mb-6">{plan.description}</p>
-              
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature, fIdx) => (
-                  <li key={fIdx} className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className="w-full bg-green-500 hover:bg-green-600 text-white"
-                onClick={() => setLocation("/quiz")}
-                data-testid={`button-select-plan-${idx}`}
-              >
-                Get Started
-              </Button>
-            </Card>
-          ))}
-        </div>
+              Start your design journey today with our complimentary style quiz
+            </p>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
