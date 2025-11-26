@@ -829,30 +829,43 @@ function selectBestProductImage(product: Product, context: PlacementContext): st
 
 /**
  * Build a concise visual description for image labeling
- * Short and precise: color, material, key visual features
- * Example: "Dark brown leather sofa, 84x36x34 inches"
+ * Short, precise, and AUTHENTIC - covers all key visual attributes
+ * Example: "Modern, Brass/Gold, Metal, lighting, 15x15x26", sleek minimalist base"
  */
 function buildConciseVisualLabel(product: Product): string {
   const parts: string[] = [];
   
-  // Primary color(s) - most important visual identifier
+  // 1. Design style - defines the aesthetic
+  if (product.designStyle && product.designStyle.length > 0) {
+    parts.push(product.designStyle[0]); // Primary style
+  }
+  
+  // 2. Colors - most important visual identifier (all colors)
   if (product.colors && product.colors.length > 0) {
-    const colorStr = product.colors.slice(0, 2).join('/');
-    parts.push(colorStr);
+    parts.push(product.colors.join('/'));
   }
   
-  // Primary material - key texture/finish info
+  // 3. Materials - key texture/finish info (all materials)
   if (product.materials && product.materials.length > 0) {
-    parts.push(product.materials[0]);
+    parts.push(product.materials.join(', '));
   }
   
-  // Product category from name (simplified)
+  // 4. Textures - additional surface details if available
+  const textures = (product as any).textures;
+  if (textures && Array.isArray(textures) && textures.length > 0) {
+    const textureStr = textures.slice(0, 2).join(', ');
+    if (!parts.some(p => p.toLowerCase().includes(textureStr.toLowerCase()))) {
+      parts.push(textureStr);
+    }
+  }
+  
+  // 5. Product category from name
   const category = detectFunctionalCategory(product);
   if (category) {
     parts.push(category.toLowerCase());
   }
   
-  // Dimensions for scale accuracy
+  // 6. Dimensions for scale accuracy
   if (product.dimensions) {
     const dims = product.dimensions as any;
     if (dims.w && dims.d && dims.h) {
@@ -860,10 +873,12 @@ function buildConciseVisualLabel(product: Product): string {
     }
   }
   
-  // If we have a visual description, extract key adjectives (first 50 chars)
+  // 7. Visual description - extract the key identifying features
   if (product.visualDescription) {
-    const shortDesc = product.visualDescription.substring(0, 50).split('.')[0];
-    if (shortDesc && !parts.some(p => shortDesc.toLowerCase().includes(p.toLowerCase()))) {
+    // Get first sentence or first 80 chars - the most descriptive part
+    const firstSentence = product.visualDescription.split('.')[0].trim();
+    const shortDesc = firstSentence.length > 80 ? firstSentence.substring(0, 80) : firstSentence;
+    if (shortDesc && shortDesc.length > 10) {
       parts.push(shortDesc);
     }
   }
