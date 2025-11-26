@@ -1726,11 +1726,14 @@ export function registerCuralinaRoutes(app: Express) {
       console.log(`📊 Candidate pool: ${candidatePool.length} products match quiz criteria`);
       
       // Generate hash from quiz + filtered candidate pool (not full catalog)
-      const selectionHash = generateSelectionHash(quiz, candidatePool);
+      // Add timestamp to ensure unique hash when caching is disabled
+      const baseHash = generateSelectionHash(quiz, candidatePool);
+      const selectionHash = `${baseHash}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       
       // DISABLED: Render caching/idempotency - always generate fresh renders
       // Previously returned cached renders when quiz settings matched.
       // Now disabled to ensure users always get new AI-generated designs.
+      // Hash now includes timestamp for uniqueness
       console.log(`✨ Creating fresh render (caching disabled) - hash: ${selectionHash.substring(0, 8)}...`);
 
       // Create render record with status 'generating' (placeholder prompt)
