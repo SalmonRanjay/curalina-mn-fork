@@ -578,7 +578,7 @@ Design a well-lit room with appropriate walls, windows, and flooring. Arrange th
 // More products = lower accuracy per product
 // Google's multi-image composition works best with 2-3 reference images per batch
 const MAX_PRODUCTS_FOR_FIDELITY = 8;
-const TEXT_TO_IMAGE_BATCH_SIZE = 2; // STRICT: 2 products per batch for best accuracy (matches multi-step mode)
+const TEXT_TO_IMAGE_BATCH_SIZE = 3; // 3 products per batch for faster rendering
 
 /**
  * Generate render using the "Anchor & Composite" multi-modal strategy
@@ -1101,7 +1101,7 @@ function getCategoryWeightForBatching(product: Product): number {
 // ============================================================================
 
 const MAX_PRODUCTS = 8; // Hard limit for model reliability (was 7)
-const PRODUCTS_PER_BATCH = 3; // 2-3 products per batch for optimal fidelity (was 2)
+const PRODUCTS_PER_BATCH = 4; // 4 products per batch for faster rendering (reduced API calls)
 const MAX_LAMPS = 2; // Limit lamps to avoid cluttered renders
 
 // NOTE: Delta compositing solves room drift - we extract furniture from Gemini output
