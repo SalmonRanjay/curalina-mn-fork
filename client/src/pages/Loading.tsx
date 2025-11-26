@@ -1,24 +1,50 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionId } from "@/lib/session";
+import { Sparkles, Home, Palette, Lightbulb, Sofa, Leaf } from "lucide-react";
 import type { Render } from "@shared/schema";
 
-const facts = [
-  "Natural light can increase productivity by up to 20%",
-  "The average person spends 90% of their time indoors",
-  "Plants in your space can improve air quality by up to 25%",
-  "Color psychology shows blue tones promote calmness and focus",
-  "Open floor plans increase natural light by 40% on average",
+const designFacts = [
+  {
+    icon: Lightbulb,
+    fact: "Natural light can increase productivity by up to 20%",
+    category: "Light & Space"
+  },
+  {
+    icon: Home,
+    fact: "The average person spends 90% of their time indoors",
+    category: "Home Life"
+  },
+  {
+    icon: Leaf,
+    fact: "Plants in your space can improve air quality by up to 25%",
+    category: "Biophilic Design"
+  },
+  {
+    icon: Palette,
+    fact: "Color psychology shows blue tones promote calmness and focus",
+    category: "Color Theory"
+  },
+  {
+    icon: Sofa,
+    fact: "Well-designed spaces can reduce stress levels by 30%",
+    category: "Wellness"
+  },
+  {
+    icon: Home,
+    fact: "Open floor plans increase natural light by 40% on average",
+    category: "Layout Design"
+  },
 ];
 
 export default function Loading() {
   const [, setLocation] = useLocation();
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const sessionId = getSessionId();
 
-  // Poll for render completion
   const { data: render } = useQuery<Render>({
     queryKey: ["/api/render/latest", sessionId],
     queryFn: async () => {
@@ -27,76 +53,164 @@ export default function Loading() {
       return res.json();
     },
     enabled: !!sessionId,
-    refetchInterval: 2000, // Poll every 2 seconds
+    refetchInterval: 2000,
   });
 
-  // Rotate facts every 2 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentFactIndex((prev) => (prev + 1) % facts.length);
-    }, 2000);
+    const factInterval = setInterval(() => {
+      setCurrentFactIndex((prev) => (prev + 1) % designFacts.length);
+    }, 4000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(factInterval);
   }, []);
 
-  // Redirect to results immediately when render is complete or failed
+  useEffect(() => {
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 8;
+      });
+    }, 500);
+
+    return () => clearInterval(progressInterval);
+  }, []);
+
   useEffect(() => {
     if (render && (render.status === 'completed' || render.status === 'failed')) {
-      setLocation("/results");
+      setProgress(100);
+      setTimeout(() => {
+        setLocation("/results");
+      }, 300);
     }
   }, [render, setLocation]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950 flex items-center justify-center px-6">
-      <div className="max-w-2xl text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-8" data-testid="heading-loading">
-          Creating your dream space...
-        </h1>
+  const currentFact = designFacts[currentFactIndex];
+  const FactIcon = currentFact.icon;
 
-        {/* Bouncing dots animation */}
-        <div className="flex items-center justify-center gap-3 mb-12">
+  return (
+    <div className="loading-container">
+      <div className="max-w-2xl w-full text-center space-y-12">
+        {/* Main Heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            >
+              <Sparkles className="w-8 h-8 text-primary" />
+            </motion.div>
+          </div>
+          
+          <h1 
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: 'var(--font-size-3xl)', lineHeight: 'var(--line-tight)' }}
+            data-testid="heading-loading"
+          >
+            Creating your dream space...
+          </h1>
+          
+          <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-lg)' }}>
+            Our AI is analyzing your preferences and generating personalized designs
+          </p>
+        </motion.div>
+
+        {/* Progress Bar */}
+        <motion.div
+          initial={{ opacity: 0, scaleX: 0 }}
+          animate={{ opacity: 1, scaleX: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="w-full max-w-md mx-auto"
+        >
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground mt-3">
+            {progress < 30 ? "Analyzing preferences..." : 
+             progress < 60 ? "Selecting products..." : 
+             progress < 90 ? "Generating room design..." : 
+             "Finalizing your design..."}
+          </p>
+        </motion.div>
+
+        {/* Animated Dots */}
+        <div className="loading-dots justify-center">
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="w-4 h-4 bg-green-400 rounded-full"
+              className="loading-dot"
               animate={{
-                y: [0, -20, 0],
+                y: [0, -12, 0],
+                opacity: [0.5, 1, 0.5],
               }}
               transition={{
-                duration: 0.6,
+                duration: 0.8,
                 repeat: Infinity,
-                delay: i * 0.2,
+                delay: i * 0.15,
+                ease: "easeInOut",
               }}
               data-testid={`loading-dot-${i}`}
             />
           ))}
         </div>
 
-        {/* Rotating facts */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-stone-900 p-8 rounded-lg shadow-lg"
-        >
-          <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-3">
-            DID YOU KNOW?
-          </p>
-          <motion.p
+        {/* Design Fact Card */}
+        <AnimatePresence mode="wait">
+          <motion.div
             key={currentFactIndex}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.5 }}
-            className="text-lg text-stone-700 dark:text-stone-300"
-            data-testid="text-fact"
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.98 }}
+            transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
+            className="loading-fact-card mx-auto"
           >
-            {facts[currentFactIndex]}
-          </motion.p>
-        </motion.div>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <FactIcon className="w-5 h-5 text-primary" />
+              <span className="loading-fact-label">
+                {currentFact.category}
+              </span>
+            </div>
+            <p 
+              className="loading-fact-text"
+              data-testid="text-fact"
+            >
+              {currentFact.fact}
+            </p>
+          </motion.div>
+        </AnimatePresence>
 
-        <p className="mt-8 text-sm text-stone-500 dark:text-stone-400">
-          Our AI is analyzing your preferences and generating personalized designs
-        </p>
+        {/* Decorative Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(6)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 rounded-full bg-primary/10"
+              style={{
+                left: `${15 + i * 15}%`,
+                top: `${20 + (i % 3) * 30}%`,
+              }}
+              animate={{
+                y: [0, -20, 0],
+                opacity: [0.3, 0.6, 0.3],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                delay: i * 0.5,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

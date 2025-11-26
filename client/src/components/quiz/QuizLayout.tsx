@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, User, Heart, ShoppingBag } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 interface QuizLayoutProps {
   currentStep: number;
@@ -25,69 +26,69 @@ export default function QuizLayout({
   canProceed = true,
   showExploreLink = false,
 }: QuizLayoutProps) {
+  const progressPercentage = (currentStep / totalSteps) * 100;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Premium Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* Logo & Nav Row */}
-          <div className="flex items-center justify-between h-16">
-            {/* Left: Monogram Logo */}
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-cormorant font-bold text-lg">C</span>
-              </div>
-              <span className="hidden md:block font-cormorant text-xl font-medium tracking-wide">
+      {/* Minimal Quiz Header */}
+      <header className="sticky top-0 z-50 header-premium">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
+          <div className="flex items-center justify-between h-16 md:h-[72px]">
+            {/* Logo */}
+            <Link href="/">
+              <span className="header-logo cursor-pointer" data-testid="link-logo-quiz">
                 Curalina
               </span>
             </Link>
 
-            {/* Center: Navigation Menu */}
-            <nav className="hidden lg:flex items-center gap-1">
-              <Link href="/" className="px-3 py-2 text-xs font-medium tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                GET STARTED
-              </Link>
-              <span className="text-border">|</span>
-              <Link href="/about" className="px-3 py-2 text-xs font-medium tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                HOW WE WORK
-              </Link>
-              <span className="text-border">|</span>
-              <Link href="/styles" className="px-3 py-2 text-xs font-medium tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                EXPLORE STYLES
-              </Link>
-              <span className="text-border">|</span>
-              <Link href="/pricing" className="px-3 py-2 text-xs font-medium tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                PRICING
-              </Link>
-              <span className="text-border">|</span>
-              <Link href="/blog" className="px-3 py-2 text-xs font-medium tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                THE CURALINA EDIT
-              </Link>
-            </nav>
+            {/* Step Indicator - Desktop */}
+            <div className="hidden md:flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground">
+                Step {currentStep} of {totalSteps}
+              </span>
+              <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercentage}%` }}
+                  transition={{ duration: 0.4, ease: [0.33, 1, 0.68, 1] }}
+                />
+              </div>
+            </div>
 
-            {/* Right: Icons */}
+            {/* Right Actions */}
             <div className="flex items-center gap-4">
-              <button className="p-2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Profile" data-testid="button-profile">
-                <User className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Favourites" data-testid="button-favourites">
-                <Heart className="w-5 h-5" />
-              </button>
-              <Link href="/cart" className="p-2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Cart" data-testid="link-cart">
-                <ShoppingBag className="w-5 h-5" />
+              <Link href="/cart">
+                <Button variant="ghost" size="icon" className="text-muted-foreground" data-testid="link-cart-quiz">
+                  <ShoppingBag className="w-5 h-5" />
+                </Button>
               </Link>
             </div>
           </div>
         </div>
+
+        {/* Progress Bar - Mobile */}
+        <div className="md:hidden quiz-progress-container">
+          <motion.div
+            className="quiz-progress-bar"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: progressPercentage / 100 }}
+            transition={{ duration: 0.4, ease: [0.33, 1, 0.68, 1] }}
+          />
+        </div>
       </header>
 
-      {/* Announcement Bar */}
-      <div className="bg-muted/50 border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 py-3">
+      {/* Info Banner */}
+      <div className="bg-muted/40 border-b border-border">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-2.5">
           <p className="text-center text-sm text-muted-foreground">
             Everyone has their own sense of style
-            <span className="mx-2">|</span>
-            <Link href="/styles" className="underline hover:text-foreground transition-colors" data-testid="link-learn-design-styles">
+            <span className="mx-2 opacity-50">|</span>
+            <Link 
+              href="/styles" 
+              className="text-primary hover:underline transition-colors font-medium"
+              data-testid="link-learn-design-styles"
+            >
               Learn More About Our Design Styles
             </Link>
           </p>
@@ -95,26 +96,26 @@ export default function QuizLayout({
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 py-12 md:py-16">
-        <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16">
-          {/* Step Progress */}
+      <main className="flex-1 py-10 md:py-14 lg:py-16">
+        <div className="quiz-container">
+          {/* Mobile Step Indicator */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
+            className="text-center mb-8 md:hidden"
           >
             <span className="text-sm font-medium tracking-wider text-muted-foreground uppercase">
               Step {currentStep} of {totalSteps}
             </span>
           </motion.div>
 
-          {/* Quiz Content */}
+          {/* Quiz Content with Animation */}
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.35, ease: [0.33, 1, 0.68, 1] }}
           >
             {children}
           </motion.div>
@@ -122,30 +123,32 @@ export default function QuizLayout({
       </main>
 
       {/* Footer Navigation */}
-      <footer className="border-t border-border bg-background/95 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-6">
-          <div className="flex items-center justify-between">
-            {/* Previous */}
+      <footer className="border-t border-border bg-background sticky bottom-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-4 md:py-5">
+          <div className="flex items-center justify-between gap-4">
+            {/* Previous Button */}
             <div className="flex-1">
-              {onPrevious && currentStep > 1 && (
+              {onPrevious && currentStep > 1 ? (
                 <button
                   onClick={onPrevious}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+                  className="quiz-nav-button group"
                   data-testid="button-previous"
                 >
-                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                  <span className="hidden sm:inline">&lt; Previous:</span>
-                  <span>{previousLabel}</span>
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                  <span className="hidden sm:inline">Previous:</span>
+                  <span className="quiz-nav-context">{previousLabel}</span>
                 </button>
+              ) : (
+                <div />
               )}
             </div>
 
             {/* Center: Explore Link */}
-            <div className="flex-1 text-center">
+            <div className="hidden md:block text-center">
               {showExploreLink && (
                 <Link
                   href="/styles"
-                  className="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   data-testid="link-explore-styles"
                 >
                   Curious about each look? Explore all styles
@@ -153,23 +156,19 @@ export default function QuizLayout({
               )}
             </div>
 
-            {/* Next */}
-            <div className="flex-1 text-right">
+            {/* Next Button */}
+            <div className="flex-1 flex justify-end">
               {onNext && (
-                <button
+                <Button
                   onClick={onNext}
                   disabled={!canProceed}
-                  className={`inline-flex items-center gap-2 text-sm transition-colors group ${
-                    canProceed
-                      ? "text-foreground hover:text-primary"
-                      : "text-muted-foreground/50 cursor-not-allowed"
-                  }`}
+                  className="gap-2 px-6"
                   data-testid="button-next"
                 >
-                  <span>Next:</span>
+                  <span className="hidden sm:inline">Next:</span>
                   <span>{nextLabel}</span>
-                  <ChevronRight className={`w-4 h-4 ${canProceed ? "group-hover:translate-x-1" : ""} transition-transform`} />
-                </button>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               )}
             </div>
           </div>
