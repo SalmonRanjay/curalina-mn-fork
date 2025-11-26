@@ -99,93 +99,29 @@ async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<Roo
         role: "user",
         parts: [
           {
-            text: `Perform a COMPREHENSIVE architectural analysis of this room. This analysis will guide furniture placement and room preservation.
+            text: `Analyze this room image. Extract only the essential details needed for accurate furniture placement.
 
-═══════════════════════════════════════════════════════════════════════════
-SECTION 1 - FURNITURE STATUS
-═══════════════════════════════════════════════════════════════════════════
-Is this room EMPTY (no furniture) or FURNISHED (has existing furniture)?
-Answer: [EMPTY or FURNISHED]
-If FURNISHED, list each furniture piece with its approximate position.
+ROOM STATUS: Is the room EMPTY or FURNISHED? If furnished, list existing pieces briefly.
 
-═══════════════════════════════════════════════════════════════════════════
-SECTION 2 - DETAILED ARCHITECTURE BREAKDOWN
-═══════════════════════════════════════════════════════════════════════════
+LAYOUT: Room shape and approximate dimensions (length x width x ceiling height in feet).
 
-WALLS:
-- Colors: [exact colors for each visible wall]
-- Texture: [smooth, textured, wallpapered, etc.]
-- Trim/Molding: [crown molding, baseboards, chair rails]
-- Special features: [accent walls, wainscoting, exposed brick]
+WALLS: Color, texture, any trim/molding.
 
-FLOOR:
-- Material: [hardwood, tile, carpet, concrete, etc.]
-- Color: [exact color/finish]
-- Pattern: [herringbone, plank direction, tile pattern]
-- Condition: [new, aged, distressed, polished]
+FLOOR: Material, color, pattern direction.
 
-WINDOWS:
-- Count and positions: [left wall, right wall, back wall]
-- Sizes: [small, medium, large, floor-to-ceiling]
-- Treatments: [curtains, blinds, bare, sheers]
-- Natural light: [direction, intensity, time of day feel]
+CEILING: Height (standard ~8ft, tall ~10ft+), color, any features.
 
-DOORS:
-- Count and positions: [where in the room]
-- Style: [panel, glass, French, sliding]
-- Color/finish: [match walls, contrasting, natural wood]
+WINDOWS: Count, positions, size, treatments, light direction.
 
-CEILING:
-- Height: [standard ~8ft, tall ~10ft+, vaulted]
-- Features: [beams, coffers, medallions, recessed]
-- Color: [white, tinted, matching walls]
+DOORS: Count, positions, style.
 
-LIGHTING:
-- Natural light direction: [from left, right, behind camera, multiple sources]
-- Artificial fixtures: [visible fixtures, recessed lights, chandeliers]
-- Overall mood: [bright and airy, moody, warm, cool]
+LIGHTING: Natural light direction, intensity, mood (bright/warm/cool).
 
-PERSPECTIVE:
-- Camera height: [eye level, low, elevated]
-- Camera angle: [straight-on, angled left/right]
-- Focal length feel: [wide angle, normal, compressed]
-- Depth: [shallow room, deep room, L-shaped]
+PERSPECTIVE: Camera angle, depth of room.
 
-ARCHITECTURAL FEATURES:
-- Built-ins: [shelving, fireplace, entertainment center]
-- Niches/alcoves: [positions and sizes]
-- Special elements: [columns, arches, exposed beams]
+EMPTY AREAS: Where furniture can be placed without obstruction.
 
-═══════════════════════════════════════════════════════════════════════════
-SECTION 3 - SPATIAL DIMENSIONS
-═══════════════════════════════════════════════════════════════════════════
-
-Use these reference sizes for estimation:
-- Standard door: 80"H x 36"W (6.7ft x 3ft)
-- Standard window: 36-48" wide
-- Standard ceiling: 8-10 feet
-- Average person height: 5.5-6 feet
-
-DIMENSIONS:
-- Room length: [X] feet (estimated)
-- Room width: [X] feet (estimated)
-- Ceiling height: [X] feet (estimated)
-- Primary furniture zone: [X] x [X] feet (main usable area)
-- Available wall lengths: [list each wall with length]
-- Usable floor area: [small/medium/large/very large]
-
-═══════════════════════════════════════════════════════════════════════════
-SECTION 4 - PRESERVATION PRIORITY (for final alignment)
-═══════════════════════════════════════════════════════════════════════════
-
-List the TOP 5 architectural elements that MUST be preserved exactly:
-1. [Most important element and why]
-2. [Second most important]
-3. [Third most important]
-4. [Fourth most important]
-5. [Fifth most important]
-
-Be PRECISE and DETAILED. This analysis ensures the final render matches your real space exactly.`
+Keep responses brief and focused. No over-description.`
           },
           {
             inlineData: {
@@ -200,7 +136,7 @@ Be PRECISE and DETAILED. This analysis ensures the final render matches your rea
     const fullAnalysis = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     if (fullAnalysis.length > 0) {
-      console.log(`   ✅ Comprehensive space analysis complete (${fullAnalysis.length} chars)`);
+      console.log(`   ✅ Space analysis complete (${fullAnalysis.length} chars)`);
       
       // Parse the response to extract dimensions
       const dimensions = parseRoomDimensions(fullAnalysis);
@@ -208,38 +144,12 @@ Be PRECISE and DETAILED. This analysis ensures the final render matches your rea
       // Check if room is empty (no existing furniture)
       const isEmptyRoom = detectEmptyRoom(fullAnalysis);
       
-      // Extract detailed architecture description (everything between SECTION 2 and SECTION 3)
-      let archDesc = fullAnalysis;
-      const section2Start = archDesc.indexOf('SECTION 2');
-      const section3Start = archDesc.indexOf('SECTION 3');
-      if (section2Start > 0 && section3Start > section2Start) {
-        archDesc = archDesc.substring(section2Start, section3Start);
-      }
-      archDesc = archDesc.replace(/SECTION 2[^\n]*\n[═]+/g, '').trim();
-      
-      // Extract preservation priorities (Section 4)
-      let preservationPriorities = '';
-      const section4Start = fullAnalysis.indexOf('SECTION 4');
-      if (section4Start > 0) {
-        preservationPriorities = fullAnalysis.substring(section4Start);
-        preservationPriorities = preservationPriorities.replace(/SECTION 4[^\n]*\n[═]+/g, '').trim();
-      }
-      
-      console.log(`   📝 Architecture details extracted`);
       console.log(`   📐 Estimated dimensions: ~${dimensions.lengthFeet || '?'}ft x ${dimensions.widthFeet || '?'}ft, ceiling ${dimensions.ceilingHeightFeet || '?'}ft`);
       console.log(`   📏 Usable area: ${dimensions.usableFloorArea}`);
-      console.log(`   🏠 Room status: ${isEmptyRoom ? 'EMPTY (optimized workflow)' : 'FURNISHED (full workflow)'}`);
-      if (preservationPriorities) {
-        console.log(`   🔒 Preservation priorities identified`);
-      }
-      
-      // Combine architecture description with preservation priorities
-      const fullArchDescription = preservationPriorities 
-        ? `${archDesc}\n\n🔒 PRESERVATION PRIORITIES:\n${preservationPriorities}`
-        : archDesc;
+      console.log(`   🏠 Room status: ${isEmptyRoom ? 'EMPTY' : 'FURNISHED'}`);
       
       return {
-        architectureDescription: fullArchDescription,
+        architectureDescription: fullAnalysis,
         estimatedDimensions: dimensions,
         isEmptyRoom
       };
@@ -288,55 +198,20 @@ async function executeFinalAlignmentPass(
         role: "user",
         parts: [
           {
-            text: `FINAL ALIGNMENT TASK: Composite the furniture from Image 2 into the exact space shown in Image 1.
+            text: `Transfer furniture from Image 2 into the user's real room shown in Image 1.
 
-═══════════════════════════════════════════════════════════════════════════
-IMAGE 1: USER'S ORIGINAL SPACE (THE EXACT ROOM TO USE)
-═══════════════════════════════════════════════════════════════════════════
-This is the user's actual room. Every architectural detail must be preserved EXACTLY:
-- Walls: Same color, texture, trim, and moldings - pixel perfect
-- Floor: Same material, color, pattern, reflections
-- Windows: Same position, size, shape, treatments, and lighting
-- Doors: Same position, style, and color
-- Ceiling: Same height, color, features
-- Camera angle: Same perspective, focal length, viewpoint
-- Lighting: Same natural light direction and intensity
-- Any existing built-ins or architectural features
+IMAGE 1: User's actual room - preserve EXACTLY: walls, floor, ceiling, windows, doors, lighting, perspective, proportions.
+${roomArchitectureAnalysis ? `Room details: ${roomArchitectureAnalysis}` : ''}
 
-${roomArchitectureAnalysis ? `ROOM ANALYSIS:\n${roomArchitectureAnalysis}` : ''}
+IMAGE 2: Design render with furniture to transfer: ${productList}
 
-═══════════════════════════════════════════════════════════════════════════
-IMAGE 2: STYLED ROOM WITH FURNITURE (SOURCE OF FURNITURE)
-═══════════════════════════════════════════════════════════════════════════
-This image contains the styled furniture: ${productList}
+TASK:
+1. Use Image 1 as the base room - preserve all architecture, colors, lighting, and perspective exactly.
+2. Extract the furniture from Image 2 (keep exact appearance: shape, color, material, details).
+3. Place furniture naturally into Image 1's space - match shadows to Image 1's light sources.
+4. All furniture must be fully visible, properly scaled, and not overlapping.
 
-Extract ONLY the furniture pieces from this image. Do NOT use the room/background from Image 2.
-
-═══════════════════════════════════════════════════════════════════════════
-YOUR TASK: CREATE THE FINAL COMPOSITE
-═══════════════════════════════════════════════════════════════════════════
-
-1. START with Image 1 as your base - this IS the room. Not inspiration. THE ACTUAL ROOM.
-
-2. EXTRACT FURNITURE from Image 2:
-   - Take each furniture piece exactly as it appears (shape, color, material, details)
-   - Maintain the exact product appearance - these are specific products for purchase
-
-3. PLACE FURNITURE into Image 1's space:
-   - Position furniture naturally within Image 1's floor area
-   - Match the lighting and shadows to Image 1's light sources
-   - Ensure furniture scale matches Image 1's room proportions
-   - All furniture must be fully visible and not overlapping
-
-4. PRESERVE Image 1's architecture 100%:
-   - Walls: Exact same color and texture
-   - Floor: Exact same material and reflections
-   - Windows: Same position with same light coming through
-   - Ceiling: Same height and color
-   - Camera perspective: Same viewpoint and angle
-
-The result should look like the furniture was ACTUALLY PHOTOGRAPHED in the user's real room.
-Any architectural changes = FAILURE. The room MUST look identical to Image 1, just with furniture added.`
+Result must look like furniture was photographed IN the user's real room - bright, clean, and realistic.`
           },
           {
             inlineData: {
