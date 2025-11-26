@@ -53,6 +53,27 @@ const INITIAL_QUIZ_DATA: QuizData = {
 const TOTAL_STEPS = 7;
 const QUIZ_STORAGE_KEY = "curalina_quiz_progress";
 
+const VALID_COLOR_PALETTES = [
+  "Warm Neutrals",
+  "Earth & Stone",
+  "Coastal Calm",
+  "Soft Contrast",
+  "Monochrome Luxe",
+  "Artful Contrast",
+  "Heritage Warmth",
+  "Dark & Moody",
+];
+
+function migrateQuizData(data: QuizData): QuizData {
+  const migratedPalettes = data.colorPalettes.filter((p) =>
+    VALID_COLOR_PALETTES.includes(p)
+  );
+  return {
+    ...data,
+    colorPalettes: migratedPalettes,
+  };
+}
+
 export function QuizProvider({ children }: { children: ReactNode }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [quizData, setQuizData] = useState<QuizData>(INITIAL_QUIZ_DATA);
@@ -62,7 +83,9 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setQuizData(parsed.data || INITIAL_QUIZ_DATA);
+        const loadedData = parsed.data || INITIAL_QUIZ_DATA;
+        const migratedData = migrateQuizData(loadedData);
+        setQuizData(migratedData);
         setCurrentStep(parsed.step || 1);
       } catch (e) {
         console.error("Failed to load saved quiz progress:", e);

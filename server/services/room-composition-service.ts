@@ -966,15 +966,36 @@ export async function selectProductsWithComposition(
           if (hasStyleMatch) score += 30;
         }
         
-        // Match colors
+        // Match colors - map palette names to color keywords
         if (quizResponse.colorPalettes && product.colors) {
-          const hasMatchingColor = quizResponse.colorPalettes.some(palette =>
-            product.colors?.some(color => 
-              palette.toLowerCase().includes(color.toLowerCase()) ||
-              color.toLowerCase().includes(palette.toLowerCase())
-            )
-          );
-          if (hasMatchingColor) score += 20;
+          const paletteColorKeywords: Record<string, string[]> = {
+            'Warm Neutrals': ['beige', 'cream', 'tan', 'ivory', 'sand', 'warm white', 'taupe', 'oatmeal', 'camel'],
+            'Earth & Stone': ['terracotta', 'clay', 'sienna', 'ochre', 'rust', 'brown', 'umber', 'stone', 'copper'],
+            'Coastal Calm': ['blue', 'white', 'sand', 'aqua', 'seafoam', 'navy', 'teal', 'ivory', 'driftwood'],
+            'Soft Contrast': ['blush', 'sage', 'dusty rose', 'grey', 'mauve', 'lavender', 'soft pink', 'muted'],
+            'Monochrome Luxe': ['black', 'white', 'grey', 'charcoal', 'silver', 'graphite', 'onyx', 'ivory'],
+            'Artful Contrast': ['emerald', 'sapphire', 'coral', 'jewel', 'teal', 'burgundy', 'mustard', 'gold', 'ruby'],
+            'Heritage Warmth': ['burgundy', 'gold', 'mahogany', 'deep red', 'bronze', 'antique', 'rich', 'walnut'],
+            'Dark & Moody': ['charcoal', 'midnight', 'navy', 'black', 'deep', 'dark grey', 'forest', 'ebony'],
+            // Legacy palette names for backwards compatibility
+            'Light Neutrals': ['beige', 'cream', 'white', 'ivory', 'grey', 'sand'],
+            'Warm & Cozy': ['terracotta', 'caramel', 'brown', 'rust', 'amber', 'warm'],
+            'Colourful Accent': ['emerald', 'sapphire', 'coral', 'bold', 'vibrant', 'colorful'],
+          };
+          
+          const hasMatchingColor = quizResponse.colorPalettes.some(palette => {
+            const keywords = paletteColorKeywords[palette] || [palette.toLowerCase()];
+            return product.colors?.some(color =>
+              keywords.some(keyword => 
+                color.toLowerCase().includes(keyword) ||
+                keyword.includes(color.toLowerCase())
+              )
+            );
+          });
+          if (hasMatchingColor) {
+            score += 20;
+            console.log(`🎨 Color palette match for ${product.name}: +20 pts`);
+          }
         }
         
         // Match textures/materials from quiz against product materials
