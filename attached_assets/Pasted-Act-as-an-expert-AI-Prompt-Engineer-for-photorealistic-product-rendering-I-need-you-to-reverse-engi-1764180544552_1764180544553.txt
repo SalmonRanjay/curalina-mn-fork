@@ -1,0 +1,40 @@
+Act as an expert AI Prompt Engineer for photorealistic product rendering. I need you to reverse-engineer the attached image into a highly detailed text-to-image prompt that I can use to recreate this exact object.
+
+Please analyze the image and structure your response into two parts:
+
+PART 1: TECHNICAL DECONSTRUCTION
+Break down the visual elements using these specific categories:
+
+Subject & Category: (e.g., Modern display cabinet, vitrine, bookshelf)
+Geometry & Shape: (e.g., Rectangular, aspect ratio, symmetry)
+Materials & Textures: (Be specific: e.g., Dark stained walnut wood, vertical grain, tempered glass, polished brass)
+Hardware Details: (Crucial: Describe the handles and legs precisely—shape, color, placement)
+Lighting & Shadows: (e.g., Soft studio lighting, frontal illumination, even looking)
+Camera Angle: (e.g., Straight-on front view, orthographic, flat lay)
+Color Palette: (Hex codes or precise color names)
+PART 2: THE GENERATION PROMPT
+Based on the analysis, write a single, optimized prompt for Stable Diffusion/Midjourney using the following format:
+'[Subject], [Material Details], [Hardware Details], [Lighting], [Viewpoint], [Background], high fidelity, 8k, photorealistic'
+
+Important Constraint: The background in the image is a transparent checkerboard. In your output prompt, replace this with 'isolated on a pure white background' to ensure a clean product shot."
+
+Why This Strategy Works
+Material Specificity: Notice in your sample image, the wood has a specific grain direction (vertical) and a dark, slightly rustic stain. A generic prompt like "brown wood" will fail. My prompt forces the AI to identify "Dark stained timber" or "Walnut."
+Hardware Isolation: The defining features of your image are the long, vertical brass handles meeting in the center and the small tapered brass legs. If the Vision AI misses these, the recreation will fail.
+Orthographic View: Your sample is perfectly flat (front view). AI models love to create angled "lifestyle" shots. By explicitly asking for "Camera Angle," we force the output to specify "Front view" or "Flat elevation."
+Simulated Result (What the AI should give you)
+Based on the image you provided, if you use the prompt above, the Vision AI should output something like this (which you would then use to generate the image):
+
+The Generated Prompt:
+
+"A tall, rectangular double-door display cabinet made of dark stained solid wood with visible vertical grain. The cabinet features two full-length glass doors framed in wood. Centrally located, ultra-long sleek antique brass vertical handles run almost the full length of the doors. The unit stands on four short, tapered brass legs. Interior features four wooden shelves visible through the glass. Frontal straight-on orthographic view, soft even studio lighting, no shadows, isolated on a pure white background, 8k resolution, architectural visualization, hyper-realistic."
+
+Architectural Recommendation for "Exact" Results
+If your business requirement is 100% exact replication (i.e., the wood grain patterns must match, or the dimensions must be identical), text prompting alone is not enough.
+
+As a Software Architect, I recommend implementing a ControlNet Workflow (specifically using Stable Diffusion) for this use case:
+
+Canny Edge Detection: You extract the "lines" (edges) of your source image.
+Text Prompt: You use the text prompt generated above to define the texture and color.
+Generation: You feed both the Edge Map and the Text into the AI.
+Why? This forces the AI to color exactly inside the lines of your original cabinet, ensuring the shape, handle placement, and shelf heights are identical to your reference, while the text prompt handles the visual fidelity.
