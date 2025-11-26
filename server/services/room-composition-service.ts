@@ -7,6 +7,243 @@ import {
   type BudgetAllocation 
 } from './budget-allocation';
 
+// =============================================================================
+// NEW PRIORITIZATION SYSTEM: Space → Fit → Preference → Budget
+// =============================================================================
+// 1. SPACE ANALYSIS: Extract room structure, dimensions, placement zones
+// 2. FIT VALIDATION: Filter products by physical fit BEFORE preference scoring
+// 3. STYLE MATCHING: Score remaining products by user preferences
+// 4. BUDGET CONSTRAINTS: Apply budget as the LAST filter (preserve quality)
+// =============================================================================
+
+/**
+ * Room dimensions extracted from user input (image analysis or manual entry)
+ */
+export interface RoomDimensions {
+  width: number;          // in inches
+  depth: number;          // in inches
+  ceilingHeight: number;  // in inches
+  unit: 'inches' | 'feet' | 'cm';
+  // Extracted features
+  windows?: Array<{ wall: 'front' | 'back' | 'left' | 'right'; width: number; height: number }>;
+  doors?: Array<{ wall: 'front' | 'back' | 'left' | 'right'; width: number }>;
+  walkways?: Array<{ from: string; to: string; minWidth: number }>;
+  openSpaces?: Array<{ x: number; y: number; width: number; depth: number }>;
+}
+
+/**
+ * Physical fit validation result for a product
+ */
+export interface FitValidation {
+  fits: boolean;
+  fitScore: number;       // 0-100, higher = better fit
+  issues: string[];       // List of fit issues
+  bestZone: string | null; // Zone where product fits best
+  orientationOptions: number[]; // Valid rotation angles (degrees)
+  clearanceMargin: number; // How much clearance is available (percentage)
+}
+
+/**
+ * Validate if a product physically fits in a zone
+ * Uses product dimensions vs zone bounds with clearance requirements
+ */
+function validateProductFitForZone(
+  product: Product,
+  zone: ZoneBlueprint,
+  roomDimensions?: RoomDimensions
+): FitValidation {
+  const issues: string[] = [];
+  let fitScore = 100;
+  let fits = true;
+  const orientationOptions: number[] = [0, 90, 180, 270]; // All rotations initially valid
+  
+  // Extract product dimensions (support both key formats)
+  const dims = product.dimensions as any;
+  if (!dims) {
+    // No dimensions available - assume it fits but with lower confidence
+    return {
+      fits: true,
+      fitScore: 60, // Lower score for unknown dimensions
+      issues: ['Product dimensions unknown - assuming fit'],
+      bestZone: zone.id,
+      orientationOptions: [0, 180],
+      clearanceMargin: 0
+    };
+  }
+  
+  // Get dimensions, supporting both 'width'/'w' formats
+  const productWidth = dims.width || dims.w || 0;
+  const productDepth = dims.depth || dims.d || 0;
+  const productHeight = dims.height || dims.h || 0;
+  const unit = dims.unit || 'inches';
+  
+  // Convert to inches if needed
+  const toInches = (val: number, u: string) => {
+    if (u === 'cm') return val / 2.54;
+    if (u === 'feet') return val * 12;
+    return val;
+  };
+  
+  const widthInches = toInches(productWidth, unit);
+  const depthInches = toInches(productDepth, unit);
+  const heightInches = toInches(productHeight, unit);
+  
+  // If room dimensions are provided, validate against actual room size
+  if (roomDimensions) {
+    const roomWidth = roomDimensions.width;
+    const roomDepth = roomDimensions.depth;
+    
+    // Zone bounds are normalized (0-1), convert to actual inches
+    const zoneWidthInches = zone.bounds.width * roomWidth;
+    const zoneDepthInches = zone.bounds.height * roomDepth; // height in bounds = depth in room
+    const clearanceInches = zone.clearance * Math.min(roomWidth, roomDepth);
+    
+    // Check if product fits in zone (with required clearance)
+    const availableWidth = zoneWidthInches - (clearanceInches * 2);
+    const availableDepth = zoneDepthInches - (clearanceInches * 2);
+    
+    // Standard orientation (width along zone width)
+    const fitsStandard = widthInches <= availableWidth && depthInches <= availableDepth;
+    // Rotated orientation (width along zone depth)
+    const fitsRotated = depthInches <= availableWidth && widthInches <= availableDepth;
+    
+    if (!fitsStandard && !fitsRotated) {
+      fits = false;
+      fitScore = 0;
+      issues.push(`Product too large for zone: ${widthInches.toFixed(0)}"x${depthInches.toFixed(0)}" > ${availableWidth.toFixed(0)}"x${availableDepth.toFixed(0)}" available`);
+    } else if (!fitsStandard) {
+      // Only fits when rotated
+      fitScore -= 10;
+      orientationOptions.splice(0, orientationOptions.length, 90, 270); // Only rotated orientations
+      issues.push('Product requires rotation to fit');
+    } else if (!fitsRotated) {
+      // Only fits in standard orientation
+      orientationOptions.splice(0, orientationOptions.length, 0, 180);
+    }
+    
+    // Calculate clearance margin (how much extra space is available)
+    const widthMargin = (availableWidth - widthInches) / availableWidth;
+    const depthMargin = (availableDepth - depthInches) / availableDepth;
+    const clearanceMargin = Math.min(widthMargin, depthMargin);
+    
+    // Score based on how well product fills zone (not too small, not too tight)
+    if (clearanceMargin > 0.5) {
+      // Product is much smaller than zone - might look sparse
+      fitScore -= 15;
+      issues.push('Product may appear small in this zone');
+    } else if (clearanceMargin < 0.1 && clearanceMargin > 0) {
+      // Very tight fit
+      fitScore -= 10;
+      issues.push('Tight fit - limited clearance');
+    }
+    
+    // Check ceiling height for tall furniture
+    if (heightInches > 0 && roomDimensions.ceilingHeight) {
+      const headroom = roomDimensions.ceilingHeight - heightInches;
+      if (headroom < 12) {
+        fitScore -= 20;
+        issues.push('Product nearly touches ceiling');
+      } else if (headroom < 24) {
+        fitScore -= 5;
+        issues.push('Limited headroom above product');
+      }
+    }
+    
+    return {
+      fits,
+      fitScore: Math.max(0, fitScore),
+      issues,
+      bestZone: fits ? zone.id : null,
+      orientationOptions,
+      clearanceMargin: Math.max(0, clearanceMargin)
+    };
+  }
+  
+  // No room dimensions - use heuristic based on typical room sizes
+  // Standard living room ~14x12ft = 168x144 inches
+  const typicalRoomWidth = 168;
+  const typicalRoomDepth = 144;
+  
+  const zoneWidthInches = zone.bounds.width * typicalRoomWidth;
+  const zoneDepthInches = zone.bounds.height * typicalRoomDepth;
+  
+  // Check basic fit with generous tolerance (no exact room size)
+  if (widthInches > zoneWidthInches * 1.2 || depthInches > zoneDepthInches * 1.2) {
+    fitScore -= 30;
+    issues.push('Product may be too large for typical room zone');
+  }
+  
+  return {
+    fits: true, // Default to fits if no room dimensions
+    fitScore: Math.max(0, fitScore),
+    issues,
+    bestZone: zone.id,
+    orientationOptions,
+    clearanceMargin: 0.2 // Assumed margin
+  };
+}
+
+/**
+ * Filter products by physical fit for a specific category and room
+ * This is the FIRST filter applied before any preference scoring
+ */
+function filterByPhysicalFit(
+  products: Product[],
+  roomType: string,
+  category: string,
+  roomDimensions?: RoomDimensions
+): Array<{ product: Product; fitValidation: FitValidation }> {
+  const zones = ROOM_ZONES[roomType] || [];
+  
+  // Find zones that accept this category
+  const validZones = zones.filter(z => z.allowedCategories.includes(category));
+  
+  if (validZones.length === 0) {
+    // No specific zones - all products pass fit filter
+    return products.map(p => ({
+      product: p,
+      fitValidation: {
+        fits: true,
+        fitScore: 70,
+        issues: ['No zone constraints for this category'],
+        bestZone: null,
+        orientationOptions: [0, 180],
+        clearanceMargin: 0.3
+      }
+    }));
+  }
+  
+  const results: Array<{ product: Product; fitValidation: FitValidation }> = [];
+  
+  for (const product of products) {
+    let bestFit: FitValidation | null = null;
+    
+    // Check product against all valid zones, keep best fit
+    for (const zone of validZones) {
+      const validation = validateProductFitForZone(product, zone, roomDimensions);
+      
+      if (!bestFit || validation.fitScore > bestFit.fitScore) {
+        bestFit = validation;
+      }
+    }
+    
+    // Include product if it fits in at least one zone
+    if (bestFit && bestFit.fits) {
+      results.push({ product, fitValidation: bestFit });
+    } else if (bestFit) {
+      // Product doesn't fit but log for debugging
+      console.log(`🚫 Physical fit BLOCK: ${product.name} - ${bestFit.issues.join(', ')}`);
+    }
+  }
+  
+  // Sort by fit score (best fit first)
+  results.sort((a, b) => b.fitValidation.fitScore - a.fitValidation.fitScore);
+  
+  console.log(`📐 Physical fit filter: ${products.length} → ${results.length} products for ${category} in ${roomType}`);
+  
+  return results;
+}
+
 // Zone-based placement system for natural furniture arrangement
 interface ZoneBlueprint {
   id: string;
@@ -917,14 +1154,25 @@ const SET_CATEGORIES = new Set([
 ]);
 
 /**
- * Select products intelligently based on room template and composition rules
+ * Select products using NEW PRIORITIZATION: Space → Fit → Preference → Budget
+ * 
+ * Pipeline order:
+ * 1. SPACE ANALYSIS: Use room dimensions to understand available placement zones
+ * 2. FIT VALIDATION: Filter products by physical fit BEFORE any preference scoring
+ * 3. STYLE MATCHING: Score remaining products by user style/color/texture preferences
+ * 4. BUDGET CONSTRAINTS: Apply budget as the LAST filter (preserve quality over cost)
  */
 export async function selectProductsWithComposition(
   roomType: string,
   candidateProducts: Product[],
   quizResponse?: QuizResponse,
-  maxProducts: number = 15
+  maxProducts: number = 15,
+  roomDimensions?: RoomDimensions // NEW: Optional room dimensions for fit validation
 ): Promise<CompositionResult> {
+  console.log('\n' + '='.repeat(70));
+  console.log('🎯 PRODUCT SELECTION PIPELINE: Space → Fit → Preference → Budget');
+  console.log('='.repeat(70));
+  
   const template = ROOM_TEMPLATES[roomType as keyof typeof ROOM_TEMPLATES];
   if (!template) {
     // Fallback: return diverse selection if no template
@@ -936,45 +1184,53 @@ export async function selectProductsWithComposition(
     };
   }
   
-  // Calculate budget allocation if quiz response is provided
+  // STEP 1: SPACE ANALYSIS - Calculate available zones and constraints
+  console.log('\n📐 STEP 1: SPACE ANALYSIS');
+  if (roomDimensions) {
+    console.log(`   Room size: ${roomDimensions.width}" x ${roomDimensions.depth}" (${(roomDimensions.width/12).toFixed(1)}' x ${(roomDimensions.depth/12).toFixed(1)}')`);
+    console.log(`   Ceiling: ${roomDimensions.ceilingHeight}" (${(roomDimensions.ceilingHeight/12).toFixed(1)}')`);
+    if (roomDimensions.windows?.length) console.log(`   Windows: ${roomDimensions.windows.length}`);
+    if (roomDimensions.doors?.length) console.log(`   Doors: ${roomDimensions.doors.length}`);
+  } else {
+    console.log('   Using default room dimensions (14x12 ft typical)');
+  }
+  
+  // Calculate budget allocation (but DON'T apply it during scoring - apply at END)
   let budgetAllocation: BudgetAllocation | null = null;
   if (quizResponse?.budgetRange) {
     try {
       budgetAllocation = calculateBudgetAllocation(roomType, quizResponse.budgetRange);
-      console.log(`💰 Budget allocation for ${roomType}:`, {
-        total: budgetAllocation.totalBudget,
-        categories: budgetAllocation.categoryBudgets.map(cb => ({
-          category: cb.category,
-          allocated: cb.allocatedBudget,
-          priority: cb.priority
-        }))
-      });
+      console.log(`\n💰 Budget allocation (will apply LAST):`);
+      console.log(`   Total: $${budgetAllocation.totalBudget.toFixed(0)}`);
+      console.log(`   Categories:`, budgetAllocation.categoryBudgets.map(cb => 
+        `${cb.category}: $${cb.allocatedBudget.toFixed(0)}`
+      ).join(', '));
     } catch (error) {
       console.warn(`Failed to calculate budget allocation: ${error}`);
     }
   }
   
-  // Fetch category information for products to enable budget mapping
+  // Fetch category information for products
   const categoryMap = new Map<string, string>();
   const categories = await curalinaStorage.getAllCategories();
   categories.forEach(cat => {
     categoryMap.set(cat.id, cat.name);
   });
   
-  // Categorize all candidate products using the categoryMap for accurate lookups
+  // Categorize all candidate products
   const productsByCategory: Record<string, Product[]> = {};
   const uncategorized: Product[] = [];
   
   for (const product of candidateProducts) {
-    const categories = detectFunctionalCategory(product, categoryMap);
-    if (categories.length === 0) {
+    const cats = detectFunctionalCategory(product, categoryMap);
+    if (cats.length === 0) {
       uncategorized.push(product);
     } else {
-      for (const category of categories) {
-        if (!productsByCategory[category]) {
-          productsByCategory[category] = [];
+      for (const cat of cats) {
+        if (!productsByCategory[cat]) {
+          productsByCategory[cat] = [];
         }
-        productsByCategory[category].push(product);
+        productsByCategory[cat].push(product);
       }
     }
   }
@@ -985,19 +1241,22 @@ export async function selectProductsWithComposition(
   const warnings: string[] = [];
   const usedProductIds = new Set<string>();
   
-  // First pass: Select essential items
+  // Process categories by priority (essentials first)
   const allRules = { ...template.essentials, ...template.complementary };
   const sortedCategories = Object.entries(allRules).sort((a, b) => a[1].priority - b[1].priority);
   
+  console.log('\n📐 STEP 2: FIT VALIDATION (filter before scoring)');
+  console.log('✨ STEP 3: STYLE MATCHING (score by preferences)');
+  
   for (const [category, rule] of sortedCategories) {
     const isEssential = (template.essentials as any)[category] !== undefined;
-    const availableProducts = (productsByCategory[category] || [])
+    const categoryProducts = (productsByCategory[category] || [])
       .filter(p => !usedProductIds.has(p.id));
     
-    console.log(`\n🔍 Processing category: ${category} (${isEssential ? 'ESSENTIAL' : 'complementary'})`);
-    console.log(`   Available products: ${availableProducts.length}, Required: min ${rule.min}, max ${rule.max}`);
+    console.log(`\n🔍 Processing: ${category} (${isEssential ? 'ESSENTIAL' : 'complementary'})`);
+    console.log(`   Available: ${categoryProducts.length}, Required: min ${rule.min}, max ${rule.max}`);
     
-    if (availableProducts.length === 0) {
+    if (categoryProducts.length === 0) {
       if (isEssential && rule.min > 0) {
         missingEssentials.push(category);
         warnings.push(`Missing essential item: ${category}`);
@@ -1006,18 +1265,48 @@ export async function selectProductsWithComposition(
       continue;
     }
     
+    // =========================================================================
+    // STEP 2: FIT VALIDATION - Filter by physical fit FIRST
+    // =========================================================================
+    let fittingProducts = filterByPhysicalFit(categoryProducts, roomType, category, roomDimensions);
+    
+    if (fittingProducts.length === 0) {
+      console.log(`   ⚠️ No products pass fit validation for ${category}`);
+      if (isEssential && rule.min > 0) {
+        // Fallback: use original products with fit warning (essential categories MUST have selections)
+        warnings.push(`No products fit zone constraints for ${category} - using best available`);
+        fittingProducts = categoryProducts.map(p => ({
+          product: p,
+          fitValidation: { 
+            fits: true, 
+            fitScore: 50, 
+            issues: ['Fit relaxed - no better options'], 
+            bestZone: null, 
+            orientationOptions: [0], 
+            clearanceMargin: 0 
+          }
+        }));
+        console.log(`   ✅ Fallback: ${fittingProducts.length} products available for essential ${category}`);
+      } else {
+        continue;
+      }
+    }
+    
     // Determine how many to select
     const targetCount = isEssential ? 
-      Math.max(rule.min, 1) : // At least min for essentials
-      Math.min(rule.max, Math.max(1, Math.floor(availableProducts.length / 2))); // Be conservative with complementary
+      Math.max(rule.min, 1) :
+      Math.min(rule.max, Math.max(1, Math.floor(fittingProducts.length / 2)));
     
-    const toSelect = Math.min(targetCount, rule.max, availableProducts.length);
+    const toSelect = Math.min(targetCount, rule.max, fittingProducts.length);
     
-    console.log(`   Will select: ${toSelect} products (target: ${targetCount}, max: ${rule.max})`);
+    console.log(`   Fitting products: ${fittingProducts.length}, Will select: ${toSelect}`);
     
-    // Score and rank products for this category
-    const scoredProducts = availableProducts.map(product => {
-      let score = 100;
+    // =========================================================================
+    // STEP 3: STYLE MATCHING - Score by user preferences (NOT budget yet)
+    // =========================================================================
+    const scoredProducts = fittingProducts.map(({ product, fitValidation }) => {
+      // Start with fit score (physical fit is foundational)
+      let score = fitValidation.fitScore;
       
       // Prefer products with better visual descriptions
       if (product.visualDescriptionFrontView) score += 20;
@@ -1150,30 +1439,8 @@ export async function selectProductsWithComposition(
         }
       }
       
-      // Budget fit scoring (NEW)
-      if (budgetAllocation && product.categoryId) {
-        const productCategoryName = categoryMap.get(product.categoryId);
-        
-        if (productCategoryName) {
-          const budgetCategory = mapProductCategoryToBudgetCategory(productCategoryName, roomType);
-          const categoryBudget = budgetAllocation.categoryBudgets.find(cb => cb.category === budgetCategory);
-          
-          if (categoryBudget) {
-            const productPrice = parseFloat(product.price);
-            const budgetFitRatio = calculateBudgetFitScore(productPrice, categoryBudget);
-            // Budget fit contributes up to 30 points (significant weight)
-            const budgetFitPoints = budgetFitRatio * 30;
-            score += budgetFitPoints;
-            
-            // Log budget scoring for debugging
-            console.log(`💰 Budget fit for ${product.name}: $${productPrice} → ${budgetCategory} (allocated: $${categoryBudget.allocatedBudget.toFixed(0)}) → ${budgetFitPoints.toFixed(1)} pts (${budgetFitRatio.toFixed(2)})`);
-          } else {
-            console.log(`⚠️ No budget category found for ${productCategoryName} → ${budgetCategory || 'null'}`);
-          }
-        } else {
-          console.log(`⚠️ No category name found for product ${product.name} (categoryId: ${product.categoryId})`);
-        }
-      }
+      // NOTE: Budget scoring REMOVED from here - applied as FINAL filter (Step 4)
+      // This ensures products are selected by FIT and PREFERENCE first, budget last
       
       // NO randomness for set categories - we want consistent matching sets
       // For other categories, add randomness to avoid always picking the same products
@@ -1235,7 +1502,7 @@ export async function selectProductsWithComposition(
     }
   }
   
-  console.log(`\n📦 FINAL SELECTION: ${selectedProducts.length} total products`);
+  console.log(`\n📦 Selection complete (before budget): ${selectedProducts.length} total products`);
   console.log(`   Composition:`, Object.entries(composition).map(([cat, prods]) => `${cat}: ${prods.length}`).join(', '));
   
   // Add some uncategorized items if we have room
@@ -1245,21 +1512,25 @@ export async function selectProductsWithComposition(
     selectedProducts.push(...toAdd);
   }
   
-  // Budget compliance validation
+  // =========================================================================
+  // STEP 4: BUDGET CONSTRAINTS - Apply as the FINAL filter
+  // This ensures we've already selected the BEST fitting and style-matching
+  // products, and only now consider budget to preserve quality
+  // =========================================================================
+  console.log('\n💰 STEP 4: BUDGET CONSTRAINTS (final filter)');
+  
   if (budgetAllocation) {
     const totalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
     const budgetWithFlex = budgetAllocation.totalBudget + budgetAllocation.flexiblePool;
     
-    console.log(`💰 Budget compliance check:`, {
-      totalCost: `$${totalCost.toFixed(2)}`,
-      budgetLimit: `$${budgetWithFlex.toFixed(2)}`,
-      isCompliant: totalCost <= budgetWithFlex,
-      overage: totalCost > budgetWithFlex ? `$${(totalCost - budgetWithFlex).toFixed(2)}` : '$0'
-    });
+    console.log(`   Pre-budget selection cost: $${totalCost.toFixed(2)}`);
+    console.log(`   Budget limit (with flex): $${budgetWithFlex.toFixed(2)}`);
+    console.log(`   Status: ${totalCost <= budgetWithFlex ? '✅ WITHIN BUDGET' : '⚠️ OVER BUDGET'}`);
     
     // If over budget, remove least essential items until within budget
+    // Priority: Remove complementary items first, then expensive optionals
     if (totalCost > budgetWithFlex) {
-      console.warn(`⚠️ Selection exceeds budget by $${(totalCost - budgetWithFlex).toFixed(2)}, removing optional items...`);
+      console.log(`   Overage: $${(totalCost - budgetWithFlex).toFixed(2)} - adjusting selection...`);
       
       // Sort by priority (remove complementary items first)
       const sortedByPriority = [...selectedProducts].map(p => {
@@ -1301,6 +1572,18 @@ export async function selectProductsWithComposition(
   
   // Generate zone-based placements
   const placements = assignItemsToZones(roomType, selectedProducts, composition);
+  
+  // Final summary
+  const finalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+  console.log('\n' + '='.repeat(70));
+  console.log('✅ PIPELINE COMPLETE: Space → Fit → Preference → Budget');
+  console.log('='.repeat(70));
+  console.log(`   Products selected: ${selectedProducts.length}`);
+  console.log(`   Total cost: $${finalCost.toFixed(2)}`);
+  console.log(`   Essential items: ${Object.entries(composition).filter(([cat]) => (template.essentials as any)[cat]).length} categories`);
+  console.log(`   Missing essentials: ${missingEssentials.length > 0 ? missingEssentials.join(', ') : 'None'}`);
+  console.log(`   Warnings: ${warnings.length}`);
+  console.log('='.repeat(70) + '\n');
   
   return {
     selectedProducts,
@@ -1414,3 +1697,8 @@ export function getRoomTemplate(roomType: string): typeof ROOM_TEMPLATES[keyof t
  * Detect functional category from product (exported for ledger system)
  */
 export { detectFunctionalCategory };
+
+/**
+ * Export types for room dimensions and fit validation (Space → Fit → Preference → Budget pipeline)
+ */
+export type { RoomDimensions, FitValidation };

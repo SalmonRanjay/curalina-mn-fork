@@ -198,8 +198,26 @@ ${productDescriptions}
 • FRAME MARGINS: All furniture must appear FULLY within frame with 10% margin from all edges
 
 ═══════════════════════════════════════════════════════════════════════════════
-📋 PLACEMENT RULES
+📋 PLACEMENT RULES (Space → Fit → Style Priority)
 ═══════════════════════════════════════════════════════════════════════════════
+
+🏠 STEP 1 - UNDERSTAND THE SPACE:
+• Identify room dimensions, wall positions, natural lighting direction
+• Locate traffic paths (door-to-door, door-to-window walkways)
+• Note architectural constraints (windows, doors, built-ins)
+
+📐 STEP 2 - ZONE-BASED PLACEMENT:
+• Sofa/primary seating: Against longest wall, facing focal point
+• Coffee table: Centered in front of primary seating, 18" clearance
+• Accent chairs: Flanking sofa at 90° angles for conversation
+• Side tables: Adjacent to seating, within arm's reach
+• Lighting: Corners near seating, on surfaces (table lamps)
+• Storage: Against walls, not blocking walkways
+
+⚖️ STEP 3 - PHYSICAL FIT VALIDATION:
+• Each piece MUST fit its designated zone with proper clearance
+• Minimum 36" walkways between furniture
+• Scale furniture to room proportions - not too small, not cramped
 
 • EXACTLY ${params.products.length} PRODUCTS - ALL ${params.products.length} must appear clearly, NO extras
 • DO NOT ADD any furniture, mirrors, art, or decor NOT in the product list

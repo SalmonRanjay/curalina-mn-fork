@@ -41,14 +41,20 @@ Preferred communication style: Simple, everyday language.
   - **Home Office (7 zones)**: 1 desk (wall), 1 office chair, 1-2 storage, 1 task lamp (surface), 0-1 guest seating, 0-1 rug/art
   - **Zone Height Tiers**: floor (rugs, furniture), surface (table lamps on surfaces), wall (art, ceiling fixtures)
   - **Template Enforcement**: Selection function respects min/max constraints with priority-based ordering
-- **Quiz-to-Product Matching System**: Multi-factor scoring algorithm in room-composition-service.ts that connects quiz preferences to product selection:
-  - **Style Matching** (+30 pts): Quiz styles matched against product designStyle arrays
-  - **Color Matching** (+20 pts): Quiz colorPalettes matched against product colors
-  - **Texture/Material Matching** (+25 pts): Quiz textures mapped to material keywords (e.g., "Leather, Wool" → leather/wool/hide, "Velvet, Brass, Smoked Glass" → velvet/brass/glass/gold)
-  - **Line Style Matching** (+15 pts): Design mode (Classic, Transitional, Modern, Eclectic, Relaxed) mapped to product design style keywords
-  - **Pattern Preference Matching** (+15-20 pts): Comprehensive pattern detection regex for "Just Solids" (boost solid products), "I Love Patterns" (boost patterned products), and "Patterned Accents" (balanced mix)
-  - **Budget Fit Scoring** (+30 pts): Products scored against allocated category budgets
-  - **Visual Description Quality** (+10-20 pts): Products with better AI-generated descriptions preferred
+- **Product Selection Pipeline (Space → Fit → Preference → Budget)**: New 4-step prioritization system ensuring furniture physically fits before style matching:
+  - **STEP 1 - Space Analysis**: Extract room dimensions, identify placement zones (sofa wall, TV wall, dining area, etc.), understand walkways and architectural constraints
+  - **STEP 2 - Fit Validation**: Filter products by physical fit BEFORE any preference scoring. Uses `validateProductFitForZone()` and `filterByPhysicalFit()` functions to check if products can fit in designated zones with proper clearance. Products that don't fit are blocked before scoring.
+  - **STEP 3 - Style Matching**: Score remaining products by user preferences (after fit validation):
+    - **Style Matching** (+30 pts): Quiz styles matched against product designStyle arrays
+    - **Color Matching** (+20 pts): Quiz colorPalettes matched against product colors
+    - **Texture/Material Matching** (+25 pts): Quiz textures mapped to material keywords
+    - **Line Style Matching** (+15 pts): Design mode mapped to product design style keywords
+    - **Pattern Preference Matching** (+15-20 pts): Pattern detection for solid/patterned preferences
+    - **Visual Description Quality** (+10-20 pts): Products with better AI descriptions preferred
+  - **STEP 4 - Budget Constraints (LAST)**: Apply budget as the FINAL filter, not during scoring. This preserves quality over cost - products are selected by fit and preference first, then budget constraints remove only complementary items if needed.
+  - **RoomDimensions Interface**: Supports room size data (width, depth, ceilingHeight, windows, doors, walkways)
+  - **FitValidation Interface**: Returns fit score, issues, best zone, orientation options, and clearance margin
+  - **Fallback Logic**: Essential categories always get selections even when fit validation fails (with warning)
 - **Budget Allocation Framework**: Consistent percentage-based budget distribution across room types with anchor piece emphasis:
   - **Living Room**: Sofa 40% (anchor), Accent Chairs 20%, Tables 15%, Lighting 15%, Rug/Decor 10%
   - **Bedroom**: Bed 40% (anchor), Nightstands 20%, Dresser/Storage 15%, Lighting 15%, Decor/Bedding 10%
