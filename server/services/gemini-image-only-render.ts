@@ -23,12 +23,39 @@ interface RoomAnalysisResult {
     usableFloorArea: string;
     wallLengths: string[];
   };
+  isEmptyRoom?: boolean; // True if room has no furniture (can skip lock pass)
+}
+
+/**
+ * Render validation result from Gemini JSON output
+ * Used to auto-fail bad renders before showing to user
+ */
+export interface RenderValidation {
+  productsPlaced: string[];        // Names of products successfully placed
+  missingProducts: string[];       // Products requested but not placed
+  architecturalIntegrityScore: number; // 0-100 score for room preservation
+  colorFidelityScore: number;      // 0-100 score for color accuracy
+  scaleAccuracyScore: number;      // 0-100 score for proper scaling
+  placementQualityScore: number;   // 0-100 score for furniture placement
+  overallScore: number;            // Weighted average of all scores
+  issues: string[];                // List of detected issues
+  isValid: boolean;                // True if render passes quality thresholds
+}
+
+/**
+ * Placement context for view-angle aware image selection
+ */
+interface PlacementContext {
+  position: 'center' | 'left_wall' | 'right_wall' | 'back_wall' | 'corner' | 'floating';
+  facing: 'forward' | 'left' | 'right' | 'angled';
+  idealViewAngle: 'front' | 'side' | 'angle' | 'any';
 }
 
 /**
  * Analyze room architecture using Gemini Vision BEFORE rendering
  * This gives the model a detailed understanding of what to preserve
  * Now also estimates room dimensions from the image
+ * NEW: Detects if room is empty (no furniture) to optimize render pipeline
  */
 async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<RoomAnalysisResult> {
   const emptyResult: RoomAnalysisResult = {
@@ -39,7 +66,8 @@ async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<Roo
       ceilingHeightFeet: null,
       usableFloorArea: 'unknown',
       wallLengths: []
-    }
+    },
+    isEmptyRoom: false
   };
   
   try {
@@ -55,12 +83,17 @@ async function analyzeRoomWithGeminiVision(roomImageBase64: string): Promise<Roo
         role: "user",
         parts: [
           {
-            text: `Analyze this room's architecture in detail. Provide TWO sections:
+            text: `Analyze this room's architecture in detail. Provide THREE sections:
 
-SECTION 1 - ARCHITECTURE DESCRIPTION (max 150 words, dense paragraph):
+SECTION 1 - FURNITURE STATUS:
+Is this room EMPTY (no furniture) or FURNISHED (has existing furniture)?
+Answer: [EMPTY or FURNISHED]
+If FURNISHED, list the existing furniture pieces.
+
+SECTION 2 - ARCHITECTURE DESCRIPTION (max 150 words, dense paragraph):
 Cover walls (color, texture, position), floor (material, color), ceiling (height estimate, features), windows (position, size, shape), doors (position, style), lighting (natural light direction), perspective (camera angle), and existing elements (built-ins, moldings).
 
-SECTION 2 - ESTIMATED DIMENSIONS (use visual cues like doors, windows, furniture to estimate):
+SECTION 3 - ESTIMATED DIMENSIONS (use visual cues like doors, windows, furniture to estimate):
 Estimate these values based on standard reference sizes:
 - Standard interior door: 80" tall x 36" wide
 - Standard window: 36-48" wide
@@ -95,16 +128,27 @@ Be PRECISE. This will guide furniture placement and scaling.`
       // Parse the response to extract dimensions
       const dimensions = parseRoomDimensions(fullAnalysis);
       
+      // Check if room is empty (no existing furniture)
+      const isEmptyRoom = detectEmptyRoom(fullAnalysis);
+      
       // Extract just the architecture description (before DIMENSIONS:)
-      const archDesc = fullAnalysis.split('DIMENSIONS:')[0].trim();
+      let archDesc = fullAnalysis.split('DIMENSIONS:')[0];
+      // Remove SECTION 1 content (furniture status) to get just architecture description
+      const section2Start = archDesc.indexOf('SECTION 2');
+      if (section2Start > 0) {
+        archDesc = archDesc.substring(section2Start);
+      }
+      archDesc = archDesc.replace('SECTION 2 - ARCHITECTURE DESCRIPTION', '').replace(/^\(max \d+ words.*?\):?/i, '').trim();
       
       console.log(`   📝 Architecture: ${archDesc.substring(0, 150)}...`);
       console.log(`   📐 Estimated dimensions: ~${dimensions.lengthFeet || '?'}ft x ${dimensions.widthFeet || '?'}ft, ceiling ${dimensions.ceilingHeightFeet || '?'}ft`);
       console.log(`   📏 Usable area: ${dimensions.usableFloorArea}`);
+      console.log(`   🏠 Room status: ${isEmptyRoom ? 'EMPTY (can skip lock pass)' : 'FURNISHED (needs lock pass)'}`);
       
       return {
         architectureDescription: archDesc,
-        estimatedDimensions: dimensions
+        estimatedDimensions: dimensions,
+        isEmptyRoom
       };
     }
     
@@ -113,6 +157,209 @@ Be PRECISE. This will guide furniture placement and scaling.`
   } catch (error) {
     console.error(`   ❌ Room analysis failed:`, error);
     return emptyResult;
+  }
+}
+
+/**
+ * Detect if a room is empty (no furniture) based on Gemini analysis
+ * Used to optimize render pipeline by skipping unnecessary lock pass
+ */
+function detectEmptyRoom(analysisText: string): boolean {
+  const lowerText = analysisText.toLowerCase();
+  
+  // Check for explicit EMPTY status
+  if (lowerText.includes('answer: empty') || lowerText.includes('answer:empty')) {
+    return true;
+  }
+  
+  // Check for phrases indicating empty room
+  const emptyIndicators = [
+    'no furniture',
+    'no existing furniture',
+    'room is empty',
+    'unfurnished',
+    'bare room',
+    'empty room',
+    'no furnishings',
+    'without furniture',
+    'completely empty'
+  ];
+  
+  const hasEmptyIndicator = emptyIndicators.some(indicator => lowerText.includes(indicator));
+  
+  // Check for furnished indicators (if these exist, room is NOT empty)
+  const furnishedIndicators = [
+    'answer: furnished',
+    'answer:furnished',
+    'existing furniture includes',
+    'current furniture',
+    'furnished with'
+  ];
+  
+  const hasFurnishedIndicator = furnishedIndicators.some(indicator => lowerText.includes(indicator));
+  
+  // Return true only if empty indicators found AND no furnished indicators
+  return hasEmptyIndicator && !hasFurnishedIndicator;
+}
+
+/**
+ * Validate a rendered image using Gemini Vision
+ * Returns structured validation JSON to auto-fail bad renders
+ * This implements Google AI Studio's recommendation for structured output validation
+ */
+export async function validateRender(
+  renderBase64: string,
+  expectedProducts: string[],
+  originalRoomBase64?: string
+): Promise<RenderValidation> {
+  const defaultValidation: RenderValidation = {
+    productsPlaced: [],
+    missingProducts: expectedProducts,
+    architecturalIntegrityScore: 0,
+    colorFidelityScore: 0,
+    scaleAccuracyScore: 0,
+    placementQualityScore: 0,
+    overallScore: 0,
+    issues: ['Validation failed'],
+    isValid: false
+  };
+  
+  try {
+    console.log(`\n🔍 VALIDATING RENDER with Gemini Vision...`);
+    
+    // Extract base64 data
+    const renderData = renderBase64.replace(/^data:image\/\w+;base64,/, '');
+    const mimeType = renderBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    
+    const parts: any[] = [
+      {
+        text: `Analyze this interior design render and provide a quality assessment.
+
+EXPECTED PRODUCTS TO FIND:
+${expectedProducts.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+Evaluate the render on these criteria:
+
+1. PRODUCTS PLACED: List each product you can identify in the image. Match against the expected list above.
+
+2. ARCHITECTURAL INTEGRITY (0-100): 
+   - Are walls, windows, floors, ceilings realistic and consistent?
+   - Is the perspective correct and natural?
+   - Is the lighting believable?
+
+3. COLOR FIDELITY (0-100):
+   - Do furniture pieces have realistic colors?
+   - Are there any obvious color artifacts or unnaturally saturated colors?
+
+4. SCALE ACCURACY (0-100):
+   - Are furniture pieces properly scaled relative to the room?
+   - Is anything too large or too small for the space?
+   - Are pieces proportional to each other?
+
+5. PLACEMENT QUALITY (0-100):
+   - Are furniture pieces properly grounded (not floating)?
+   - Is furniture placed logically (sofas not blocking doors, etc.)?
+   - Is there good visual composition?
+
+Respond in this EXACT JSON format:
+{
+  "productsPlaced": ["Product Name 1", "Product Name 2"],
+  "missingProducts": ["Product Name 3"],
+  "architecturalIntegrityScore": 85,
+  "colorFidelityScore": 90,
+  "scaleAccuracyScore": 80,
+  "placementQualityScore": 75,
+  "issues": ["Issue 1 if any", "Issue 2 if any"]
+}
+
+Be critical but fair. Only list real issues.`
+      },
+      { text: 'Rendered image to analyze:' },
+      {
+        inlineData: {
+          data: renderData,
+          mimeType
+        }
+      }
+    ];
+    
+    // Add original room for comparison if available
+    if (originalRoomBase64) {
+      const originalData = originalRoomBase64.replace(/^data:image\/\w+;base64,/, '');
+      const originalMimeType = originalRoomBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+      parts.push({ text: 'Original room for comparison:' });
+      parts.push({
+        inlineData: {
+          data: originalData,
+          mimeType: originalMimeType
+        }
+      });
+    }
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts }]
+    });
+    
+    const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    if (responseText.length === 0) {
+      console.warn('   ⚠️ Empty validation response');
+      return defaultValidation;
+    }
+    
+    // Parse JSON from response (handle markdown code blocks)
+    let jsonStr = responseText;
+    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    } else {
+      // Try to find raw JSON object
+      const rawJsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (rawJsonMatch) {
+        jsonStr = rawJsonMatch[0];
+      }
+    }
+    
+    const parsed = JSON.parse(jsonStr);
+    
+    // Calculate overall score (weighted average)
+    const overallScore = Math.round(
+      (parsed.architecturalIntegrityScore || 0) * 0.30 +
+      (parsed.colorFidelityScore || 0) * 0.25 +
+      (parsed.scaleAccuracyScore || 0) * 0.25 +
+      (parsed.placementQualityScore || 0) * 0.20
+    );
+    
+    // Determine if render is valid (threshold: 60 overall, at least 50% products placed)
+    const productPlacementRate = parsed.productsPlaced?.length / expectedProducts.length || 0;
+    const isValid = overallScore >= 60 && productPlacementRate >= 0.5;
+    
+    const validation: RenderValidation = {
+      productsPlaced: parsed.productsPlaced || [],
+      missingProducts: parsed.missingProducts || [],
+      architecturalIntegrityScore: parsed.architecturalIntegrityScore || 0,
+      colorFidelityScore: parsed.colorFidelityScore || 0,
+      scaleAccuracyScore: parsed.scaleAccuracyScore || 0,
+      placementQualityScore: parsed.placementQualityScore || 0,
+      overallScore,
+      issues: parsed.issues || [],
+      isValid
+    };
+    
+    console.log(`   ✅ Validation complete:`);
+    console.log(`      Products: ${validation.productsPlaced.length}/${expectedProducts.length} placed`);
+    console.log(`      Scores: Arch=${validation.architecturalIntegrityScore}, Color=${validation.colorFidelityScore}, Scale=${validation.scaleAccuracyScore}, Placement=${validation.placementQualityScore}`);
+    console.log(`      Overall: ${overallScore}/100 - ${isValid ? 'PASS' : 'FAIL'}`);
+    if (validation.issues.length > 0) {
+      console.log(`      Issues: ${validation.issues.join(', ')}`);
+    }
+    
+    return validation;
+    
+  } catch (error) {
+    console.error('   ❌ Render validation failed:', error);
+    return defaultValidation;
   }
 }
 
@@ -208,33 +455,158 @@ async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mim
 }
 
 /**
- * Select front view image for each product
+ * Determine ideal placement context for a product based on its category
+ * Used to select the best view angle (front, side, angle) for rendering
+ */
+function getPlacementContext(product: Product): PlacementContext {
+  const category = detectFunctionalCategory(product);
+  const name = product.name.toLowerCase();
+  
+  // Console tables go against walls - prefer side/angle view
+  if (category === 'Console' || name.includes('console')) {
+    return {
+      position: 'back_wall',
+      facing: 'forward',
+      idealViewAngle: 'angle' // 3/4 view shows depth better
+    };
+  }
+  
+  // Sofas and sectionals - front view preferred
+  if (category === 'Seating' || name.includes('sofa') || name.includes('sectional')) {
+    return {
+      position: 'center',
+      facing: 'forward',
+      idealViewAngle: 'front'
+    };
+  }
+  
+  // Side tables typically go next to sofas - angle view preferred
+  if (category === 'Side Table' || name.includes('side table') || name.includes('end table')) {
+    return {
+      position: 'left_wall',
+      facing: 'angled',
+      idealViewAngle: 'angle'
+    };
+  }
+  
+  // Floor lamps in corners - angle view
+  if (category === 'Floor Lamp' || name.includes('floor lamp')) {
+    return {
+      position: 'corner',
+      facing: 'forward',
+      idealViewAngle: 'angle'
+    };
+  }
+  
+  // Bookcases and storage against walls - angle view
+  if (category === 'Storage' || name.includes('bookcase') || name.includes('shelf')) {
+    return {
+      position: 'left_wall',
+      facing: 'forward',
+      idealViewAngle: 'angle'
+    };
+  }
+  
+  // Default: front view for most items
+  return {
+    position: 'center',
+    facing: 'forward',
+    idealViewAngle: 'front'
+  };
+}
+
+/**
+ * Select best image for a product based on placement context
+ * Implements view-angle awareness for better AI rendering
+ * Priority: Ideal angle > Front view > First available
+ */
+function selectBestProductImage(product: Product, context: PlacementContext): string | null {
+  if (!product.images || !Array.isArray(product.images) || product.images.length === 0) {
+    return null;
+  }
+  
+  const images = product.images.filter(img => img && typeof img === 'string' && img.trim().length > 0);
+  if (images.length === 0) return null;
+  
+  // Helper to check URL for view type
+  const urlContains = (url: string, patterns: string[]) => {
+    const lowerUrl = url.toLowerCase();
+    return patterns.some(p => lowerUrl.includes(p));
+  };
+  
+  // Define patterns for each view type
+  const viewPatterns = {
+    front: ['front%20view', 'front_view', 'front view', 'frontview', 'front-view'],
+    side: ['side%20view', 'side_view', 'side view', 'sideview', 'side-view', 'profile'],
+    angle: ['angle%20view', 'angle_view', 'angle view', 'angleview', '3-4', '3_4', 'three-quarter', 'angled']
+  };
+  
+  // 1. Try to find the ideal view angle for this placement
+  if (context.idealViewAngle === 'side') {
+    const sideView = images.find(url => urlContains(url, viewPatterns.side));
+    if (sideView && isValidImageUrl(sideView)) {
+      console.log(`   📸 Using SIDE VIEW for ${product.name} (wall placement)`);
+      return sideView;
+    }
+  }
+  
+  if (context.idealViewAngle === 'angle') {
+    const angleView = images.find(url => urlContains(url, viewPatterns.angle));
+    if (angleView && isValidImageUrl(angleView)) {
+      console.log(`   📸 Using ANGLE VIEW for ${product.name} (optimal perspective)`);
+      return angleView;
+    }
+    // Fall back to side view if no angle view
+    const sideView = images.find(url => urlContains(url, viewPatterns.side));
+    if (sideView && isValidImageUrl(sideView)) {
+      console.log(`   📸 Using SIDE VIEW for ${product.name} (fallback from angle)`);
+      return sideView;
+    }
+  }
+  
+  // 2. Always try front view as primary fallback
+  const frontView = images.find(url => urlContains(url, viewPatterns.front));
+  if (frontView && isValidImageUrl(frontView)) {
+    return frontView;
+  }
+  
+  // 3. Last resort: first valid image
+  const firstValid = images.find(url => isValidImageUrl(url));
+  return firstValid || null;
+}
+
+/**
+ * Select optimal view image for each product with view-angle awareness
  * Returns array of product images to use as references
+ * NEW: Uses placement context to select side/angle views for wall-placed items
  */
 function selectProductFrontViewImages(products: Product[]): { 
-  selected: Array<{ url: string; productName: string; sku: string }>;
+  selected: Array<{ url: string; productName: string; sku: string; viewType: string }>;
   dropped: Array<{ productName: string; sku: string; reason: string }>;
 } {
-  const selected: Array<{ url: string; productName: string; sku: string }> = [];
+  const selected: Array<{ url: string; productName: string; sku: string; viewType: string }> = [];
   const dropped: Array<{ productName: string; sku: string; reason: string }> = [];
   
   for (const product of products) {
-    // Priority: frontView > first image in array
-    let imageUrl: string | null = null;
+    // Get placement context to determine ideal view angle
+    const context = getPlacementContext(product);
     
-    if (product.images) {
-      if (typeof product.images === 'object' && 'frontView' in product.images && product.images.frontView) {
-        imageUrl = product.images.frontView as string;
-      } else if (Array.isArray(product.images) && product.images.length > 0) {
-        imageUrl = product.images[0];
-      }
-    }
+    // Select best image based on context
+    const imageUrl = selectBestProductImage(product, context);
     
     if (imageUrl && isValidImageUrl(imageUrl)) {
+      // Determine which view type was actually selected
+      const lowerUrl = imageUrl.toLowerCase();
+      let viewType = 'unknown';
+      if (lowerUrl.includes('front')) viewType = 'front';
+      else if (lowerUrl.includes('side') || lowerUrl.includes('profile')) viewType = 'side';
+      else if (lowerUrl.includes('angle') || lowerUrl.includes('3-4') || lowerUrl.includes('three')) viewType = 'angle';
+      
       selected.push({
         url: imageUrl,
         productName: product.name,
-        sku: product.sku
+        sku: product.sku,
+        viewType
       });
     } else {
       const reason = !imageUrl ? 'No image URL found' : 'Invalid image URL format';
@@ -1342,6 +1714,23 @@ interface MultiStepRenderParams {
   products: Product[];
   roomType?: string;
   stylePreference?: string;
+  onProgress?: (progress: RenderProgress) => void; // Progress callback for UI updates
+}
+
+/**
+ * Progress update for render pipeline - used for enhanced loading UX
+ */
+export interface RenderProgress {
+  stage: 'analyzing' | 'locking' | 'batch' | 'validating' | 'complete' | 'error';
+  stageLabel: string;           // Human-readable stage description
+  currentStep: number;          // Current step (1-indexed)
+  totalSteps: number;           // Total steps in pipeline
+  percentComplete: number;      // 0-100
+  estimatedTimeRemaining?: number; // Seconds remaining (estimated)
+  currentBatch?: number;        // Current batch number (if in batch stage)
+  totalBatches?: number;        // Total batches
+  productsInBatch?: string[];   // Product names in current batch
+  skippedLockPass?: boolean;    // True if lock pass was skipped (empty room)
 }
 
 interface MultiStepRenderResult {
@@ -1352,25 +1741,46 @@ interface MultiStepRenderResult {
   productsSentToAI: string[];
   stepsCompleted: number;
   totalSteps: number;
+  validation?: RenderValidation; // Structured validation from Gemini
+  skippedLockPass?: boolean;     // True if lock pass was skipped (empty room optimization)
 }
 
 /**
  * Multi-step render pipeline for improved quality
  * 
  * Strategy:
- * 1. Room Lock Pass: Send room image with "keep exactly the same" to establish baseline
- * 2. Product Batch Passes: Add 2-3 products at a time, using previous render as new anchor
+ * 1. Room Analysis: Detect if room is empty to optimize pipeline
+ * 2. Room Lock Pass: SKIPPED if room is empty (optimization)
+ * 3. Product Batch Passes: Add 2-4 products at a time, using previous render as new anchor
  * 
  * This approach:
- * - Preserves room structure by locking it first
+ * - Skips unnecessary lock pass for empty rooms (saves ~10 seconds)
+ * - Preserves room structure by locking it first (if needed)
  * - Gives each product more "attention" from the model
  * - Uses previous render as anchor for consistency
+ * - Sends progress updates for enhanced loading UX
  */
 export async function generateMultiStepRender(params: MultiStepRenderParams): Promise<MultiStepRenderResult> {
-  const { roomImageUrl, products, roomType, stylePreference } = params;
+  const { roomImageUrl, products, roomType, stylePreference, onProgress } = params;
   
   const style = stylePreference || 'Modern';
   const room = roomType || 'living room';
+  
+  // Helper to send progress updates
+  const sendProgress = (progress: RenderProgress) => {
+    if (onProgress) {
+      try {
+        onProgress(progress);
+      } catch (e) {
+        console.warn('Progress callback error:', e);
+      }
+    }
+  };
+  
+  // Average time per step (in seconds) for estimation
+  const AVG_ANALYSIS_TIME = 5;
+  const AVG_LOCK_TIME = 10;
+  const AVG_BATCH_TIME = 12;
   
   console.log(`\n🔄 MULTI-STEP RENDER PIPELINE`);
   console.log(`   Total products received: ${products.length}`);
@@ -1399,9 +1809,9 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
   for (let i = 0; i < sortedProducts.length; i += PRODUCTS_PER_BATCH) {
     productBatches.push(sortedProducts.slice(i, i + PRODUCTS_PER_BATCH));
   }
-  const totalSteps = 1 + productBatches.length; // 1 room lock + N product batches
   
-  console.log(`\n   Total steps: ${totalSteps} (1 room lock + ${productBatches.length} product batches)`);
+  // Track if we skip lock pass (will be determined after analysis)
+  let skippedLockPass = false;
   
   const allProductsSentToAI: string[] = [];
   let stepsCompleted = 0;
@@ -1413,13 +1823,20 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     console.log(`\n📸 Fetching original room image for architecture preservation...`);
     const trueOriginalRoom = await fetchImageAsBase64(roomImageUrl);
     if (!trueOriginalRoom) {
+      sendProgress({
+        stage: 'error',
+        stageLabel: 'Failed to load room image',
+        currentStep: 0,
+        totalSteps: productBatches.length + 2,
+        percentComplete: 0
+      });
       return {
         success: false,
         error: 'Failed to fetch original room image',
         productsUsed: 0,
         productsSentToAI: [],
         stepsCompleted: 0,
-        totalSteps
+        totalSteps: productBatches.length + 2
       };
     }
     const trueOriginalBase64 = `data:${trueOriginalRoom.mimeType};base64,${trueOriginalRoom.data}`;
@@ -1428,45 +1845,118 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     // ========================================
     // STEP 0.5: Analyze room architecture with Gemini Vision
     // ========================================
+    sendProgress({
+      stage: 'analyzing',
+      stageLabel: 'Analyzing room architecture...',
+      currentStep: 1,
+      totalSteps: productBatches.length + 2, // Analysis + potential lock + batches
+      percentComplete: 5,
+      estimatedTimeRemaining: AVG_ANALYSIS_TIME + AVG_LOCK_TIME + (productBatches.length * AVG_BATCH_TIME)
+    });
+    
     const roomAnalysisResult = await analyzeRoomWithGeminiVision(trueOriginalBase64);
     const roomArchitectureAnalysis = roomAnalysisResult.architectureDescription;
     const roomDimensions = roomAnalysisResult.estimatedDimensions;
+    const isEmptyRoom = roomAnalysisResult.isEmptyRoom || false;
+    
+    // Determine actual total steps based on whether we skip lock pass
+    const actualTotalSteps = isEmptyRoom ? productBatches.length + 1 : productBatches.length + 2;
     
     // ========================================
-    // STEP 1: Room Lock Pass
+    // STEP 1: Room Lock Pass (SKIP IF EMPTY ROOM)
     // ========================================
-    console.log(`\n📍 STEP 1/${totalSteps}: Room Lock Pass`);
-    console.log(`   Establishing room baseline - no products yet`);
+    let currentAnchor: string;
+    let originalRoomBase64: string;
     
-    const roomLockResult = await executeRoomLockPass(roomImageUrl, style, room);
-    
-    if (!roomLockResult.success || !roomLockResult.imageBase64) {
-      console.error(`❌ Room lock pass failed`);
-      return {
-        success: false,
-        error: roomLockResult.error || 'Room lock pass failed',
-        productsUsed: 0,
-        productsSentToAI: [],
-        stepsCompleted: 0,
-        totalSteps
-      };
+    if (isEmptyRoom) {
+      // OPTIMIZATION: Skip lock pass for empty rooms
+      console.log(`\n📍 STEP 1/${actualTotalSteps}: Room Lock Pass - SKIPPED (empty room detected)`);
+      console.log(`   ⚡ Empty room optimization: Using original image directly`);
+      skippedLockPass = true;
+      
+      sendProgress({
+        stage: 'locking',
+        stageLabel: 'Empty room detected - skipping lock pass...',
+        currentStep: 1,
+        totalSteps: actualTotalSteps,
+        percentComplete: 15,
+        estimatedTimeRemaining: productBatches.length * AVG_BATCH_TIME,
+        skippedLockPass: true
+      });
+      
+      // Use original room directly as anchor
+      currentAnchor = trueOriginalBase64;
+      originalRoomBase64 = trueOriginalBase64;
+      stepsCompleted = 1;
+    } else {
+      // Room has furniture - need lock pass to preserve architecture
+      console.log(`\n📍 STEP 1/${actualTotalSteps}: Room Lock Pass`);
+      console.log(`   Establishing room baseline - furniture detected, preserving architecture`);
+      
+      sendProgress({
+        stage: 'locking',
+        stageLabel: 'Preparing room for new furniture...',
+        currentStep: 1,
+        totalSteps: actualTotalSteps,
+        percentComplete: 10,
+        estimatedTimeRemaining: AVG_LOCK_TIME + (productBatches.length * AVG_BATCH_TIME)
+      });
+      
+      const roomLockResult = await executeRoomLockPass(roomImageUrl, style, room);
+      
+      if (!roomLockResult.success || !roomLockResult.imageBase64) {
+        console.error(`❌ Room lock pass failed`);
+        sendProgress({
+          stage: 'error',
+          stageLabel: 'Room preparation failed',
+          currentStep: 1,
+          totalSteps: actualTotalSteps,
+          percentComplete: 10
+        });
+        return {
+          success: false,
+          error: roomLockResult.error || 'Room lock pass failed',
+          productsUsed: 0,
+          productsSentToAI: [],
+          stepsCompleted: 0,
+          totalSteps: actualTotalSteps
+        };
+      }
+      
+      currentAnchor = roomLockResult.imageBase64;
+      originalRoomBase64 = roomLockResult.imageBase64;
+      stepsCompleted = 1;
+      console.log(`   ✅ Room locked successfully`);
     }
-    
-    stepsCompleted = 1;
-    let currentAnchor = roomLockResult.imageBase64;
-    // Store room lock result for batch 2+ architecture reference
-    const originalRoomBase64 = roomLockResult.imageBase64;
-    console.log(`   ✅ Room locked successfully`);
     
     // ========================================
     // STEP 2+: Product Batch Passes
     // ========================================
     for (let batchIndex = 0; batchIndex < productBatches.length; batchIndex++) {
       const batch = productBatches[batchIndex];
-      const stepNum = batchIndex + 2;
+      const stepNum = skippedLockPass ? batchIndex + 1 : batchIndex + 2;
       
-      console.log(`\n📦 STEP ${stepNum}/${totalSteps}: Product Batch ${batchIndex + 1}`);
+      console.log(`\n📦 STEP ${stepNum}/${actualTotalSteps}: Product Batch ${batchIndex + 1}`);
       console.log(`   Products: ${batch.map(p => p.name).join(', ')}`);
+      
+      // Calculate progress
+      const completedBatches = batchIndex;
+      const baseProgress = skippedLockPass ? 15 : 20; // After lock pass
+      const batchProgress = ((completedBatches + 0.5) / productBatches.length) * 70;
+      const remainingBatches = productBatches.length - batchIndex - 1;
+      
+      sendProgress({
+        stage: 'batch',
+        stageLabel: `Placing ${batch.map(p => p.name.split(' ').slice(0, 2).join(' ')).join(', ')}...`,
+        currentStep: stepNum,
+        totalSteps: actualTotalSteps,
+        percentComplete: Math.round(baseProgress + batchProgress),
+        estimatedTimeRemaining: (remainingBatches + 1) * AVG_BATCH_TIME,
+        currentBatch: batchIndex + 1,
+        totalBatches: productBatches.length,
+        productsInBatch: batch.map(p => p.name),
+        skippedLockPass
+      });
       
       // Pass original room image, analysis AND dimensions for architecture reference
       const batchResult = await executeProductBatchPass(
@@ -1497,11 +1987,58 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
     }
     
     console.log(`\n✅ GEMINI RENDER COMPLETE`);
-    console.log(`   Steps completed: ${stepsCompleted}/${totalSteps}`);
+    console.log(`   Steps completed: ${stepsCompleted}/${actualTotalSteps}`);
     console.log(`   Products rendered: ${allProductsSentToAI.length}`);
+    console.log(`   Lock pass: ${skippedLockPass ? 'SKIPPED (empty room)' : 'EXECUTED'}`);
     
     // Use Gemini's render directly (delta compositing removed)
     const finalImage = currentAnchor;
+    
+    // ========================================
+    // OPTIONAL: Validate final render quality
+    // ========================================
+    let validation: RenderValidation | undefined;
+    
+    // Only validate if we have products and a render
+    if (allProductsSentToAI.length > 0 && finalImage) {
+      sendProgress({
+        stage: 'validating',
+        stageLabel: 'Checking design quality...',
+        currentStep: actualTotalSteps,
+        totalSteps: actualTotalSteps,
+        percentComplete: 95,
+        skippedLockPass
+      });
+      
+      try {
+        validation = await validateRender(
+          finalImage,
+          allProductsSentToAI,
+          trueOriginalBase64
+        );
+        
+        // Log validation summary
+        if (!validation.isValid) {
+          console.warn(`   ⚠️ Render validation warning: Score ${validation.overallScore}/100`);
+          if (validation.issues.length > 0) {
+            console.warn(`   Issues: ${validation.issues.join(', ')}`);
+          }
+        }
+      } catch (validationError) {
+        console.warn('   ⚠️ Validation skipped due to error:', validationError);
+        // Continue without validation - don't fail the entire render
+      }
+    }
+    
+    // Send completion progress
+    sendProgress({
+      stage: 'complete',
+      stageLabel: 'Design complete!',
+      currentStep: actualTotalSteps,
+      totalSteps: actualTotalSteps,
+      percentComplete: 100,
+      skippedLockPass
+    });
     
     console.log(`\n✅ MULTI-STEP RENDER PIPELINE COMPLETE`);
     
@@ -1511,18 +2048,28 @@ export async function generateMultiStepRender(params: MultiStepRenderParams): Pr
       productsUsed: allProductsSentToAI.length,
       productsSentToAI: allProductsSentToAI,
       stepsCompleted,
-      totalSteps
+      totalSteps: actualTotalSteps,
+      skippedLockPass,
+      validation
     };
     
   } catch (error) {
     console.error(`❌ Multi-step render error:`, error);
+    sendProgress({
+      stage: 'error',
+      stageLabel: 'An error occurred',
+      currentStep: stepsCompleted,
+      totalSteps: productBatches.length + 2,
+      percentComplete: Math.round((stepsCompleted / (productBatches.length + 2)) * 100)
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       productsUsed: allProductsSentToAI.length,
       productsSentToAI: allProductsSentToAI,
       stepsCompleted,
-      totalSteps
+      totalSteps: productBatches.length + 2,
+      skippedLockPass
     };
   }
 }

@@ -1881,9 +1881,20 @@ export function registerCuralinaRoutes(app: Express) {
           const selectedSkus = selectedProducts.map(p => p.sku);
           const fullSelectedProducts = allProducts.filter(p => selectedSkus.includes(p.sku));
           
-          // Generate render (QA validation disabled)
+          // Generate render with optional validation
           let imageDataUrl: string | null = null;
           let productsSentToAI: string[] = []; // Track products actually sent to AI (after image filtering)
+          let renderValidation: {
+            overallScore: number;
+            isValid: boolean;
+            productsPlaced: string[];
+            missingProducts: string[];
+            architecturalIntegrityScore: number;
+            colorFidelityScore: number;
+            scaleAccuracyScore: number;
+            placementQualityScore: number;
+            issues: string[];
+          } | null = null;
           
           console.log(`\n🎨 Starting render generation...`);
           
@@ -1895,12 +1906,51 @@ export function registerCuralinaRoutes(app: Express) {
             // Use multi-step pipeline for room images with many products
             console.log(`🔄 Using MULTI-STEP pipeline for better quality...`);
             const { generateMultiStepRender } = await import('./services/gemini-image-only-render');
+            
+            // Wire up progress callback to update render record for frontend polling
+            const onProgress = async (progress: { 
+              stage: string; 
+              percentComplete: number; 
+              currentStep: number; 
+              totalSteps: number;
+              estimatedTimeRemaining?: number;
+              currentBatch?: number;
+              totalBatches?: number;
+              productsInBatch?: string[];
+              skippedLockPass?: boolean;
+            }) => {
+              try {
+                // Update render metadata with progress for frontend to poll
+                await curalinaStorage.updateRender(render.id, {
+                  productMetadata: {
+                    progressStage: progress.stage,
+                    progressPercent: progress.percentComplete,
+                    currentStep: progress.currentStep,
+                    totalSteps: progress.totalSteps,
+                    estimatedTimeRemaining: progress.estimatedTimeRemaining,
+                    currentBatch: progress.currentBatch,
+                    totalBatches: progress.totalBatches,
+                    productsInBatch: progress.productsInBatch,
+                    skippedLockPass: progress.skippedLockPass
+                  }
+                } as any);
+              } catch (e) {
+                // Log but don't fail render if progress update fails
+                console.warn('Progress update failed:', e);
+              }
+            };
+            
             const multiStepResult = await generateMultiStepRender({
               roomImageUrl: floorplanUrl,
               products: fullSelectedProducts,
               roomType: quiz.roomType,
-              stylePreference: quiz.styles?.[0] || 'modern'
+              stylePreference: quiz.styles?.[0] || 'modern',
+              onProgress
             });
+            
+            // Include validation in result for downstream storage
+            const validation = multiStepResult.validation;
+            
             imageOnlyResult = {
               success: multiStepResult.success,
               imageBase64: multiStepResult.imageBase64,
@@ -1908,8 +1958,49 @@ export function registerCuralinaRoutes(app: Express) {
               productsUsed: multiStepResult.productsUsed,
               productsSentToAI: multiStepResult.productsSentToAI
             };
+            
             if (multiStepResult.success) {
               console.log(`✅ Multi-step complete: ${multiStepResult.stepsCompleted}/${multiStepResult.totalSteps} steps`);
+              if (multiStepResult.skippedLockPass) {
+                console.log(`   ⚡ Empty room optimization: Lock pass was skipped`);
+              }
+              if (validation) {
+                console.log(`   🔍 Validation: ${validation.overallScore}/100 (${validation.isValid ? 'PASS' : 'WARN'})`);
+                if (!validation.isValid && validation.issues?.length > 0) {
+                  console.warn(`   ⚠️ Validation issues: ${validation.issues.join(', ')}`);
+                }
+                // Store validation for later persistence to qaResults
+                renderValidation = {
+                  overallScore: validation.overallScore,
+                  isValid: validation.isValid,
+                  productsPlaced: validation.productsPlaced || [],
+                  missingProducts: validation.missingProducts || [],
+                  architecturalIntegrityScore: validation.architecturalIntegrityScore,
+                  colorFidelityScore: validation.colorFidelityScore,
+                  scaleAccuracyScore: validation.scaleAccuracyScore,
+                  placementQualityScore: validation.placementQualityScore,
+                  issues: validation.issues || []
+                };
+                // Update progress metadata immediately
+                await curalinaStorage.updateRender(render.id, {
+                  productMetadata: {
+                    progressStage: 'complete',
+                    progressPercent: 100,
+                    validation: {
+                      overallScore: validation.overallScore,
+                      isValid: validation.isValid,
+                      productsPlaced: validation.productsPlaced?.length || 0,
+                      missingProducts: validation.missingProducts?.length || 0,
+                      architecturalIntegrityScore: validation.architecturalIntegrityScore,
+                      colorFidelityScore: validation.colorFidelityScore,
+                      scaleAccuracyScore: validation.scaleAccuracyScore,
+                      placementQualityScore: validation.placementQualityScore,
+                      issues: validation.issues || []
+                    },
+                    skippedLockPass: multiStepResult.skippedLockPass
+                  }
+                } as any);
+              }
             }
           } else {
             // Use single-step for fewer products or text-to-image mode
@@ -1999,8 +2090,20 @@ export function registerCuralinaRoutes(app: Express) {
           await curalinaStorage.updateRender(render.id, {
             imageUrl,
             productSkus: productsForShopTheLook,
-            productMetadata: renderMetadata,
-            qaResults: null, // QA validation disabled
+            productMetadata: {
+              ...renderMetadata,
+              // Include validation summary if available
+              ...(renderValidation ? {
+                validation: {
+                  overallScore: renderValidation.overallScore,
+                  isValid: renderValidation.isValid,
+                  productsPlaced: renderValidation.productsPlaced.length,
+                  missingProducts: renderValidation.missingProducts.length,
+                  issues: renderValidation.issues
+                }
+              } : {})
+            },
+            qaResults: renderValidation, // Store full validation results (null if not available)
             prompt,
             status: 'completed',
           });

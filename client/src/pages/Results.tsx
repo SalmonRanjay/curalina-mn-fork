@@ -247,17 +247,123 @@ export default function Results() {
   }
 
   if (render.status === 'generating') {
+    // Extract progress data from render metadata if available
+    const progressData = render.productMetadata as { 
+      progressStage?: string;
+      progressPercent?: number;
+      currentStep?: number;
+      totalSteps?: number;
+      currentBatch?: number;
+      totalBatches?: number;
+      estimatedTimeRemaining?: number;
+      productsInBatch?: string[];
+    } | null;
+    
+    const stage = progressData?.progressStage || 'analyzing';
+    const percent = progressData?.progressPercent || 0;
+    const currentStep = progressData?.currentStep || 1;
+    const totalSteps = progressData?.totalSteps || 4;
+    const estimatedTime = progressData?.estimatedTimeRemaining;
+    const productsInBatch = progressData?.productsInBatch;
+    
+    // Human-readable stage labels
+    const stageLabels: Record<string, string> = {
+      analyzing: 'Analyzing your room...',
+      locking: 'Preparing room architecture...',
+      batch: productsInBatch?.length 
+        ? `Placing ${productsInBatch.slice(0, 2).join(', ')}${productsInBatch.length > 2 ? '...' : ''}`
+        : 'Placing furniture...',
+      validating: 'Finalizing your design...',
+      complete: 'Design complete!',
+      error: 'An error occurred'
+    };
+    
+    const stageIcons: Record<string, string> = {
+      analyzing: 'Scanning room dimensions',
+      locking: 'Preserving walls, windows & floors',
+      batch: 'AI is carefully placing each piece',
+      validating: 'Quality check in progress',
+      complete: 'Ready to view!',
+      error: 'Please try again'
+    };
+    
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="font-bold mb-2" style={{ fontSize: 'var(--font-size-2xl)' }} data-testid="text-generating">
-            Generating Your Design...
-          </h2>
-          <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-base)' }}>
-            Our AI is creating your personalized interior design
-          </p>
-        </div>
+        <Card className="p-8 max-w-lg w-full">
+          <div className="text-center mb-8">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 mx-auto mb-6"
+            >
+              <Sparkles className="w-16 h-16 text-accent" />
+            </motion.div>
+            <h2 className="font-bold mb-2" style={{ fontSize: 'var(--font-size-2xl)' }} data-testid="text-generating">
+              Creating Your Design
+            </h2>
+            <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-base)' }}>
+              {stageLabels[stage] || 'Working on it...'}
+            </p>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-muted-foreground mb-2">
+              <span>Step {currentStep} of {totalSteps}</span>
+              <span>{percent}%</span>
+            </div>
+            <div className="h-3 bg-muted rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-accent rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.max(percent, 5)}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
+            </div>
+          </div>
+          
+          {/* Stage Details */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-sm">
+              <div className={`w-2 h-2 rounded-full ${stage === 'analyzing' ? 'bg-accent animate-pulse' : percent > 10 ? 'bg-green-500' : 'bg-muted'}`} />
+              <span className={stage === 'analyzing' ? 'text-foreground' : 'text-muted-foreground'}>
+                Analyzing room architecture
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className={`w-2 h-2 rounded-full ${stage === 'locking' ? 'bg-accent animate-pulse' : percent > 20 ? 'bg-green-500' : 'bg-muted'}`} />
+              <span className={stage === 'locking' ? 'text-foreground' : 'text-muted-foreground'}>
+                Preparing room for furniture
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className={`w-2 h-2 rounded-full ${stage === 'batch' ? 'bg-accent animate-pulse' : percent > 80 ? 'bg-green-500' : 'bg-muted'}`} />
+              <span className={stage === 'batch' ? 'text-foreground' : 'text-muted-foreground'}>
+                Placing your furniture pieces
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className={`w-2 h-2 rounded-full ${stage === 'complete' ? 'bg-green-500' : 'bg-muted'}`} />
+              <span className={stage === 'complete' ? 'text-foreground' : 'text-muted-foreground'}>
+                Finalizing design
+              </span>
+            </div>
+          </div>
+          
+          {/* Estimated Time */}
+          {estimatedTime && estimatedTime > 0 && (
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Estimated time remaining: ~{Math.ceil(estimatedTime / 10) * 10} seconds
+            </div>
+          )}
+          
+          {/* Fun Tip */}
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground text-center">
+              {stageIcons[stage] || 'Our AI is working its magic'}
+            </p>
+          </div>
+        </Card>
       </div>
     );
   }
