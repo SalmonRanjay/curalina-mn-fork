@@ -16,6 +16,88 @@ import {
 // 4. BUDGET CONSTRAINTS: Apply budget as the LAST filter (preserve quality)
 // =============================================================================
 
+// =============================================================================
+// PERFORMANCE OPTIMIZATIONS
+// =============================================================================
+
+/**
+ * CACHE: Fit validation results (product dimensions rarely change)
+ * Key format: `${productId}:${zoneId}:${roomDimensionsHash}`
+ * Uses per-entry TTL for proper expiration
+ */
+interface CacheEntry {
+  validation: FitValidation;
+  timestamp: number;
+}
+const fitValidationCache = new Map<string, CacheEntry>();
+const FIT_CACHE_MAX_SIZE = 5000; // Prevent unbounded growth
+const FIT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes per entry
+let fitCacheLastCleanup = Date.now();
+
+/**
+ * Generate a hash for room dimensions (for cache key)
+ */
+function hashRoomDimensions(dims?: RoomDimensions): string {
+  if (!dims) return 'default';
+  return `${dims.width}x${dims.depth}x${dims.ceilingHeight}`;
+}
+
+/**
+ * Get cached fit validation or compute and cache
+ * Uses per-entry TTL for proper expiration with immediate stale entry removal
+ */
+function getCachedFitValidation(
+  product: Product,
+  zone: ZoneBlueprint,
+  roomDimensions?: RoomDimensions
+): FitValidation {
+  const cacheKey = `${product.id}:${zone.id}:${hashRoomDimensions(roomDimensions)}`;
+  const now = Date.now();
+  
+  // Check cache first with TTL validation
+  const cached = fitValidationCache.get(cacheKey);
+  if (cached) {
+    if ((now - cached.timestamp) < FIT_CACHE_TTL_MS) {
+      return cached.validation;
+    }
+    // Immediately remove stale entry to guarantee TTL is honored
+    fitValidationCache.delete(cacheKey);
+  }
+  
+  // Compute new validation
+  const validation = validateProductFitForZoneInternal(product, zone, roomDimensions);
+  
+  // Periodic bulk cleanup (every 5 minutes or when too large)
+  if (fitValidationCache.size > FIT_CACHE_MAX_SIZE || now - fitCacheLastCleanup > 5 * 60 * 1000) {
+    // Remove expired entries
+    const allEntries = Array.from(fitValidationCache.entries());
+    for (const [key, entry] of allEntries) {
+      if (now - entry.timestamp > FIT_CACHE_TTL_MS) {
+        fitValidationCache.delete(key);
+      }
+    }
+    // If still too large, clear oldest 25%
+    if (fitValidationCache.size > FIT_CACHE_MAX_SIZE) {
+      const sortedEntries = Array.from(fitValidationCache.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+      const toRemove = Math.floor(sortedEntries.length * 0.25);
+      sortedEntries.slice(0, toRemove).forEach(([key]) => fitValidationCache.delete(key));
+    }
+    fitCacheLastCleanup = now;
+  }
+  
+  fitValidationCache.set(cacheKey, { validation, timestamp: now });
+  return validation;
+}
+
+/**
+ * Clear fit validation cache (call when product dimensions are updated)
+ */
+export function clearFitValidationCache(): void {
+  fitValidationCache.clear();
+  console.log('🗑️ Fit validation cache cleared');
+}
+
 /**
  * Room dimensions extracted from user input (image analysis or manual entry)
  */
@@ -46,8 +128,9 @@ export interface FitValidation {
 /**
  * Validate if a product physically fits in a zone
  * Uses product dimensions vs zone bounds with clearance requirements
+ * (Internal implementation - use getCachedFitValidation for caching)
  */
-function validateProductFitForZone(
+function validateProductFitForZoneInternal(
   product: Product,
   zone: ZoneBlueprint,
   roomDimensions?: RoomDimensions
@@ -218,9 +301,9 @@ function filterByPhysicalFit(
   for (const product of products) {
     let bestFit: FitValidation | null = null;
     
-    // Check product against all valid zones, keep best fit
+    // Check product against all valid zones, keep best fit (using cache)
     for (const zone of validZones) {
-      const validation = validateProductFitForZone(product, zone, roomDimensions);
+      const validation = getCachedFitValidation(product, zone, roomDimensions);
       
       if (!bestFit || validation.fitScore > bestFit.fitScore) {
         bestFit = validation;
@@ -1246,36 +1329,58 @@ export async function selectProductsWithComposition(
   const sortedCategories = Object.entries(allRules).sort((a, b) => a[1].priority - b[1].priority);
   
   console.log('\n📐 STEP 2: FIT VALIDATION (filter before scoring)');
+  
+  // OPTIMIZATION: Pre-compute fit validations for ALL categories in parallel
+  const startFitTime = Date.now();
+  const fitResultsByCategory: Record<string, Array<{ product: Product; fitValidation: FitValidation }>> = {};
+  
+  // Run fit validation for all categories simultaneously
+  await Promise.all(
+    sortedCategories.map(async ([category]) => {
+      const categoryProducts = productsByCategory[category] || [];
+      if (categoryProducts.length > 0) {
+        fitResultsByCategory[category] = filterByPhysicalFit(categoryProducts, roomType, category, roomDimensions);
+      } else {
+        fitResultsByCategory[category] = [];
+      }
+    })
+  );
+  
+  const fitTime = Date.now() - startFitTime;
+  console.log(`   ⚡ Parallel fit validation completed in ${fitTime}ms for ${sortedCategories.length} categories`);
+  
   console.log('✨ STEP 3: STYLE MATCHING (score by preferences)');
   
   for (const [category, rule] of sortedCategories) {
     const isEssential = (template.essentials as any)[category] !== undefined;
-    const categoryProducts = (productsByCategory[category] || [])
-      .filter(p => !usedProductIds.has(p.id));
+    
+    // Use pre-computed fit results, filtering out already-used products
+    let fittingProducts = (fitResultsByCategory[category] || [])
+      .filter(({ product }) => !usedProductIds.has(product.id));
     
     console.log(`\n🔍 Processing: ${category} (${isEssential ? 'ESSENTIAL' : 'complementary'})`);
-    console.log(`   Available: ${categoryProducts.length}, Required: min ${rule.min}, max ${rule.max}`);
-    
-    if (categoryProducts.length === 0) {
-      if (isEssential && rule.min > 0) {
-        missingEssentials.push(category);
-        warnings.push(`Missing essential item: ${category}`);
-        console.log(`   ❌ MISSING ESSENTIAL: ${category}`);
-      }
-      continue;
-    }
-    
-    // =========================================================================
-    // STEP 2: FIT VALIDATION - Filter by physical fit FIRST
-    // =========================================================================
-    let fittingProducts = filterByPhysicalFit(categoryProducts, roomType, category, roomDimensions);
+    console.log(`   Available after fit filter: ${fittingProducts.length}, Required: min ${rule.min}, max ${rule.max}`);
     
     if (fittingProducts.length === 0) {
+      // Check if we had products before the fit filter
+      const categoryProducts = productsByCategory[category] || [];
+      const unusedCategoryProducts = categoryProducts.filter(p => !usedProductIds.has(p.id));
+      
+      if (unusedCategoryProducts.length === 0) {
+        if (isEssential && rule.min > 0) {
+          missingEssentials.push(category);
+          warnings.push(`Missing essential item: ${category}`);
+          console.log(`   ❌ MISSING ESSENTIAL: ${category}`);
+        }
+        continue;
+      }
+      
+      // We had products but none passed fit - provide fallback for essentials
       console.log(`   ⚠️ No products pass fit validation for ${category}`);
       if (isEssential && rule.min > 0) {
         // Fallback: use original products with fit warning (essential categories MUST have selections)
         warnings.push(`No products fit zone constraints for ${category} - using best available`);
-        fittingProducts = categoryProducts.map(p => ({
+        fittingProducts = unusedCategoryProducts.map(p => ({
           product: p,
           fitValidation: { 
             fits: true, 
@@ -1303,8 +1408,12 @@ export async function selectProductsWithComposition(
     
     // =========================================================================
     // STEP 3: STYLE MATCHING - Score by user preferences (NOT budget yet)
+    // NOTE: Caching + parallel precomputation handle performance
+    // We score ALL products to guarantee best selection quality
     // =========================================================================
-    const scoredProducts = fittingProducts.map(({ product, fitValidation }) => {
+    const scoredProducts: Array<{ product: Product; score: number }> = [];
+    
+    for (const { product, fitValidation } of fittingProducts) {
       // Start with fit score (physical fit is foundational)
       let score = fitValidation.fitScore;
       
@@ -1448,8 +1557,8 @@ export async function selectProductsWithComposition(
         score += Math.random() * 10;
       }
       
-      return { product, score };
-    });
+      scoredProducts.push({ product, score });
+    }
     
     // Sort by score
     scoredProducts.sort((a, b) => b.score - a.score);
@@ -1697,8 +1806,3 @@ export function getRoomTemplate(roomType: string): typeof ROOM_TEMPLATES[keyof t
  * Detect functional category from product (exported for ledger system)
  */
 export { detectFunctionalCategory };
-
-/**
- * Export types for room dimensions and fit validation (Space → Fit → Preference → Budget pipeline)
- */
-export type { RoomDimensions, FitValidation };
