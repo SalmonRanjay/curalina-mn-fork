@@ -33,6 +33,7 @@ export const users = pgTable("users", {
   password: varchar("password").notNull(), // Hashed password
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  phoneNumber: varchar("phone_number"), // Optional phone number
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("user"), // 'admin' or 'user'
   bio: text("bio"),
@@ -291,6 +292,7 @@ export type ParsedRoomData = {
 export const quizResponses = pgTable("quiz_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
+  userId: varchar("user_id").references(() => users.id), // Links to authenticated user
   roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
   styles: text("styles").array().notNull(), // ['Organic Modern', 'Midcentury Scandi'] - max 2
   colorPalettes: text("color_palettes").array(), // ['Light Neutrals', 'Warm & Cozy'] - max 2
@@ -332,6 +334,7 @@ export const renders = pgTable("renders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   quizResponseId: varchar("quiz_response_id").notNull().references(() => quizResponses.id),
   sessionId: varchar("session_id").notNull(),
+  userId: varchar("user_id").references(() => users.id), // Links to authenticated user
   imageUrl: text("image_url"), // Public URL to generated render
   prompt: text("prompt").notNull(), // Full AI prompt used
   productSkus: text("product_skus").array(), // Products featured in render
@@ -559,6 +562,7 @@ export type InsertRenderEvent = z.infer<typeof insertRenderEventSchema>;
 export const cartItems = pgTable("cart_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
+  userId: varchar("user_id").references(() => users.id), // Links to authenticated user
   productId: varchar("product_id").notNull().references(() => products.id),
   quantity: integer("quantity").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),
@@ -582,12 +586,16 @@ export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
+  userId: varchar("user_id").references(() => users.id), // Links to authenticated user
   status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'paid', 'fulfilled', 'shipped', 'delivered'
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   customerEmail: varchar("customer_email").notNull(),
   customerName: text("customer_name").notNull(),
   shippingAddress: jsonb("shipping_address").notNull(), // { street, city, state, zip, country }
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  trackingNumber: varchar("tracking_number"), // Shipping tracking number
+  trackingCarrier: varchar("tracking_carrier"), // Shipping carrier (UPS, FedEx, etc.)
+  estimatedDelivery: timestamp("estimated_delivery"), // Estimated delivery date
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -625,6 +633,75 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
   id: true,
 });
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+
+// ===== USER DASHBOARD FEATURES =====
+
+// Saved Designs - Users can save/bookmark renders for later
+export const savedDesigns = pgTable("saved_designs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  renderId: varchar("render_id").notNull().references(() => renders.id),
+  title: text("title"), // Optional custom title
+  notes: text("notes"), // User notes about the design
+  shareToken: varchar("share_token").unique(), // For sharing designs publicly
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("user_render_unique").on(table.userId, table.renderId),
+  index("idx_saved_designs_user").on(table.userId),
+  index("idx_saved_designs_share").on(table.shareToken),
+]);
+
+export const savedDesignRelations = relations(savedDesigns, ({ one }) => ({
+  user: one(users, {
+    fields: [savedDesigns.userId],
+    references: [users.id],
+  }),
+  render: one(renders, {
+    fields: [savedDesigns.renderId],
+    references: [renders.id],
+  }),
+}));
+
+export type SavedDesign = typeof savedDesigns.$inferSelect;
+export const insertSavedDesignSchema = createInsertSchema(savedDesigns).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSavedDesign = z.infer<typeof insertSavedDesignSchema>;
+
+// Product Interactions - Track user engagement with products
+export const productInteractions = pgTable("product_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"), // For anonymous users
+  productId: varchar("product_id").notNull().references(() => products.id),
+  interactionType: varchar("interaction_type", { length: 30 }).notNull(), // 'view', 'add_to_cart', 'remove_from_cart', 'purchase', 'like', 'share'
+  metadata: jsonb("metadata"), // Additional context (e.g., source page, render context)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_product_interactions_user").on(table.userId),
+  index("idx_product_interactions_product").on(table.productId),
+  index("idx_product_interactions_type").on(table.interactionType),
+]);
+
+export const productInteractionRelations = relations(productInteractions, ({ one }) => ({
+  user: one(users, {
+    fields: [productInteractions.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [productInteractions.productId],
+    references: [products.id],
+  }),
+}));
+
+export type ProductInteraction = typeof productInteractions.$inferSelect;
+export const insertProductInteractionSchema = createInsertSchema(productInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertProductInteraction = z.infer<typeof insertProductInteractionSchema>;
 
 // ===== AI TRAINING DATA SCHEMA =====
 
