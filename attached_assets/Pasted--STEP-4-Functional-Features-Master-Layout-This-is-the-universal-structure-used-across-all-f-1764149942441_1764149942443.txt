@@ -1,0 +1,194 @@
+🎯 STEP 4 — “Functional Features” (Master Layout)
+
+This is the universal structure used across all four room types.
+
+✅ 1. PAGE STRUCTURE
+Top of Page
+
+Step label
+
+Text: Step 4 of 7
+
+Style: Body/Small, grey
+
+Page heading
+
+Text: Functional Features
+
+Font: Serif (elegant, high-contrast)
+
+Size: 32–36px
+
+Subheading
+
+Text: A room should look stunning and live smart. Let’s design for how you live, not just how it looks.
+
+Size: 16px
+
+Color: secondary grey
+
+Instruction
+
+Text: Select all that apply.
+
+Style: Body/Semibold
+
+📐 2. CONTENT STRUCTURE (Two-Column Layout)
+
+The core design is always:
+
+LEFT COLUMN → large room image
+RIGHT COLUMN → Functional Feature Cards in a grid
+
+Layout specs:
+
+Two columns
+
+Gap: 32–48px
+
+Column ratio: ~40% (image) / ~60% (features)
+
+🧩 3. FEATURE CARD COMPONENT (used for all features)
+Component: Card / FunctionalFeature
+Property	Spec
+Width	100% of feature column
+Padding	16–20px
+Background	Soft beige (#FAF8F4)
+Border	1px solid #DFD9D0
+Radius	10–12px
+Layout	Horizontal auto-layout
+Icon	Line icon (24–32px) left-aligned
+Title	Semi-bold, 16px
+Description	Body/Small, grey
+
+States:
+
+Default: beige card
+
+Hover: slightly darker beige
+
+Selected: 2px border in dark grey + subtle tint
+
+🧱 4. GRID SYSTEM
+
+Depending on room type:
+
+Living Room: 2 columns × 4 rows
+
+Dining Room: 2 columns × 2 rows + seating row
+
+Bedroom: 2 columns × 4 rows + bed-size row
+
+Home Office: 2 columns × 3 rows
+
+Gap between cards: 20–24px
+
+🔽 5. FOOTER NAVIGATION
+
+Just like Step 1–3:
+
+Left: < Previous: Your Colour Palette
+Right: Next: Your Budget >
+Style: Body/Small, grey
+Hover: underline
+
+Spacing from final card grid: 48–64px
+
+🛋️ STEP 4A — LIVING ROOM FEATURES (Exact Set)
+LEFT COLUMN:
+
+Large lifestyle photo of a living room.
+
+RIGHT COLUMN (Grid: 2 × 4)
+Icon	Title	Description
+🗄️	Storage Solutions	Shelves & cabinetry
+💻	Workspace Area	Integrated office
+🛋️	Comfortable Seat	Sectional or deep sofa
+💡	Accent Lighting	Ambient & task lighting
+🐾	Pet-Friendly	Durable fabrics
+👶	Child-Friendly	Toy storage, rounded edges
+📺	Media Area	Entertainment cabinet
+🔄	Multi-Function	Sofa bed
+
+Notes:
+
+Icons must be thin-stroke, minimalist line icons.
+
+🍽️ STEP 4B — DINING ROOM FEATURES
+LEFT COLUMN:
+
+Dining table image.
+
+RIGHT COLUMN (Grid + seating row)
+Feature Grid: 2 × 2
+Icon	Title	Description
+🍽️	Casual Setting	Relaxed & everyday
+🍷	Formal Setting	Elevated & polished
+🥂	Bar Storage	Wine and liquor
+🗄️	Storage Solutions	Organize clutter
+🪑 Seating Capacity Row (Pill selection)
+
+Label: Seating (Please select number of people to be seated)
+Component: Pill / Tag
+
+Pills:
+4 6 8 10 12
+
+Pill styles:
+
+Default: beige background
+
+Hover: slightly darker beige
+
+Selected: black background + white text
+
+Behavior: Single-select
+
+🛏️ STEP 4C — BEDROOM FEATURES
+LEFT COLUMN:
+
+Bedroom image.
+
+RIGHT COLUMN (Grid: 2 × 4)
+Icon	Title	Description
+🧺	Storage Solutions	Clothing & linens
+💻	Workspace Area	Integrated office
+🛋️	Comfortable Seat	Reading chair
+📺	Media Area	TV cabinet
+🛌 Bed Sizes Row
+
+Component: Pill / BedSize (structured like tags, but larger)
+
+Options (each a card-like button):
+
+Bed Size	Dimensions
+Twin / Single Bed	38" × 75"
+Double Bed	54" × 75"
+Queen Bed	60" × 80"
+King Bed	76" × 80"
+
+Design:
+
+Same as feature card, but stacked vertically:
+
+Title: bold
+
+Subtitle: small grey text
+
+Grid: 2 cards per row
+
+Selected: border highlight
+
+🧑‍💻 STEP 4D — HOME OFFICE FEATURES
+LEFT COLUMN:
+
+Office desk/workspace image.
+
+RIGHT COLUMN (Grid: 2 × 3)
+Icon	Title	Description
+🗄️	Concealed Storage	Keep clutter out
+📚	Bookcase Storage	Open shelves
+🗂️	Filing Storage	Documents & files
+🛋️	Reading Chair	Comfortable seat
+🖥️	Large Desk	52" to 62"
+🪑	Small Desk	32" to 48"
