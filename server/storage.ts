@@ -3,6 +3,14 @@ import {
   content,
   settings,
   activityLog,
+  renders,
+  quizResponses,
+  cartItems,
+  orders,
+  orderItems,
+  savedDesigns,
+  productInteractions,
+  products,
   type User,
   type UpsertUser,
   type Content,
@@ -11,9 +19,41 @@ import {
   type InsertSettings,
   type ActivityLog,
   type InsertActivityLog,
+  type Render,
+  type QuizResponse,
+  type CartItem,
+  type Order,
+  type OrderItem,
+  type SavedDesign,
+  type InsertSavedDesign,
+  type ProductInteraction,
+  type InsertProductInteraction,
+  type Product,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, or, sql, count } from "drizzle-orm";
+
+// Types for dashboard data
+export interface UserDashboardStats {
+  totalRenders: number;
+  savedDesigns: number;
+  cartItems: number;
+  completedOrders: number;
+  totalSpent: string;
+}
+
+export interface RenderWithDetails extends Render {
+  quizResponse?: QuizResponse;
+  savedDesign?: SavedDesign | null;
+}
+
+export interface CartItemWithProduct extends CartItem {
+  product: Product;
+}
+
+export interface OrderWithItems extends Order {
+  items: (OrderItem & { product: Product })[];
+}
 
 export interface IStorage {
   // User operations
@@ -40,6 +80,30 @@ export interface IStorage {
   // Activity log operations
   getActivityLog(userId?: string): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+  
+  // User Dashboard operations
+  getUserDashboardStats(userId: string): Promise<UserDashboardStats>;
+  getUserRenders(userId: string): Promise<RenderWithDetails[]>;
+  getUserQuizResponses(userId: string): Promise<QuizResponse[]>;
+  getUserCartItems(userId: string): Promise<CartItemWithProduct[]>;
+  getUserOrders(userId: string): Promise<OrderWithItems[]>;
+  getOrderById(orderId: string, userId: string): Promise<OrderWithItems | undefined>;
+  
+  // Saved Designs operations
+  getSavedDesigns(userId: string): Promise<SavedDesign[]>;
+  getSavedDesignById(id: string, userId: string): Promise<SavedDesign | undefined>;
+  getSavedDesignByShareToken(shareToken: string): Promise<SavedDesign | undefined>;
+  createSavedDesign(design: InsertSavedDesign): Promise<SavedDesign>;
+  updateSavedDesign(id: string, userId: string, updates: Partial<InsertSavedDesign>): Promise<SavedDesign>;
+  deleteSavedDesign(id: string, userId: string): Promise<void>;
+  isRenderSaved(userId: string, renderId: string): Promise<boolean>;
+  
+  // Product Interactions operations
+  createProductInteraction(interaction: InsertProductInteraction): Promise<ProductInteraction>;
+  getUserProductInteractions(userId: string): Promise<ProductInteraction[]>;
+  
+  // Session to User data migration
+  migrateSessionDataToUser(sessionId: string, userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -176,6 +240,276 @@ export class DatabaseStorage implements IStorage {
   async createActivityLog(logData: InsertActivityLog): Promise<ActivityLog> {
     const [log] = await db.insert(activityLog).values(logData).returning();
     return log;
+  }
+
+  // User Dashboard operations
+  async getUserDashboardStats(userId: string): Promise<UserDashboardStats> {
+    const [renderCount] = await db
+      .select({ count: count() })
+      .from(renders)
+      .where(eq(renders.userId, userId));
+    
+    const [savedCount] = await db
+      .select({ count: count() })
+      .from(savedDesigns)
+      .where(eq(savedDesigns.userId, userId));
+    
+    const [cartCount] = await db
+      .select({ count: count() })
+      .from(cartItems)
+      .where(eq(cartItems.userId, userId));
+    
+    const [orderStats] = await db
+      .select({
+        count: count(),
+        total: sql<string>`COALESCE(SUM(CAST(${orders.totalAmount} AS DECIMAL)), 0)`,
+      })
+      .from(orders)
+      .where(and(
+        eq(orders.userId, userId),
+        or(eq(orders.status, 'paid'), eq(orders.status, 'fulfilled'), eq(orders.status, 'shipped'), eq(orders.status, 'delivered'))
+      ));
+
+    return {
+      totalRenders: renderCount?.count || 0,
+      savedDesigns: savedCount?.count || 0,
+      cartItems: cartCount?.count || 0,
+      completedOrders: orderStats?.count || 0,
+      totalSpent: orderStats?.total || '0',
+    };
+  }
+
+  async getUserRenders(userId: string): Promise<RenderWithDetails[]> {
+    const userRenders = await db
+      .select()
+      .from(renders)
+      .where(eq(renders.userId, userId))
+      .orderBy(desc(renders.createdAt));
+    
+    const rendersWithDetails: RenderWithDetails[] = [];
+    
+    for (const render of userRenders) {
+      const [quiz] = await db
+        .select()
+        .from(quizResponses)
+        .where(eq(quizResponses.id, render.quizResponseId));
+      
+      const [saved] = await db
+        .select()
+        .from(savedDesigns)
+        .where(and(
+          eq(savedDesigns.userId, userId),
+          eq(savedDesigns.renderId, render.id)
+        ));
+      
+      rendersWithDetails.push({
+        ...render,
+        quizResponse: quiz,
+        savedDesign: saved || null,
+      });
+    }
+    
+    return rendersWithDetails;
+  }
+
+  async getUserQuizResponses(userId: string): Promise<QuizResponse[]> {
+    return db
+      .select()
+      .from(quizResponses)
+      .where(eq(quizResponses.userId, userId))
+      .orderBy(desc(quizResponses.createdAt));
+  }
+
+  async getUserCartItems(userId: string): Promise<CartItemWithProduct[]> {
+    const items = await db
+      .select()
+      .from(cartItems)
+      .where(eq(cartItems.userId, userId))
+      .orderBy(desc(cartItems.createdAt));
+    
+    const itemsWithProducts: CartItemWithProduct[] = [];
+    
+    for (const item of items) {
+      const [product] = await db
+        .select()
+        .from(products)
+        .where(eq(products.id, item.productId));
+      
+      if (product) {
+        itemsWithProducts.push({
+          ...item,
+          product,
+        });
+      }
+    }
+    
+    return itemsWithProducts;
+  }
+
+  async getUserOrders(userId: string): Promise<OrderWithItems[]> {
+    const userOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt));
+    
+    const ordersWithItems: OrderWithItems[] = [];
+    
+    for (const order of userOrders) {
+      const items = await db
+        .select()
+        .from(orderItems)
+        .where(eq(orderItems.orderId, order.id));
+      
+      const itemsWithProducts: (OrderItem & { product: Product })[] = [];
+      
+      for (const item of items) {
+        const [product] = await db
+          .select()
+          .from(products)
+          .where(eq(products.id, item.productId));
+        
+        if (product) {
+          itemsWithProducts.push({
+            ...item,
+            product,
+          });
+        }
+      }
+      
+      ordersWithItems.push({
+        ...order,
+        items: itemsWithProducts,
+      });
+    }
+    
+    return ordersWithItems;
+  }
+
+  async getOrderById(orderId: string, userId: string): Promise<OrderWithItems | undefined> {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, orderId), eq(orders.userId, userId)));
+    
+    if (!order) return undefined;
+    
+    const items = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id));
+    
+    const itemsWithProducts: (OrderItem & { product: Product })[] = [];
+    
+    for (const item of items) {
+      const [product] = await db
+        .select()
+        .from(products)
+        .where(eq(products.id, item.productId));
+      
+      if (product) {
+        itemsWithProducts.push({
+          ...item,
+          product,
+        });
+      }
+    }
+    
+    return {
+      ...order,
+      items: itemsWithProducts,
+    };
+  }
+
+  // Saved Designs operations
+  async getSavedDesigns(userId: string): Promise<SavedDesign[]> {
+    return db
+      .select()
+      .from(savedDesigns)
+      .where(eq(savedDesigns.userId, userId))
+      .orderBy(desc(savedDesigns.createdAt));
+  }
+
+  async getSavedDesignById(id: string, userId: string): Promise<SavedDesign | undefined> {
+    const [design] = await db
+      .select()
+      .from(savedDesigns)
+      .where(and(eq(savedDesigns.id, id), eq(savedDesigns.userId, userId)));
+    return design;
+  }
+
+  async getSavedDesignByShareToken(shareToken: string): Promise<SavedDesign | undefined> {
+    const [design] = await db
+      .select()
+      .from(savedDesigns)
+      .where(eq(savedDesigns.shareToken, shareToken));
+    return design;
+  }
+
+  async createSavedDesign(design: InsertSavedDesign): Promise<SavedDesign> {
+    const [saved] = await db.insert(savedDesigns).values(design).returning();
+    return saved;
+  }
+
+  async updateSavedDesign(id: string, userId: string, updates: Partial<InsertSavedDesign>): Promise<SavedDesign> {
+    const [design] = await db
+      .update(savedDesigns)
+      .set(updates)
+      .where(and(eq(savedDesigns.id, id), eq(savedDesigns.userId, userId)))
+      .returning();
+    return design;
+  }
+
+  async deleteSavedDesign(id: string, userId: string): Promise<void> {
+    await db
+      .delete(savedDesigns)
+      .where(and(eq(savedDesigns.id, id), eq(savedDesigns.userId, userId)));
+  }
+
+  async isRenderSaved(userId: string, renderId: string): Promise<boolean> {
+    const [design] = await db
+      .select()
+      .from(savedDesigns)
+      .where(and(eq(savedDesigns.userId, userId), eq(savedDesigns.renderId, renderId)));
+    return !!design;
+  }
+
+  // Product Interactions operations
+  async createProductInteraction(interaction: InsertProductInteraction): Promise<ProductInteraction> {
+    const [created] = await db.insert(productInteractions).values(interaction).returning();
+    return created;
+  }
+
+  async getUserProductInteractions(userId: string): Promise<ProductInteraction[]> {
+    return db
+      .select()
+      .from(productInteractions)
+      .where(eq(productInteractions.userId, userId))
+      .orderBy(desc(productInteractions.createdAt))
+      .limit(100);
+  }
+
+  // Session to User data migration - links existing session data to authenticated user
+  async migrateSessionDataToUser(sessionId: string, userId: string): Promise<void> {
+    await db
+      .update(quizResponses)
+      .set({ userId })
+      .where(and(eq(quizResponses.sessionId, sessionId), sql`${quizResponses.userId} IS NULL`));
+    
+    await db
+      .update(renders)
+      .set({ userId })
+      .where(and(eq(renders.sessionId, sessionId), sql`${renders.userId} IS NULL`));
+    
+    await db
+      .update(cartItems)
+      .set({ userId })
+      .where(and(eq(cartItems.sessionId, sessionId), sql`${cartItems.userId} IS NULL`));
+    
+    await db
+      .update(orders)
+      .set({ userId })
+      .where(and(eq(orders.sessionId, sessionId), sql`${orders.userId} IS NULL`));
   }
 }
 

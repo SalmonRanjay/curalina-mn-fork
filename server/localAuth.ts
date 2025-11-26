@@ -14,6 +14,7 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  phoneNumber: z.string().optional(), // Optional phone number
 });
 
 const loginSchema = z.object({
@@ -107,7 +108,7 @@ export async function setupAuth(app: Express) {
         });
       }
 
-      const { email, password, firstName, lastName } = validationResult.data;
+      const { email, password, firstName, lastName, phoneNumber } = validationResult.data;
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
@@ -124,6 +125,7 @@ export async function setupAuth(app: Express) {
         password: hashedPassword,
         firstName,
         lastName,
+        phoneNumber,
         role: "user",
       });
 
