@@ -1,0 +1,84 @@
+
+User
+[DEBUG] After transform, first product images: [
+2025-11-26 20:14:33.14
+6f5f41bc
+User
+]
+2025-11-26 20:14:33.14
+6f5f41bc
+User
+'https://curalina.s3.us-east-1.amazonaws.com//images/sofa-mcm-001.jpg'
+
+2025-11-26 20:14:33.23
+6f5f41bc
+User
+3:14:33 PM [express] GET /api/admin/products 304 in 952ms :: [{"id":"805da30f-a6c4-4c76-8a48-16b3969…
+2025-11-26 20:14:35.68
+6f5f41bc
+User
+3:14:35 PM [express] GET /api/auth/user 200 in 139ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2025-11-26 20:14:35.68
+6f5f41bc
+User
+3:14:35 PM [express] GET /api/cart 200 in 138ms
+2025-11-26 20:14:36.23
+6f5f41bc
+User
+3:14:36 PM [express] GET /api/auth/user 200 in 137ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2025-11-26 20:14:36.26
+6f5f41bc
+User
+3:14:36 PM [express] GET /api/admin/users 200 in 183ms :: [{"id":"8b377b31-0712-4786-944d-795d35b69f…
+2025-11-26 20:14:36.28
+6f5f41bc
+User
+3:14:36 PM [express] GET /api/admin/orders 200 in 187ms :: []
+2025-11-26 20:14:36.30
+6f5f41bc
+User
+3:14:36 PM [express] GET /api/admin/suppliers 200 in 225ms :: [{"id":"3672fb50-3f8a-499d-ad93-55bbe8…
+2025-11-26 20:14:36.57
+6f5f41bc
+User
+[DEBUG] Fetched 600 products, first product images: [ '/images/sofa-mcm-001.jpg' ]
+2025-11-26 20:14:36.57
+6f5f41bc
+User
+]
+2025-11-26 20:14:36.57
+6f5f41bc
+User
+'https://curalina.s3.us-east-1.amazonaws.com//images/sofa-mcm-001.jpg'
+2025-11-26 20:14:36.57
+6f5f41bc
+User
+[DEBUG] After transform, first product images: [
+2025-11-26 20:14:36.66
+6f5f41bc
+User
+3:14:36 PM [express] GET /api/admin/products 200 in 549ms :: [{"id":"805da30f-a6c4-4c76-8a48-16b3969…
+2025-11-26 20:14:46.80
+6f5f41bc
+User
+3:14:46 PM [express] GET /api/logout 200 in 279ms
+2025-11-26 20:14:48.18
+6f5f41bc
+User
+3:14:48 PM [express] GET /api/auth/user 304 in 136ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2025-11-26 20:14:48.47
+6f5f41bc
+User
+3:14:48 PM [express] GET /api/cart 304 in 412ms
+2025-11-26 20:15:22.39
+6f5f41bc
+User
+3:15:22 PM [express] GET /api/auth/user 304 in 419ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…
+2025-11-26 20:15:28.77
+4d1c8299
+System
+system: received signal terminated
+2025-11-26 20:16:13.36
+6f5f41bc
+User
+3:16:13 PM [express] GET /api/auth/user 200 in 274ms :: {"id":"22703de4-d507-45db-af21-2ae010f523dd"…

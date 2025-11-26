@@ -73,9 +73,12 @@ function transformProductImages(product: any) {
       return imageUrl;
     }
     
+    // Remove leading slash to avoid double slashes in URL
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+    
     // Construct full S3 URL from filename
     // Filenames are expected to be normalized (dashes instead of spaces)
-    return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${imageUrl}`;
+    return `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${cleanPath}`;
   });
   
   return { ...product, images: transformedImages };
