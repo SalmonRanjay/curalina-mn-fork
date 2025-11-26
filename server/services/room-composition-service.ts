@@ -839,10 +839,10 @@ interface CompositionResult {
  * For these, select the BEST product and replicate it instead of diversifying
  */
 const SET_CATEGORIES = new Set([
-  'dining_seating',    // Dining chairs - need matching set
   'office_seating',    // Office chairs - need matching set
   'bedroom_seating',   // Bedroom chairs - need matching set
   'accent_seating_set' // Accent chair sets
+  // REMOVED 'dining_seating' - AI renders multiple copies based on quiz seating count
 ]);
 
 /**
