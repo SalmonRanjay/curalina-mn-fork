@@ -27,6 +27,11 @@ import {
 } from "@/components/ui/dialog";
 import colorPalette from "@assets/image001_1762335467188.png";
 import RoomTypeStep from "@/components/quiz/RoomTypeStep";
+import RoomTypeStepV2 from "@/components/quiz/RoomTypeStepV2";
+import StyleSelectionStepV2 from "@/components/quiz/StyleSelectionStepV2";
+import ColorPaletteStepV2 from "@/components/quiz/ColorPaletteStepV2";
+import FeaturesStepV2 from "@/components/quiz/FeaturesStepV2";
+import QuizLayout from "@/components/quiz/QuizLayout";
 
 const TOTAL_STEPS = 8;
 
@@ -425,7 +430,7 @@ export default function Quiz() {
 
   const renderStep1 = () => {
     return (
-      <RoomTypeStep
+      <RoomTypeStepV2
         value={quizData.roomType}
         onChange={(value) => updateQuizData("roomType", value)}
       />
@@ -433,257 +438,22 @@ export default function Quiz() {
   };
 
   const renderStep2 = () => {
-    const styles = [
-      "Organic Modern",
-      "Modern Farmhouse",
-      "Midcentury Scandi",
-      "Contemporary Luxe",
-      "Warm Transitional",
-    ];
-
     return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <p
-            className="text-muted-foreground font-medium"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Everyone has their own sense of style | Learn More About Our Design
-            Styles
-          </p>
-          <h2
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            Which style feels most like home?
-          </h2>
-          <p
-            className="text-muted-foreground max-w-2xl"
-            style={{ fontSize: "var(--font-size-lg)" }}
-          >
-            Choose up to 2 styles. Trust your instincts — There are no wrong
-            answers.
-          </p>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="stack-base flex flex-col"
-        >
-          {styles.map((styleName) => {
-            const styleData =
-              STYLES_DATA[styleName as keyof typeof STYLES_DATA];
-            const isSelected = quizData.styles.includes(styleName);
-            const isExpanded = expandedStyles.includes(styleName);
-
-            return (
-              <motion.div key={styleName} variants={itemVariants}>
-                <Card
-                  className={`p-6 transition-all border-card-border hover-elevate ${
-                    isSelected ? "bg-accent/10 border-accent" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-6 h-6 border-2 rounded flex items-center justify-center cursor-pointer transition-all ${
-                          isSelected
-                            ? "bg-accent border-accent"
-                            : "border-border hover:border-accent/50"
-                        }`}
-                        onClick={() => toggleStyle(styleName)}
-                        data-testid={`style-${styleName.toLowerCase().replace(" ", "-")}`}
-                      >
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-accent-foreground" />
-                        )}
-                      </div>
-                      <h3
-                        className="font-semibold text-card-foreground uppercase"
-                        style={{ fontSize: "var(--font-size-xl)" }}
-                      >
-                        {styleName}
-                      </h3>
-                    </div>
-                  </div>
-
-                  {/* Renders */}
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    {styleData.renders.map((url, idx) => (
-                      <div key={idx} className="stack-tight flex flex-col">
-                        <img
-                          src={url}
-                          alt={`${styleName} render ${idx + 1}`}
-                          className="w-full h-32 object-cover rounded-md"
-                        />
-                        <p
-                          className="text-center text-muted-foreground uppercase font-medium"
-                          style={{ fontSize: "var(--font-size-xs)" }}
-                        >
-                          {["Living", "Dining", "Bedroom"][idx]} Render
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Key Characteristics Toggle */}
-                  <button
-                    onClick={() =>
-                      setExpandedStyles((prev) =>
-                        prev.includes(styleName)
-                          ? prev.filter((s) => s !== styleName)
-                          : [...prev, styleName],
-                      )
-                    }
-                    className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
-                    data-testid={`key-characteristics-${styleName.toLowerCase().replace(" ", "-")}`}
-                  >
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                    />
-                    <span className="font-semibold">Key Characteristics</span>
-                  </button>
-
-                  {/* Expanded Characteristics */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="mt-4 stack-base flex flex-col overflow-hidden"
-                      >
-                        <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground">
-                            Mood Words
-                          </h4>
-                          <p
-                            className="text-muted-foreground leading-relaxed"
-                            style={{ fontSize: "var(--font-size-sm)" }}
-                          >
-                            {styleData.moodWords}
-                          </p>
-                        </div>
-                        <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground">
-                            Textures
-                          </h4>
-                          <p
-                            className="text-muted-foreground leading-relaxed"
-                            style={{ fontSize: "var(--font-size-sm)" }}
-                          >
-                            {styleData.textures}
-                          </p>
-                        </div>
-                        <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground">
-                            Furniture
-                          </h4>
-                          <p
-                            className="text-muted-foreground leading-relaxed"
-                            style={{ fontSize: "var(--font-size-sm)" }}
-                          >
-                            {styleData.furniture}
-                          </p>
-                        </div>
-                        <div className="stack-tight flex flex-col">
-                          <h4 className="font-semibold text-card-foreground mb-2">
-                            Color Palette
-                          </h4>
-                          <img
-                            src={colorPalette}
-                            alt="Color palette inspiration"
-                            className="w-full max-w-md mb-2 rounded-md"
-                          />
-                          <p
-                            className="text-muted-foreground leading-relaxed"
-                            style={{ fontSize: "var(--font-size-sm)" }}
-                          >
-                            {styleData.colorPalette}
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </div>
+      <StyleSelectionStepV2
+        value={quizData.styles}
+        onChange={(styles) => updateQuizData("styles", styles)}
+        maxSelections={2}
+      />
     );
   };
 
   const renderStep3 = () => {
-    const palettes = [
-      "Warm Neutrals",
-      "Earth & Stone",
-      "Coastal Calm",
-      "Soft Contrast",
-      "Monochrome Luxe",
-      "Artful Contrast",
-      "Heritage Warmth",
-      "Dark & Moody",
-    ];
-
     return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <p
-            className="text-muted-foreground font-medium"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Everyone has their own sense of style | Learn More About Our Design
-            Styles
-          </p>
-          <h2
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            Which colour palette feels most like you?
-          </h2>
-          <p
-            className="text-muted-foreground max-w-2xl"
-            style={{ fontSize: "var(--font-size-lg)" }}
-          >
-            Choose up to 2 palettes. Trust your instincts — There are no wrong
-            answers.
-          </p>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto"
-        >
-          {palettes.map((palette) => {
-            const isSelected = quizData.colorPalettes.includes(palette);
-
-            return (
-              <motion.div key={palette} variants={itemVariants}>
-                <Card
-                  className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
-                    isSelected ? "bg-accent/10 border-accent" : ""
-                  }`}
-                  onClick={() => toggleColorPalette(palette)}
-                  data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                >
-                  <p
-                    className="font-semibold uppercase text-card-foreground"
-                    style={{ fontSize: "var(--font-size-sm)" }}
-                  >
-                    {palette}
-                  </p>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </div>
+      <ColorPaletteStepV2
+        value={quizData.colorPalettes}
+        onChange={(palettes) => updateQuizData("colorPalettes", palettes)}
+        maxSelections={2}
+      />
     );
   };
 
@@ -940,105 +710,12 @@ export default function Quiz() {
 
   // Step 5: Functional Features
   const renderStep5 = () => {
-    const features = KEY_FEATURES_BY_ROOM[quizData.roomType] || [];
-    const isDiningRoom = quizData.roomType === "Dining Room";
-    const seatingCounts = [4, 6, 8, 10, 12];
-
     return (
-      <div className="stack-roomy flex flex-col">
-        <div className="text-center stack-base flex flex-col items-center">
-          <p
-            className="text-muted-foreground font-medium"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Everyone has their own sense of style | Learn More About Our Design
-            Styles
-          </p>
-          <h2
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: "var(--font-size-3xl)" }}
-          >
-            Functional Features
-          </h2>
-          <p
-            className="text-muted-foreground max-w-2xl"
-            style={{ fontSize: "var(--font-size-lg)" }}
-          >
-            A room should look stunning and live smart. Let's design for how you
-            live, not just how it looks.
-          </p>
-          <p
-            className="text-muted-foreground font-medium"
-            style={{ fontSize: "var(--font-size-sm)" }}
-          >
-            Select all that apply
-          </p>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 gap-4 max-w-3xl mx-auto"
-        >
-          {features.map((feature, idx) => {
-            const isSelected = quizData.keyFeatures.includes(feature.label);
-
-            return (
-              <motion.div key={idx} variants={itemVariants}>
-                <Card
-                  className={`p-6 cursor-pointer hover-elevate active-elevate-2 transition-all border-card-border ${
-                    isSelected ? "bg-accent/10 border-accent" : ""
-                  }`}
-                  onClick={() => toggleKeyFeature(feature.label)}
-                  data-testid={`feature-${feature.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                >
-                  <p className="font-semibold text-card-foreground">
-                    {feature.label}
-                  </p>
-                  {feature.subtitle && (
-                    <p
-                      className="text-muted-foreground mt-1"
-                      style={{ fontSize: "var(--font-size-sm)" }}
-                    >
-                      {feature.subtitle}
-                    </p>
-                  )}
-                </Card>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
-        {/* Special Dining Room Seating Selector */}
-        {isDiningRoom && (
-          <div className="max-w-3xl mx-auto stack-base flex flex-col items-center">
-            <p className="text-center font-semibold text-foreground">
-              Seating (Please select number of people to be seated)
-            </p>
-            <div className="flex justify-center gap-4 flex-wrap">
-              {seatingCounts.map((count) => {
-                const seatingLabel = `Seating for ${count}`;
-                const isSelected = quizData.keyFeatures.includes(seatingLabel);
-
-                return (
-                  <Button
-                    key={count}
-                    variant={isSelected ? "default" : "outline"}
-                    size="lg"
-                    className="w-16 h-16 font-semibold"
-                    style={{ fontSize: "var(--font-size-lg)" }}
-                    onClick={() => toggleKeyFeature(seatingLabel)}
-                    data-testid={`seating-${count}`}
-                  >
-                    {count}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      <FeaturesStepV2
+        roomType={quizData.roomType}
+        value={quizData.keyFeatures}
+        onChange={(features) => updateQuizData("keyFeatures", features)}
+      />
     );
   };
 
@@ -1371,98 +1048,19 @@ export default function Quiz() {
   };
 
   return (
-    <div className="min-h-screen bg-background section-padding">
-      <div className="max-w-6xl mx-auto px-6">
-        {/* Progress Indicator - 8 dots */}
-        <div
-          className="flex items-center justify-center gap-3 mb-10"
-          data-testid="quiz-progress"
-        >
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div
-              key={i}
-              className={`h-2.5 rounded-full transition-all duration-300 ${
-                i + 1 <= currentStep
-                  ? "bg-accent w-8"
-                  : "bg-muted-foreground/30 w-2.5"
-              }`}
-              data-testid={`progress-dot-${i + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Quiz Content */}
-        <div
-          className="surface-soft rounded-lg p-8 md:p-12 mb-10"
-          style={{ boxShadow: "var(--shadow-sm)" }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {renderStep()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between max-w-4xl mx-auto flex-wrap gap-4">
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={handleBack}
-            disabled={currentStep === 1}
-            className="uppercase font-semibold flex items-center gap-2"
-            data-testid="button-back"
-          >
-            {currentStep > 1 ? (
-              <>
-                <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  Previous: {getStepContext(currentStep).previous}
-                </span>
-                <span className="sm:hidden">Back</span>
-              </>
-            ) : (
-              <span>Back</span>
-            )}
-          </Button>
-
-          <p
-            className="font-semibold text-muted-foreground uppercase order-first sm:order-none w-full sm:w-auto text-center"
-            style={{ fontSize: "var(--font-size-sm)" }}
-            data-testid="text-step-counter"
-          >
-            Step {currentStep} of {TOTAL_STEPS}
-          </p>
-
-          <Button
-            size="lg"
-            onClick={handleNext}
-            disabled={!canProceed || submitQuizMutation.isPending}
-            className="uppercase font-semibold transition-all flex items-center gap-2"
-            data-testid="button-next"
-          >
-            {submitQuizMutation.isPending ? (
-              <span>Submitting...</span>
-            ) : currentStep === TOTAL_STEPS ? (
-              <span>Submit Quiz</span>
-            ) : (
-              <>
-                <span className="hidden sm:inline">
-                  Next: {getStepContext(currentStep).next}
-                </span>
-                <span className="sm:hidden">Next</span>
-                <ChevronRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+    <>
+      <QuizLayout
+        currentStep={currentStep}
+        totalSteps={TOTAL_STEPS}
+        onPrevious={currentStep > 1 ? handleBack : undefined}
+        onNext={handleNext}
+        previousLabel={getStepContext(currentStep).previous}
+        nextLabel={currentStep === TOTAL_STEPS ? "Submit" : getStepContext(currentStep).next}
+        canProceed={canProceed && !submitQuizMutation.isPending}
+        showExploreLink={currentStep === 2}
+      >
+        {renderStep()}
+      </QuizLayout>
 
       {/* Room Dimensions Confirmation Dialog */}
       <Dialog
@@ -1605,6 +1203,6 @@ export default function Quiz() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
