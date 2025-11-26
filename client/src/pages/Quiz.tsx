@@ -28,7 +28,7 @@ import {
 import colorPalette from "@assets/image001_1762335467188.png";
 import RoomTypeStep from "@/components/quiz/RoomTypeStep";
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 // Style data with Key Characteristics
 const STYLES_DATA = {
@@ -629,6 +629,66 @@ export default function Quiz() {
       "Dark & Moody",
     ];
 
+    return (
+      <div className="stack-roomy flex flex-col">
+        <div className="text-center stack-base flex flex-col items-center">
+          <p
+            className="text-muted-foreground font-medium"
+            style={{ fontSize: "var(--font-size-sm)" }}
+          >
+            Everyone has their own sense of style | Learn More About Our Design
+            Styles
+          </p>
+          <h2
+            className="font-serif font-medium text-foreground"
+            style={{ fontSize: "var(--font-size-3xl)" }}
+          >
+            Which colour palette feels most like you?
+          </h2>
+          <p
+            className="text-muted-foreground max-w-2xl"
+            style={{ fontSize: "var(--font-size-lg)" }}
+          >
+            Choose up to 2 palettes. Trust your instincts — There are no wrong
+            answers.
+          </p>
+        </div>
+
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto"
+        >
+          {palettes.map((palette) => {
+            const isSelected = quizData.colorPalettes.includes(palette);
+
+            return (
+              <motion.div key={palette} variants={itemVariants}>
+                <Card
+                  className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
+                    isSelected ? "bg-accent/10 border-accent" : ""
+                  }`}
+                  onClick={() => toggleColorPalette(palette)}
+                  data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                >
+                  <p
+                    className="font-semibold uppercase text-card-foreground"
+                    style={{ fontSize: "var(--font-size-sm)" }}
+                  >
+                    {palette}
+                  </p>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+    );
+  };
+
+  // Step 4: Design Preferences (Mode, Textures, Lifestyle, Patterns)
+  const renderStep4 = () => {
     const lineStyles = [
       { id: "Clean Lines/Structured", label: "Clean Lines/Structured" },
       { id: "Upscale/Chic", label: "Upscale/Chic" },
@@ -670,7 +730,6 @@ export default function Quiz() {
 
     return (
       <div className="stack-roomy flex flex-col">
-        {/* Color Palette Section */}
         <div className="text-center stack-base flex flex-col items-center">
           <p
             className="text-muted-foreground font-medium"
@@ -683,54 +742,23 @@ export default function Quiz() {
             className="font-serif font-medium text-foreground"
             style={{ fontSize: "var(--font-size-3xl)" }}
           >
-            Which colour palette feels most like you?
+            Define Your Design Preferences
           </h2>
           <p
             className="text-muted-foreground max-w-2xl"
             style={{ fontSize: "var(--font-size-lg)" }}
           >
-            Choose up to 2 styles. Trust your instincts — There are no wrong
-            answers.
+            Select your preferred mode, textures, lifestyle, and pattern preferences.
           </p>
         </div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto"
-        >
-          {palettes.map((palette) => {
-            const isSelected = quizData.colorPalettes.includes(palette);
-
-            return (
-              <motion.div key={palette} variants={itemVariants}>
-                <Card
-                  className={`p-6 text-center cursor-pointer transition-all border-card-border hover-elevate active-elevate-2 ${
-                    isSelected ? "bg-accent/10 border-accent" : ""
-                  }`}
-                  onClick={() => toggleColorPalette(palette)}
-                  data-testid={`palette-${palette.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                >
-                  <p
-                    className="font-semibold uppercase text-card-foreground"
-                    style={{ fontSize: "var(--font-size-sm)" }}
-                  >
-                    {palette}
-                  </p>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
-        {/* Line Style Section */}
-        <div className="mt-12 max-w-4xl mx-auto w-full">
+        {/* Mode/Line Style Section */}
+        <div className="max-w-4xl mx-auto w-full">
           <h3
             className="font-serif font-medium text-foreground text-center mb-6"
             style={{ fontSize: "var(--font-size-xl)" }}
           >
-            Line Style
+            Mode
           </h3>
           <motion.div
             variants={containerVariants}
@@ -908,7 +936,8 @@ export default function Quiz() {
     );
   };
 
-  const renderStep4 = () => {
+  // Step 5: Functional Features
+  const renderStep5 = () => {
     const features = KEY_FEATURES_BY_ROOM[quizData.roomType] || [];
     const isDiningRoom = quizData.roomType === "Dining Room";
     const seatingCounts = [4, 6, 8, 10, 12];
@@ -1011,7 +1040,8 @@ export default function Quiz() {
     );
   };
 
-  const renderStep5 = () => {
+  // Step 6: Budget
+  const renderStep6 = () => {
     const budgetRanges = [
       "$2,000-$5,000",
       "$5,000-$8,000",
@@ -1078,7 +1108,8 @@ export default function Quiz() {
     );
   };
 
-  const renderStep6 = () => {
+  // Step 7: Vibe Check
+  const renderStep7 = () => {
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
@@ -1176,7 +1207,8 @@ export default function Quiz() {
     );
   };
 
-  const renderStep7 = () => {
+  // Step 8: Final Step
+  const renderStep8 = () => {
     return (
       <div className="stack-roomy flex flex-col">
         <div className="text-center stack-base flex flex-col items-center">
@@ -1329,6 +1361,8 @@ export default function Quiz() {
         return renderStep6();
       case 7:
         return renderStep7();
+      case 8:
+        return renderStep8();
       default:
         return null;
     }
@@ -1337,7 +1371,7 @@ export default function Quiz() {
   return (
     <div className="min-h-screen bg-background section-padding">
       <div className="max-w-6xl mx-auto px-6">
-        {/* Progress Indicator - 7 dots */}
+        {/* Progress Indicator - 8 dots */}
         <div
           className="flex items-center justify-center gap-3 mb-10"
           data-testid="quiz-progress"
