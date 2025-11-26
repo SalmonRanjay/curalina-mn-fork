@@ -2,10 +2,10 @@ import type { KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
 
-import livingRoomImg from "@assets/stock_images/modern_living_room_i_79b08ae6.jpg";
-import diningRoomImg from "@assets/stock_images/elegant_dining_room__33e5e892.jpg";
-import bedroomImg from "@assets/stock_images/bedroom_interior_des_4257c07c.jpg";
-import homeOfficeImg from "@assets/stock_images/home_office_interior_c20eb686.jpg";
+import livingRoomImg from "@assets/generated_images/modern_luxury_living_room.png";
+import diningRoomImg from "@assets/generated_images/sophisticated_dining_room.png";
+import bedroomImg from "@assets/generated_images/elegant_master_bedroom.png";
+import homeOfficeImg from "@assets/generated_images/stylish_home_office.png";
 
 interface RoomTypeStepProps {
   value: string;

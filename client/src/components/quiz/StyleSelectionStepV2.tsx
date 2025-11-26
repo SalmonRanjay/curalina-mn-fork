@@ -2,11 +2,11 @@ import type { KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
 
-import organicModernImg from "@assets/stock_images/organic_modern_inter_bd5701c5.jpg";
-import modernFarmhouseImg from "@assets/stock_images/modern_farmhouse_int_9fec75db.jpg";
-import midcenturyImg from "@assets/stock_images/midcentury_modern_in_5ccdbfa4.jpg";
-import contemporaryLuxImg from "@assets/stock_images/contemporary_luxury__1321758a.jpg";
-import warmTransitionalImg from "@assets/stock_images/warm_transitional_in_6a7844cd.jpg";
+import organicModernImg from "@assets/generated_images/organic_modern_living_room.png";
+import modernFarmhouseImg from "@assets/generated_images/modern_farmhouse_living_room.png";
+import midcenturyImg from "@assets/generated_images/midcentury_scandi_living_room.png";
+import contemporaryLuxImg from "@assets/generated_images/contemporary_luxe_living_room.png";
+import warmTransitionalImg from "@assets/generated_images/warm_transitional_living_room.png";
 
 import materialsImg1 from "@assets/stock_images/interior_design_mate_a8749c2c.jpg";
 import materialsImg2 from "@assets/stock_images/interior_design_mate_e9262ba4.jpg";

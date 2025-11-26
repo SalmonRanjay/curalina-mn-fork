@@ -23,10 +23,10 @@ import {
   BedSingle,
 } from "lucide-react";
 
-import livingRoomImg from "@assets/stock_images/beautiful_modern_liv_cc3ef764.jpg";
-import diningRoomImg from "@assets/stock_images/elegant_dining_room__33e5e892.jpg";
-import bedroomImg from "@assets/stock_images/contemporary_luxe_be_e74c2402.jpg";
-import homeOfficeImg from "@assets/stock_images/home_office_interior_c20eb686.jpg";
+import livingRoomImg from "@assets/generated_images/modern_luxury_living_room.png";
+import diningRoomImg from "@assets/generated_images/sophisticated_dining_room.png";
+import bedroomImg from "@assets/generated_images/elegant_master_bedroom.png";
+import homeOfficeImg from "@assets/generated_images/stylish_home_office.png";
 
 interface FeaturesStepProps {
   roomType: string;

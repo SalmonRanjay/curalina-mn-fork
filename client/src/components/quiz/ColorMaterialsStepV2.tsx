@@ -2,10 +2,10 @@ import type { KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
 
-import lightNeutralsImg from "@assets/stock_images/light_neutral_color__59c65d92.jpg";
-import warmCozyImg from "@assets/stock_images/warm_cozy_brown_terr_dfc3dcc9.jpg";
-import darkMoodyImg from "@assets/stock_images/dark_moody_interior__3a50dda4.jpg";
-import colorfulAccentImg from "@assets/stock_images/colorful_accent_inte_ab53f086.jpg";
+import lightNeutralsImg from "@assets/generated_images/light_neutrals_interior_palette.png";
+import warmCozyImg from "@assets/generated_images/warm_cozy_interior_palette.png";
+import darkMoodyImg from "@assets/generated_images/dark_moody_interior_palette.png";
+import colorfulAccentImg from "@assets/generated_images/colorful_accent_interior_palette.png";
 import materialsImg1 from "@assets/stock_images/interior_design_mate_4cf2d356.jpg";
 import materialsImg2 from "@assets/stock_images/interior_design_mate_a8749c2c.jpg";
 import materialsImg3 from "@assets/stock_images/interior_design_mate_e9262ba4.jpg";
