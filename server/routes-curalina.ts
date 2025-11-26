@@ -1740,11 +1740,21 @@ export function registerCuralinaRoutes(app: Express) {
             
             if (spatiallyFittingProducts.length > 0) {
               const { selectProductsWithComposition } = await import('./services/room-composition-service');
+              
+              // Extract detected dimensions from parsedRoomData if available
+              const detectedDimensions = quiz.parsedRoomData && typeof quiz.parsedRoomData === 'object' ? {
+                lengthFeet: (quiz.parsedRoomData as any).lengthFeet || null,
+                widthFeet: (quiz.parsedRoomData as any).widthFeet || null,
+                ceilingHeightFeet: (quiz.parsedRoomData as any).ceilingHeightFeet || null
+              } : undefined;
+              
               const compositionResult = await selectProductsWithComposition(
                 quiz.roomType,
                 spatiallyFittingProducts,
                 quiz,
-                15 // max products
+                15, // max products
+                undefined, // roomDimensions (for fit validation)
+                detectedDimensions // detected dimensions for space-aware selection
               );
               
               selectedProducts = compositionResult.selectedProducts.map(p => ({
@@ -1816,11 +1826,21 @@ export function registerCuralinaRoutes(app: Express) {
                 const { selectProductsWithComposition } = await import('./services/room-composition-service');
                 // Re-fetch composition to get placements with floor plan context
                 const filteredProducts = filterProductsByQuiz(allProducts, quiz);
+                
+                // Extract detected dimensions from parsedRoomData if available
+                const detectedDimensions = quiz.parsedRoomData && typeof quiz.parsedRoomData === 'object' ? {
+                  lengthFeet: (quiz.parsedRoomData as any).lengthFeet || null,
+                  widthFeet: (quiz.parsedRoomData as any).widthFeet || null,
+                  ceilingHeightFeet: (quiz.parsedRoomData as any).ceilingHeightFeet || null
+                } : undefined;
+                
                 const compositionResult = await selectProductsWithComposition(
                   quiz.roomType,
                   filteredProducts,
                   quiz,
-                  15
+                  15,
+                  undefined, // roomDimensions (for fit validation)
+                  detectedDimensions // detected dimensions for space-aware selection
                 );
                 
                 if (compositionResult.placements && compositionResult.placements.length > 0) {

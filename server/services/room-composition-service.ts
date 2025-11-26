@@ -20,6 +20,239 @@ import {
 // =============================================================================
 
 // =============================================================================
+// SPACE-AWARE DYNAMIC PRODUCT SELECTION
+// =============================================================================
+// Product counts adapt based on detected room dimensions:
+// - Small rooms (<180 sq ft): 5-6 products, compact furniture
+// - Medium rooms (180-320 sq ft): 6-7 products, standard layout
+// - Large rooms (320-480 sq ft): 7-8 products, can fit dual seating
+// - XL rooms (>480 sq ft): 8+ products, dual sofas, multiple zones
+// =============================================================================
+
+export type SpaceTier = 'small' | 'medium' | 'large' | 'xl';
+
+export interface SpaceProfile {
+  tier: SpaceTier;
+  squareFeet: number | null;
+  lengthFeet: number | null;
+  widthFeet: number | null;
+  ceilingHeightFeet: number | null;
+  canFitDualSeating: boolean;
+  canFitMultipleZones: boolean;
+  maxProducts: number;
+}
+
+/**
+ * Calculate space tier from room dimensions
+ * Thresholds based on interior design standards:
+ * - Small: Apartment/studio rooms, tight layouts
+ * - Medium: Standard residential rooms
+ * - Large: Spacious living areas, open floor plans
+ * - XL: Great rooms, loft spaces, multi-zone areas
+ */
+export function calculateSpaceTier(
+  lengthFeet: number | null,
+  widthFeet: number | null,
+  ceilingHeightFeet: number | null = 8
+): SpaceProfile {
+  // Default to medium if dimensions unknown
+  if (!lengthFeet || !widthFeet) {
+    return {
+      tier: 'medium',
+      squareFeet: null,
+      lengthFeet: null,
+      widthFeet: null,
+      ceilingHeightFeet,
+      canFitDualSeating: false,
+      canFitMultipleZones: false,
+      maxProducts: 7
+    };
+  }
+  
+  const squareFeet = lengthFeet * widthFeet;
+  
+  // Determine tier based on square footage
+  let tier: SpaceTier;
+  let canFitDualSeating = false;
+  let canFitMultipleZones = false;
+  let maxProducts = 7;
+  
+  if (squareFeet < 180) {
+    // Small: Compact spaces (12x15 or smaller)
+    tier = 'small';
+    maxProducts = 5;
+  } else if (squareFeet < 320) {
+    // Medium: Standard rooms (16x20 typical)
+    tier = 'medium';
+    maxProducts = 7;
+    // Can fit dual seating if room is at least 14ft wide
+    canFitDualSeating = widthFeet >= 14 && lengthFeet >= 16;
+  } else if (squareFeet < 480) {
+    // Large: Spacious rooms (20x24 or larger)
+    tier = 'large';
+    maxProducts = 8;
+    canFitDualSeating = widthFeet >= 16 || lengthFeet >= 20;
+    canFitMultipleZones = squareFeet >= 400;
+  } else {
+    // XL: Great rooms, open plans (20x24+)
+    tier = 'xl';
+    maxProducts = 8; // Still capped at 8 for render quality
+    canFitDualSeating = true;
+    canFitMultipleZones = true;
+  }
+  
+  console.log(`📐 Space Profile: ${tier.toUpperCase()} (${squareFeet} sq ft, ${lengthFeet}x${widthFeet}ft)`);
+  console.log(`   Dual seating: ${canFitDualSeating ? 'YES' : 'NO'}, Multiple zones: ${canFitMultipleZones ? 'YES' : 'NO'}`);
+  console.log(`   Max products for this space: ${maxProducts}`);
+  
+  return {
+    tier,
+    squareFeet,
+    lengthFeet,
+    widthFeet,
+    ceilingHeightFeet,
+    canFitDualSeating,
+    canFitMultipleZones,
+    maxProducts
+  };
+}
+
+/**
+ * Adjust room template based on space profile
+ * Dynamically modifies min/max values for product categories
+ * Uses safe property access to handle missing template keys
+ */
+function adjustTemplateForSpace(
+  template: typeof ROOM_TEMPLATES[keyof typeof ROOM_TEMPLATES],
+  spaceProfile: SpaceProfile,
+  roomType: string
+): typeof ROOM_TEMPLATES[keyof typeof ROOM_TEMPLATES] {
+  // Deep clone the template to avoid mutations
+  const adjusted = JSON.parse(JSON.stringify(template));
+  
+  // Helper to safely adjust a category property
+  const safeAdjust = (
+    section: 'essentials' | 'complementary',
+    category: string,
+    updates: Partial<{ min: number; max: number; priority: number }>
+  ) => {
+    if (!adjusted[section]) return; // Section doesn't exist
+    
+    if (adjusted[section][category]) {
+      // Category exists - apply partial updates
+      Object.assign(adjusted[section][category], updates);
+    } else if (updates.min !== undefined || updates.max !== undefined) {
+      // Category doesn't exist but we have min/max - create it
+      adjusted[section][category] = { 
+        min: updates.min ?? 0, 
+        max: updates.max ?? 1, 
+        priority: updates.priority || 99 
+      };
+    }
+    // If only priority is specified and category doesn't exist, skip (can't create without min/max)
+  };
+  
+  console.log(`🔧 Adjusting template for ${spaceProfile.tier.toUpperCase()} space...`);
+  
+  // Living Room specific adjustments
+  if (roomType === 'Living Room') {
+    switch (spaceProfile.tier) {
+      case 'small':
+        // Reduce product counts for small spaces
+        safeAdjust('essentials', 'accent_seating', { max: 1 });
+        safeAdjust('complementary', 'side_table', { min: 0, max: 1 });
+        safeAdjust('complementary', 'storage', { min: 0 });
+        safeAdjust('complementary', 'lighting', { max: 1 });
+        console.log(`   📦 Small space: Reduced to essential furniture only`);
+        break;
+        
+      case 'medium':
+        // Standard layout - keep defaults
+        console.log(`   📦 Medium space: Standard product selection`);
+        break;
+        
+      case 'large':
+        // Can fit more furniture
+        if (spaceProfile.canFitDualSeating) {
+          safeAdjust('essentials', 'primary_seating', { max: 2 }); // Allow 2 sofas or sofa + loveseat
+          console.log(`   📦 Large space: Dual seating ENABLED (2 sofas allowed)`);
+        } else {
+          console.log(`   📦 Large space: Single primary seating (room not wide enough for dual)`);
+        }
+        // Ensure accent_seating exists with proper values (move from essentials to complementary if needed)
+        safeAdjust('complementary', 'accent_seating', { min: 1, max: 2, priority: 4 });
+        safeAdjust('complementary', 'lighting', { max: 2 });
+        break;
+        
+      case 'xl':
+        // Maximum furniture for grand spaces
+        safeAdjust('essentials', 'primary_seating', { min: 1, max: 2 }); // Allow 2 sofas
+        safeAdjust('essentials', 'accent_seating', { max: 3 });
+        safeAdjust('complementary', 'side_table', { max: 2 });
+        safeAdjust('complementary', 'lighting', { max: 2 });
+        safeAdjust('complementary', 'decor', { max: 2 });
+        console.log(`   📦 XL space: Maximum furniture selection (dual sofas, multiple zones)`);
+        break;
+    }
+  }
+  
+  // Bedroom specific adjustments
+  if (roomType === 'Bedroom') {
+    switch (spaceProfile.tier) {
+      case 'small':
+        safeAdjust('essentials', 'nightstand', { max: 1 }); // Only 1 nightstand in small bedrooms
+        safeAdjust('complementary', 'dresser', { min: 0 });
+        safeAdjust('complementary', 'accent_seating', { min: 0 });
+        break;
+        
+      case 'large':
+      case 'xl':
+        safeAdjust('complementary', 'accent_seating', { min: 1 }); // Add seating area
+        safeAdjust('complementary', 'storage', { min: 1 }); // Add wardrobe/armoire
+        break;
+    }
+  }
+  
+  // Dining Room specific adjustments
+  if (roomType === 'Dining Room') {
+    switch (spaceProfile.tier) {
+      case 'small':
+        safeAdjust('essentials', 'dining_seating', { max: 1 }); // One chair style for small dining
+        safeAdjust('complementary', 'storage', { min: 0 });
+        break;
+        
+      case 'large':
+      case 'xl':
+        safeAdjust('essentials', 'dining_seating', { max: 2 }); // Allow 2 different chair styles
+        safeAdjust('complementary', 'decor', { max: 2 });
+        break;
+    }
+  }
+  
+  // Home Office specific adjustments
+  if (roomType === 'Home Office') {
+    switch (spaceProfile.tier) {
+      case 'small':
+        safeAdjust('essentials', 'storage', { min: 1, max: 1 });
+        safeAdjust('complementary', 'accent_seating', { min: 0 });
+        safeAdjust('complementary', 'side_table', { min: 0, max: 0 });
+        console.log(`   📦 Small office: Minimal furniture for compact workspace`);
+        break;
+        
+      case 'large':
+      case 'xl':
+        safeAdjust('essentials', 'storage', { max: 2 });
+        safeAdjust('complementary', 'accent_seating', { min: 1, max: 2 });
+        safeAdjust('complementary', 'side_table', { max: 2 });
+        console.log(`   📦 Large office: Additional seating and storage`);
+        break;
+    }
+  }
+  
+  return adjusted;
+}
+
+// =============================================================================
 // PERFORMANCE OPTIMIZATIONS
 // =============================================================================
 
@@ -1639,32 +1872,52 @@ export async function selectProductsWithComposition(
   candidateProducts: Product[],
   quizResponse?: QuizResponse,
   maxProducts: number = 15,
-  roomDimensions?: RoomDimensions // NEW: Optional room dimensions for fit validation
+  roomDimensions?: RoomDimensions, // Optional room dimensions for fit validation
+  detectedDimensions?: { lengthFeet: number | null; widthFeet: number | null; ceilingHeightFeet: number | null } // Detected from AI analysis
 ): Promise<CompositionResult> {
   console.log('\n' + '='.repeat(70));
-  console.log('🎯 PRODUCT SELECTION PIPELINE: Space → Fit → Preference → Budget');
+  console.log('🎯 PRODUCT SELECTION PIPELINE: Space → Fit → Preference (Dynamic)');
   console.log('='.repeat(70));
   
-  const template = ROOM_TEMPLATES[roomType as keyof typeof ROOM_TEMPLATES];
-  if (!template) {
+  // STEP 0: CALCULATE SPACE PROFILE from detected dimensions
+  const spaceProfile = calculateSpaceTier(
+    detectedDimensions?.lengthFeet ?? (roomDimensions ? roomDimensions.depth / 12 : null),
+    detectedDimensions?.widthFeet ?? (roomDimensions ? roomDimensions.width / 12 : null),
+    detectedDimensions?.ceilingHeightFeet ?? (roomDimensions ? roomDimensions.ceilingHeight / 12 : 8)
+  );
+  
+  // Get base template
+  const baseTemplate = ROOM_TEMPLATES[roomType as keyof typeof ROOM_TEMPLATES];
+  if (!baseTemplate) {
     // Fallback: return diverse selection if no template
     return {
-      selectedProducts: candidateProducts.slice(0, maxProducts),
+      selectedProducts: candidateProducts.slice(0, spaceProfile.maxProducts),
       composition: {},
       missingEssentials: [],
       warnings: ['No room template defined for ' + roomType]
     };
   }
   
+  // Adjust template based on space profile (dynamic product counts)
+  const template = adjustTemplateForSpace(baseTemplate, spaceProfile, roomType);
+  
+  // Override maxProducts based on space tier
+  const effectiveMaxProducts = Math.min(maxProducts, spaceProfile.maxProducts);
+  
   // STEP 1: SPACE ANALYSIS - Calculate available zones and constraints
   console.log('\n📐 STEP 1: SPACE ANALYSIS');
-  if (roomDimensions) {
+  if (detectedDimensions?.lengthFeet && detectedDimensions?.widthFeet) {
+    console.log(`   Detected room: ${detectedDimensions.lengthFeet}' x ${detectedDimensions.widthFeet}' (${spaceProfile.squareFeet} sq ft)`);
+    console.log(`   Space tier: ${spaceProfile.tier.toUpperCase()}`);
+    console.log(`   Dual seating allowed: ${spaceProfile.canFitDualSeating ? 'YES' : 'NO'}`);
+  } else if (roomDimensions) {
     console.log(`   Room size: ${roomDimensions.width}" x ${roomDimensions.depth}" (${(roomDimensions.width/12).toFixed(1)}' x ${(roomDimensions.depth/12).toFixed(1)}')`);
     console.log(`   Ceiling: ${roomDimensions.ceilingHeight}" (${(roomDimensions.ceilingHeight/12).toFixed(1)}')`);
     if (roomDimensions.windows?.length) console.log(`   Windows: ${roomDimensions.windows.length}`);
     if (roomDimensions.doors?.length) console.log(`   Doors: ${roomDimensions.doors.length}`);
   } else {
     console.log('   Using default room dimensions (14x12 ft typical)');
+    console.log('   Tip: Upload a room photo for dynamic space-aware product selection');
   }
   
   // Calculate budget allocation (but DON'T apply it during scoring - apply at END)
@@ -1969,7 +2222,7 @@ export async function selectProductsWithComposition(
     }
     
     for (const product of selected) {
-      if (selectedProducts.length >= maxProducts) break;
+      if (selectedProducts.length >= effectiveMaxProducts) break;
       
       // CRITICAL FIX: Prevent duplicate selection of same product
       // This product might already be in selectedProducts if it was added in a previous category iteration
@@ -2004,8 +2257,8 @@ export async function selectProductsWithComposition(
   console.log(`   Composition:`, Object.entries(composition).map(([cat, prods]) => `${cat}: ${prods.length}`).join(', '));
   
   // Add some uncategorized items if we have room
-  if (selectedProducts.length < maxProducts && uncategorized.length > 0) {
-    const remainingSlots = maxProducts - selectedProducts.length;
+  if (selectedProducts.length < effectiveMaxProducts && uncategorized.length > 0) {
+    const remainingSlots = effectiveMaxProducts - selectedProducts.length;
     const toAdd = uncategorized.slice(0, Math.min(remainingSlots, 3));
     selectedProducts.push(...toAdd);
   }
@@ -2057,12 +2310,14 @@ export async function selectProductsWithComposition(
   // Final summary
   const finalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
   console.log('\n' + '='.repeat(70));
-  console.log('✅ PIPELINE COMPLETE: Space → Fit → Preference (Quality-First Mode)');
+  console.log('✅ PIPELINE COMPLETE: Space → Fit → Preference (Dynamic Mode)');
   console.log('='.repeat(70));
-  console.log(`   Products selected: ${selectedProducts.length}`);
+  console.log(`   Space tier: ${spaceProfile.tier.toUpperCase()} (${spaceProfile.squareFeet ? spaceProfile.squareFeet + ' sq ft' : 'estimated'})`);
+  console.log(`   Products selected: ${selectedProducts.length}/${effectiveMaxProducts} (max for space)`);
   console.log(`   Total value: $${finalCost.toFixed(2)} (budget not enforced)`);
   console.log(`   Essential items: ${Object.entries(composition).filter(([cat]) => (template.essentials as any)[cat]).length} categories`);
   console.log(`   Missing essentials: ${missingEssentials.length > 0 ? missingEssentials.join(', ') : 'None'}`);
+  console.log(`   Dual seating: ${spaceProfile.canFitDualSeating ? 'ENABLED' : 'disabled'}`);
   console.log(`   Warnings: ${warnings.length}`);
   console.log(`   Mode: QUALITY-FIRST (all products rendered, no budget cuts)`);
   console.log('='.repeat(70) + '\n');

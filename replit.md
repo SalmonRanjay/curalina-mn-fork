@@ -17,11 +17,12 @@ The backend is built with Express.js and TypeScript, featuring dedicated routes 
 Core architectural decisions include:
 - **Zone-Based Placement System**: Configurable room zones (`ROOM_ZONES`) and functions (`assignItemsToZones()`, `generateZoneBasedPlacementMatrix()`) to guide AI prompts for structured product placement based on functional categories and design rules.
 - **Professional Room Composition Templates**: Predefined templates for various room types (Living Room, Bedroom, Dining Room, Home Office) specify essential and complementary furniture with min/max counts and zone height tiers to ensure design consistency.
-- **Product Selection Pipeline (Space → Fit → Preference → Budget)**: A four-step prioritization system:
-    1. **Space Analysis**: Extracts room dimensions and identifies placement zones.
-    2. **Fit Validation**: Filters products based on physical fit within designated zones using `validateProductFitForZone()` and `filterByPhysicalFit()`.
-    3. **Style Matching**: Scores remaining products against user preferences (style, color, texture, line, pattern, visual description quality).
-    4. **Smart Budget Enforcement**: Uses intelligent substitution based on a quality tier system and visual impact priority, only removing items if no suitable substitutes are found.
+- **Product Selection Pipeline (Space → Fit → Preference)**: A quality-first prioritization system:
+    1. **Space Analysis**: Extracts room dimensions and identifies placement zones. Calculates space tier (Small/Medium/Large/XL) based on detected room size.
+    2. **Dynamic Template Adjustment**: Room templates are adjusted based on space tier. Small rooms (<180 sq ft) get 5 products max, medium (180-320 sq ft) get 7, large (320-480 sq ft) get 8 with optional dual seating when width ≥16ft, XL (>480 sq ft) get 8 with dual sofas.
+    3. **Fit Validation**: Filters products based on physical fit within designated zones using `validateProductFitForZone()` and `filterByPhysicalFit()`.
+    4. **Style Matching**: Scores remaining products against user preferences (style, color, texture, line, pattern, visual description quality).
+    5. **Quality-First Mode**: Budget enforcement is disabled to prioritize render quality and visual harmony over cost constraints.
 - **Budget Allocation Framework**: Consistent percentage-based budget distribution across room types, emphasizing anchor pieces and context-aware category mapping.
 - **Product Fidelity System**: A multi-modal approach combining text and visual inputs for AI generation, including condensed descriptions, real-world scale enforcement, multi-modal generation with product catalog images, and a layout mask system for ControlNet-guided placement.
 - **Balanced Post-Render QA with Auto-Regeneration**: Structured JSON validation from Gemini Vision, balanced quality thresholds (Appearance, Scale, Dimensions, Overall, strict ColorMatch), and an auto-regeneration loop (up to 3 attempts) to meet quality standards. Includes zero-tolerance color matching and protection against missing products.
