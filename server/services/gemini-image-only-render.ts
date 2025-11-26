@@ -2766,18 +2766,25 @@ export async function generateOneByOneRender(params: OneByOneRenderParams): Prom
   const productsLimited = limitProducts(lampsLimited);
   const sortedProducts = orderProductsForBatching(productsLimited);
   
-  // STEP 2: Expand products to instances (handles duplicates)
-  const profile = spaceProfile || calculateSpaceTier(null, null);
-  const instances = expandProductsToInstances(sortedProducts, room, profile);
+  // STEP 2: Expand products to instances - will be done after room analysis if no profile provided
+  let profile = spaceProfile;
+  let instances: ProductInstance[] = [];
+  let duplicatesCreated = 0;
   
-  const uniqueProductCount = new Set(instances.map(i => i.product.sku)).size;
-  const duplicatesCreated = instances.length - uniqueProductCount;
-  
-  console.log(`   Instances to render: ${instances.length} (${duplicatesCreated} duplicates)`);
+  // If profile provided, expand now; otherwise defer until after room analysis
+  if (profile) {
+    instances = expandProductsToInstances(sortedProducts, room, profile);
+    const uniqueProductCount = new Set(instances.map(i => i.product.sku)).size;
+    duplicatesCreated = instances.length - uniqueProductCount;
+    console.log(`   Instances to render: ${instances.length} (${duplicatesCreated} duplicates)`);
+  } else {
+    console.log(`   Instance expansion deferred until room analysis completes`);
+  }
   
   const allProductsSentToAI: string[] = [];
   let stepsCompleted = 0;
-  const totalSteps = instances.length + 2; // Analysis + Lock + Products
+  // Estimate total steps - will be refined after instance expansion
+  let totalSteps = sortedProducts.length + 3; // Analysis + Lock + Products + Alignment
   
   try {
     // ========================================
@@ -2810,8 +2817,41 @@ export async function generateOneByOneRender(params: OneByOneRenderParams): Prom
     const roomAnalysisResult = await analyzeRoomWithGeminiVision(trueOriginalBase64);
     const roomArchitectureAnalysis = roomAnalysisResult.architectureDescription;
     const isEmptyRoom = roomAnalysisResult.isEmptyRoom || false;
+    const estimatedDimensions = roomAnalysisResult.estimatedDimensions;
     
     console.log(`   ✅ Room analyzed: ${isEmptyRoom ? 'Empty room' : 'Furnished room'}`);
+    
+    // Now expand instances if we deferred earlier (use analyzed dimensions)
+    if (instances.length === 0) {
+      // Parse dimension strings to numbers (handles formats like "~12-14ft", "12", "12.5ft")
+      const parseDimension = (val: string | number | undefined): number | null => {
+        if (val === undefined || val === null) return null;
+        const str = String(val);
+        // Extract all numbers from the string, take the first valid one
+        const matches = str.match(/(\d+\.?\d*)/g);
+        if (!matches || matches.length === 0) return null;
+        // If range like "12-14", take average
+        if (matches.length >= 2 && str.includes('-')) {
+          const nums = matches.slice(0, 2).map(Number).filter(n => !isNaN(n) && n > 0);
+          if (nums.length === 2) return (nums[0] + nums[1]) / 2;
+        }
+        const num = Number(matches[0]);
+        return !isNaN(num) && num > 0 ? num : null;
+      };
+      
+      const lengthFeet = parseDimension(estimatedDimensions?.lengthFeet);
+      const widthFeet = parseDimension(estimatedDimensions?.widthFeet);
+      
+      profile = calculateSpaceTier(lengthFeet, widthFeet);
+      
+      instances = expandProductsToInstances(sortedProducts, room, profile);
+      const uniqueProductCount = new Set(instances.map(i => i.product.sku)).size;
+      duplicatesCreated = instances.length - uniqueProductCount;
+      totalSteps = instances.length + 3; // Update total steps with actual instance count
+      
+      console.log(`   📐 Space profile: ${profile.tier} (${lengthFeet || '?'}x${widthFeet || '?'} ft)`);
+      console.log(`   📦 Instances to render: ${instances.length} (${duplicatesCreated} duplicates)`);
+    }
     
     // ========================================
     // STEP 3: Room Lock Pass (if needed)

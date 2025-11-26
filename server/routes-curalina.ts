@@ -2554,46 +2554,57 @@ export function registerCuralinaRoutes(app: Express) {
       
       // Start async one-by-one generation
       (async () => {
+        const { generateOneByOneRender, generateMultiStepRender } = await import('./services/gemini-image-only-render');
+        
+        // Helper to fetch and merge metadata (prevents overwrites)
+        const mergeMetadata = async (updates: Record<string, unknown>) => {
+          try {
+            // Fetch current render to get existing metadata
+            const currentRender = await curalinaStorage.getRender(render.id);
+            const existingMetadata = (currentRender?.productMetadata as Record<string, unknown>) || {};
+            return { ...existingMetadata, ...updates };
+          } catch (e) {
+            console.warn('Failed to fetch existing metadata, using updates only:', e);
+            return updates;
+          }
+        };
+        
+        // Progress callback to update render record (MERGES with existing metadata)
+        const onProgress = async (progress: {
+          stage: string;
+          stageLabel?: string;
+          percentComplete: number;
+          currentStep: number;
+          totalSteps: number;
+          currentBatch?: number;
+          totalBatches?: number;
+          productsInBatch?: string[];
+        }) => {
+          try {
+            const progressUpdate = {
+              progressStage: progress.stage,
+              progressLabel: progress.stageLabel,
+              progressPercent: progress.percentComplete,
+              currentStep: progress.currentStep,
+              totalSteps: progress.totalSteps,
+              currentBatch: progress.currentBatch,
+              totalBatches: progress.totalBatches,
+              productsInBatch: progress.productsInBatch,
+            };
+            const mergedMetadata = await mergeMetadata(progressUpdate);
+            await curalinaStorage.updateRender(render.id, {
+              productMetadata: mergedMetadata
+            });
+          } catch (e) {
+            console.warn('Progress update failed:', e);
+          }
+        };
+        
+        let result: { success: boolean; imageBase64?: string; error?: string; productsUsed: number; productsSentToAI?: string[]; instancesRendered?: number; duplicatesCreated?: number; stepsCompleted?: number; totalSteps?: number; validation?: any } | undefined;
+        
         try {
-          const { generateOneByOneRender, generateMultiStepRender } = await import('./services/gemini-image-only-render');
-          
-          // Track current metadata to merge updates (don't overwrite)
-          let currentMetadata: Record<string, unknown> = {};
-          
-          // Progress callback to update render record (MERGES instead of overwrites)
-          const onProgress = async (progress: {
-            stage: string;
-            stageLabel?: string;
-            percentComplete: number;
-            currentStep: number;
-            totalSteps: number;
-            currentBatch?: number;
-            totalBatches?: number;
-            productsInBatch?: string[];
-          }) => {
-            try {
-              // Merge progress into existing metadata
-              currentMetadata = {
-                ...currentMetadata,
-                progressStage: progress.stage,
-                progressLabel: progress.stageLabel,
-                progressPercent: progress.percentComplete,
-                currentStep: progress.currentStep,
-                totalSteps: progress.totalSteps,
-                currentBatch: progress.currentBatch,
-                totalBatches: progress.totalBatches,
-                productsInBatch: progress.productsInBatch,
-              };
-              await curalinaStorage.updateRender(render.id, {
-                productMetadata: currentMetadata
-              });
-            } catch (e) {
-              console.warn('Progress update failed:', e);
-            }
-          };
-          
           // Call one-by-one rendering service
-          let result = await generateOneByOneRender({
+          result = await generateOneByOneRender({
             roomImageUrl,
             products: selectedProducts,
             roomType: roomType || 'living room',
@@ -2601,10 +2612,15 @@ export function registerCuralinaRoutes(app: Express) {
             spaceProfile,
             onProgress
           });
-          
-          // Fallback to multi-step if sequential fails with products
-          if (!result.success && selectedProducts.length > 0) {
-            console.log(`⚠️ Sequential render failed, falling back to multi-step pipeline...`);
+        } catch (sequentialError) {
+          console.warn(`⚠️ Sequential render threw error:`, sequentialError);
+          result = { success: false, error: sequentialError instanceof Error ? sequentialError.message : 'Sequential error', productsUsed: 0 };
+        }
+        
+        // Fallback to multi-step if sequential fails
+        if (!result?.success && selectedProducts.length > 0) {
+          console.log(`⚠️ Sequential render failed, falling back to multi-step pipeline...`);
+          try {
             const multiResult = await generateMultiStepRender({
               roomImageUrl,
               products: selectedProducts,
@@ -2617,7 +2633,13 @@ export function registerCuralinaRoutes(app: Express) {
               instancesRendered: multiResult.productsUsed,
               duplicatesCreated: 0
             };
+          } catch (fallbackError) {
+            console.error(`❌ Fallback multi-step also failed:`, fallbackError);
+            result = { success: false, error: fallbackError instanceof Error ? fallbackError.message : 'Fallback failed', productsUsed: 0 };
           }
+        }
+        
+        try {
           
           if (!result.success || !result.imageBase64) {
             throw new Error(result.error || 'Sequential generation failed');
@@ -2660,15 +2682,14 @@ export function registerCuralinaRoutes(app: Express) {
           const imageUrl = `/public-objects/renders/${imageName}`;
           
           // Update render with success (merge metadata to preserve any existing data)
-          currentMetadata = {
-            ...currentMetadata,
+          const finalMetadata = await mergeMetadata({
             progressStage: 'complete',
             progressPercent: 100,
             instancesRendered: result.instancesRendered,
             duplicatesCreated: result.duplicatesCreated,
             stepsCompleted: result.stepsCompleted,
             totalSteps: result.totalSteps
-          };
+          });
           
           await curalinaStorage.updateRender(render.id, {
             status: 'completed',
@@ -2681,7 +2702,7 @@ export function registerCuralinaRoutes(app: Express) {
               missingProducts: result.validation.missingProducts,
               issues: result.validation.issues
             } : null,
-            productMetadata: currentMetadata
+            productMetadata: finalMetadata
           });
           
           console.log(`✅ Sequential render ${render.id} completed successfully`);
