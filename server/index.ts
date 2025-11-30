@@ -42,8 +42,7 @@ export const createApp = async () => {
   // Enhanced request logging middleware
   app.use((req, res, next) => {
     const start = Date.now();
-    // Use req.originalUrl to log the actual requested path, not the rewritten one
-    const path = req.originalUrl;
+    const path = req.path; // Use req.path after potential rewrites
     let capturedJsonResponse: any = undefined;
 
     // Monkey-patch res.json to capture response body for logging
@@ -55,8 +54,7 @@ export const createApp = async () => {
 
     res.on("finish", () => {
       const duration = Date.now() - start;
-      // Log all requests that started with /api (using originalUrl check)
-      if (path.startsWith("/api") || req.path.startsWith("/api")) {
+      if (path.startsWith("/api")) { // Only log API requests
         const logData = {
           method: req.method,
           path: path,
