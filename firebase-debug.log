@@ -1065,3 +1065,177 @@ INFO: Connected to new websocket client
 [error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
 [debug] [2025-11-30T23:01:39.521Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
 [debug] [2025-11-30T23:01:39.521Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:08.996Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:09.022Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:09.025Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:09.028Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:09.034Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:09.037Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:09.039Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:15:09.079Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.080Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.083Z] > refreshing access token with scopes: []
+[debug] [2025-11-30T23:15:09.094Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-11-30T23:15:09.094Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.100Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.101Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.101Z] > refreshing access token with scopes: []
+[debug] [2025-11-30T23:15:09.102Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-11-30T23:15:09.102Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.105Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:09.106Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:09.107Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:15:09.121Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.124Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.124Z] > refreshing access token with scopes: []
+[debug] [2025-11-30T23:15:09.125Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-11-30T23:15:09.125Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.133Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.133Z] Checked if tokens are valid: false, expires at: 1764544747920
+[debug] [2025-11-30T23:15:09.133Z] > refreshing access token with scopes: []
+[debug] [2025-11-30T23:15:09.134Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-11-30T23:15:09.134Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.447Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-11-30T23:15:09.448Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.472Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-11-30T23:15:09.472Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:15:09.500Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-11-30T23:15:09.500Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.515Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [none]
+[debug] [2025-11-30T23:15:09.515Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:15:09.547Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-11-30T23:15:09.547Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.561Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-11-30T23:15:09.561Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:15:09.619Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-11-30T23:15:09.619Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-11-30T23:15:09.640Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [none]
+[debug] [2025-11-30T23:15:09.640Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:15:10.567Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com 403
+[debug] [2025-11-30T23:15:10.571Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [omitted]
+[debug] [2025-11-30T23:15:10.614Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-11-30T23:15:10.614Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-11-30T23:15:10.636Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-11-30T23:15:10.637Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-11-30T23:15:10.638Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com 403
+[debug] [2025-11-30T23:15:10.638Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [omitted]
+[debug] [2025-11-30T23:15:10.640Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.665Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.678Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.684Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:10.687Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:10.688Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:15:10.690Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.692Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:10.693Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:10.724Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.740Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.747Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.750Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.754Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:10.755Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:10.756Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:15:10.757Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.758Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:10.758Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:10.795Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.803Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.807Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:10.807Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:15:10.808Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:15:10.809Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:15:10.811Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:15:10.811Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:56.041Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:56.083Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:56.094Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:56.097Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:56.099Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:26:56.148Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.149Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.152Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.155Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.157Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-11-30T23:26:56.158Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:26:56.161Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [none]
+[debug] [2025-11-30T23:26:56.162Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:26:56.201Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:56.206Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:56.209Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:56.210Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:56.211Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:26:56.221Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.221Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.223Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.223Z] Checked if tokens are valid: true, expires at: 1764548108619
+[debug] [2025-11-30T23:26:56.225Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-11-30T23:26:56.225Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:26:56.230Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [none]
+[debug] [2025-11-30T23:26:56.230Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com x-goog-quota-user=projects/curalina-replit-57401799-974b8
+[debug] [2025-11-30T23:26:57.407Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-11-30T23:26:57.408Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-11-30T23:26:57.432Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com 403
+[debug] [2025-11-30T23:26:57.433Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [omitted]
+[debug] [2025-11-30T23:26:57.464Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com 403
+[debug] [2025-11-30T23:26:57.464Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseio.com [omitted]
+[debug] [2025-11-30T23:26:57.480Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-11-30T23:26:57.480Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/curalina-replit-57401799-974b8/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-11-30T23:26:57.489Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.522Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.533Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.543Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:57.543Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:57.548Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:26:57.556Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.562Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:57.563Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:57.606Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.641Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.672Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.683Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.691Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:57.693Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:57.695Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:26:57.700Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.706Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:57.706Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:57.751Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.763Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.770Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:57.771Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
+[debug] [2025-11-30T23:26:57.773Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[debug] [2025-11-30T23:26:57.779Z] Object "/emulators/firestore" in "firebase.json" has unknown property: {"additionalProperty":"rules"}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-11-30T23:26:57.784Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-11-30T23:26:57.784Z] > authorizing via signed-in user (mohammadizahid704@gmail.com)
