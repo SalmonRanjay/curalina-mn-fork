@@ -44,8 +44,8 @@ export default function Loading() {
   const searchString = useSearch();
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  
-  // Get render info from URL params (preferred) or fall back to localStorage session
+  const [progressMessage, setProgressMessage] = useState("Kicking off the design process...");
+
   const { renderId, sessionId } = useMemo(() => {
     const params = new URLSearchParams(searchString);
     return {
@@ -54,23 +54,60 @@ export default function Loading() {
     };
   }, [searchString]);
 
-  // If we have a specific render ID, fetch that directly; otherwise fall back to latest by session
+  // The polling query remains as a fallback and for the final result
   const { data: render } = useQuery<Render>({
     queryKey: renderId ? ["/api/render", renderId] : ["/api/render/latest", sessionId],
     queryFn: async () => {
-      if (renderId) {
-        const res = await fetch(`/api/render/${renderId}`);
-        if (!res.ok) throw new Error("Failed to fetch render");
-        return res.json();
-      } else {
-        const res = await fetch(`/api/render/latest?sessionId=${sessionId}`);
-        if (!res.ok) throw new Error("Failed to fetch render");
-        return res.json();
-      }
+      const url = renderId 
+        ? `/api/render/${renderId}` 
+        : `/api/render/latest?sessionId=${sessionId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch render status");
+      return res.json();
     },
     enabled: !!(renderId || sessionId),
     refetchInterval: 2000,
   });
+
+  // WebSocket effect for real-time progress
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/render-progress/${sessionId}`;
+    
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log("WebSocket connection established for render progress.");
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (typeof data.progress === 'number') {
+          setProgress(data.progress);
+        }
+        if (typeof data.step === 'string') {
+          setProgressMessage(data.step);
+        }
+      } catch (e) {
+        console.error("Failed to parse progress update:", e);
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket connection closed. Polling will continue.");
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [sessionId]);
 
   useEffect(() => {
     const factInterval = setInterval(() => {
@@ -81,23 +118,10 @@ export default function Loading() {
   }, []);
 
   useEffect(() => {
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) return prev;
-        return prev + Math.random() * 8;
-      });
-    }, 500);
-
-    return () => clearInterval(progressInterval);
-  }, []);
-
-  useEffect(() => {
     if (render && (render.status === 'completed' || render.status === 'failed')) {
       setProgress(100);
       setTimeout(() => {
-        // Pass render ID to results page to ensure correct render is displayed
-        const actualRenderId = render.id;
-        const actualSessionId = render.sessionId;
+        const { id: actualRenderId, sessionId: actualSessionId } = render;
         setLocation(`/results?renderId=${actualRenderId}&sessionId=${actualSessionId}`);
       }, 300);
     }
@@ -150,14 +174,11 @@ export default function Loading() {
               className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
             />
           </div>
           <p className="text-sm text-muted-foreground mt-3">
-            {progress < 30 ? "Analyzing preferences..." : 
-             progress < 60 ? "Selecting products..." : 
-             progress < 90 ? "Generating room design..." : 
-             "Finalizing your design..."}
+            {progressMessage}
           </p>
         </motion.div>
 
@@ -206,30 +227,6 @@ export default function Loading() {
             </p>
           </motion.div>
         </AnimatePresence>
-
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(6)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 rounded-full bg-primary/10"
-              style={{
-                left: `${15 + i * 15}%`,
-                top: `${20 + (i % 3) * 30}%`,
-              }}
-              animate={{
-                y: [0, -20, 0],
-                opacity: [0.3, 0.6, 0.3],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                delay: i * 0.5,
-                ease: "easeInOut",
-              }}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );

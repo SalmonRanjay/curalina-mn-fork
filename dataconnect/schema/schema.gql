@@ -1,0 +1,58 @@
+type User @table {
+  email: String!
+  passwordHash: String!
+  createdAt: Timestamp!
+  firstName: String
+  lastName: String
+  profilePictureUrl: String
+}
+
+type DesignPreference @table {
+  user: User!
+  style: String!
+  colorPalette: String!
+  roomType: String!
+  budgetRange: String!
+  createdAt: Timestamp!
+  notes: String
+}
+
+type DesignProject @table {
+  user: User!
+  designPreference: DesignPreference!
+  projectName: String!
+  roomType: String!
+  status: String!
+  createdAt: Timestamp!
+  description: String
+  imageUrl: String
+}
+
+type AIDesign @table {
+  designProject: DesignProject!
+  imageUrl: String!
+  generationDate: Timestamp!
+  isSaved: Boolean!
+  designDescription: String
+  aiModelUsed: String
+}
+
+type Product @table {
+  name: String!
+  brand: String!
+  price: Float!
+  productUrl: String!
+  category: String!
+  createdAt: Timestamp!
+  description: String
+  imageUrl: String
+  color: String
+  dimensions: String
+}
+
+type DesignProduct @table(key: ["aiDesign", "product"]) {
+  aiDesign: AIDesign!
+  product: Product!
+  placementSuggestion: String!
+  quantity: Int
+}

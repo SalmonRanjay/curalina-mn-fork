@@ -1,9 +1,16 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js"; // Add .js extension
+// import { setupVite, serveStatic, log } from "./vite"; // Vite related imports are for local dev
+// import { setupWebSocket } from "./webSocket"; // WebSocket is usually not directly supported in standard HTTP Cloud Functions
 import dotenv from "dotenv";
 
-dotenv.config();
+// Load environment variables if not in a Firebase Functions environment
+// In Firebase Functions, process.env variables are already available.
+if (process.env.NODE_ENV !== "production" && !process.env.K_SERVICE) {
+  dotenv.config();
+}
+
+console.info("[Server Init] Starting Express app initialization...");
 
 const app = express();
 
@@ -20,6 +27,7 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false }));
 
 // Serve static files from public directory (including images)
+// This might be handled differently in Firebase Hosting, but keep for API routes\' context.
 app.use(express.static("public"));
 
 app.use((req, res, next) => {
@@ -38,80 +46,40 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        // Limit JSON log size to avoid hitting log limits and for readability
+        const jsonString = JSON.stringify(capturedJsonResponse);
+        logLine += ` :: ${jsonString.substring(0, 150)}${jsonString.length > 150 ? "..." : ""}`;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      if (logLine.length > 200) { // Further limit overall log line length
+        logLine = logLine.substring(0, 199) + "…";
       }
 
-      log(logLine);
+      console.info(logLine);
     }
   });
 
   next();
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+// Register routes outside of the IIAFE
+// registerRoutes returns a Promise<Server>, but in Functions we just need the app configured.
+// We use .then() to ensure routes are registered asynchronously.
+registerRoutes(app).catch((error: Error) => { // Explicitly type error as Error
+  console.error("[Server Init] Error registering routes:", error);
+  // You might want to crash the process or put the app in an error state here
+  // For now, it will just log and continue, but routes might be unavailable.
+});
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+// Error handling middleware - must be last app.use
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  console.error("[Express Error]", { status, message, stack: err.stack });
+  res.status(status).json({ message });
+});
 
-    res.status(status).json({ message });
-    throw err;
-  });
+console.info("[Server Init] Express app initialized and routes being registered.");
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-    
-    // Start image health validation worker (runs every 6 hours)
-    const IMAGE_HEALTH_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
-    
-    // Import worker asynchronously to avoid circular dependencies
-    import("./routes-curalina").then(({ imageHealthWorker }) => {
-      log(`[ImageHealthWorker] Starting scheduled validation (every 6 hours)`);
-      
-      // Run initial validation after 1 minute (give server time to fully start)
-      setTimeout(async () => {
-        try {
-          log(`[ImageHealthWorker] Running initial validation`);
-          const result = await imageHealthWorker.runValidation();
-          log(`[ImageHealthWorker] Initial validation complete: ${result.processed} processed, ${result.updated} updated`);
-        } catch (error: any) {
-          log(`[ImageHealthWorker] Initial validation failed: ${error.message}`);
-        }
-      }, 60 * 1000);
-      
-      // Schedule recurring validation
-      setInterval(async () => {
-        try {
-          log(`[ImageHealthWorker] Running scheduled validation`);
-          const result = await imageHealthWorker.runValidation();
-          log(`[ImageHealthWorker] Scheduled validation complete: ${result.processed} processed, ${result.updated} updated`);
-        } catch (error: any) {
-          log(`[ImageHealthWorker] Scheduled validation failed: ${error.message}`);
-        }
-      }, IMAGE_HEALTH_CHECK_INTERVAL);
-    });
-  });
-})();
+// Export the app for Firebase Functions
+export default app;

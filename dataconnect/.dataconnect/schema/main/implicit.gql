@@ -1,0 +1,56 @@
+extend type AIDesign {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "AIDesign", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `AIDesign`.`designProject`. It must match the value of `DesignProject`.`id`. See `@ref` for how to customize it.
+  """
+  designProjectId: UUID! @fdc_generated(from: "AIDesign.designProject", purpose: IMPLICIT_REF_FIELD)
+}
+extend type DesignPreference {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "DesignPreference", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `DesignPreference`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: UUID! @fdc_generated(from: "DesignPreference.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type DesignProduct {
+  """
+  ✨ Implicit foreign key field based on `DesignProduct`.`aiDesign`. It must match the value of `AIDesign`.`id`. See `@ref` for how to customize it.
+  """
+  aiDesignId: UUID! @fdc_generated(from: "DesignProduct.aiDesign", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `DesignProduct`.`product`. It must match the value of `Product`.`id`. See `@ref` for how to customize it.
+  """
+  productId: UUID! @fdc_generated(from: "DesignProduct.product", purpose: IMPLICIT_REF_FIELD)
+}
+extend type DesignProject {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "DesignProject", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `DesignProject`.`designPreference`. It must match the value of `DesignPreference`.`id`. See `@ref` for how to customize it.
+  """
+  designPreferenceId: UUID! @fdc_generated(from: "DesignProject.designPreference", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `DesignProject`.`user`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  userId: UUID! @fdc_generated(from: "DesignProject.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Product {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Product", purpose: IMPLICIT_KEY_FIELD)
+}
+extend type User {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "User", purpose: IMPLICIT_KEY_FIELD)
+}

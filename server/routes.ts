@@ -1,13 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./localAuth";
-import { 
+import { storage } from "./storage.js";
+import { setupAuth, isAuthenticated } from "./localAuth.js";
+import {
   ObjectStorageService,
   ObjectNotFoundError 
-} from "./objectStorage";
-import { ObjectPermission } from "./objectAcl";
-import { insertContentSchema, insertSettingsSchema } from "@shared/schema";
+} from "./objectStorage.js";
+import { ObjectPermission } from "./objectAcl.js";
+import { insertContentSchema, insertSettingsSchema } from "@shared/schema.js";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -256,6 +256,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(item);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       console.error("Error creating content:", error);
       res.status(500).json({ message: "Failed to create content" });
     }
@@ -356,6 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(setting);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       console.error("Error updating setting:", error);
       res.status(500).json({ message: "Failed to update setting" });
     }
@@ -748,11 +754,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Import and register Curalina AI routes
-  const { registerCuralinaRoutes } = await import("./routes-curalina");
-  registerCuralinaRoutes(app);
+  const curalinaRoutesModule = await import("./routes-curalina.js");
+  curalinaRoutesModule.registerCuralinaRoutes(app);
 
   // Mapping analysis routes
-  const mappingAnalysisRoutes = await import("./routes-mapping-analysis");
+  const mappingAnalysisRoutes = await import("./routes-mapping-analysis.js");
   app.use("/api/admin", isAuthenticated, isAdmin, mappingAnalysisRoutes.default);
 
   const httpServer = createServer(app);

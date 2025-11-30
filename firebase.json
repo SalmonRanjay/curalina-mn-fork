@@ -1,0 +1,43 @@
+{
+  "emulators": {
+    "hub": {
+      "host": "127.0.0.1",
+      "port": 4402
+    },
+    "dataconnect": {
+      "dataDir": "dataconnect/.dataconnect/pgliteData",
+      "host": "127.0.0.1",
+      "port": 9400
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8081,
+      "rules": "firestore.rules"
+    },
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 5002
+    },
+    "ui": {
+      "host": "127.0.0.1",
+      "port": 4002
+    },
+    "logging": {
+      "host": "127.0.0.1",
+      "port": 4502
+    }
+  },
+  "dataconnect": {
+    "source": "dataconnect"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "server/functions",
+      "codebase": "curalina-ai"
+    }
+  ]
+}

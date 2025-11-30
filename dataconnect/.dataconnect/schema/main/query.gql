@@ -1,0 +1,315 @@
+extend type Query {
+  """
+  ✨ Look up a single `AIDesign` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  aIDesign(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: AIDesign_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIDesign_FirstRow
+  ): AIDesign @fdc_generated(from: "AIDesign", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `DesignPreference` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  designPreference(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: DesignPreference_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignPreference_FirstRow
+  ): DesignPreference @fdc_generated(from: "DesignPreference", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `DesignProduct` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  designProduct(
+    """
+    The key used to identify the object.
+    """
+    key: DesignProduct_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignProduct_FirstRow
+  ): DesignProduct @fdc_generated(from: "DesignProduct", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `DesignProject` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  designProject(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: DesignProject_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignProject_FirstRow
+  ): DesignProject @fdc_generated(from: "DesignProject", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Product` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  product(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Product_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Product_FirstRow
+  ): Product @fdc_generated(from: "Product", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `User` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  user(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User @fdc_generated(from: "User", purpose: QUERY_SINGLE)
+  """
+  ✨ List `AIDesign` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  aIDesigns(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AIDesign_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AIDesign_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AIDesign_Having
+  ): [AIDesign!]! @fdc_generated(from: "AIDesign", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `DesignPreference` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  designPreferences(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignPreference_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignPreference_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignPreference_Having
+  ): [DesignPreference!]! @fdc_generated(from: "DesignPreference", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `DesignProduct` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  designProducts(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProduct_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProduct_Having
+  ): [DesignProduct!]! @fdc_generated(from: "DesignProduct", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `DesignProject` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  designProjects(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProject_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProject_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProject_Having
+  ): [DesignProject!]! @fdc_generated(from: "DesignProject", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Product` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  products(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Product_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Product_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Product_Having
+  ): [Product!]! @fdc_generated(from: "Product", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `User` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  users(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: User_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [User_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: User_Having
+  ): [User!]! @fdc_generated(from: "User", purpose: QUERY_MULTIPLE)
+}

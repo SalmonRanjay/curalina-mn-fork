@@ -1,0 +1,664 @@
+extend type Mutation {
+  """
+  ✨ Insert a single `AIDesign` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aIDesign_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AIDesign_Data!
+  ): AIDesign_KeyOutput! @fdc_generated(from: "AIDesign", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `DesignPreference` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  designPreference_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: DesignPreference_Data!
+  ): DesignPreference_KeyOutput! @fdc_generated(from: "DesignPreference", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `DesignProduct` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  designProduct_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: DesignProduct_Data!
+  ): DesignProduct_KeyOutput! @fdc_generated(from: "DesignProduct", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `DesignProject` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  designProject_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: DesignProject_Data!
+  ): DesignProject_KeyOutput! @fdc_generated(from: "DesignProject", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Product` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  product_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Product_Data!
+  ): Product_KeyOutput! @fdc_generated(from: "Product", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `User` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  user_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: User_Data!
+  ): User_KeyOutput! @fdc_generated(from: "User", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert `AIDesign` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  aIDesign_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AIDesign_Data!]!
+  ): [AIDesign_KeyOutput!]! @fdc_generated(from: "AIDesign", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `DesignPreference` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  designPreference_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [DesignPreference_Data!]!
+  ): [DesignPreference_KeyOutput!]! @fdc_generated(from: "DesignPreference", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `DesignProduct` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  designProduct_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [DesignProduct_Data!]!
+  ): [DesignProduct_KeyOutput!]! @fdc_generated(from: "DesignProduct", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `DesignProject` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  designProject_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [DesignProject_Data!]!
+  ): [DesignProject_KeyOutput!]! @fdc_generated(from: "DesignProject", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Product` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  product_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Product_Data!]!
+  ): [Product_KeyOutput!]! @fdc_generated(from: "Product", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `User` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  user_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [User_Data!]!
+  ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert or update a single `AIDesign` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIDesign`.
+  """
+  aIDesign_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AIDesign_Data!
+  ): AIDesign_KeyOutput! @fdc_generated(from: "AIDesign", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `DesignPreference` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `DesignPreference`.
+  """
+  designPreference_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: DesignPreference_Data!
+  ): DesignPreference_KeyOutput! @fdc_generated(from: "DesignPreference", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `DesignProduct` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `DesignProduct`.
+  """
+  designProduct_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: DesignProduct_Data!
+  ): DesignProduct_KeyOutput! @fdc_generated(from: "DesignProduct", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `DesignProject` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `DesignProject`.
+  """
+  designProject_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: DesignProject_Data!
+  ): DesignProject_KeyOutput! @fdc_generated(from: "DesignProject", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Product` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Product`.
+  """
+  product_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Product_Data!
+  ): Product_KeyOutput! @fdc_generated(from: "Product", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `User` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `User`.
+  """
+  user_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: User_Data!
+  ): User_KeyOutput! @fdc_generated(from: "User", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update `AIDesign` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AIDesign`.
+  """
+  aIDesign_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AIDesign_Data!]!
+  ): [AIDesign_KeyOutput!]! @fdc_generated(from: "AIDesign", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `DesignPreference` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `DesignPreference`.
+  """
+  designPreference_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [DesignPreference_Data!]!
+  ): [DesignPreference_KeyOutput!]! @fdc_generated(from: "DesignPreference", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `DesignProduct` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `DesignProduct`.
+  """
+  designProduct_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [DesignProduct_Data!]!
+  ): [DesignProduct_KeyOutput!]! @fdc_generated(from: "DesignProduct", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `DesignProject` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `DesignProject`.
+  """
+  designProject_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [DesignProject_Data!]!
+  ): [DesignProject_KeyOutput!]! @fdc_generated(from: "DesignProject", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Product` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Product`.
+  """
+  product_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Product_Data!]!
+  ): [Product_KeyOutput!]! @fdc_generated(from: "Product", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `User` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `User`.
+  """
+  user_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [User_Data!]!
+  ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Update a single `AIDesign` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AIDesign` or `null` if not found.
+  """
+  aIDesign_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: AIDesign_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIDesign_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AIDesign_Data!
+  ): AIDesign_KeyOutput @fdc_generated(from: "AIDesign", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `DesignPreference` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `DesignPreference` or `null` if not found.
+  """
+  designPreference_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: DesignPreference_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignPreference_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: DesignPreference_Data!
+  ): DesignPreference_KeyOutput @fdc_generated(from: "DesignPreference", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `DesignProduct` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `DesignProduct` or `null` if not found.
+  """
+  designProduct_update(
+    """
+    The key used to identify the object.
+    """
+    key: DesignProduct_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignProduct_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: DesignProduct_Data!
+  ): DesignProduct_KeyOutput @fdc_generated(from: "DesignProduct", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `DesignProject` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `DesignProject` or `null` if not found.
+  """
+  designProject_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: DesignProject_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignProject_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: DesignProject_Data!
+  ): DesignProject_KeyOutput @fdc_generated(from: "DesignProject", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Product` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Product` or `null` if not found.
+  """
+  product_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Product_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Product_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Product_Data!
+  ): Product_KeyOutput @fdc_generated(from: "Product", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `User` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `User` or `null` if not found.
+  """
+  user_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: User_Data!
+  ): User_KeyOutput @fdc_generated(from: "User", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update `AIDesign` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  aIDesign_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AIDesign_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AIDesign_Data!
+  ): Int! @fdc_generated(from: "AIDesign", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `DesignPreference` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  designPreference_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: DesignPreference_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: DesignPreference_Data!
+  ): Int! @fdc_generated(from: "DesignPreference", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `DesignProduct` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  designProduct_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: DesignProduct_Data!
+  ): Int! @fdc_generated(from: "DesignProduct", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `DesignProject` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  designProject_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: DesignProject_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: DesignProject_Data!
+  ): Int! @fdc_generated(from: "DesignProject", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Product` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  product_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Product_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Product_Data!
+  ): Int! @fdc_generated(from: "Product", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `User` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  user_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: User_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: User_Data!
+  ): Int! @fdc_generated(from: "User", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Delete a single `AIDesign` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  aIDesign_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: AIDesign_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AIDesign_FirstRow
+  ): AIDesign_KeyOutput @fdc_generated(from: "AIDesign", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `DesignPreference` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  designPreference_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: DesignPreference_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignPreference_FirstRow
+  ): DesignPreference_KeyOutput @fdc_generated(from: "DesignPreference", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `DesignProduct` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  designProduct_delete(
+    """
+    The key used to identify the object.
+    """
+    key: DesignProduct_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignProduct_FirstRow
+  ): DesignProduct_KeyOutput @fdc_generated(from: "DesignProduct", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `DesignProject` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  designProject_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: DesignProject_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: DesignProject_FirstRow
+  ): DesignProject_KeyOutput @fdc_generated(from: "DesignProject", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Product` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  product_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Product_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Product_FirstRow
+  ): Product_KeyOutput @fdc_generated(from: "Product", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `User` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  user_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User_KeyOutput @fdc_generated(from: "User", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete `AIDesign` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  aIDesign_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AIDesign_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `DesignPreference` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  designPreference_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: DesignPreference_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `DesignProduct` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  designProduct_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProduct", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `DesignProject` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  designProject_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: DesignProject_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Product` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  product_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Product_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Product", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `User` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  user_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: User_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "User", purpose: DELETE_MULTIPLE)
+}

@@ -1,0 +1,2014 @@
+"""
+✨ `AIDesign_KeyOutput` returns the primary key fields of table type `AIDesign`.
+
+It has the same format as `AIDesign_Key`, but is only used as mutation return value.
+"""
+scalar AIDesign_KeyOutput
+"""
+✨ `DesignPreference_KeyOutput` returns the primary key fields of table type `DesignPreference`.
+
+It has the same format as `DesignPreference_Key`, but is only used as mutation return value.
+"""
+scalar DesignPreference_KeyOutput
+"""
+✨ `DesignProduct_KeyOutput` returns the primary key fields of table type `DesignProduct`.
+
+It has the same format as `DesignProduct_Key`, but is only used as mutation return value.
+"""
+scalar DesignProduct_KeyOutput
+"""
+✨ `DesignProject_KeyOutput` returns the primary key fields of table type `DesignProject`.
+
+It has the same format as `DesignProject_Key`, but is only used as mutation return value.
+"""
+scalar DesignProject_KeyOutput
+"""
+✨ `Product_KeyOutput` returns the primary key fields of table type `Product`.
+
+It has the same format as `Product_Key`, but is only used as mutation return value.
+"""
+scalar Product_KeyOutput
+"""
+✨ `User_KeyOutput` returns the primary key fields of table type `User`.
+
+It has the same format as `User_Key`, but is only used as mutation return value.
+"""
+scalar User_KeyOutput
+"""
+✨ Generated data input type for table 'AIDesign'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AIDesign_Data {
+  """
+  ✨ Generated from Field `AIDesign`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AIDesign`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `AIDesign`.`designProjectId` of type `UUID!`
+  """
+  designProjectId: UUID
+  """
+  ✨ `_expr` server value variant of `designProjectId` (✨ Generated from Field `AIDesign`.`designProjectId` of type `UUID!`)
+  """
+  designProjectId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `AIDesign`.`designProject` of type `DesignProject!`
+  """
+  designProject: DesignProject_Key
+  """
+  ✨ Generated from Field `AIDesign`.`aiModelUsed` of type `String`
+  """
+  aiModelUsed: String
+  """
+  ✨ `_expr` server value variant of `aiModelUsed` (✨ Generated from Field `AIDesign`.`aiModelUsed` of type `String`)
+  """
+  aiModelUsed_expr: String_Expr
+  """
+  ✨ Generated from Field `AIDesign`.`designDescription` of type `String`
+  """
+  designDescription: String
+  """
+  ✨ `_expr` server value variant of `designDescription` (✨ Generated from Field `AIDesign`.`designDescription` of type `String`)
+  """
+  designDescription_expr: String_Expr
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate` of type `Timestamp!`
+  """
+  generationDate: Timestamp
+  """
+  ✨ `_expr` server value variant of `generationDate` (✨ Generated from Field `AIDesign`.`generationDate` of type `Timestamp!`)
+  """
+  generationDate_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `generationDate` (✨ Generated from Field `AIDesign`.`generationDate` of type `Timestamp!`)
+  """
+  generationDate_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `generationDate` (✨ Generated from Field `AIDesign`.`generationDate` of type `Timestamp!`)
+  """
+  generationDate_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `AIDesign`.`imageUrl` of type `String!`
+  """
+  imageUrl: String
+  """
+  ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `AIDesign`.`imageUrl` of type `String!`)
+  """
+  imageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `AIDesign`.`isSaved` of type `Boolean!`
+  """
+  isSaved: Boolean
+  """
+  ✨ `_expr` server value variant of `isSaved` (✨ Generated from Field `AIDesign`.`isSaved` of type `Boolean!`)
+  """
+  isSaved_expr: Boolean_Expr
+}
+"""
+✨ Generated filter input type for table 'AIDesign'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AIDesign_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AIDesign_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AIDesign_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AIDesign_Filter!]
+  """
+  ✨ Generated from Field `AIDesign`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`designProjectId` of type `UUID!`
+  """
+  designProjectId: UUID_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`designProject` of type `DesignProject!`
+  """
+  designProject: DesignProject_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`aiModelUsed` of type `String`
+  """
+  aiModelUsed: String_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`designDescription` of type `String`
+  """
+  designDescription: String_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate` of type `Timestamp!`
+  """
+  generationDate: Timestamp_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`imageUrl` of type `String!`
+  """
+  imageUrl: String_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`isSaved` of type `Boolean!`
+  """
+  isSaved: Boolean_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`designProducts_on_aiDesign` of type `[DesignProduct!]!`
+  """
+  designProducts_on_aiDesign: DesignProduct_ListFilter
+  """
+  ✨ Generated from Field `AIDesign`.`products_via_DesignProduct` of type `[Product!]!`
+  """
+  products_via_DesignProduct: Product_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'AIDesign'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AIDesign_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AIDesign_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AIDesign_Filter
+}
+"""
+✨ Generated having input type for table 'AIDesign'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AIDesign_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AIDesign_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AIDesign_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AIDesign_Having!]
+  """
+  ✨ Generated from Field `AIDesign`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`aiModelUsed_count` of type `Int!`
+  """
+  aiModelUsed_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`designDescription_count` of type `Int!`
+  """
+  designDescription_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`designProjectId_count` of type `Int!`
+  """
+  designProjectId_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate_count` of type `Int!`
+  """
+  generationDate_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`isSaved_count` of type `Int!`
+  """
+  isSaved_count: Int_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate_min` of type `Timestamp`
+  """
+  generationDate_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate_max` of type `Timestamp`
+  """
+  generationDate_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'AIDesign'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AIDesign_Key {
+  """
+  ✨ Generated from Field `AIDesign`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AIDesign`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'AIDesign'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AIDesign_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AIDesign_Filter
+}
+"""
+✨ Generated order input type for table 'AIDesign'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AIDesign_Order {
+  """
+  ✨ Generated from Field `AIDesign`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`designProjectId` of type `UUID!`
+  """
+  designProjectId: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`designProject` of type `DesignProject!`
+  """
+  designProject: DesignProject_Order
+  """
+  ✨ Generated from Field `AIDesign`.`aiModelUsed` of type `String`
+  """
+  aiModelUsed: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`designDescription` of type `String`
+  """
+  designDescription: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate` of type `Timestamp!`
+  """
+  generationDate: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`imageUrl` of type `String!`
+  """
+  imageUrl: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`isSaved` of type `Boolean!`
+  """
+  isSaved: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`aiModelUsed_count` of type `Int!`
+  """
+  aiModelUsed_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`designDescription_count` of type `Int!`
+  """
+  designDescription_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`designProjectId_count` of type `Int!`
+  """
+  designProjectId_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate_count` of type `Int!`
+  """
+  generationDate_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`isSaved_count` of type `Int!`
+  """
+  isSaved_count: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate_min` of type `Timestamp`
+  """
+  generationDate_min: OrderDirection
+  """
+  ✨ Generated from Field `AIDesign`.`generationDate_max` of type `Timestamp`
+  """
+  generationDate_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'DesignPreference'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input DesignPreference_Data {
+  """
+  ✨ Generated from Field `DesignPreference`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `DesignPreference`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignPreference`.`userId` of type `UUID!`
+  """
+  userId: UUID
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `DesignPreference`.`userId` of type `UUID!`)
+  """
+  userId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignPreference`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `DesignPreference`.`budgetRange` of type `String!`
+  """
+  budgetRange: String
+  """
+  ✨ `_expr` server value variant of `budgetRange` (✨ Generated from Field `DesignPreference`.`budgetRange` of type `String!`)
+  """
+  budgetRange_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignPreference`.`colorPalette` of type `String!`
+  """
+  colorPalette: String
+  """
+  ✨ `_expr` server value variant of `colorPalette` (✨ Generated from Field `DesignPreference`.`colorPalette` of type `String!`)
+  """
+  colorPalette_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `DesignPreference`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `DesignPreference`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `DesignPreference`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `DesignPreference`.`notes` of type `String`
+  """
+  notes: String
+  """
+  ✨ `_expr` server value variant of `notes` (✨ Generated from Field `DesignPreference`.`notes` of type `String`)
+  """
+  notes_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignPreference`.`roomType` of type `String!`
+  """
+  roomType: String
+  """
+  ✨ `_expr` server value variant of `roomType` (✨ Generated from Field `DesignPreference`.`roomType` of type `String!`)
+  """
+  roomType_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignPreference`.`style` of type `String!`
+  """
+  style: String
+  """
+  ✨ `_expr` server value variant of `style` (✨ Generated from Field `DesignPreference`.`style` of type `String!`)
+  """
+  style_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'DesignPreference'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DesignPreference_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [DesignPreference_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: DesignPreference_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [DesignPreference_Filter!]
+  """
+  ✨ Generated from Field `DesignPreference`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`userId` of type `UUID!`
+  """
+  userId: UUID_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`budgetRange` of type `String!`
+  """
+  budgetRange: String_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`colorPalette` of type `String!`
+  """
+  colorPalette: String_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`notes` of type `String`
+  """
+  notes: String_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`roomType` of type `String!`
+  """
+  roomType: String_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`style` of type `String!`
+  """
+  style: String_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`designProjects_on_designPreference` of type `[DesignProject!]!`
+  """
+  designProjects_on_designPreference: DesignProject_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'DesignPreference'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input DesignPreference_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [DesignPreference_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: DesignPreference_Filter
+}
+"""
+✨ Generated having input type for table 'DesignPreference'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DesignPreference_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [DesignPreference_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: DesignPreference_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [DesignPreference_Having!]
+  """
+  ✨ Generated from Field `DesignPreference`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`budgetRange_count` of type `Int!`
+  """
+  budgetRange_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`colorPalette_count` of type `Int!`
+  """
+  colorPalette_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`notes_count` of type `Int!`
+  """
+  notes_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`roomType_count` of type `Int!`
+  """
+  roomType_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`style_count` of type `Int!`
+  """
+  style_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'DesignPreference'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input DesignPreference_Key {
+  """
+  ✨ Generated from Field `DesignPreference`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `DesignPreference`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'DesignPreference'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input DesignPreference_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: DesignPreference_Filter
+}
+"""
+✨ Generated order input type for table 'DesignPreference'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input DesignPreference_Order {
+  """
+  ✨ Generated from Field `DesignPreference`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`userId` of type `UUID!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `DesignPreference`.`budgetRange` of type `String!`
+  """
+  budgetRange: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`colorPalette` of type `String!`
+  """
+  colorPalette: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`notes` of type `String`
+  """
+  notes: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`roomType` of type `String!`
+  """
+  roomType: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`style` of type `String!`
+  """
+  style: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`budgetRange_count` of type `Int!`
+  """
+  budgetRange_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`colorPalette_count` of type `Int!`
+  """
+  colorPalette_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`notes_count` of type `Int!`
+  """
+  notes_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`roomType_count` of type `Int!`
+  """
+  roomType_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`style_count` of type `Int!`
+  """
+  style_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `DesignPreference`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'DesignProduct'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input DesignProduct_Data {
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesignId` of type `UUID!`
+  """
+  aiDesignId: UUID
+  """
+  ✨ `_expr` server value variant of `aiDesignId` (✨ Generated from Field `DesignProduct`.`aiDesignId` of type `UUID!`)
+  """
+  aiDesignId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignProduct`.`productId` of type `UUID!`
+  """
+  productId: UUID
+  """
+  ✨ `_expr` server value variant of `productId` (✨ Generated from Field `DesignProduct`.`productId` of type `UUID!`)
+  """
+  productId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesign` of type `AIDesign!`
+  """
+  aiDesign: AIDesign_Key
+  """
+  ✨ Generated from Field `DesignProduct`.`product` of type `Product!`
+  """
+  product: Product_Key
+  """
+  ✨ Generated from Field `DesignProduct`.`placementSuggestion` of type `String!`
+  """
+  placementSuggestion: String
+  """
+  ✨ `_expr` server value variant of `placementSuggestion` (✨ Generated from Field `DesignProduct`.`placementSuggestion` of type `String!`)
+  """
+  placementSuggestion_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity` of type `Int`
+  """
+  quantity: Int
+  """
+  ✨ `_expr` server value variant of `quantity` (✨ Generated from Field `DesignProduct`.`quantity` of type `Int`)
+  """
+  quantity_expr: Int_Expr
+  """
+  ✨ `_update` server value variant of `quantity` (✨ Generated from Field `DesignProduct`.`quantity` of type `Int`)
+  """
+  quantity_update: [Int_Update!]
+}
+"""
+✨ Generated filter input type for table 'DesignProduct'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DesignProduct_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [DesignProduct_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: DesignProduct_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [DesignProduct_Filter!]
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesignId` of type `UUID!`
+  """
+  aiDesignId: UUID_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`productId` of type `UUID!`
+  """
+  productId: UUID_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesign` of type `AIDesign!`
+  """
+  aiDesign: AIDesign_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`product` of type `Product!`
+  """
+  product: Product_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`placementSuggestion` of type `String!`
+  """
+  placementSuggestion: String_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity` of type `Int`
+  """
+  quantity: Int_Filter
+}
+"""
+✨ Generated first-row input type for table 'DesignProduct'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input DesignProduct_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [DesignProduct_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: DesignProduct_Filter
+}
+"""
+✨ Generated having input type for table 'DesignProduct'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DesignProduct_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [DesignProduct_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: DesignProduct_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [DesignProduct_Having!]
+  """
+  ✨ Generated from Field `DesignProduct`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesignId_count` of type `Int!`
+  """
+  aiDesignId_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`placementSuggestion_count` of type `Int!`
+  """
+  placementSuggestion_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`productId_count` of type `Int!`
+  """
+  productId_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_count` of type `Int!`
+  """
+  quantity_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_sum` of type `Int`
+  """
+  quantity_sum: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_avg` of type `Float`
+  """
+  quantity_avg: Float_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_min` of type `Int`
+  """
+  quantity_min: Int_Filter
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_max` of type `Int`
+  """
+  quantity_max: Int_Filter
+}
+"""
+✨ Generated key input type for table 'DesignProduct'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input DesignProduct_Key {
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesignId` of type `UUID!`
+  """
+  aiDesignId: UUID
+  """
+  ✨ `_expr` server value variant of `aiDesignId` (✨ Generated from Field `DesignProduct`.`aiDesignId` of type `UUID!`)
+  """
+  aiDesignId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignProduct`.`productId` of type `UUID!`
+  """
+  productId: UUID
+  """
+  ✨ `_expr` server value variant of `productId` (✨ Generated from Field `DesignProduct`.`productId` of type `UUID!`)
+  """
+  productId_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'DesignProduct'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input DesignProduct_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: DesignProduct_Filter
+}
+"""
+✨ Generated order input type for table 'DesignProduct'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input DesignProduct_Order {
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesignId` of type `UUID!`
+  """
+  aiDesignId: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`productId` of type `UUID!`
+  """
+  productId: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesign` of type `AIDesign!`
+  """
+  aiDesign: AIDesign_Order
+  """
+  ✨ Generated from Field `DesignProduct`.`product` of type `Product!`
+  """
+  product: Product_Order
+  """
+  ✨ Generated from Field `DesignProduct`.`placementSuggestion` of type `String!`
+  """
+  placementSuggestion: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity` of type `Int`
+  """
+  quantity: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`aiDesignId_count` of type `Int!`
+  """
+  aiDesignId_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`placementSuggestion_count` of type `Int!`
+  """
+  placementSuggestion_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`productId_count` of type `Int!`
+  """
+  productId_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_count` of type `Int!`
+  """
+  quantity_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_sum` of type `Int`
+  """
+  quantity_sum: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_avg` of type `Float`
+  """
+  quantity_avg: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_min` of type `Int`
+  """
+  quantity_min: OrderDirection
+  """
+  ✨ Generated from Field `DesignProduct`.`quantity_max` of type `Int`
+  """
+  quantity_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'DesignProject'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input DesignProject_Data {
+  """
+  ✨ Generated from Field `DesignProject`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `DesignProject`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`designPreferenceId` of type `UUID!`
+  """
+  designPreferenceId: UUID
+  """
+  ✨ `_expr` server value variant of `designPreferenceId` (✨ Generated from Field `DesignProject`.`designPreferenceId` of type `UUID!`)
+  """
+  designPreferenceId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`userId` of type `UUID!`
+  """
+  userId: UUID
+  """
+  ✨ `_expr` server value variant of `userId` (✨ Generated from Field `DesignProject`.`userId` of type `UUID!`)
+  """
+  userId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`designPreference` of type `DesignPreference!`
+  """
+  designPreference: DesignPreference_Key
+  """
+  ✨ Generated from Field `DesignProject`.`user` of type `User!`
+  """
+  user: User_Key
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `DesignProject`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `DesignProject`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `DesignProject`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `DesignProject`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `DesignProject`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`imageUrl` of type `String`
+  """
+  imageUrl: String
+  """
+  ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `DesignProject`.`imageUrl` of type `String`)
+  """
+  imageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`projectName` of type `String!`
+  """
+  projectName: String
+  """
+  ✨ `_expr` server value variant of `projectName` (✨ Generated from Field `DesignProject`.`projectName` of type `String!`)
+  """
+  projectName_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`roomType` of type `String!`
+  """
+  roomType: String
+  """
+  ✨ `_expr` server value variant of `roomType` (✨ Generated from Field `DesignProject`.`roomType` of type `String!`)
+  """
+  roomType_expr: String_Expr
+  """
+  ✨ Generated from Field `DesignProject`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `DesignProject`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'DesignProject'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DesignProject_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [DesignProject_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: DesignProject_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [DesignProject_Filter!]
+  """
+  ✨ Generated from Field `DesignProject`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`designPreferenceId` of type `UUID!`
+  """
+  designPreferenceId: UUID_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`userId` of type `UUID!`
+  """
+  userId: UUID_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`designPreference` of type `DesignPreference!`
+  """
+  designPreference: DesignPreference_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`user` of type `User!`
+  """
+  user: User_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`imageUrl` of type `String`
+  """
+  imageUrl: String_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`projectName` of type `String!`
+  """
+  projectName: String_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`roomType` of type `String!`
+  """
+  roomType: String_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`aIDesigns_on_designProject` of type `[AIDesign!]!`
+  """
+  aIDesigns_on_designProject: AIDesign_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'DesignProject'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input DesignProject_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [DesignProject_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: DesignProject_Filter
+}
+"""
+✨ Generated having input type for table 'DesignProject'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input DesignProject_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [DesignProject_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: DesignProject_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [DesignProject_Having!]
+  """
+  ✨ Generated from Field `DesignProject`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`designPreferenceId_count` of type `Int!`
+  """
+  designPreferenceId_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`projectName_count` of type `Int!`
+  """
+  projectName_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`roomType_count` of type `Int!`
+  """
+  roomType_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`userId_count` of type `Int!`
+  """
+  userId_count: Int_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'DesignProject'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input DesignProject_Key {
+  """
+  ✨ Generated from Field `DesignProject`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `DesignProject`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'DesignProject'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input DesignProject_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: DesignProject_Filter
+}
+"""
+✨ Generated order input type for table 'DesignProject'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input DesignProject_Order {
+  """
+  ✨ Generated from Field `DesignProject`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`designPreferenceId` of type `UUID!`
+  """
+  designPreferenceId: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`userId` of type `UUID!`
+  """
+  userId: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`designPreference` of type `DesignPreference!`
+  """
+  designPreference: DesignPreference_Order
+  """
+  ✨ Generated from Field `DesignProject`.`user` of type `User!`
+  """
+  user: User_Order
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`imageUrl` of type `String`
+  """
+  imageUrl: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`projectName` of type `String!`
+  """
+  projectName: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`roomType` of type `String!`
+  """
+  roomType: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`designPreferenceId_count` of type `Int!`
+  """
+  designPreferenceId_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`projectName_count` of type `Int!`
+  """
+  projectName_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`roomType_count` of type `Int!`
+  """
+  roomType_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`userId_count` of type `Int!`
+  """
+  userId_count: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `DesignProject`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Product'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Product_Data {
+  """
+  ✨ Generated from Field `Product`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Product`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Product`.`brand` of type `String!`
+  """
+  brand: String
+  """
+  ✨ `_expr` server value variant of `brand` (✨ Generated from Field `Product`.`brand` of type `String!`)
+  """
+  brand_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`category` of type `String!`
+  """
+  category: String
+  """
+  ✨ `_expr` server value variant of `category` (✨ Generated from Field `Product`.`category` of type `String!`)
+  """
+  category_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`color` of type `String`
+  """
+  color: String
+  """
+  ✨ `_expr` server value variant of `color` (✨ Generated from Field `Product`.`color` of type `String`)
+  """
+  color_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Product`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Product`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Product`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Product`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Product`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`dimensions` of type `String`
+  """
+  dimensions: String
+  """
+  ✨ `_expr` server value variant of `dimensions` (✨ Generated from Field `Product`.`dimensions` of type `String`)
+  """
+  dimensions_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`imageUrl` of type `String`
+  """
+  imageUrl: String
+  """
+  ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `Product`.`imageUrl` of type `String`)
+  """
+  imageUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Product`.`name` of type `String!`)
+  """
+  name_expr: String_Expr
+  """
+  ✨ Generated from Field `Product`.`price` of type `Float!`
+  """
+  price: Float
+  """
+  ✨ `_expr` server value variant of `price` (✨ Generated from Field `Product`.`price` of type `Float!`)
+  """
+  price_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `price` (✨ Generated from Field `Product`.`price` of type `Float!`)
+  """
+  price_update: [Float_Update!]
+  """
+  ✨ Generated from Field `Product`.`productUrl` of type `String!`
+  """
+  productUrl: String
+  """
+  ✨ `_expr` server value variant of `productUrl` (✨ Generated from Field `Product`.`productUrl` of type `String!`)
+  """
+  productUrl_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'Product'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Product_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Product_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Product_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Product_Filter!]
+  """
+  ✨ Generated from Field `Product`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Product`.`brand` of type `String!`
+  """
+  brand: String_Filter
+  """
+  ✨ Generated from Field `Product`.`category` of type `String!`
+  """
+  category: String_Filter
+  """
+  ✨ Generated from Field `Product`.`color` of type `String`
+  """
+  color: String_Filter
+  """
+  ✨ Generated from Field `Product`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Product`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Product`.`dimensions` of type `String`
+  """
+  dimensions: String_Filter
+  """
+  ✨ Generated from Field `Product`.`imageUrl` of type `String`
+  """
+  imageUrl: String_Filter
+  """
+  ✨ Generated from Field `Product`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Product`.`price` of type `Float!`
+  """
+  price: Float_Filter
+  """
+  ✨ Generated from Field `Product`.`productUrl` of type `String!`
+  """
+  productUrl: String_Filter
+  """
+  ✨ Generated from Field `Product`.`designProducts_on_product` of type `[DesignProduct!]!`
+  """
+  designProducts_on_product: DesignProduct_ListFilter
+  """
+  ✨ Generated from Field `Product`.`aIDesigns_via_DesignProduct` of type `[AIDesign!]!`
+  """
+  aIDesigns_via_DesignProduct: AIDesign_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Product'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Product_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Product_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Product_Filter
+}
+"""
+✨ Generated having input type for table 'Product'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Product_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Product_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Product_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Product_Having!]
+  """
+  ✨ Generated from Field `Product`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`brand_count` of type `Int!`
+  """
+  brand_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`category_count` of type `Int!`
+  """
+  category_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`color_count` of type `Int!`
+  """
+  color_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`dimensions_count` of type `Int!`
+  """
+  dimensions_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`price_count` of type `Int!`
+  """
+  price_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`productUrl_count` of type `Int!`
+  """
+  productUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `Product`.`price_sum` of type `Float`
+  """
+  price_sum: Float_Filter
+  """
+  ✨ Generated from Field `Product`.`price_avg` of type `Float`
+  """
+  price_avg: Float_Filter
+  """
+  ✨ Generated from Field `Product`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Product`.`price_min` of type `Float`
+  """
+  price_min: Float_Filter
+  """
+  ✨ Generated from Field `Product`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Product`.`price_max` of type `Float`
+  """
+  price_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'Product'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Product_Key {
+  """
+  ✨ Generated from Field `Product`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Product`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Product'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Product_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Product_Filter
+}
+"""
+✨ Generated order input type for table 'Product'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Product_Order {
+  """
+  ✨ Generated from Field `Product`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`brand` of type `String!`
+  """
+  brand: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`category` of type `String!`
+  """
+  category: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`color` of type `String`
+  """
+  color: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`dimensions` of type `String`
+  """
+  dimensions: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`imageUrl` of type `String`
+  """
+  imageUrl: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`price` of type `Float!`
+  """
+  price: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`productUrl` of type `String!`
+  """
+  productUrl: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`brand_count` of type `Int!`
+  """
+  brand_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`category_count` of type `Int!`
+  """
+  category_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`color_count` of type `Int!`
+  """
+  color_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`dimensions_count` of type `Int!`
+  """
+  dimensions_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`price_count` of type `Int!`
+  """
+  price_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`productUrl_count` of type `Int!`
+  """
+  productUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`price_sum` of type `Float`
+  """
+  price_sum: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`price_avg` of type `Float`
+  """
+  price_avg: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`price_min` of type `Float`
+  """
+  price_min: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Product`.`price_max` of type `Float`
+  """
+  price_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input User_Data {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String!`)
+  """
+  email_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`firstName` of type `String`
+  """
+  firstName: String
+  """
+  ✨ `_expr` server value variant of `firstName` (✨ Generated from Field `User`.`firstName` of type `String`)
+  """
+  firstName_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`lastName` of type `String`
+  """
+  lastName: String
+  """
+  ✨ `_expr` server value variant of `lastName` (✨ Generated from Field `User`.`lastName` of type `String`)
+  """
+  lastName_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`passwordHash` of type `String!`
+  """
+  passwordHash: String
+  """
+  ✨ `_expr` server value variant of `passwordHash` (✨ Generated from Field `User`.`passwordHash` of type `String!`)
+  """
+  passwordHash_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
+  """
+  profilePictureUrl: String
+  """
+  ✨ `_expr` server value variant of `profilePictureUrl` (✨ Generated from Field `User`.`profilePictureUrl` of type `String`)
+  """
+  profilePictureUrl_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [User_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: User_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [User_Filter!]
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `User`.`firstName` of type `String`
+  """
+  firstName: String_Filter
+  """
+  ✨ Generated from Field `User`.`lastName` of type `String`
+  """
+  lastName: String_Filter
+  """
+  ✨ Generated from Field `User`.`passwordHash` of type `String!`
+  """
+  passwordHash: String_Filter
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
+  """
+  profilePictureUrl: String_Filter
+  """
+  ✨ Generated from Field `User`.`designPreferences_on_user` of type `[DesignPreference!]!`
+  """
+  designPreferences_on_user: DesignPreference_ListFilter
+  """
+  ✨ Generated from Field `User`.`designProjects_on_user` of type `[DesignProject!]!`
+  """
+  designProjects_on_user: DesignProject_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'User'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input User_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [User_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: User_Filter
+}
+"""
+✨ Generated having input type for table 'User'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [User_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: User_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [User_Having!]
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`firstName_count` of type `Int!`
+  """
+  firstName_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`lastName_count` of type `Int!`
+  """
+  lastName_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`passwordHash_count` of type `Int!`
+  """
+  passwordHash_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl_count` of type `Int!`
+  """
+  profilePictureUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input User_Key {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input User_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: User_Filter
+}
+"""
+✨ Generated order input type for table 'User'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input User_Order {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `User`.`firstName` of type `String`
+  """
+  firstName: OrderDirection
+  """
+  ✨ Generated from Field `User`.`lastName` of type `String`
+  """
+  lastName: OrderDirection
+  """
+  ✨ Generated from Field `User`.`passwordHash` of type `String!`
+  """
+  passwordHash: OrderDirection
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
+  """
+  profilePictureUrl: OrderDirection
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`firstName_count` of type `Int!`
+  """
+  firstName_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`lastName_count` of type `Int!`
+  """
+  lastName_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`passwordHash_count` of type `Int!`
+  """
+  passwordHash_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl_count` of type `Int!`
+  """
+  profilePictureUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}

@@ -1,0 +1,44 @@
+mutation CreateDesignProject($designPreferenceId: UUID!, $userId: UUID!, $projectName: String!, $roomType: String!, $status: String!) @auth(level: USER) {
+  designProject_insert(data: {
+    designPreferenceId: $designPreferenceId,
+    userId: $userId,
+    projectName: $projectName,
+    roomType: $roomType,
+    status: $status,
+    createdAt_expr: "request.time"
+  })
+}
+
+query ListProductsByCategory($category: String!) @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  products(where: {category: {eq: $category}}) {
+    id
+    name
+    description
+    imageUrl
+    price
+  }
+}
+
+mutation SaveAIDesign(
+    $id: UUID!,
+    $isSaved: Boolean!
+) @auth(level: USER) {
+  aIDesign_update(
+    id: $id,
+    data: {
+      isSaved: $isSaved
+    }
+  )
+}
+
+query ListMyDesignProjects($userId: UUID!) @auth(level: USER) {
+  designProjects(where: {userId: {eq: $userId}}) {
+    id
+    projectName
+    description
+    imageUrl
+    roomType
+    status
+    createdAt
+  }
+}

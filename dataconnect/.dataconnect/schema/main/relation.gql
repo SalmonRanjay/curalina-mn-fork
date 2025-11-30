@@ -1,0 +1,862 @@
+extend type AIDesign {
+  """
+  ✨ List `DesignProduct` objects in a one-to-many relationship (where `DesignProduct`.`aiDesign` is this object).
+  """
+  designProducts_on_aiDesign(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProduct_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProduct_Having
+  ): [DesignProduct!]! @fdc_generated(from: "DesignProduct.aiDesign", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Product` objects using `DesignProduct` as the join table (a `DesignProduct` object exists where its `aiDesign` is this and its `product` is that).
+  """
+  products_via_DesignProduct(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProduct_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProduct_Having
+  ): [Product!]! @fdc_generated(from: "DesignProduct", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "AIDesign", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `AIDesign` table.
+  """
+  _count: Int! @fdc_generated(from: "AIDesign.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `aiModelUsed` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  aiModelUsed_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.aiModelUsed", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `designDescription` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  designDescription_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.designDescription", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `designProjectId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  designProjectId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.designProjectId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `generationDate` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  generationDate_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.generationDate", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `imageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  imageUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.imageUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AIDesign` table where the `isSaved` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  isSaved_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AIDesign.isSaved", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `generationDate` field in the `AIDesign` table.
+  """
+  generationDate_min: Timestamp @fdc_generated(from: "AIDesign.generationDate", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `generationDate` field in the `AIDesign` table.
+  """
+  generationDate_max: Timestamp @fdc_generated(from: "AIDesign.generationDate", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "AIDesign.id", purpose: GLOBAL_ID)
+}
+extend type DesignPreference {
+  """
+  ✨ List `DesignProject` objects in a one-to-many relationship (where `DesignProject`.`designPreference` is this object).
+  """
+  designProjects_on_designPreference(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProject_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProject_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProject_Having
+  ): [DesignProject!]! @fdc_generated(from: "DesignProject.designPreference", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "DesignPreference", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table.
+  """
+  _count: Int! @fdc_generated(from: "DesignPreference.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `budgetRange` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  budgetRange_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.budgetRange", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `colorPalette` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  colorPalette_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.colorPalette", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `notes` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  notes_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.notes", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `roomType` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  roomType_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.roomType", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `style` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  style_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.style", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignPreference` table where the `userId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  userId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignPreference.userId", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `DesignPreference` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "DesignPreference.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `DesignPreference` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "DesignPreference.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "DesignPreference.id", purpose: GLOBAL_ID)
+}
+extend type DesignProduct {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "DesignProduct", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `DesignProduct` table.
+  """
+  _count: Int! @fdc_generated(from: "DesignProduct.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProduct` table where the `aiDesignId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  aiDesignId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProduct.aiDesignId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProduct` table where the `placementSuggestion` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  placementSuggestion_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProduct.placementSuggestion", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProduct` table where the `productId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  productId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProduct.productId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProduct` table where the `quantity` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  quantity_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProduct.quantity", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `quantity` field in the `DesignProduct` table.
+  """
+  quantity_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Int @fdc_generated(from: "DesignProduct.quantity", purpose: QUERY_SUM)
+  """
+  ✨ Average the `quantity` field in the `DesignProduct` table.
+  """
+  quantity_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "DesignProduct.quantity", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `quantity` field in the `DesignProduct` table.
+  """
+  quantity_min: Int @fdc_generated(from: "DesignProduct.quantity", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `quantity` field in the `DesignProduct` table.
+  """
+  quantity_max: Int @fdc_generated(from: "DesignProduct.quantity", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "DesignProduct.aiDesignId,productId", purpose: GLOBAL_ID)
+}
+extend type DesignProject {
+  """
+  ✨ List `AIDesign` objects in a one-to-many relationship (where `AIDesign`.`designProject` is this object).
+  """
+  aIDesigns_on_designProject(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AIDesign_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AIDesign_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AIDesign_Having
+  ): [AIDesign!]! @fdc_generated(from: "AIDesign.designProject", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "DesignProject", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `DesignProject` table.
+  """
+  _count: Int! @fdc_generated(from: "DesignProject.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `description` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  description_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.description", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `designPreferenceId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  designPreferenceId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.designPreferenceId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `imageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  imageUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.imageUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `projectName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  projectName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.projectName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `roomType` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  roomType_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.roomType", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `status` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  status_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.status", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `DesignProject` table where the `userId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  userId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "DesignProject.userId", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `DesignProject` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "DesignProject.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `DesignProject` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "DesignProject.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "DesignProject.id", purpose: GLOBAL_ID)
+}
+extend type Product {
+  """
+  ✨ List `DesignProduct` objects in a one-to-many relationship (where `DesignProduct`.`product` is this object).
+  """
+  designProducts_on_product(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProduct_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProduct_Having
+  ): [DesignProduct!]! @fdc_generated(from: "DesignProduct.product", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `AIDesign` objects using `DesignProduct` as the join table (a `DesignProduct` object exists where its `product` is this and its `aiDesign` is that).
+  """
+  aIDesigns_via_DesignProduct(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProduct_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProduct_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProduct_Having
+  ): [AIDesign!]! @fdc_generated(from: "DesignProduct", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Product", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Product` table.
+  """
+  _count: Int! @fdc_generated(from: "Product.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `brand` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  brand_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.brand", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `category` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  category_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.category", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `color` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  color_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.color", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `description` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  description_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.description", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `dimensions` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  dimensions_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.dimensions", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `imageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  imageUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.imageUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `name` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  name_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.name", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `price` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  price_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.price", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Product` table where the `productUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  productUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Product.productUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `price` field in the `Product` table.
+  """
+  price_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Product.price", purpose: QUERY_SUM)
+  """
+  ✨ Average the `price` field in the `Product` table.
+  """
+  price_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Product.price", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `createdAt` field in the `Product` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Product.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `price` field in the `Product` table.
+  """
+  price_min: Float @fdc_generated(from: "Product.price", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Product` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Product.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `price` field in the `Product` table.
+  """
+  price_max: Float @fdc_generated(from: "Product.price", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Product.id", purpose: GLOBAL_ID)
+}
+extend type User {
+  """
+  ✨ List `DesignPreference` objects in a one-to-many relationship (where `DesignPreference`.`user` is this object).
+  """
+  designPreferences_on_user(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignPreference_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignPreference_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignPreference_Having
+  ): [DesignPreference!]! @fdc_generated(from: "DesignPreference.user", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `DesignProject` objects in a one-to-many relationship (where `DesignProject`.`user` is this object).
+  """
+  designProjects_on_user(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: DesignProject_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [DesignProject_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: DesignProject_Having
+  ): [DesignProject!]! @fdc_generated(from: "DesignProject.user", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "User", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `User` table.
+  """
+  _count: Int! @fdc_generated(from: "User.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `email` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  email_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.email", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `firstName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  firstName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.firstName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `lastName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  lastName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.lastName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `passwordHash` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  passwordHash_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.passwordHash", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `profilePictureUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  profilePictureUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.profilePictureUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `User` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `User` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "User.id", purpose: GLOBAL_ID)
+}

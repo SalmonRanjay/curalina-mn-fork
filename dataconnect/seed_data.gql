@@ -1,0 +1,106 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This mutation is used to populate the database with seed data, and is safe to expose to the public.") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-04-26T12:00:00Z",
+      email: "demouser1@example.com",
+      passwordHash: "somehash1"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      createdAt: "2024-04-26T12:00:00Z",
+      email: "demouser2@example.com",
+      passwordHash: "somehash2"
+    }
+  ])
+  designPreference_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440000",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      budgetRange: "low",
+      colorPalette: "neutral",
+      createdAt: "2024-04-26T12:00:00Z",
+      roomType: "bedroom",
+      style: "modern"
+    },
+    {
+      id: "650e8400-e29b-41d4-a716-446655440001",
+      userId: "550e8400-e29b-41d4-a716-446655440001",
+      budgetRange: "high",
+      colorPalette: "bright",
+      createdAt: "2024-04-26T12:00:00Z",
+      roomType: "living room",
+      style: "contemporary"
+    }
+  ])
+  designProject_insertMany(data: [
+    {
+      id: "750e8400-e29b-41d4-a716-446655440000",
+      designPreferenceId: "650e8400-e29b-41d4-a716-446655440000",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-04-26T12:00:00Z",
+      projectName: "Demo Project 1",
+      roomType: "bedroom",
+      status: "active"
+    },
+    {
+      id: "750e8400-e29b-41d4-a716-446655440001",
+      designPreferenceId: "650e8400-e29b-41d4-a716-446655440001",
+      userId: "550e8400-e29b-41d4-a716-446655440001",
+      createdAt: "2024-04-26T12:00:00Z",
+      projectName: "Demo Project 2",
+      roomType: "living room",
+      status: "completed"
+    }
+  ])
+  aIDesign_insertMany(data: [
+    {
+      id: "850e8400-e29b-41d4-a716-446655440000",
+      designProjectId: "750e8400-e29b-41d4-a716-446655440000",
+      generationDate: "2024-04-26T12:00:00Z",
+      imageUrl: "http://example.com/image1.jpg",
+      isSaved: true
+    },
+    {
+      id: "850e8400-e29b-41d4-a716-446655440001",
+      designProjectId: "750e8400-e29b-41d4-a716-446655440001",
+      generationDate: "2024-04-26T12:00:00Z",
+      imageUrl: "http://example.com/image2.jpg",
+      isSaved: false
+    }
+  ])
+  product_insertMany(data: [
+    {
+      id: "950e8400-e29b-41d4-a716-446655440000",
+      brand: "BrandA",
+      category: "Furniture",
+      createdAt: "2024-04-26T12:00:00Z",
+      name: "Table",
+      price: 100.0,
+      productUrl: "http://example.com/table"
+    },
+    {
+      id: "950e8400-e29b-41d4-a716-446655440001",
+      brand: "BrandB",
+      category: "Lighting",
+      createdAt: "2024-04-26T12:00:00Z",
+      name: "Lamp",
+      price: 50.0,
+      productUrl: "http://example.com/lamp"
+    }
+  ])
+  designProduct_insertMany(data: [
+    {
+      aiDesignId: "850e8400-e29b-41d4-a716-446655440000",
+      productId: "950e8400-e29b-41d4-a716-446655440000",
+      placementSuggestion: "Living Room",
+      quantity: 1
+    },
+    {
+      aiDesignId: "850e8400-e29b-41d4-a716-446655440001",
+      productId: "950e8400-e29b-41d4-a716-446655440001",
+      placementSuggestion: "Bedroom",
+      quantity: 2
+    }
+  ])
+}

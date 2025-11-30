@@ -1,0 +1,15 @@
+I1130 12:28:52.019344   35213 load.go:31] Reloading schema and connectors...
+I1130 12:28:52.768636   35213 control.go:94] [/emulator/curalina 9b3d] UpdateResources(): done
+Main schema: sources: schema/schema.gql [1078B] 
+Connector "example": sources: example/queries.gql [997B] 
+I1130 12:28:53.513815   35213 codegen.go:80] [connector "example" javascriptSdk] Generating sources into "/home/user/Curalina/src/dataconnect-generated"
+I1130 12:28:53.651092   35213 collector.go:107] schema extensions wrote into "/home/user/Curalina/dataconnect/.dataconnect/schema"
+Generated sources: main/input.gql [60933B] main/relation.gql [31130B] main/query.gql [7736B] main/mutation.gql [21064B] prelude.gql [73219B] main/implicit.gql [2921B] 
+I1130 12:28:53.668867   35213 collector.go:107] connector "example" javascriptSdk wrote into "/home/user/Curalina/src/dataconnect-generated"
+Generated sources: .guides/usage.md [2638B] react/index.d.ts [2457B] react/esm/package.json [17B] react/index.cjs.js [1871B] index.d.ts [5018B] esm/package.json [17B] index.cjs.js [2304B] .guides/setup.md [1682B] .guides/config.json [236B] esm/index.esm.js [1977B] react/README.md [29687B] package.json [863B] README.md [24242B] react/package.json [460B] react/esm/index.esm.js [1762B] 
+I1130 12:28:53.715516   35213 installsdk.go:55] Package @dataconnect/generated is already installed. Skipping installation
+I1130 12:28:53.725251   35213 load.go:109] Finished reloading
+I1130 12:28:53.746659   35213 dev.go:105] Listening on address (HTTP + gRPC): 127.0.0.1:9400
+I1130 12:29:06.839931   35213 control.go:94] [/emulator/curalina 9387] UpdateResources(): done
+Main schema: sources: schema/schema.gql [1078B] 
+Connector "example": sources: example/queries.gql [997B] 
