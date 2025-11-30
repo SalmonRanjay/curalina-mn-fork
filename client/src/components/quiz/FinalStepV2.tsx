@@ -77,6 +77,10 @@ export function FinalStepV2({
             accept={{ "image/*": [".png", ".jpg", ".jpeg"] }}
             maxFiles={1}
             disabled={isUploadingFloorplan}
+            // Explicitly set noClick to false to ensure clicking works
+            noClick={false}
+            // Ensure propagation isn't stopped if not needed
+            noKeyboard={false}
           >
             {({ getRootProps, getInputProps, isDragActive }) => (
               <div
@@ -105,6 +109,11 @@ export function FinalStepV2({
                   className="uppercase tracking-wider"
                   style={{ fontSize: "var(--font-size-xs)" }}
                   data-testid="button-see-photo-example"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent opening file dialog when clicking this button
+                    // Add your example viewer logic here
+                    console.log("View photo example");
+                  }}
                 >
                   See Example
                 </Button>
@@ -129,6 +138,10 @@ export function FinalStepV2({
             accept={{ "image/*": [".png", ".jpg", ".jpeg", ".pdf"] }}
             maxFiles={1}
             disabled={isUploadingFloorplan}
+             // Explicitly set noClick to false to ensure clicking works
+             noClick={false}
+             // Ensure propagation isn't stopped if not needed
+             noKeyboard={false}
           >
             {({ getRootProps, getInputProps, isDragActive }) => (
               <div
@@ -157,6 +170,11 @@ export function FinalStepV2({
                   className="uppercase tracking-wider"
                   style={{ fontSize: "var(--font-size-xs)" }}
                   data-testid="button-see-plan-example"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent opening file dialog when clicking this button
+                    // Add your example viewer logic here
+                    console.log("View plan example");
+                  }}
                 >
                   See Example
                 </Button>

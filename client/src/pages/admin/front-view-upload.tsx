@@ -20,6 +20,10 @@ interface ProductMatch {
   preview?: string;
 }
 
+// Define your Firebase Functions API base URL here
+// IMPORTANT: Replace with your actual deployed Firebase Function URL
+const API_BASE_URL = "https://us-central1-curalina-replit-57401799-974b8.cloudfunctions.net/api";
+
 export default function FrontViewUpload() {
   const [files, setFiles] = useState<ProductMatch[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -225,7 +229,7 @@ export default function FrontViewUpload() {
         const frontViewFilename = `Front View ${match.productType}.${ext}`;
 
         // Get presigned URL
-        const presignedResponse = await fetch(`/api/admin/products/${match.productId}/presigned-upload-url`, {
+        const presignedResponse = await fetch(`${API_BASE_URL}/admin/products/${match.productId}/presigned-upload-url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -276,7 +280,7 @@ export default function FrontViewUpload() {
         }
 
         // Confirm upload with backend using publicUrl (not imageUrl)
-        const confirmResponse = await fetch(`/api/admin/products/${match.productId}/confirm-upload`, {
+        const confirmResponse = await fetch(`${API_BASE_URL}/admin/products/${match.productId}/confirm-upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: publicUrl }),

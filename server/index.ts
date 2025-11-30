@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import dotenv from "dotenv";
 import * as logger from "firebase-functions/logger";
+import cors from "cors";
 
 // Export a factory function instead of a running promise
 // This prevents side-effects (like DB connection) from happening at import time
@@ -14,13 +15,26 @@ export const createApp = async () => {
   logger.info("[Server Init] Starting Express app initialization...");
   const app = express();
 
+  // Enable CORS for all routes
+  app.use(cors({ origin: true }));
+
   // Middleware setup
-  app.use(express.json({
-    verify: (req, _res, buf) => {
-      (req as any).rawBody = buf;
+  // IMPORTANT: Skip body parsing for multipart requests so multer can handle them
+  app.use((req, res, next) => {
+    if (req.is('multipart/form-data')) {
+      next();
+    } else {
+      express.json({
+        verify: (req, _res, buf) => {
+          (req as any).rawBody = buf;
+        }
+      })(req, res, (err) => {
+        if (err) return next(err);
+        express.urlencoded({ extended: false })(req, res, next);
+      });
     }
-  }));
-  app.use(express.urlencoded({ extended: false }));
+  });
+
   // In Firebase Hosting, static files are served by the CDN, not Express.
   // But strictly for local dev or fallback, we can keep this:
   app.use(express.static("public"));
@@ -28,7 +42,8 @@ export const createApp = async () => {
   // Enhanced request logging middleware
   app.use((req, res, next) => {
     const start = Date.now();
-    const path = req.path;
+    // Use req.originalUrl to log the actual requested path, not the rewritten one
+    const path = req.originalUrl;
     let capturedJsonResponse: any = undefined;
 
     // Monkey-patch res.json to capture response body for logging
@@ -40,7 +55,8 @@ export const createApp = async () => {
 
     res.on("finish", () => {
       const duration = Date.now() - start;
-      if (path.startsWith("/api")) {
+      // Log all requests that started with /api (using originalUrl check)
+      if (path.startsWith("/api") || req.path.startsWith("/api")) {
         const logData = {
           method: req.method,
           path: path,
@@ -96,9 +112,6 @@ export const createApp = async () => {
 
   return app;
 };
-
-// Removed top-level execution!
-// export const appPromise = createApp(); 
 
 // Helper to start server LOCALLY (not in Firebase)
 // We check for FIREBASE_CONFIG to know if we are in the cloud function env

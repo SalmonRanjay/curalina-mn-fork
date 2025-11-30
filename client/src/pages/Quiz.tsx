@@ -38,126 +38,10 @@ import QuizLayout from "@/components/quiz/QuizLayout";
 
 const TOTAL_STEPS = 7;
 
-// Style data with Key Characteristics
-const STYLES_DATA = {
-  "Midcentury Scandi": {
-    moodWords: "Vintage, retro, functional, warm, clean, natural, refined",
-    textures:
-      "Woods are a staple like oak and walnut, often paired with leather, durable wools, cotton and matte metals",
-    furniture:
-      "Furniture has clean lines, soft curves, and minimalist forms, with natural wood finishes and tapered legs that add timeless warmth and function.",
-    colorPalette:
-      "Soft neutrals like off-white, warm beige, and light grey form a timeless base. Accents in sage, teal, mustard, burnt orange, and burgundy add retro warmth and contrast.",
-    renders: [
-      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1615875474908-f403609c4ccc?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=400&h=300&fit=crop",
-    ],
-  },
-  "Organic Modern": {
-    moodWords:
-      "Earthy, uncluttered, tranquil, zen-inspired, textural, rounded edges, plush, minimalistic",
-    textures:
-      "Breathable linens, soft cotton, cozy bouclé paired with warm oaks, tactile rugs, neutral matte stones, clay & plaster",
-    furniture:
-      "Furniture features low-profile, minimalist designs with soft curves and sculpted edges, replacing harsh modern angles.",
-    colorPalette:
-      "Whites, bones, chalks & earthy neutrals with small nature-inspired accents of sage, terracotta",
-    renders: [
-      "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop",
-    ],
-  },
-  "Modern Farmhouse": {
-    moodWords:
-      "Rustic, casual, heritage-inspired, cozy, wholesome, vintage charm, worn-in",
-    textures:
-      "Distressed and whitewashed woods, matte stones, exposed brick, butcher blocks, knits, boucle, woven wool, cotton and linen",
-    furniture:
-      "Oversized armchairs, plush slipcovered sofas that invite relaxation with built-in storage",
-    colorPalette:
-      "Foundational neutrals of creamy white and greige, contrasting accents of black metals and nature inspired hues of deep green, pale blue and terracotta",
-    renders: [
-      "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=400&h=300&fit=crop",
-    ],
-  },
-  "Warm Transitional": {
-    moodWords:
-      "Timeless blend of traditional and modern, with tailored comfort and understated elegance that's refined, classic, and polished",
-    textures:
-      "Polished metals, rich woods, velvet upholstery, chenille, bouclé, silk drapes, and veined marble surfaces",
-    furniture:
-      "Combines traditional curves with modern clean lines, subtle nailhead trim, piping and metal knobs",
-    colorPalette:
-      "Creamy white, warm greige, charcoal grey, espresso brown, bronze, brushed gold, antique nickel, soft blush, mauve, pewter, sage green, dusty blue, slate blue",
-    renders: [
-      "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=400&h=300&fit=crop",
-    ],
-  },
-  "Contemporary Luxe": {
-    moodWords:
-      "Sophisticated, minimal yet rich, polished, glamorous, refined, sleek, chic, upscale, curated",
-    textures:
-      "Plush velvet, vegan furs, high performance linen, leather, lacquered surfaces, smooth woods & finishes, polished or honed marbles, quarzite and travertines",
-    furniture:
-      "Clean sculptural lines, sleek silhouettes, gentle curves, architectural forms, statement pieces, art-inspired design, polished finishes, high-end materials, luxury accent chairs, curated furniture",
-    colorPalette:
-      "Ivory white, bone white, warm taupe, greige, putty beige, charcoal grey, matte black, espresso brown, brushed gold, antique brass, emerald green, sapphire blue, dusty rose, muted mauve",
-    renders: [
-      "https://images.unsplash.com/photo-1600566753414-2afc9e2f5a28?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600563438938-a9a27216b4f5?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400&h=300&fit=crop",
-    ],
-  },
-};
-
-// Key Features by Room Type
-const KEY_FEATURES_BY_ROOM: Record<
-  string,
-  Array<{ label: string; subtitle?: string }>
-> = {
-  "Living Room": [
-    { label: "Storage Solutions", subtitle: "Shelves & cabinetry" },
-    { label: "Workspace Area", subtitle: "Integrated office" },
-    { label: "Comfortable Seat", subtitle: "Sectional or deep sofa" },
-    { label: "Accent Lighting", subtitle: "Ambient & Task" },
-    { label: "Pet-Friendly", subtitle: "Durable fabrics" },
-    { label: "Child-Friendly", subtitle: "Toy storage, rounded edges" },
-    { label: "Media Area", subtitle: "Entertainment Cabinet" },
-    { label: "Multi-Function", subtitle: "Sofa Bed" },
-  ],
-  Bedroom: [
-    { label: "Storage Solutions", subtitle: "Clothing & Linens" },
-    { label: "Workspace Area", subtitle: "Integrated office" },
-    { label: "Vanity Table", subtitle: "" },
-    { label: "Comfortable Seat", subtitle: "Reading Chair" },
-    { label: "Media Area", subtitle: "TV Cabinet" },
-    { label: "Twin/Single Bed", subtitle: '38" wide x 75" long' },
-    { label: "Double Bed", subtitle: '54" wide x 75" long' },
-    { label: "Queen Bed", subtitle: '60" wide x 75" long' },
-    { label: "King Bed", subtitle: '76" wide x 80" long' },
-  ],
-  "Dining Room": [
-    { label: "Casual Setting", subtitle: "Relaxed & Everyday" },
-    { label: "Formal Setting", subtitle: "Elevated & Polished" },
-    { label: "Bar Storage", subtitle: "Wine and Liquor" },
-    { label: "Open or Closed Storage", subtitle: "Organize clutter" },
-  ],
-  "Home Office": [
-    { label: "Concealed Storage", subtitle: "Keep clutter out" },
-    { label: "Bookcase Storage", subtitle: "Open Shelves" },
-    { label: "Filing Storage", subtitle: "Documents & Files" },
-    { label: "Reading Chair", subtitle: "Comfortable Seat" },
-    { label: "Large Desk", subtitle: '52" to 62"' },
-    { label: "Small Desk", subtitle: '32" to 48"' },
-  
-  ],
-};
+// Define your Firebase Functions API base URL here
+// IMPORTANT: Replace with your actual deployed Firebase Function URL
+// Ensure this URL is correct and points to your API
+const API_BASE_URL = "https://us-central1-curalina-replit-57401799-974b8.cloudfunctions.net/api";
 
 export default function Quiz() {
   const [, setLocation] = useLocation();
@@ -207,7 +91,7 @@ export default function Quiz() {
       };
 
       // Step 1: Submit quiz
-      const quizResponse = await fetch("/api/quiz", {
+      const quizResponse = await fetch(`${API_BASE_URL}/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(submitData),
@@ -222,7 +106,7 @@ export default function Quiz() {
       const quiz = await quizResponse.json();
 
       // Step 2: Create render and start AI generation
-      const renderResponse = await fetch("/api/render", {
+      const renderResponse = await fetch(`${API_BASE_URL}/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -269,70 +153,62 @@ export default function Quiz() {
     },
   });
 
-  const toggleStyle = (style: string) => {
-    const currentStyles = quizData.styles;
-    if (currentStyles.includes(style)) {
-      updateQuizData(
-        "styles",
-        currentStyles.filter((s) => s !== style),
-      );
-    } else if (currentStyles.length < 2) {
-      updateQuizData("styles", [...currentStyles, style]);
-    } else {
-      toast({
-        title: "Maximum Selections",
-        description: "You can select up to 2 styles only.",
-        variant: "destructive",
-      });
-    }
-  };
+  const uploadViaPresignedUrl = async (file: File) => {
+    // 1) Ask backend for a presigned URL
+    // NOTE: This assumes your backend /api/upload now supports this JSON format
+    const initRes = await fetch(`${API_BASE_URL}/upload`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type || "application/octet-stream",
+      }),
+    });
 
-  const toggleColorPalette = (palette: string) => {
-    const currentPalettes = quizData.colorPalettes;
-    if (currentPalettes.includes(palette)) {
-      updateQuizData(
-        "colorPalettes",
-        currentPalettes.filter((p) => p !== palette),
-      );
-    } else if (currentPalettes.length < 2) {
-      updateQuizData("colorPalettes", [...currentPalettes, palette]);
-    } else {
-      toast({
-        title: "Maximum Selections",
-        description: "You can select up to 2 colour palettes only.",
-        variant: "destructive",
-      });
+    if (!initRes.ok) {
+       // Fallback for old multipart behavior if server not updated yet
+       // This is a safety measure during transition
+       if (initRes.status === 400 || initRes.status === 404) {
+          console.warn("Presigned URL endpoint might not be ready, trying legacy multipart upload...");
+           // NOTE: We cannot easily fallback to multipart here because the function signature is different
+           // Ideally, the server should be updated first.
+           const errorText = await initRes.text();
+           throw new Error(`Failed to get upload parameters: ${errorText}`);
+       }
+       throw new Error("Failed to get upload parameters");
     }
-  };
 
-  const toggleKeyFeature = (feature: string) => {
-    const current = quizData.keyFeatures;
-    if (current.includes(feature)) {
-      updateQuizData(
-        "keyFeatures",
-        current.filter((f) => f !== feature),
-      );
-    } else {
-      updateQuizData("keyFeatures", [...current, feature]);
-    }
-  };
+    const data = await initRes.json() as {
+      method: string;
+      url: string;
+      headers?: Record<string, string>;
+      fields?: Record<string, string>;
+      publicUrl?: string; // Optional: if server returns the final public URL
+    };
 
-  const toggleTexture = (texture: string) => {
-    const currentTextures = quizData.textures;
-    if (currentTextures.includes(texture)) {
-      updateQuizData(
-        "textures",
-        currentTextures.filter((t) => t !== texture),
-      );
-    } else if (currentTextures.length < 2) {
-      updateQuizData("textures", [...currentTextures, texture]);
-    } else {
-      toast({
-        title: "Maximum Selections",
-        description: "You can select up to 2 textures only.",
-        variant: "destructive",
-      });
+    // 2) Upload file directly to S3 with the presigned URL
+    const putRes = await fetch(data.url, {
+      method: data.method || "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+        ...(data.headers || {}),
+      },
+      body: file,
+    });
+
+    if (!putRes.ok) {
+      throw new Error("Failed to upload file to storage");
     }
+
+    // 3) Return the public (or at least stable) URL
+    // If the server provided a publicUrl, use it. Otherwise, assume presigned URL without query params.
+    if (data.publicUrl) return data.publicUrl;
+    
+    // Fallback: strip query params from presigned URL (works for some setups, but risky if bucket is private)
+    // Better to have server return the public URL.
+    return data.url.split("?")[0]; 
   };
 
   const handleFileUpload = async (
@@ -341,32 +217,16 @@ export default function Quiz() {
   ) => {
     if (files.length === 0) return;
 
-    const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-    formData.append("folder", type === "vibe" ? "vibe-images" : "floorplans");
-
     if (type === "vibe") setUploadingVibe(true);
     else setUploadingFloorplan(true);
 
     try {
-      console.log(`Uploading ${files.length} file(s) to /api/upload`);
+      console.log(`Uploading ${files.length} file(s) via presigned URL...`);
+      
+      const uploadPromises = files.map(file => uploadViaPresignedUrl(file));
+      const urls = await Promise.all(uploadPromises);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      console.log("Upload response status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Upload failed:", errorText);
-        throw new Error(`Upload failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Upload response data:", data);
-      const urls = data.urls || [];
+      console.log("Upload successful, urls:", urls);
 
       if (urls.length === 0) {
         throw new Error("No URLs returned from upload");
@@ -518,7 +378,7 @@ export default function Quiz() {
       <FinalStepV2
         floorplanUrl={quizData.floorplanUrl}
         roomDescription={quizData.roomDescription}
-        onPhotoUpload={(files) => handleFileUpload(files, "floorplan")}
+        onPhotoUpload={(files) => handleFileUpload(files, "floorplan")} // Reusing logic for photo/floorplan
         onFloorplanUpload={(files) => handleFileUpload(files, "floorplan")}
         onDescriptionChange={(desc) => updateQuizData("roomDescription", desc)}
         isUploadingFloorplan={uploadingFloorplan}

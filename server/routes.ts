@@ -10,6 +10,9 @@ import { ObjectPermission } from "./objectAcl";
 import { insertContentSchema, insertSettingsSchema, User } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { randomUUID } from "crypto";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Define a custom Request type that includes the user property
 interface RequestWithUser extends Request {
@@ -35,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/auth/user', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const user = (req as RequestWithUser).user;
       if (!user) {
@@ -51,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User profile routes
-  app.put('/api/users/profile', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.put('/users/profile', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { firstName, lastName, bio } = req.body;
@@ -82,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin user management routes
-  app.get('/api/admin/users', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/admin/users', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const allUsers = await storage.getAllUsers();
       const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
@@ -93,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/users', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.post('/admin/users', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const createUserSchema = z.object({
         email: z.string().email("Invalid email address"),
@@ -135,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/admin/users/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.put('/admin/users/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
       const updateUserSchema = z.object({
@@ -189,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.delete('/admin/users/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
 
@@ -219,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Content routes (admin only for create/update/delete)
-  app.get('/api/content', async (req: Request, res: Response): Promise<Response> => {
+  app.get('/content', async (req: Request, res: Response): Promise<Response> => {
     try {
       const items = await storage.getAllContent();
       return res.json(items);
@@ -229,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/content/:id', async (req: Request, res: Response): Promise<Response> => {
+  app.get('/content/:id', async (req: Request, res: Response): Promise<Response> => {
     try {
       const item = await storage.getContent(req.params.id);
       if (!item) {
@@ -242,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/content', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.post('/content', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const validatedData = insertContentSchema.parse({
@@ -269,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/content/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.put('/content/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { id } = req.params;
@@ -295,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/content/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.delete('/content/:id', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { id } = req.params;
@@ -322,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Settings routes (admin only)
-  app.get('/api/settings', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/settings', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const allSettings = await storage.getAllSettings();
       return res.json(allSettings);
@@ -332,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/settings/:key', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/settings/:key', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const setting = await storage.getSetting(req.params.key);
       if (!setting) {
@@ -345,7 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/settings/:key', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.put('/settings/:key', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const validatedData = insertSettingsSchema.parse({
@@ -373,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Activity log routes
-  app.get('/api/activity', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/activity', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const user = await storage.getUser(userId);
@@ -393,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== USER DASHBOARD ROUTES =====
 
   // Get user dashboard stats
-  app.get('/api/my-dashboard/stats', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/stats', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const stats = await storage.getUserDashboardStats(userId);
@@ -405,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's renders
-  app.get('/api/my-dashboard/renders', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/renders', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const renders = await storage.getUserRenders(userId);
@@ -417,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's quiz responses
-  app.get('/api/my-dashboard/quiz-responses', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/quiz-responses', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const responses = await storage.getUserQuizResponses(userId);
@@ -429,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's cart items
-  app.get('/api/my-dashboard/cart', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/cart', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const items = await storage.getUserCartItems(userId);
@@ -441,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's orders
-  app.get('/api/my-dashboard/orders', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/orders', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const orders = await storage.getUserOrders(userId);
@@ -453,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific order details
-  app.get('/api/my-dashboard/orders/:orderId', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/orders/:orderId', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { orderId } = req.params;
@@ -473,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SAVED DESIGNS ROUTES =====
 
   // Get user's saved designs
-  app.get('/api/my-dashboard/saved-designs', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/saved-designs', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const designs = await storage.getSavedDesigns(userId);
@@ -485,7 +488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Save a design
-  app.post('/api/my-dashboard/saved-designs', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.post('/my-dashboard/saved-designs', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { renderId, title, notes } = req.body;
@@ -523,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a saved design (title, notes, sharing)
-  app.patch('/api/my-dashboard/saved-designs/:id', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.patch('/my-dashboard/saved-designs/:id', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { id } = req.params;
@@ -555,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a saved design
-  app.delete('/api/my-dashboard/saved-designs/:id', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.delete('/my-dashboard/saved-designs/:id', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { id } = req.params;
@@ -582,7 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if a render is saved
-  app.get('/api/my-dashboard/is-saved/:renderId', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/is-saved/:renderId', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { renderId } = req.params;
@@ -595,7 +598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public shared design view
-  app.get('/api/shared-design/:shareToken', async (req: Request, res: Response): Promise<Response> => {
+  app.get('/shared-design/:shareToken', async (req: Request, res: Response): Promise<Response> => {
     try {
       const { shareToken } = req.params;
       const design = await storage.getSavedDesignByShareToken(shareToken);
@@ -614,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== PRODUCT INTERACTIONS =====
 
   // Log product interaction
-  app.post('/api/product-interactions', async (req: Request, res: Response): Promise<Response> => {
+  app.post('/product-interactions', async (req: Request, res: Response): Promise<Response> => {
     try {
       const { productId, interactionType, metadata, sessionId } = req.body;
 
@@ -638,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's product interactions
-  app.get('/api/my-dashboard/product-interactions', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/my-dashboard/product-interactions', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const interactions = await storage.getUserProductInteractions(userId);
@@ -652,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SESSION DATA MIGRATION =====
 
   // Migrate anonymous session data to authenticated user
-  app.post('/api/migrate-session-data', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.post('/migrate-session-data', isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user!.id;
       const { sessionId } = req.body;
@@ -711,13 +714,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/objects/upload", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.post("/objects/upload", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     const objectStorageService = new ObjectStorageService();
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     return res.json({ uploadURL });
   });
 
-  app.put("/api/profile-image", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  // --- NEW: S3 Presigned URL Upload Route (JSON Body) ---
+  app.post("/upload", async (req: Request, res: Response): Promise<Response> => {
+    // If multipart/form-data request is received (old way), handle it
+    if (req.is('multipart/form-data')) {
+      // Return error to force frontend to switch, or handle gracefully if desired
+      // But based on the instruction, we want to switch to JSON -> Presigned URL.
+      // However, if we want backward compatibility or simpler migration,
+      // we can try to detect.
+      // For now, let's implement the presigned URL flow as requested.
+      // The frontend should send JSON { fileName, contentType }.
+      return res.status(400).json({ error: "This endpoint now expects JSON body for presigned URL generation." });
+    }
+
+    try {
+      const { fileName, contentType } = req.body as {
+        fileName?: string;
+        contentType?: string;
+      };
+
+      if (!fileName) {
+        return res.status(400).json({ error: "fileName is required" });
+      }
+
+      const s3 = new S3Client({
+        region: process.env.AWS_REGION,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        },
+      });
+
+      const key = `uploads/${Date.now()}-${fileName}`;
+
+      const command = new PutObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET!,
+        Key: key,
+        ContentType: contentType || "application/octet-stream",
+        // ACL: 'public-read', // Optional: if you want files to be public immediately
+      });
+
+      const url = await getSignedUrl(s3, command, { expiresIn: 60 * 5 });
+
+      return res.json({
+        method: "PUT",
+        url,
+        headers: {
+          "Content-Type": contentType || "application/octet-stream",
+        },
+        fields: {},
+        // Return the final public URL for the frontend to use after upload
+        // Assuming standard S3 URL structure or CloudFront
+        publicUrl: `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`
+      });
+    } catch (err) {
+      console.error("Presigned URL generation error:", err);
+      return res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  app.put("/profile-image", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
     if (!req.body.imageURL) {
       return res.status(400).json({ error: "imageURL is required" });
     }
@@ -764,7 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mapping analysis routes
   const mappingAnalysisRoutes = await import("./routes-mapping-analysis");
-  app.use("/api/admin", isAuthenticated, isAdmin, mappingAnalysisRoutes.default);
+  app.use("/admin", isAuthenticated, isAdmin, mappingAnalysisRoutes.default);
 
   const httpServer = createServer(app);
   return httpServer;
