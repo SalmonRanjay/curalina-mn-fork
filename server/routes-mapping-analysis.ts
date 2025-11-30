@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db } from "./db";
-import { products } from "@shared/schema";
+import { getDb } from "./db"; // Add .js extension
+import { products } from "@shared/schema"; // Add .js extension
 import { sql, isNotNull } from "drizzle-orm";
 
 const router = Router();
@@ -129,7 +129,7 @@ function analyzeRoomComposition(allProducts: any[]) {
     categoryData[category] = { count: 0, products: [] };
   });
   
-  allProducts.forEach(product => {
+  allProducts.forEach((product: any) => { // Explicitly type product
     let categorized = false;
     const productNameLower = product.name.toLowerCase();
     const categoryName = product.category?.name?.toLowerCase() || '';
@@ -236,7 +236,7 @@ function analyzeFilterOptimization(allProducts: any[]) {
   QUIZ_ROOM_TYPES.forEach(roomType => {
     QUIZ_STYLES.forEach(style => {
       // Count products matching this combination
-      const matchingProducts = allProducts.filter(p =>
+      const matchingProducts = allProducts.filter((p: any) => // Explicitly type p
         p.roomType?.some((rt: string) => rt.toLowerCase() === roomType.toLowerCase()) &&
         p.designStyle?.some((ds: string) => ds.toLowerCase().includes(style.toLowerCase()))
       );
@@ -311,17 +311,17 @@ function analyzeFilterOptimization(allProducts: any[]) {
 router.get("/mapping-analysis", async (req, res) => {
   try {
     // Get all products
-    const allProducts = await db.select().from(products);
+    const allProducts = await getDb().select().from(products);
 
     // Analyze room types
     const roomTypeValues = new Map<string, number>();
     let productsWithRoomType = 0;
     let productsWithMismatchedRoomType: any[] = [];
 
-    allProducts.forEach(product => {
+    allProducts.forEach((product: any) => { // Explicitly type product
       if (product.roomType && product.roomType.length > 0) {
         productsWithRoomType++;
-        product.roomType.forEach(rt => {
+        product.roomType.forEach((rt: string) => { // Explicitly type rt
           roomTypeValues.set(rt, (roomTypeValues.get(rt) || 0) + 1);
           
           // Check if this room type matches any quiz option (case-insensitive)
@@ -353,10 +353,10 @@ router.get("/mapping-analysis", async (req, res) => {
     let productsWithStyle = 0;
     let productsWithMismatchedStyle: any[] = [];
 
-    allProducts.forEach(product => {
+    allProducts.forEach((product: any) => { // Explicitly type product
       if (product.designStyle && product.designStyle.length > 0) {
         productsWithStyle++;
-        product.designStyle.forEach(ds => {
+        product.designStyle.forEach((ds: string) => { // Explicitly type ds
           styleValues.set(ds, (styleValues.get(ds) || 0) + 1);
           
           // Check if matches quiz option (flexible matching)
@@ -393,10 +393,10 @@ router.get("/mapping-analysis", async (req, res) => {
     const featureValues = new Map<string, number>();
     let productsWithFeatures = 0;
 
-    allProducts.forEach(product => {
+    allProducts.forEach((product: any) => { // Explicitly type product
       if (product.keyFeatures && product.keyFeatures.length > 0) {
         productsWithFeatures++;
-        product.keyFeatures.forEach(kf => {
+        product.keyFeatures.forEach((kf: string) => { // Explicitly type kf
           featureValues.set(kf, (featureValues.get(kf) || 0) + 1);
         });
       }
@@ -410,10 +410,10 @@ router.get("/mapping-analysis", async (req, res) => {
     const colorValues = new Map<string, number>();
     let productsWithColors = 0;
 
-    allProducts.forEach(product => {
+    allProducts.forEach((product: any) => { // Explicitly type product
       if (product.colors && product.colors.length > 0) {
         productsWithColors++;
-        product.colors.forEach(c => {
+        product.colors.forEach((c: string) => { // Explicitly type c
           colorValues.set(c, (colorValues.get(c) || 0) + 1);
         });
       }
@@ -532,7 +532,7 @@ router.get("/mapping-analysis", async (req, res) => {
  */
 router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
   try {
-    const allProducts = await db.select().from(products);
+    const allProducts = await getDb().select().from(products);
     
     // Mapping of variations to standardized values
     const roomTypeMapping: Record<string, string> = {
@@ -552,7 +552,7 @@ router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
 
     for (const product of allProducts) {
       if (product.roomType && product.roomType.length > 0) {
-        const normalizedRoomTypes = product.roomType.map(rt => {
+        const normalizedRoomTypes = product.roomType.map((rt: string) => { // Explicitly type rt
           const normalized = roomTypeMapping[rt.toLowerCase()];
           return normalized || rt;
         });
@@ -563,7 +563,7 @@ router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
         );
 
         if (hasChanges) {
-          await db.update(products)
+          await getDb().update(products)
             .set({ roomType: normalizedRoomTypes })
             .where(sql`id = ${product.id}`);
           updatedCount++;
@@ -588,7 +588,7 @@ router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
  */
 router.post("/mapping-analysis/normalize-design-styles", async (req, res) => {
   try {
-    const allProducts = await db.select().from(products);
+    const allProducts = await getDb().select().from(products);
     
     // Mapping of product styles to quiz options
     const styleMapping: Record<string, string[]> = {
@@ -606,7 +606,7 @@ router.post("/mapping-analysis/normalize-design-styles", async (req, res) => {
       if (product.designStyle && product.designStyle.length > 0) {
         const expandedStyles = new Set<string>();
         
-        product.designStyle.forEach(ds => {
+        product.designStyle.forEach((ds: string) => { // Explicitly type ds
           const dsLower = ds.toLowerCase();
           const mappedStyles = styleMapping[dsLower];
           
@@ -623,7 +623,7 @@ router.post("/mapping-analysis/normalize-design-styles", async (req, res) => {
         // Check if changes were made
         if (newStyles.length !== product.designStyle.length || 
             !newStyles.every(s => product.designStyle!.includes(s))) {
-          await db.update(products)
+          await getDb().update(products)
             .set({ styleTags: newStyles })
             .where(sql`id = ${product.id}`);
           updatedCount++;

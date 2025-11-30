@@ -1,30 +1,30 @@
 {
   "emulators": {
     "hub": {
-      "host": "127.0.0.1",
-      "port": 4402
+      "host": "0.0.0.0",
+      "port": 9100
     },
     "dataconnect": {
       "dataDir": "dataconnect/.dataconnect/pgliteData",
-      "host": "127.0.0.1",
-      "port": 9400
+      "host": "0.0.0.0",
+      "port": 9104
     },
     "firestore": {
-      "host": "127.0.0.1",
-      "port": 8081,
+      "host": "0.0.0.0",
+      "port": 9103,
       "rules": "firestore.rules"
     },
     "functions": {
-      "host": "127.0.0.1",
-      "port": 5002
+      "host": "0.0.0.0",
+      "port": 9105
     },
     "ui": {
-      "host": "127.0.0.1",
-      "port": 4002
+      "host": "0.0.0.0",
+      "port": 9101
     },
     "logging": {
-      "host": "127.0.0.1",
-      "port": 4502
+      "host": "0.0.0.0",
+      "port": 9102
     }
   },
   "dataconnect": {
@@ -37,7 +37,30 @@
   "functions": [
     {
       "source": "server/functions",
-      "codebase": "curalina-ai"
+      "codebase": "curalina-ai",
+      "secretEnvironment": ["DATABASE_URL"]
     }
-  ]
+  ],
+  "hosting": {
+    "public": "dist/public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": {
+          "functionId": "api",
+          "codebase": "curalina-ai",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
 }

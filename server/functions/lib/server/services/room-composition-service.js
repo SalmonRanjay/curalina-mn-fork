@@ -1,0 +1,2171 @@
+import { curalinaStorage } from '../storage-curalina';
+import { calculateBudgetAllocation } from './budget-allocation';
+/**
+ * Calculate space tier from room dimensions
+ * Thresholds based on interior design standards:
+ * - Small: Apartment/studio rooms, tight layouts
+ * - Medium: Standard residential rooms
+ * - Large: Spacious living areas, open floor plans
+ * - XL: Great rooms, loft spaces, multi-zone areas
+ */
+export function calculateSpaceTier(lengthFeet, widthFeet, ceilingHeightFeet = 8) {
+    // Default to medium if dimensions unknown
+    if (!lengthFeet || !widthFeet) {
+        return {
+            tier: 'medium',
+            squareFeet: null,
+            lengthFeet: null,
+            widthFeet: null,
+            ceilingHeightFeet,
+            canFitDualSeating: false,
+            canFitMultipleZones: false,
+            maxProducts: 7
+        };
+    }
+    const squareFeet = lengthFeet * widthFeet;
+    // Determine tier based on square footage
+    let tier;
+    let canFitDualSeating = false;
+    let canFitMultipleZones = false;
+    let maxProducts = 7;
+    if (squareFeet < 180) {
+        // Small: Compact spaces (12x15 or smaller)
+        tier = 'small';
+        maxProducts = 5;
+    }
+    else if (squareFeet < 320) {
+        // Medium: Standard rooms (16x20 typical)
+        tier = 'medium';
+        maxProducts = 7;
+        // Can fit dual seating if room is at least 14ft wide
+        canFitDualSeating = widthFeet >= 14 && lengthFeet >= 16;
+    }
+    else if (squareFeet < 480) {
+        // Large: Spacious rooms (20x24 or larger)
+        tier = 'large';
+        maxProducts = 8;
+        canFitDualSeating = widthFeet >= 16 || lengthFeet >= 20;
+        canFitMultipleZones = squareFeet >= 400;
+    }
+    else {
+        // XL: Great rooms, open plans (20x24+)
+        tier = 'xl';
+        maxProducts = 8; // Still capped at 8 for render quality
+        canFitDualSeating = true;
+        canFitMultipleZones = true;
+    }
+    console.log(`📐 Space Profile: ${tier.toUpperCase()} (${squareFeet} sq ft, ${lengthFeet}x${widthFeet}ft)`);
+    console.log(`   Dual seating: ${canFitDualSeating ? 'YES' : 'NO'}, Multiple zones: ${canFitMultipleZones ? 'YES' : 'NO'}`);
+    console.log(`   Max products for this space: ${maxProducts}`);
+    return {
+        tier,
+        squareFeet,
+        lengthFeet,
+        widthFeet,
+        ceilingHeightFeet,
+        canFitDualSeating,
+        canFitMultipleZones,
+        maxProducts
+    };
+}
+/**
+ * Adjust room template based on space profile
+ * Dynamically modifies min/max values for product categories
+ * Uses safe property access to handle missing template keys
+ */
+function adjustTemplateForSpace(template, spaceProfile, roomType) {
+    // Deep clone the template to avoid mutations
+    const adjusted = JSON.parse(JSON.stringify(template));
+    // Helper to safely adjust a category property
+    const safeAdjust = (section, category, updates) => {
+        if (!adjusted[section])
+            return; // Section doesn't exist
+        if (adjusted[section][category]) {
+            // Category exists - apply partial updates
+            Object.assign(adjusted[section][category], updates);
+        }
+        else if (updates.min !== undefined || updates.max !== undefined) {
+            // Category doesn't exist but we have min/max - create it
+            adjusted[section][category] = {
+                min: updates.min ?? 0,
+                max: updates.max ?? 1,
+                priority: updates.priority || 99
+            };
+        }
+        // If only priority is specified and category doesn't exist, skip (can't create without min/max)
+    };
+    console.log(`🔧 Adjusting template for ${spaceProfile.tier.toUpperCase()} space...`);
+    // Living Room specific adjustments
+    if (roomType === 'Living Room') {
+        switch (spaceProfile.tier) {
+            case 'small':
+                // Reduce product counts for small spaces
+                safeAdjust('essentials', 'accent_seating', { max: 1 });
+                safeAdjust('complementary', 'side_table', { min: 0, max: 1 });
+                safeAdjust('complementary', 'storage', { min: 0 });
+                safeAdjust('complementary', 'lighting', { max: 1 });
+                console.log(`   📦 Small space: Reduced to essential furniture only`);
+                break;
+            case 'medium':
+                // Standard layout - keep defaults
+                console.log(`   📦 Medium space: Standard product selection`);
+                break;
+            case 'large':
+                // Can fit more furniture
+                if (spaceProfile.canFitDualSeating) {
+                    safeAdjust('essentials', 'primary_seating', { max: 2 }); // Allow 2 sofas or sofa + loveseat
+                    console.log(`   📦 Large space: Dual seating ENABLED (2 sofas allowed)`);
+                }
+                else {
+                    console.log(`   📦 Large space: Single primary seating (room not wide enough for dual)`);
+                }
+                // Ensure accent_seating exists with proper values (move from essentials to complementary if needed)
+                safeAdjust('complementary', 'accent_seating', { min: 1, max: 2, priority: 4 });
+                safeAdjust('complementary', 'lighting', { max: 2 });
+                break;
+            case 'xl':
+                // Maximum furniture for grand spaces
+                safeAdjust('essentials', 'primary_seating', { min: 1, max: 2 }); // Allow 2 sofas
+                safeAdjust('essentials', 'accent_seating', { max: 3 });
+                safeAdjust('complementary', 'side_table', { max: 2 });
+                safeAdjust('complementary', 'lighting', { max: 2 });
+                safeAdjust('complementary', 'decor', { max: 2 });
+                console.log(`   📦 XL space: Maximum furniture selection (dual sofas, multiple zones)`);
+                break;
+        }
+    }
+    // Bedroom specific adjustments
+    if (roomType === 'Bedroom') {
+        switch (spaceProfile.tier) {
+            case 'small':
+                safeAdjust('essentials', 'nightstand', { max: 1 }); // Only 1 nightstand in small bedrooms
+                safeAdjust('complementary', 'dresser', { min: 0 });
+                safeAdjust('complementary', 'accent_seating', { min: 0 });
+                break;
+            case 'large':
+            case 'xl':
+                safeAdjust('complementary', 'accent_seating', { min: 1 }); // Add seating area
+                safeAdjust('complementary', 'storage', { min: 1 }); // Add wardrobe/armoire
+                break;
+        }
+    }
+    // Dining Room specific adjustments
+    if (roomType === 'Dining Room') {
+        switch (spaceProfile.tier) {
+            case 'small':
+                safeAdjust('essentials', 'dining_seating', { max: 1 }); // One chair style for small dining
+                safeAdjust('complementary', 'storage', { min: 0 });
+                break;
+            case 'large':
+            case 'xl':
+                safeAdjust('essentials', 'dining_seating', { max: 2 }); // Allow 2 different chair styles
+                safeAdjust('complementary', 'decor', { max: 2 });
+                break;
+        }
+    }
+    // Home Office specific adjustments
+    if (roomType === 'Home Office') {
+        switch (spaceProfile.tier) {
+            case 'small':
+                safeAdjust('essentials', 'storage', { min: 1, max: 1 });
+                safeAdjust('complementary', 'accent_seating', { min: 0 });
+                safeAdjust('complementary', 'side_table', { min: 0, max: 0 });
+                console.log(`   📦 Small office: Minimal furniture for compact workspace`);
+                break;
+            case 'large':
+            case 'xl':
+                safeAdjust('essentials', 'storage', { max: 2 });
+                safeAdjust('complementary', 'accent_seating', { min: 1, max: 2 });
+                safeAdjust('complementary', 'side_table', { max: 2 });
+                console.log(`   📦 Large office: Additional seating and storage`);
+                break;
+        }
+    }
+    return adjusted;
+}
+const fitValidationCache = new Map();
+const FIT_CACHE_MAX_SIZE = 5000; // Prevent unbounded growth
+const FIT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes per entry
+let fitCacheLastCleanup = Date.now();
+/**
+ * Generate a hash for room dimensions (for cache key)
+ */
+function hashRoomDimensions(dims) {
+    if (!dims)
+        return 'default';
+    return `${dims.width}x${dims.depth}x${dims.ceilingHeight}`;
+}
+/**
+ * Get cached fit validation or compute and cache
+ * Uses per-entry TTL for proper expiration with immediate stale entry removal
+ */
+function getCachedFitValidation(product, zone, roomDimensions) {
+    const cacheKey = `${product.id}:${zone.id}:${hashRoomDimensions(roomDimensions)}`;
+    const now = Date.now();
+    // Check cache first with TTL validation
+    const cached = fitValidationCache.get(cacheKey);
+    if (cached) {
+        if ((now - cached.timestamp) < FIT_CACHE_TTL_MS) {
+            return cached.validation;
+        }
+        // Immediately remove stale entry to guarantee TTL is honored
+        fitValidationCache.delete(cacheKey);
+    }
+    // Compute new validation
+    const validation = validateProductFitForZoneInternal(product, zone, roomDimensions);
+    // Periodic bulk cleanup (every 5 minutes or when too large)
+    if (fitValidationCache.size > FIT_CACHE_MAX_SIZE || now - fitCacheLastCleanup > 5 * 60 * 1000) {
+        // Remove expired entries
+        const allEntries = Array.from(fitValidationCache.entries());
+        for (const [key, entry] of allEntries) {
+            if (now - entry.timestamp > FIT_CACHE_TTL_MS) {
+                fitValidationCache.delete(key);
+            }
+        }
+        // If still too large, clear oldest 25%
+        if (fitValidationCache.size > FIT_CACHE_MAX_SIZE) {
+            const sortedEntries = Array.from(fitValidationCache.entries())
+                .sort((a, b) => a[1].timestamp - b[1].timestamp);
+            const toRemove = Math.floor(sortedEntries.length * 0.25);
+            sortedEntries.slice(0, toRemove).forEach(([key]) => fitValidationCache.delete(key));
+        }
+        fitCacheLastCleanup = now;
+    }
+    fitValidationCache.set(cacheKey, { validation, timestamp: now });
+    return validation;
+}
+/**
+ * Clear fit validation cache (call when product dimensions are updated)
+ */
+export function clearFitValidationCache() {
+    fitValidationCache.clear();
+    console.log('🗑️ Fit validation cache cleared');
+}
+/**
+ * Classify product into quality tier based on price percentile within category
+ * Uses count-based percentile to handle duplicate prices correctly
+ */
+export function getProductQualityTier(product, categoryProducts) {
+    const price = parseFloat(product.price);
+    const prices = categoryProducts.map(p => parseFloat(p.price));
+    if (prices.length === 0)
+        return 3; // Default to mid-tier if no comparison
+    // Count how many products are cheaper than or equal to this one
+    // This gives correct percentile even with duplicate prices
+    const countCheaperOrEqual = prices.filter(p => p <= price).length;
+    const percentile = (countCheaperOrEqual / prices.length) * 100;
+    // Higher percentile (more expensive) = higher tier (tier 1 is premium)
+    if (percentile >= 80)
+        return 1; // Top 20% = Premium
+    if (percentile >= 60)
+        return 2; // 60-80% = Mid-High
+    if (percentile >= 40)
+        return 3; // 40-60% = Mid
+    if (percentile >= 20)
+        return 4; // 20-40% = Budget
+    return 5; // Bottom 20% = Low
+}
+const VISIBILITY_IMPACT_MAP = {
+    // Anchor pieces - change LAST (defines the room)
+    'primary_seating': 'anchor',
+    'bed': 'anchor',
+    'dining_table': 'anchor',
+    'desk': 'anchor',
+    // Functional pieces - change next (moderate visual impact)
+    'accent_seating': 'functional',
+    'coffee_table': 'functional',
+    'dining_seating': 'functional',
+    'rug': 'functional',
+    'storage': 'functional',
+    'console_table': 'functional',
+    'dresser': 'functional',
+    'nightstand': 'functional',
+    'office_seating': 'functional',
+    // Least visible - change FIRST (minimal visual impact)
+    'side_table': 'least_visible',
+    'lighting': 'least_visible',
+    'decor': 'least_visible',
+    'art': 'least_visible',
+    'mirrors': 'least_visible',
+    'planters': 'least_visible',
+    'accessories': 'least_visible',
+};
+/**
+ * Get visibility impact level for a product based on its functional category
+ */
+export function getVisibilityImpact(product) {
+    const categories = detectFunctionalCategory(product);
+    // Use the highest impact category (most conservative)
+    for (const cat of categories) {
+        if (VISIBILITY_IMPACT_MAP[cat] === 'anchor')
+            return 'anchor';
+    }
+    for (const cat of categories) {
+        if (VISIBILITY_IMPACT_MAP[cat] === 'functional')
+            return 'functional';
+    }
+    return 'least_visible';
+}
+/**
+ * Visibility impact priority for sorting (lower = substitute first)
+ */
+export function getVisibilityPriority(impact) {
+    switch (impact) {
+        case 'least_visible': return 1;
+        case 'functional': return 2;
+        case 'anchor': return 3;
+    }
+}
+/**
+ * Validate that a product has valid images for rendering
+ * Products without images will be invisible in renders
+ */
+function hasValidImages(product) {
+    if (!product.images || !Array.isArray(product.images))
+        return false;
+    // Check if at least one valid image URL exists
+    const validImages = product.images.filter(img => {
+        if (!img || typeof img !== 'string')
+            return false;
+        const trimmed = img.trim();
+        if (trimmed.length === 0)
+            return false;
+        // Check for valid URL formats
+        const isExternalUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+        const isObjectStorage = trimmed.startsWith('/public-objects/') || trimmed.startsWith('/private-objects/');
+        const isS3Path = trimmed.includes('s3.amazonaws.com') || trimmed.includes('curalina');
+        return isExternalUrl || isObjectStorage || isS3Path;
+    });
+    return validImages.length > 0;
+}
+/**
+ * Find substitution candidates for a product
+ * Returns products with same style/color/material but lower price
+ * IMPORTANT: Only returns products with valid images for rendering
+ */
+export function findSubstitutionCandidates(original, allProducts, usedProductIds, minTier = 4 // Don't drop below this tier (4 = budget, avoid 5)
+) {
+    const originalPrice = parseFloat(original.price);
+    const originalCategories = detectFunctionalCategory(original);
+    // Get category products for tier calculation
+    const categoryProducts = allProducts.filter(p => detectFunctionalCategory(p).some(cat => originalCategories.includes(cat)));
+    const candidates = [];
+    for (const candidate of allProducts) {
+        // Skip same product, already used, or more expensive
+        if (candidate.id === original.id)
+            continue;
+        if (usedProductIds.has(candidate.id))
+            continue;
+        const candidatePrice = parseFloat(candidate.price);
+        if (candidatePrice >= originalPrice)
+            continue; // Must be cheaper
+        // CRITICAL: Skip products without valid images - they won't render!
+        if (!hasValidImages(candidate)) {
+            continue;
+        }
+        // Must be same functional category
+        const candidateCategories = detectFunctionalCategory(candidate);
+        const sameFunctionalCategory = originalCategories.some(cat => candidateCategories.includes(cat));
+        if (!sameFunctionalCategory)
+            continue;
+        // Check quality tier
+        const tier = getProductQualityTier(candidate, categoryProducts);
+        if (tier > minTier)
+            continue; // Skip if below minimum tier
+        // Calculate match score (style, color, material similarity)
+        let matchScore = 0;
+        // Style match (40 points max)
+        if (original.designStyle && candidate.designStyle) {
+            const originalStyles = new Set(original.designStyle);
+            const matchingStyles = candidate.designStyle.filter(s => originalStyles.has(s));
+            matchScore += (matchingStyles.length / Math.max(original.designStyle.length, 1)) * 40;
+        }
+        // Color match (30 points max)
+        if (original.colors && candidate.colors) {
+            const originalColors = new Set(original.colors);
+            const matchingColors = candidate.colors.filter(c => originalColors.has(c));
+            matchScore += (matchingColors.length / Math.max(original.colors.length, 1)) * 30;
+        }
+        // Material match (30 points max)
+        if (original.materials && candidate.materials) {
+            const originalMaterials = new Set(original.materials);
+            const matchingMaterials = candidate.materials.filter(m => originalMaterials.has(m));
+            matchScore += (matchingMaterials.length / Math.max(original.materials.length, 1)) * 30;
+        }
+        // Only consider candidates with HIGH match (>65%) to maintain visual cohesion
+        // Lower matches (40-65%) result in products that look visibly different
+        if (matchScore >= 65) {
+            candidates.push({
+                product: candidate,
+                matchScore,
+                priceDiff: originalPrice - candidatePrice,
+                tier
+            });
+        }
+    }
+    // Sort by match score (best matches first), then by price savings
+    return candidates.sort((a, b) => {
+        if (b.matchScore !== a.matchScore)
+            return b.matchScore - a.matchScore;
+        return b.priceDiff - a.priceDiff;
+    });
+}
+/**
+ * Validate if a product physically fits in a zone
+ * Uses product dimensions vs zone bounds with clearance requirements
+ * (Internal implementation - use getCachedFitValidation for caching)
+ */
+function validateProductFitForZoneInternal(product, zone, roomDimensions) {
+    const issues = [];
+    let fitScore = 100;
+    let fits = true;
+    const orientationOptions = [0, 90, 180, 270]; // All rotations initially valid
+    // Extract product dimensions (support both key formats)
+    const dims = product.dimensions;
+    if (!dims) {
+        // No dimensions available - assume it fits but with lower confidence
+        return {
+            fits: true,
+            fitScore: 60, // Lower score for unknown dimensions
+            issues: ['Product dimensions unknown - assuming fit'],
+            bestZone: zone.id,
+            orientationOptions: [0, 180],
+            clearanceMargin: 0
+        };
+    }
+    // Get dimensions, supporting both 'width'/'w' formats
+    const productWidth = dims.width || dims.w || 0;
+    const productDepth = dims.depth || dims.d || 0;
+    const productHeight = dims.height || dims.h || 0;
+    const unit = dims.unit || 'inches';
+    // Convert to inches if needed
+    const toInches = (val, u) => {
+        if (u === 'cm')
+            return val / 2.54;
+        if (u === 'feet')
+            return val * 12;
+        return val;
+    };
+    const widthInches = toInches(productWidth, unit);
+    const depthInches = toInches(productDepth, unit);
+    const heightInches = toInches(productHeight, unit);
+    // If room dimensions are provided, validate against actual room size
+    if (roomDimensions) {
+        const roomWidth = roomDimensions.width;
+        const roomDepth = roomDimensions.depth;
+        // Zone bounds are normalized (0-1), convert to actual inches
+        const zoneWidthInches = zone.bounds.width * roomWidth;
+        const zoneDepthInches = zone.bounds.height * roomDepth; // height in bounds = depth in room
+        const clearanceInches = zone.clearance * Math.min(roomWidth, roomDepth);
+        // Check if product fits in zone (with required clearance)
+        const availableWidth = zoneWidthInches - (clearanceInches * 2);
+        const availableDepth = zoneDepthInches - (clearanceInches * 2);
+        // Standard orientation (width along zone width)
+        const fitsStandard = widthInches <= availableWidth && depthInches <= availableDepth;
+        // Rotated orientation (width along zone depth)
+        const fitsRotated = depthInches <= availableWidth && widthInches <= availableDepth;
+        if (!fitsStandard && !fitsRotated) {
+            fits = false;
+            fitScore = 0;
+            issues.push(`Product too large for zone: ${widthInches.toFixed(0)}"x${depthInches.toFixed(0)}" > ${availableWidth.toFixed(0)}"x${availableDepth.toFixed(0)}" available`);
+        }
+        else if (!fitsStandard) {
+            // Only fits when rotated
+            fitScore -= 10;
+            orientationOptions.splice(0, orientationOptions.length, 90, 270); // Only rotated orientations
+            issues.push('Product requires rotation to fit');
+        }
+        else if (!fitsRotated) {
+            // Only fits in standard orientation
+            orientationOptions.splice(0, orientationOptions.length, 0, 180);
+        }
+        // Calculate clearance margin (how much extra space is available)
+        const widthMargin = (availableWidth - widthInches) / availableWidth;
+        const depthMargin = (availableDepth - depthInches) / availableDepth;
+        const clearanceMargin = Math.min(widthMargin, depthMargin);
+        // Score based on how well product fills zone (not too small, not too tight)
+        if (clearanceMargin > 0.5) {
+            // Product is much smaller than zone - might look sparse
+            fitScore -= 15;
+            issues.push('Product may appear small in this zone');
+        }
+        else if (clearanceMargin < 0.1 && clearanceMargin > 0) {
+            // Very tight fit
+            fitScore -= 10;
+            issues.push('Tight fit - limited clearance');
+        }
+        // Check ceiling height for tall furniture
+        if (heightInches > 0 && roomDimensions.ceilingHeight) {
+            const headroom = roomDimensions.ceilingHeight - heightInches;
+            if (headroom < 12) {
+                fitScore -= 20;
+                issues.push('Product nearly touches ceiling');
+            }
+            else if (headroom < 24) {
+                fitScore -= 5;
+                issues.push('Limited headroom above product');
+            }
+        }
+        return {
+            fits,
+            fitScore: Math.max(0, fitScore),
+            issues,
+            bestZone: fits ? zone.id : null,
+            orientationOptions,
+            clearanceMargin: Math.max(0, clearanceMargin)
+        };
+    }
+    // No room dimensions - use heuristic based on typical room sizes
+    // Standard living room ~14x12ft = 168x144 inches
+    const typicalRoomWidth = 168;
+    const typicalRoomDepth = 144;
+    const zoneWidthInches = zone.bounds.width * typicalRoomWidth;
+    const zoneDepthInches = zone.bounds.height * typicalRoomDepth;
+    // Check basic fit with generous tolerance (no exact room size)
+    if (widthInches > zoneWidthInches * 1.2 || depthInches > zoneDepthInches * 1.2) {
+        fitScore -= 30;
+        issues.push('Product may be too large for typical room zone');
+    }
+    return {
+        fits: true, // Default to fits if no room dimensions
+        fitScore: Math.max(0, fitScore),
+        issues,
+        bestZone: zone.id,
+        orientationOptions,
+        clearanceMargin: 0.2 // Assumed margin
+    };
+}
+/**
+ * Filter products by physical fit for a specific category and room
+ * This is the FIRST filter applied before any preference scoring
+ */
+function filterByPhysicalFit(products, roomType, category, roomDimensions) {
+    const zones = ROOM_ZONES[roomType] || [];
+    // Find zones that accept this category
+    const validZones = zones.filter(z => z.allowedCategories.includes(category));
+    if (validZones.length === 0) {
+        // No specific zones - all products pass fit filter
+        return products.map(p => ({
+            product: p,
+            fitValidation: {
+                fits: true,
+                fitScore: 70,
+                issues: ['No zone constraints for this category'],
+                bestZone: null,
+                orientationOptions: [0, 180],
+                clearanceMargin: 0.3
+            }
+        }));
+    }
+    const results = [];
+    for (const product of products) {
+        let bestFit = null;
+        // Check product against all valid zones, keep best fit (using cache)
+        for (const zone of validZones) {
+            const validation = getCachedFitValidation(product, zone, roomDimensions);
+            if (!bestFit || validation.fitScore > bestFit.fitScore) {
+                bestFit = validation;
+            }
+        }
+        // Include product if it fits in at least one zone
+        if (bestFit && bestFit.fits) {
+            results.push({ product, fitValidation: bestFit });
+        }
+        else if (bestFit) {
+            // Product doesn't fit but log for debugging
+            console.log(`🚫 Physical fit BLOCK: ${product.name} - ${bestFit.issues.join(', ')}`);
+        }
+    }
+    // Sort by fit score (best fit first)
+    results.sort((a, b) => b.fitValidation.fitScore - a.fitValidation.fitScore);
+    console.log(`📐 Physical fit filter: ${products.length} → ${results.length} products for ${category} in ${roomType}`);
+    return results;
+}
+/**
+ * Duplication rules by room type and category
+ * Defines how many copies of each product type should be rendered
+ */
+const DUPLICATION_RULES = {
+    'Dining Room': {
+        'dining_seating': {
+            count: 'dynamic', // Based on table size (4-6)
+            slots: ['head_table', 'opposite_head', 'left_1', 'left_2', 'right_1', 'right_2'],
+            descriptions: [
+                'at the head of the dining table',
+                'at the opposite end of the dining table',
+                'on the left side of the table, closest to head',
+                'on the left side of the table, toward middle',
+                'on the right side of the table, closest to head',
+                'on the right side of the table, toward middle'
+            ]
+        }
+    },
+    'Bedroom': {
+        'nightstand': {
+            count: 2,
+            slots: ['left_of_bed', 'right_of_bed'],
+            descriptions: [
+                'on the left side of the bed',
+                'on the right side of the bed'
+            ]
+        },
+        'lighting': {
+            count: 2, // Matching table lamps
+            slots: ['lamp_left', 'lamp_right'],
+            descriptions: [
+                'on the left nightstand',
+                'on the right nightstand'
+            ]
+        }
+    },
+    'Living Room': {
+        'side_table': {
+            count: 2,
+            slots: ['sofa_left', 'sofa_right'],
+            descriptions: [
+                'at the left end of the sofa',
+                'at the right end of the sofa'
+            ]
+        }
+    },
+    'Home Office': {
+    // No duplicates needed - most items are singular
+    }
+};
+/**
+ * Expand selected products into individual placement instances
+ * Handles duplication for items like dining chairs, nightstands, etc.
+ */
+export function expandProductsToInstances(products, roomType, spaceProfile) {
+    const instances = [];
+    const roomRules = DUPLICATION_RULES[roomType] || {};
+    console.log(`\n🔢 PRODUCT DUPLICATION: Expanding ${products.length} products for ${roomType}`);
+    for (const product of products) {
+        const categories = detectFunctionalCategory(product);
+        let duplicated = false;
+        // Check if this product category needs duplication
+        for (const category of categories) {
+            const rule = roomRules[category];
+            if (rule) {
+                // Determine count (dynamic or fixed)
+                let count = typeof rule.count === 'number' ? rule.count : 4; // Default 4 for dining
+                // For dynamic counts (dining chairs), adjust based on space
+                if (rule.count === 'dynamic' && category === 'dining_seating') {
+                    if (spaceProfile.tier === 'small') {
+                        count = 4;
+                    }
+                    else if (spaceProfile.tier === 'medium') {
+                        count = 4;
+                    }
+                    else if (spaceProfile.tier === 'large') {
+                        count = 6;
+                    }
+                    else {
+                        count = 6;
+                    }
+                }
+                // Create instances for each copy
+                const actualCount = Math.min(count, rule.slots.length);
+                console.log(`   📋 ${product.name}: Creating ${actualCount} instances (${category})`);
+                for (let i = 0; i < actualCount; i++) {
+                    instances.push({
+                        product,
+                        instanceId: `${product.sku}_${i + 1}`,
+                        instanceNumber: i + 1,
+                        totalInstances: actualCount,
+                        placementSlot: rule.slots[i],
+                        placementDescription: rule.descriptions[i] || `position ${i + 1}`
+                    });
+                }
+                duplicated = true;
+                break; // Only apply first matching rule
+            }
+        }
+        // No duplication rule - single instance
+        if (!duplicated) {
+            instances.push({
+                product,
+                instanceId: `${product.sku}_1`,
+                instanceNumber: 1,
+                totalInstances: 1,
+                placementSlot: 'default',
+                placementDescription: getDefaultPlacementDescription(product, roomType)
+            });
+        }
+    }
+    console.log(`   ✅ Expanded ${products.length} products → ${instances.length} placement instances`);
+    return instances;
+}
+/**
+ * Get default placement description for a product based on its category
+ */
+function getDefaultPlacementDescription(product, roomType) {
+    const categories = detectFunctionalCategory(product);
+    const primaryCategory = categories[0] || 'decor';
+    const descriptions = {
+        'Living Room': {
+            'primary_seating': 'centered against the main wall',
+            'coffee_table': 'centered in front of the sofa',
+            'accent_seating': 'angled toward the sofa for conversation',
+            'storage': 'against the wall opposite the seating area',
+            'lighting': 'in the corner near the seating area',
+            'decor': 'on the coffee table or side table',
+            'console_table': 'against the side wall or entry area'
+        },
+        'Bedroom': {
+            'bed': 'centered against the main wall',
+            'dresser': 'against the wall opposite the bed',
+            'accent_seating': 'in the corner or at the foot of the bed',
+            'storage': 'against a side wall',
+            'decor': 'on the dresser or nightstand'
+        },
+        'Dining Room': {
+            'dining_table': 'centered in the room',
+            'storage': 'against the wall for serving and storage',
+            'lighting': 'centered above the dining table',
+            'decor': 'on the sideboard or as table centerpiece'
+        },
+        'Home Office': {
+            'desk': 'against the wall with good lighting',
+            'office_seating': 'at the desk',
+            'storage': 'next to or behind the desk',
+            'accent_seating': 'for guests, facing the desk',
+            'lighting': 'on the desk for task lighting'
+        }
+    };
+    return descriptions[roomType]?.[primaryCategory] || 'in an appropriate location';
+}
+// Room zone configurations for organized layouts
+// Based on professional interior design floor plans (PDF analysis)
+const ROOM_ZONES = {
+    'Living Room': [
+        // Zone 1: Sofa against wall (anchor piece)
+        {
+            id: 'sofa_wall',
+            name: 'Primary Sofa Wall',
+            bounds: { x: 0.15, y: 0.7, width: 0.7, height: 0.25 },
+            priority: 1,
+            allowedCategories: ['primary_seating'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.08,
+            adjacentZones: ['coffee_table_zone', 'flanking_left', 'flanking_right'],
+            heightTier: 'floor'
+        },
+        // Zone 2: Coffee table centered in front of sofa
+        {
+            id: 'coffee_table_zone',
+            name: 'Coffee Table Area',
+            bounds: { x: 0.3, y: 0.4, width: 0.4, height: 0.25 },
+            priority: 2,
+            allowedCategories: ['coffee_table'],
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.1, // 18" clearance from sofa
+            heightTier: 'floor'
+        },
+        // Zone 3: Left accent chair (flanking sofa at 90°)
+        {
+            id: 'flanking_left',
+            name: 'Left Accent Seating',
+            bounds: { x: 0.08, y: 0.35, width: 0.17, height: 0.35 }, // Pulled inward from x=0.0 to prevent edge clipping
+            priority: 3,
+            allowedCategories: ['accent_seating'],
+            maxItems: 1,
+            orientation: 'corner',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 4: Right accent chair (flanking sofa at 90°)
+        {
+            id: 'flanking_right',
+            name: 'Right Accent Seating',
+            bounds: { x: 0.7, y: 0.35, width: 0.2, height: 0.35 }, // Pulled inward from x=0.8 to prevent edge clipping
+            priority: 3,
+            allowedCategories: ['accent_seating'],
+            maxItems: 1,
+            orientation: 'corner',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 5: Side table adjacent to sofa end (supports table lamps)
+        {
+            id: 'side_table_zone',
+            name: 'Side Table Area',
+            bounds: { x: 0.08, y: 0.7, width: 0.12, height: 0.2 }, // Pulled inward from x=0.0 to prevent edge clipping
+            priority: 4,
+            allowedCategories: ['side_table', 'lighting'], // Table lamps on side tables
+            maxItems: 2,
+            orientation: 'wall',
+            clearance: 0.03,
+            heightTier: 'surface' // Surface height for table lamps
+        },
+        // Zone 6: Console table on LEFT SIDE WALL (visible, NOT behind sofa)
+        // Positioned in front area (y: 0.05-0.25) to avoid overlap with flanking_left (y: 0.35+)
+        {
+            id: 'console_table_zone',
+            name: 'Console Table Wall',
+            bounds: { x: 0.02, y: 0.05, width: 0.12, height: 0.20 }, // Left side wall, front area - no overlap with other zones
+            priority: 5,
+            allowedCategories: ['console_table'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 7: Storage/cabinet against opposite wall
+        {
+            id: 'storage_wall',
+            name: 'Storage Cabinet Wall',
+            bounds: { x: 0.2, y: 0.0, width: 0.6, height: 0.15 },
+            priority: 6,
+            allowedCategories: ['storage'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 8: Floor lamp in corner near seating
+        {
+            id: 'lamp_corner',
+            name: 'Floor Lamp Corner',
+            bounds: { x: 0.75, y: 0.7, width: 0.15, height: 0.25 }, // Pulled inward from x=0.85 to prevent edge clipping
+            priority: 7,
+            allowedCategories: ['lighting'],
+            maxItems: 1,
+            orientation: 'corner',
+            clearance: 0.03,
+            heightTier: 'floor'
+        },
+        // Zone 9: Rug under coffee table / seating area decor
+        {
+            id: 'rug_zone',
+            name: 'Area Rug Zone',
+            bounds: { x: 0.15, y: 0.3, width: 0.7, height: 0.5 },
+            priority: 8,
+            allowedCategories: ['decor'], // Rugs, pillows on seating
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.0,
+            heightTier: 'floor'
+        },
+        // Zone 10: Wall art above sofa
+        {
+            id: 'art_wall',
+            name: 'Wall Art Zone',
+            bounds: { x: 0.3, y: 0.85, width: 0.4, height: 0.15 },
+            priority: 9,
+            allowedCategories: ['decor'], // Art, tapestry above sofa
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.0,
+            heightTier: 'wall'
+        }
+    ],
+    'Bedroom': [
+        // Zone 1: Bed centered against headboard wall (anchor piece)
+        {
+            id: 'bed_zone',
+            name: 'Bed Area',
+            bounds: { x: 0.25, y: 0.6, width: 0.5, height: 0.35 },
+            priority: 1,
+            allowedCategories: ['bed'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.08,
+            adjacentZones: ['bedside_left', 'bedside_right'],
+            heightTier: 'floor'
+        },
+        // Zone 2: Left nightstand with table lamp
+        {
+            id: 'bedside_left',
+            name: 'Left Nightstand Zone',
+            bounds: { x: 0.08, y: 0.65, width: 0.12, height: 0.25 }, // Pulled inward from x=0.05 to prevent edge clipping
+            priority: 2,
+            allowedCategories: ['nightstand', 'lighting'],
+            maxItems: 2,
+            orientation: 'wall',
+            clearance: 0.03,
+            heightTier: 'surface'
+        },
+        // Zone 3: Right nightstand with table lamp
+        {
+            id: 'bedside_right',
+            name: 'Right Nightstand Zone',
+            bounds: { x: 0.75, y: 0.65, width: 0.15, height: 0.25 }, // Pulled inward from x=0.8 to prevent edge clipping
+            priority: 2,
+            allowedCategories: ['nightstand', 'lighting'],
+            maxItems: 2,
+            orientation: 'wall',
+            clearance: 0.03,
+            heightTier: 'surface'
+        },
+        // Zone 4: Dresser/storage opposite bed
+        {
+            id: 'dresser_zone',
+            name: 'Dresser/Storage Wall',
+            bounds: { x: 0.25, y: 0.05, width: 0.5, height: 0.15 },
+            priority: 3,
+            allowedCategories: ['dresser', 'storage'],
+            maxItems: 2,
+            orientation: 'wall',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 5: Reading corner with optional seating
+        {
+            id: 'seating_corner',
+            name: 'Reading/Seating Corner',
+            bounds: { x: 0.08, y: 0.08, width: 0.12, height: 0.22 }, // Pulled inward from x=0.05 to prevent edge clipping
+            priority: 4,
+            allowedCategories: ['accent_seating', 'side_table', 'lighting'],
+            maxItems: 2,
+            orientation: 'corner',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 6: Area rug under bed extending to seating
+        {
+            id: 'bedroom_rug',
+            name: 'Bedroom Rug Zone',
+            bounds: { x: 0.15, y: 0.3, width: 0.7, height: 0.5 },
+            priority: 5,
+            allowedCategories: ['decor'],
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.0,
+            heightTier: 'floor'
+        },
+        // Zone 7: Wall art above headboard
+        {
+            id: 'headboard_art',
+            name: 'Headboard Art Zone',
+            bounds: { x: 0.3, y: 0.85, width: 0.4, height: 0.15 },
+            priority: 6,
+            allowedCategories: ['decor'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.0,
+            heightTier: 'wall'
+        }
+    ],
+    'Dining Room': [
+        // Zone 1: Dining table centered in room (anchor piece)
+        {
+            id: 'dining_table_zone',
+            name: 'Dining Table Area',
+            bounds: { x: 0.25, y: 0.3, width: 0.5, height: 0.4 },
+            priority: 1,
+            allowedCategories: ['dining_table'],
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.1,
+            adjacentZones: ['chair_zone'],
+            heightTier: 'floor'
+        },
+        // Zone 2: Dining chairs around table
+        {
+            id: 'chair_zone',
+            name: 'Dining Chairs Zone',
+            bounds: { x: 0.15, y: 0.2, width: 0.7, height: 0.6 },
+            priority: 2,
+            allowedCategories: ['dining_seating'],
+            maxItems: 8,
+            orientation: 'center',
+            clearance: 0.08,
+            heightTier: 'floor'
+        },
+        // Zone 3: Sideboard/buffet against wall
+        {
+            id: 'buffet_wall',
+            name: 'Buffet/Sideboard Wall',
+            bounds: { x: 0.1, y: 0.85, width: 0.8, height: 0.15 },
+            priority: 3,
+            allowedCategories: ['storage'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 4: Chandelier centered over table
+        {
+            id: 'chandelier_zone',
+            name: 'Chandelier Zone',
+            bounds: { x: 0.4, y: 0.4, width: 0.2, height: 0.2 },
+            priority: 4,
+            allowedCategories: ['lighting'],
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.0,
+            heightTier: 'wall'
+        },
+        // Zone 5: Area rug under dining table
+        {
+            id: 'dining_rug',
+            name: 'Dining Rug Zone',
+            bounds: { x: 0.1, y: 0.15, width: 0.8, height: 0.7 },
+            priority: 5,
+            allowedCategories: ['decor'],
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.0,
+            heightTier: 'floor'
+        },
+        // Zone 6: Wall art above buffet/sideboard
+        {
+            id: 'dining_wall_art',
+            name: 'Dining Wall Art Zone',
+            bounds: { x: 0.25, y: 0.0, width: 0.5, height: 0.12 },
+            priority: 6,
+            allowedCategories: ['decor'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.0,
+            heightTier: 'wall'
+        }
+    ],
+    'Home Office': [
+        // Zone 1: Desk against wall (anchor piece)
+        {
+            id: 'desk_zone',
+            name: 'Desk Area',
+            bounds: { x: 0.25, y: 0.7, width: 0.5, height: 0.25 },
+            priority: 1,
+            allowedCategories: ['desk'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.08,
+            adjacentZones: ['chair_zone', 'task_lighting'],
+            heightTier: 'floor'
+        },
+        // Zone 2: Office chair at desk
+        {
+            id: 'office_chair_zone',
+            name: 'Office Chair Zone',
+            bounds: { x: 0.35, y: 0.5, width: 0.3, height: 0.2 },
+            priority: 2,
+            allowedCategories: ['office_seating'],
+            maxItems: 1,
+            orientation: 'focal',
+            clearance: 0.1,
+            heightTier: 'floor'
+        },
+        // Zone 3: Storage/bookshelves along wall
+        {
+            id: 'storage_wall',
+            name: 'Storage/Bookshelf Wall',
+            bounds: { x: 0.08, y: 0.2, width: 0.12, height: 0.6 }, // Pulled inward from x=0.0 to prevent edge clipping
+            priority: 3,
+            allowedCategories: ['storage'],
+            maxItems: 2,
+            orientation: 'wall',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 4: Task lamp on desk surface
+        {
+            id: 'task_lighting',
+            name: 'Task Lighting Zone',
+            bounds: { x: 0.6, y: 0.75, width: 0.15, height: 0.15 },
+            priority: 4,
+            allowedCategories: ['lighting'],
+            maxItems: 1,
+            orientation: 'focal',
+            clearance: 0.0,
+            heightTier: 'surface'
+        },
+        // Zone 5: Guest seating area
+        {
+            id: 'guest_zone',
+            name: 'Guest Seating Area',
+            bounds: { x: 0.7, y: 0.3, width: 0.2, height: 0.35 }, // Pulled inward from x=0.75 to prevent edge clipping
+            priority: 5,
+            allowedCategories: ['accent_seating', 'side_table'],
+            maxItems: 2,
+            orientation: 'corner',
+            clearance: 0.05,
+            heightTier: 'floor'
+        },
+        // Zone 6: Area rug under desk/seating
+        {
+            id: 'office_rug',
+            name: 'Office Rug Zone',
+            bounds: { x: 0.15, y: 0.2, width: 0.6, height: 0.6 },
+            priority: 6,
+            allowedCategories: ['decor'],
+            maxItems: 1,
+            orientation: 'center',
+            clearance: 0.0,
+            heightTier: 'floor'
+        },
+        // Zone 7: Wall art above desk or storage
+        {
+            id: 'office_wall_art',
+            name: 'Office Wall Art Zone',
+            bounds: { x: 0.3, y: 0.9, width: 0.4, height: 0.1 },
+            priority: 7,
+            allowedCategories: ['decor'],
+            maxItems: 1,
+            orientation: 'wall',
+            clearance: 0.0,
+            heightTier: 'wall'
+        }
+    ]
+};
+// Define room composition templates with essential and complementary items
+// Based on professional interior design packages (see PDF analysis)
+const ROOM_TEMPLATES = {
+    'Living Room': {
+        // Full design: 7-8 products for a complete, cohesive living space
+        // Pattern: 1 sofa, 1 coffee table, 1-2 accent chairs, 1 side table, 1 storage, 1 lamp, 1 decor
+        essentials: {
+            'primary_seating': { min: 1, max: 1, priority: 1 }, // REQUIRED: 1 Sofa/Sectional (anchor piece)
+            'coffee_table': { min: 1, max: 1, priority: 2 }, // REQUIRED: Center table
+            'accent_seating': { min: 1, max: 2, priority: 3 }, // REQUIRED: 1-2 accent chairs/ottomans/stools
+        },
+        complementary: {
+            'side_table': { min: 1, max: 2, priority: 4 }, // 1-2 side/end tables for functional balance
+            'storage': { min: 1, max: 1, priority: 5 }, // Console table, sideboard, or bookshelf
+            'lighting': { min: 1, max: 2, priority: 6 }, // 1-2 floor/table lamps for ambiance
+            'decor': { min: 1, max: 1, priority: 7 }, // Rug, mirror, or accent piece
+        }
+    },
+    'Bedroom': {
+        // Full design: 7-8 products for a complete, restful bedroom
+        // Pattern: 1 bed, 2 nightstands, 2 table lamps, 1 dresser, 1 seating, 1 decor
+        essentials: {
+            'bed': { min: 1, max: 1, priority: 1 }, // REQUIRED: Bed (anchor piece)
+            'nightstand': { min: 1, max: 2, priority: 2 }, // REQUIRED: Symmetric pair preferred
+            'lighting': { min: 1, max: 2, priority: 3 }, // REQUIRED: Bedside table lamps
+        },
+        complementary: {
+            'dresser': { min: 1, max: 1, priority: 4 }, // Dresser/chest for storage
+            'storage': { min: 0, max: 1, priority: 5 }, // Optional: Wardrobe/armoire if space allows
+            'accent_seating': { min: 1, max: 1, priority: 6 }, // Bench at foot of bed or reading chair
+            'decor': { min: 1, max: 1, priority: 7 }, // Rug, mirror, or wall art
+        }
+    },
+    'Dining Room': {
+        // Full design: 6-7 products for an elegant dining experience
+        // Pattern: 1 table, 1-2 chair styles, 1 chandelier, 1 sideboard, 1-2 decor
+        essentials: {
+            'dining_table': { min: 1, max: 1, priority: 1 }, // REQUIRED: Dining table (anchor)
+            'dining_seating': { min: 1, max: 2, priority: 2 }, // 1-2 chair products; AI renders multiple copies
+            'lighting': { min: 1, max: 1, priority: 3 }, // REQUIRED: Chandelier/pendant over table
+        },
+        complementary: {
+            'storage': { min: 1, max: 1, priority: 4 }, // Buffet/sideboard for dishes and serving
+            'decor': { min: 1, max: 2, priority: 5 }, // Rug, centerpiece, wall art, or mirror
+        }
+    },
+    'Home Office': {
+        // Full design: 7-8 products for a productive workspace
+        // Pattern: 1 desk, 1 chair, 2 storage, 1-2 lamps, 1 guest seating, 1 decor
+        essentials: {
+            'desk': { min: 1, max: 1, priority: 1 }, // REQUIRED: Desk (anchor)
+            'office_seating': { min: 1, max: 1, priority: 2 }, // REQUIRED: Ergonomic chair
+            'storage': { min: 1, max: 2, priority: 3 }, // REQUIRED: Bookshelves/filing
+            'lighting': { min: 1, max: 2, priority: 4 }, // REQUIRED: Task lamp + ambient
+        },
+        complementary: {
+            'accent_seating': { min: 1, max: 1, priority: 5 }, // Guest chair for meetings
+            'side_table': { min: 1, max: 1, priority: 6 }, // Side table for guest area
+            'decor': { min: 1, max: 1, priority: 7 }, // Rug, plant, or wall art
+        }
+    }
+};
+// Map product categories to functional categories
+// IMPORTANT: Include BOTH singular and plural forms to match actual database category names
+const CATEGORY_TO_FUNCTIONAL = {
+    // Primary seating (singular and plural)
+    'Sofa': ['primary_seating'],
+    'Sofas': ['primary_seating'],
+    'Sofas & Sectionals': ['primary_seating'],
+    'Sectional': ['primary_seating'],
+    'Sectionals': ['primary_seating'],
+    // Accent seating (singular and plural)
+    'Chair': ['accent_seating'],
+    'Chairs': ['accent_seating'],
+    'Accent Chair': ['accent_seating'],
+    'Accent Chairs': ['accent_seating'],
+    'Armchair': ['accent_seating'],
+    'Armchairs': ['accent_seating'],
+    'Ottoman': ['accent_seating'],
+    'Ottomans': ['accent_seating'],
+    'Bench': ['accent_seating', 'bedroom_seating'],
+    'Benches': ['accent_seating', 'bedroom_seating'],
+    'Stool': ['accent_seating'],
+    'Stools': ['accent_seating'],
+    'Reading Chair': ['accent_seating'],
+    'Swivel Chair': ['accent_seating'],
+    'Chaise Lounge': ['accent_seating'],
+    // Tables (singular and plural)
+    'Coffee Table': ['coffee_table'],
+    'Coffee Tables': ['coffee_table'],
+    'Side Table': ['side_table'],
+    'Side Tables': ['side_table'],
+    'End Table': ['side_table'],
+    'End Tables': ['side_table'],
+    'End/Side Table': ['side_table'],
+    'Console Table': ['console_table', 'storage'],
+    'Console Tables': ['console_table', 'storage'],
+    'Table': ['side_table'],
+    // Storage (singular and plural)
+    'Cabinet': ['storage'],
+    'Cabinets': ['storage'],
+    'Sideboard': ['storage'],
+    'Sideboards': ['storage'],
+    'Buffet': ['storage'],
+    'Buffets': ['storage'],
+    'Bar Cabinet': ['storage'],
+    'Cabinet / Sideboard / Buffet': ['storage'],
+    'Bookcase': ['storage'],
+    'Bookcases': ['storage'],
+    'Shelving Unit': ['storage'],
+    'Shelving': ['storage'],
+    'Media Unit': ['storage'],
+    'Storage': ['storage'],
+    // Bedroom furniture (singular and plural)
+    'Dresser': ['dresser', 'storage'],
+    'Dressers': ['dresser', 'storage'],
+    'Nightstand': ['nightstand'],
+    'Nightstands': ['nightstand'],
+    'Bed': ['bed'],
+    'Beds': ['bed'],
+    // Dining (singular and plural)
+    'Dining Table': ['dining_table'],
+    'Dining Tables': ['dining_table'],
+    'Dining Chair': ['dining_seating'],
+    'Dining Chairs': ['dining_seating'],
+    'Dining Bench': ['dining_seating'],
+    // Office (singular and plural)
+    'Desk': ['desk'],
+    'Desks': ['desk'],
+    'Large Desk': ['desk'],
+    'Secretary Desk': ['desk'],
+    'Office Chair': ['office_seating'],
+    'Office Chairs': ['office_seating'],
+    // Lighting (singular and plural)
+    'Table Lamp': ['lighting'],
+    'Table Lamps': ['lighting'],
+    'Floor Lamp': ['lighting'],
+    'Floor Lamps': ['lighting'],
+    'Pendant Light': ['lighting'],
+    'Pendant Lights': ['lighting'],
+    'Chandelier': ['lighting'],
+    'Chandeliers': ['lighting'],
+    'Lighting': ['lighting'],
+    'Outdoor Lamp': ['lighting'],
+    // Decor (singular and plural)
+    'Wall Art': ['decor'],
+    'Mirror': ['decor'],
+    'Mirrors': ['decor'],
+    'Rug': ['decor'],
+    'Rugs': ['decor'],
+    'Vase': ['decor'],
+    'Vases': ['decor'],
+    'Home Decor': ['decor'],
+    'Decor': ['decor'],
+    'Accessory': ['decor'],
+};
+// Detect functional category from product name, description, and database category
+// categoryMap is optional - if provided, it maps categoryId UUID to category name
+function detectFunctionalCategory(product, categoryMap) {
+    const categories = new Set();
+    // Check explicit category mapping using the categoryMap
+    if (product.categoryId && categoryMap) {
+        const categoryName = categoryMap.get(product.categoryId);
+        if (categoryName) {
+            const mapped = CATEGORY_TO_FUNCTIONAL[categoryName];
+            if (mapped) {
+                mapped.forEach(cat => categories.add(cat));
+            }
+        }
+    }
+    // Analyze product name and description
+    const productName = product.name.toLowerCase();
+    const text = `${product.name} ${product.description || ''}`.toLowerCase();
+    // Primary seating detection - STRICT: only check product name and exclude ottomans/benches/stools
+    // This prevents "pairs with sofa" descriptions from misclassifying accent pieces
+    const isPrimarySeatingExcluded = productName.includes('ottoman') ||
+        productName.includes('bench') ||
+        productName.includes('stool') ||
+        productName.includes('pouf');
+    if (!isPrimarySeatingExcluded &&
+        (productName.includes('sofa') || productName.includes('couch') ||
+            productName.includes('sectional') || productName.includes('loveseat'))) {
+        categories.add('primary_seating');
+    }
+    // Bed detection - STRICT: Only match actual beds, not trunks/benches/storage
+    // Check product NAME only (not description) to avoid false positives
+    const isBed = productName.includes(' bed') ||
+        productName.startsWith('bed ') ||
+        productName.endsWith(' bed') ||
+        productName === 'bed';
+    const isNotBed = productName.includes('bedside') ||
+        productName.includes('bedroom') ||
+        productName.includes('trunk') ||
+        productName.includes('bench');
+    if (isBed && !isNotBed) {
+        categories.add('bed');
+    }
+    // IMPORTANT: Detect if product is primarily a chair (word boundary match)
+    // Use word boundary to allow "Chairside Table" while blocking "Dining Chair"
+    // A "Dining Chair" should NEVER be categorized as "dining_table" even if description mentions "dining table"
+    const isChairProduct = /\bchair(s)?\b/i.test(productName) && !productName.toLowerCase().includes('chairside');
+    const isTableProduct = /\btable(s)?\b/i.test(productName);
+    // Seating detection - RUN FIRST to prevent chairs from being categorized as tables
+    if (/\bchair(s)?\b/i.test(text) && !text.includes('armchair')) {
+        if (text.includes('dining') || productName.toLowerCase().includes('dining')) {
+            categories.add('dining_seating');
+        }
+        else if (text.includes('office') || text.includes('desk')) {
+            categories.add('office_seating');
+        }
+        else {
+            categories.add('accent_seating');
+        }
+    }
+    // Table detection (check console table first since it's more specific)
+    // Note: Only match "console table" specifically, not just "console" to avoid false positives
+    // For dining table: if product name has "chair" as a word AND "dining", it's dining_seating not dining_table
+    const isDiningChair = isChairProduct && productName.toLowerCase().includes('dining');
+    if (text.includes('console table') || productName.toLowerCase().includes('console table') || productName.toLowerCase().includes('chairside')) {
+        categories.add('console_table');
+    }
+    else if (text.includes('coffee table')) {
+        categories.add('coffee_table');
+    }
+    else if ((text.includes('dining table') || productName.toLowerCase().includes('dining table')) && isTableProduct && !isDiningChair) {
+        // For dining table, require "table" in the product name AND exclude dining chairs
+        categories.add('dining_table');
+    }
+    else if (text.includes('side table') || text.includes('end table') || text.includes('accent table')) {
+        categories.add('side_table');
+    }
+    else if (text.includes('nightstand') || text.includes('bedside table')) {
+        categories.add('nightstand');
+    }
+    else if (text.includes('desk') && !text.includes('desktop')) {
+        categories.add('desk');
+    }
+    if (text.includes('armchair') || text.includes('accent chair') || text.includes('ottoman') || text.includes('pouf')) {
+        categories.add('accent_seating');
+    }
+    if (text.includes('bench')) {
+        categories.add('accent_seating');
+    }
+    // Storage detection
+    if (text.includes('cabinet') || text.includes('sideboard') || text.includes('buffet') ||
+        text.includes('bookcase') || text.includes('shelf') || text.includes('shelving') ||
+        text.includes('dresser') || text.includes('wardrobe') || text.includes('armoire')) {
+        categories.add('storage');
+    }
+    // Lighting detection - use word boundaries to avoid matching "highlight", "lowlight", etc.
+    // Match: lamp, chandelier, pendant, sconce (primary lighting keywords)
+    // For "light" as standalone word, be more careful to avoid false positives
+    const hasLampKeyword = /\blamp(s)?\b/i.test(text);
+    const hasChandelierKeyword = /\bchandelier(s)?\b/i.test(text);
+    const hasPendantKeyword = /\bpendant(s)?\b/i.test(text);
+    const hasSconceKeyword = /\bsconce(s)?\b/i.test(text);
+    // Only match "light" or "lighting" if NOT part of "highlight", "lowlight", "lighter", "delightful", etc.
+    // Also check product name explicitly for "light" as it's more reliable
+    const hasLightInName = /\blight(s|ing)?\b/i.test(productName);
+    // A product is lighting if it has any primary lighting keyword OR "light/lighting" in name
+    const isLighting = hasLampKeyword || hasChandelierKeyword || hasPendantKeyword || hasSconceKeyword || hasLightInName;
+    // Products with lamp/chandelier/pendant/sconce are ALWAYS lighting regardless of other words
+    // (this ensures "Table Lamp" is still categorized as lighting)
+    if (isLighting) {
+        categories.add('lighting');
+    }
+    // Decor detection
+    if (text.includes('art') || text.includes('mirror') || text.includes('vase') ||
+        text.includes('rug') || text.includes('pillow') || text.includes('throw') ||
+        text.includes('plant') || text.includes('decor')) {
+        categories.add('decor');
+    }
+    return Array.from(categories);
+}
+/**
+ * Detect lighting type from product name/description
+ */
+function detectLightingType(product) {
+    const text = `${product.name} ${product.description || ''}`.toLowerCase();
+    if (text.includes('floor lamp') || text.includes('standing lamp')) {
+        return 'floor';
+    }
+    else if (text.includes('table lamp') || text.includes('desk lamp') || text.includes('bedside lamp')) {
+        return 'table';
+    }
+    else if (text.includes('chandelier') || text.includes('pendant') || text.includes('ceiling')) {
+        return 'ceiling';
+    }
+    else if (text.includes('sconce') || text.includes('wall lamp')) {
+        return 'wall';
+    }
+    return null;
+}
+/**
+ * Categories that represent surfaces suitable for table lamps
+ */
+const SURFACE_CATEGORIES = new Set([
+    'side_table',
+    'nightstand',
+    'console_table',
+    'dresser',
+    'desk',
+    'coffee_table'
+]);
+/**
+ * Check if a product is a supporting surface for table lamps
+ */
+function isSupportingSurface(product) {
+    const categories = detectFunctionalCategory(product);
+    return categories.some(cat => SURFACE_CATEGORIES.has(cat));
+}
+/**
+ * Substitute table lamps with floor lamps when no supporting surface exists
+ * This prevents the AI from inventing tables that aren't in the product catalog
+ *
+ * @param selectedProducts - Current product selection
+ * @param allProducts - Full product catalog for finding floor lamp alternatives
+ * @param composition - Category-based composition map to update
+ * @returns Updated product selection with substitutions applied
+ */
+async function substituteTableLampsIfNoSurface(selectedProducts, allProducts, composition) {
+    const warnings = [];
+    // Find all table lamps in selection
+    const tableLamps = selectedProducts.filter(p => detectLightingType(p) === 'table');
+    if (tableLamps.length === 0) {
+        return { products: selectedProducts, substitutionsMade: 0, warnings };
+    }
+    // Check if there's at least one supporting surface in the selection
+    const hasSupportingSurface = selectedProducts.some(p => isSupportingSurface(p));
+    if (hasSupportingSurface) {
+        console.log(`💡 Table lamps have supporting surfaces - no substitution needed`);
+        return { products: selectedProducts, substitutionsMade: 0, warnings };
+    }
+    console.log(`⚠️ No supporting surfaces found for ${tableLamps.length} table lamp(s) - substituting with floor lamps`);
+    // Get IDs of products already in selection to avoid duplicates
+    const selectedProductIds = new Set(selectedProducts.map(p => p.id));
+    // Find floor lamp alternatives from the catalog (excluding already selected ones)
+    const availableFloorLamps = allProducts.filter(p => {
+        // Must be a floor lamp
+        const lightType = detectLightingType(p);
+        if (lightType !== 'floor')
+            return false;
+        // Must NOT already be in selection
+        if (selectedProductIds.has(p.id))
+            return false;
+        // Ensure floor lamp has valid images
+        if (!p.images || !Array.isArray(p.images) || p.images.length === 0)
+            return false;
+        const hasValidImage = p.images.some(img => img && typeof img === 'string' &&
+            (img.startsWith('http://') || img.startsWith('https://')));
+        return hasValidImage;
+    });
+    if (availableFloorLamps.length === 0) {
+        // No floor lamps available - remove table lamps entirely rather than let AI invent tables
+        console.warn(`   ⚠️ No floor lamps available in catalog - removing table lamps to prevent invented furniture`);
+        const updatedProducts = selectedProducts.filter(p => detectLightingType(p) !== 'table');
+        // Update composition
+        if (composition['lighting']) {
+            composition['lighting'] = composition['lighting'].filter(p => detectLightingType(p) !== 'table');
+        }
+        warnings.push(`Removed ${tableLamps.length} table lamp(s) - no supporting surfaces or floor lamp alternatives available`);
+        return { products: updatedProducts, substitutionsMade: tableLamps.length, warnings };
+    }
+    // Sort floor lamps by quality (prefer those with visual descriptions)
+    availableFloorLamps.sort((a, b) => {
+        const aHasDesc = (a.visualDescription || a.visualDescriptionGemini) ? 1 : 0;
+        const bHasDesc = (b.visualDescription || b.visualDescriptionGemini) ? 1 : 0;
+        return bHasDesc - aHasDesc;
+    });
+    // Substitute each table lamp with a floor lamp
+    const updatedProducts = [...selectedProducts];
+    let substitutionsMade = 0;
+    let floorLampIndex = 0;
+    for (const tableLamp of tableLamps) {
+        if (floorLampIndex >= availableFloorLamps.length) {
+            // No more floor lamps available - remove remaining table lamps
+            console.warn(`   ⚠️ Not enough floor lamps - removing remaining table lamp "${tableLamp.name}"`);
+            const tableLampIdx = updatedProducts.findIndex(p => p.id === tableLamp.id);
+            if (tableLampIdx !== -1) {
+                updatedProducts.splice(tableLampIdx, 1);
+                // Update composition
+                if (composition['lighting']) {
+                    const compIdx = composition['lighting'].findIndex(p => p.id === tableLamp.id);
+                    if (compIdx !== -1) {
+                        composition['lighting'].splice(compIdx, 1);
+                    }
+                }
+                substitutionsMade++;
+            }
+            continue;
+        }
+        const floorLamp = availableFloorLamps[floorLampIndex];
+        floorLampIndex++;
+        // Find and replace the table lamp in the product list
+        const tableLampIndex = updatedProducts.findIndex(p => p.id === tableLamp.id);
+        if (tableLampIndex !== -1) {
+            updatedProducts[tableLampIndex] = floorLamp;
+            selectedProductIds.add(floorLamp.id); // Mark as used to prevent duplicates
+            // Update composition map
+            if (composition['lighting']) {
+                const compIndex = composition['lighting'].findIndex(p => p.id === tableLamp.id);
+                if (compIndex !== -1) {
+                    composition['lighting'][compIndex] = floorLamp;
+                }
+            }
+            console.log(`   🔄 Substituted table lamp "${tableLamp.name}" ($${tableLamp.price}) → floor lamp "${floorLamp.name}" ($${floorLamp.price})`);
+            substitutionsMade++;
+        }
+    }
+    console.log(`   ✅ Made ${substitutionsMade} table lamp substitution(s)`);
+    return { products: updatedProducts, substitutionsMade, warnings };
+}
+/**
+ * Assign products to room zones based on functional categories and zone rules
+ */
+function assignItemsToZones(roomType, selectedProducts, composition) {
+    const zones = ROOM_ZONES[roomType];
+    if (!zones)
+        return [];
+    const placements = [];
+    const zoneOccupancy = {};
+    const floorLampCount = { total: 0, perZone: {} };
+    // Initialize zone occupancy tracking
+    zones.forEach(zone => {
+        zoneOccupancy[zone.id] = 0;
+        floorLampCount.perZone[zone.id] = 0;
+    });
+    // Sort products by priority (essentials first)
+    const sortedProducts = [...selectedProducts].sort((a, b) => {
+        const aCats = detectFunctionalCategory(a);
+        const bCats = detectFunctionalCategory(b);
+        // Check if essential (from room template)
+        const template = ROOM_TEMPLATES[roomType];
+        const aEssential = aCats.some(cat => template?.essentials?.[cat]);
+        const bEssential = bCats.some(cat => template?.essentials?.[cat]);
+        if (aEssential && !bEssential)
+            return -1;
+        if (!aEssential && bEssential)
+            return 1;
+        return 0;
+    });
+    // Assign each product to best available zone
+    for (const product of sortedProducts) {
+        const categories = detectFunctionalCategory(product);
+        if (categories.length === 0)
+            continue;
+        let bestZone = null;
+        let bestScore = -1;
+        // Special handling for lighting to prevent multiple floor lamps
+        if (categories.includes('lighting')) {
+            const lightType = detectLightingType(product);
+            // Strict floor lamp limiting
+            if (lightType === 'floor') {
+                if (floorLampCount.total >= 1) {
+                    console.log(`Skipping floor lamp "${product.name}" - already have maximum floor lamps`);
+                    continue; // Skip this floor lamp entirely
+                }
+            }
+        }
+        // Find best zone for this product
+        for (const zone of zones) {
+            // Check if zone allows any of product's categories
+            const canFit = categories.some(cat => zone.allowedCategories.includes(cat));
+            if (!canFit)
+                continue;
+            // Check zone capacity
+            if (zoneOccupancy[zone.id] >= zone.maxItems)
+                continue;
+            // Special checks for lighting placement
+            if (categories.includes('lighting')) {
+                const lightType = detectLightingType(product);
+                // Table lamps only in zones with surfaces
+                if (lightType === 'table' && zone.heightTier !== 'surface')
+                    continue;
+                // Ceiling lights only in ceiling zones
+                if (lightType === 'ceiling' && zone.heightTier !== 'wall')
+                    continue;
+                // Floor lamps - check zone limit
+                if (lightType === 'floor' && floorLampCount.perZone[zone.id] >= 1)
+                    continue;
+            }
+            // Calculate zone fitness score
+            let score = 100 - (zone.priority * 10); // Prioritize higher priority zones
+            // Bonus for matching orientation preferences
+            if (zone.orientation === 'wall' && product.name.toLowerCase().includes('wall'))
+                score += 20;
+            if (zone.orientation === 'center' && categories.includes('coffee_table'))
+                score += 20;
+            if (zone.orientation === 'focal' && categories.includes('primary_seating'))
+                score += 30;
+            // Penalty for zone congestion
+            score -= (zoneOccupancy[zone.id] * 15);
+            if (score > bestScore) {
+                bestScore = score;
+                bestZone = zone;
+            }
+        }
+        if (bestZone) {
+            // Calculate position within zone
+            const position = {
+                x: bestZone.bounds.x + (bestZone.bounds.width * 0.5),
+                y: bestZone.bounds.y + (bestZone.bounds.height * 0.5)
+            };
+            // Adjust position based on zone occupancy for spacing
+            if (zoneOccupancy[bestZone.id] > 0) {
+                const offset = (zoneOccupancy[bestZone.id] / bestZone.maxItems) * 0.3;
+                position.x += offset * bestZone.bounds.width;
+            }
+            // CRITICAL: Apply 8% safety margin to prevent furniture from being cut off at frame edges
+            // Products centered near edges (e.g., x=0.9) will extend beyond the visible frame
+            // Clamp coordinates to [0.08, 0.92] to ensure all furniture appears fully within the render
+            const FRAME_MARGIN = 0.08; // 8% margin from each edge
+            position.x = Math.max(FRAME_MARGIN, Math.min(1 - FRAME_MARGIN, position.x));
+            position.y = Math.max(FRAME_MARGIN, Math.min(1 - FRAME_MARGIN, position.y));
+            // Determine orientation based on zone type
+            let orientation = 0;
+            if (bestZone.orientation === 'focal') {
+                orientation = 0; // Face forward
+            }
+            else if (bestZone.orientation === 'wall') {
+                orientation = 180; // Against wall
+            }
+            else if (bestZone.orientation === 'corner') {
+                orientation = 45; // Diagonal
+            }
+            // Calculate spacing based on product type and zone clearance
+            const spacing = {
+                front: bestZone.clearance * 1.5,
+                sides: bestZone.clearance,
+                back: bestZone.clearance * 0.5
+            };
+            // Determine support surface for table lamps
+            let supportSurface;
+            if (categories.includes('lighting') && detectLightingType(product) === 'table') {
+                // Find a surface in the same zone (use SKU for matching)
+                const surfaceProducts = placements.filter(p => p.zoneId === bestZone.id &&
+                    ['side_table', 'nightstand', 'dresser'].some(cat => detectFunctionalCategory(sortedProducts.find(sp => sp.sku === p.productId) || {}).includes(cat)));
+                if (surfaceProducts.length > 0) {
+                    supportSurface = surfaceProducts[0].productId;
+                }
+            }
+            // Calculate confidence based on fit quality
+            const confidence = Math.max(0, Math.min(1, bestScore / 100));
+            placements.push({
+                productId: product.sku,
+                zoneId: bestZone.id,
+                position,
+                orientation,
+                anchorPoint: bestZone.orientation === 'wall' ? 'wall' :
+                    bestZone.orientation === 'corner' ? 'corner' : 'center',
+                spacing,
+                supportSurface,
+                confidence
+            });
+            zoneOccupancy[bestZone.id]++;
+            // Track floor lamp placement
+            if (categories.includes('lighting') && detectLightingType(product) === 'floor') {
+                floorLampCount.total++;
+                floorLampCount.perZone[bestZone.id]++;
+            }
+        }
+        else {
+            console.warn(`Could not find suitable zone for product: ${product.name}`);
+        }
+    }
+    return placements;
+}
+/**
+ * Categories that need matching sets (same product repeated)
+ * For these, select the BEST product and replicate it instead of diversifying
+ */
+const SET_CATEGORIES = new Set([
+    'office_seating', // Office chairs - need matching set
+    'bedroom_seating', // Bedroom chairs - need matching set
+    'accent_seating_set' // Accent chair sets
+    // REMOVED 'dining_seating' - AI renders multiple copies based on quiz seating count
+]);
+/**
+ * Select products using NEW PRIORITIZATION: Space → Fit → Preference → Budget
+ *
+ * Pipeline order:
+ * 1. SPACE ANALYSIS: Use room dimensions to understand available placement zones
+ * 2. FIT VALIDATION: Filter products by physical fit BEFORE any preference scoring
+ * 3. STYLE MATCHING: Score remaining products by user style/color/texture preferences
+ * 4. BUDGET CONSTRAINTS: Apply budget as the LAST filter (preserve quality over cost)
+ */
+export async function selectProductsWithComposition(roomType, candidateProducts, quizResponse, maxProducts = 15, roomDimensions, // Optional room dimensions for fit validation
+detectedDimensions // Detected from AI analysis
+) {
+    console.log('\n' + '='.repeat(70));
+    console.log('🎯 PRODUCT SELECTION PIPELINE: Space → Fit → Preference (Dynamic)');
+    console.log('='.repeat(70));
+    // STEP 0: CALCULATE SPACE PROFILE from detected dimensions
+    const spaceProfile = calculateSpaceTier(detectedDimensions?.lengthFeet ?? (roomDimensions ? roomDimensions.depth / 12 : null), detectedDimensions?.widthFeet ?? (roomDimensions ? roomDimensions.width / 12 : null), detectedDimensions?.ceilingHeightFeet ?? (roomDimensions ? roomDimensions.ceilingHeight / 12 : 8));
+    // Get base template
+    const baseTemplate = ROOM_TEMPLATES[roomType];
+    if (!baseTemplate) {
+        // Fallback: return diverse selection if no template
+        return {
+            selectedProducts: candidateProducts.slice(0, spaceProfile.maxProducts),
+            composition: {},
+            missingEssentials: [],
+            warnings: ['No room template defined for ' + roomType]
+        };
+    }
+    // Adjust template based on space profile (dynamic product counts)
+    const template = adjustTemplateForSpace(baseTemplate, spaceProfile, roomType);
+    // Override maxProducts based on space tier
+    const effectiveMaxProducts = Math.min(maxProducts, spaceProfile.maxProducts);
+    // STEP 1: SPACE ANALYSIS - Calculate available zones and constraints
+    console.log('\n📐 STEP 1: SPACE ANALYSIS');
+    if (detectedDimensions?.lengthFeet && detectedDimensions?.widthFeet) {
+        console.log(`   Detected room: ${detectedDimensions.lengthFeet}' x ${detectedDimensions.widthFeet}' (${spaceProfile.squareFeet} sq ft)`);
+        console.log(`   Space tier: ${spaceProfile.tier.toUpperCase()}`);
+        console.log(`   Dual seating allowed: ${spaceProfile.canFitDualSeating ? 'YES' : 'NO'}`);
+    }
+    else if (roomDimensions) {
+        console.log(`   Room size: ${roomDimensions.width}" x ${roomDimensions.depth}" (${(roomDimensions.width / 12).toFixed(1)}' x ${(roomDimensions.depth / 12).toFixed(1)}')`);
+        console.log(`   Ceiling: ${roomDimensions.ceilingHeight}" (${(roomDimensions.ceilingHeight / 12).toFixed(1)}')`);
+        if (roomDimensions.windows?.length)
+            console.log(`   Windows: ${roomDimensions.windows.length}`);
+        if (roomDimensions.doors?.length)
+            console.log(`   Doors: ${roomDimensions.doors.length}`);
+    }
+    else {
+        console.log('   Using default room dimensions (14x12 ft typical)');
+        console.log('   Tip: Upload a room photo for dynamic space-aware product selection');
+    }
+    // Calculate budget allocation (but DON'T apply it during scoring - apply at END)
+    let budgetAllocation = null;
+    if (quizResponse?.budgetRange) {
+        try {
+            budgetAllocation = calculateBudgetAllocation(roomType, quizResponse.budgetRange);
+            console.log(`\n💰 Budget allocation (will apply LAST):`);
+            console.log(`   Total: $${budgetAllocation.totalBudget.toFixed(0)}`);
+            console.log(`   Categories:`, budgetAllocation.categoryBudgets.map(cb => `${cb.category}: $${cb.allocatedBudget.toFixed(0)}`).join(', '));
+        }
+        catch (error) {
+            console.warn(`Failed to calculate budget allocation: ${error}`);
+        }
+    }
+    // Fetch category information for products
+    const categoryMap = new Map();
+    const categories = await curalinaStorage.getAllCategories();
+    categories.forEach(cat => {
+        categoryMap.set(cat.id, cat.name);
+    });
+    // Categorize all candidate products
+    const productsByCategory = {};
+    const uncategorized = [];
+    for (const product of candidateProducts) {
+        const cats = detectFunctionalCategory(product, categoryMap);
+        if (cats.length === 0) {
+            uncategorized.push(product);
+        }
+        else {
+            for (const cat of cats) {
+                if (!productsByCategory[cat]) {
+                    productsByCategory[cat] = [];
+                }
+                productsByCategory[cat].push(product);
+            }
+        }
+    }
+    const selectedProducts = [];
+    const composition = {};
+    const missingEssentials = [];
+    const warnings = [];
+    const usedProductIds = new Set();
+    // Process categories by priority (essentials first)
+    const allRules = { ...template.essentials, ...template.complementary };
+    const sortedCategories = Object.entries(allRules).sort((a, b) => a[1].priority - b[1].priority);
+    console.log('\n📐 STEP 2: FIT VALIDATION (filter before scoring)');
+    // OPTIMIZATION: Pre-compute fit validations for ALL categories in parallel
+    const startFitTime = Date.now();
+    const fitResultsByCategory = {};
+    // Run fit validation for all categories simultaneously
+    await Promise.all(sortedCategories.map(async ([category]) => {
+        const categoryProducts = productsByCategory[category] || [];
+        if (categoryProducts.length > 0) {
+            fitResultsByCategory[category] = filterByPhysicalFit(categoryProducts, roomType, category, roomDimensions);
+        }
+        else {
+            fitResultsByCategory[category] = [];
+        }
+    }));
+    const fitTime = Date.now() - startFitTime;
+    console.log(`   ⚡ Parallel fit validation completed in ${fitTime}ms for ${sortedCategories.length} categories`);
+    console.log('✨ STEP 3: STYLE MATCHING (score by preferences)');
+    for (const [category, rule] of sortedCategories) {
+        const isEssential = template.essentials[category] !== undefined;
+        // Use pre-computed fit results, filtering out already-used products
+        let fittingProducts = (fitResultsByCategory[category] || [])
+            .filter(({ product }) => !usedProductIds.has(product.id));
+        console.log(`\n🔍 Processing: ${category} (${isEssential ? 'ESSENTIAL' : 'complementary'})`);
+        console.log(`   Available after fit filter: ${fittingProducts.length}, Required: min ${rule.min}, max ${rule.max}`);
+        if (fittingProducts.length === 0) {
+            // Check if we had products before the fit filter
+            const categoryProducts = productsByCategory[category] || [];
+            const unusedCategoryProducts = categoryProducts.filter(p => !usedProductIds.has(p.id));
+            if (unusedCategoryProducts.length === 0) {
+                if (isEssential && rule.min > 0) {
+                    missingEssentials.push(category);
+                    warnings.push(`Missing essential item: ${category}`);
+                    console.log(`   ❌ MISSING ESSENTIAL: ${category}`);
+                }
+                continue;
+            }
+            // We had products but none passed fit - provide fallback for essentials
+            console.log(`   ⚠️ No products pass fit validation for ${category}`);
+            if (isEssential && rule.min > 0) {
+                // Fallback: use original products with fit warning (essential categories MUST have selections)
+                warnings.push(`No products fit zone constraints for ${category} - using best available`);
+                fittingProducts = unusedCategoryProducts.map(p => ({
+                    product: p,
+                    fitValidation: {
+                        fits: true,
+                        fitScore: 50,
+                        issues: ['Fit relaxed - no better options'],
+                        bestZone: null,
+                        orientationOptions: [0],
+                        clearanceMargin: 0
+                    }
+                }));
+                console.log(`   ✅ Fallback: ${fittingProducts.length} products available for essential ${category}`);
+            }
+            else {
+                continue;
+            }
+        }
+        // Determine how many to select
+        const targetCount = isEssential ?
+            Math.max(rule.min, 1) :
+            Math.min(rule.max, Math.max(1, Math.floor(fittingProducts.length / 2)));
+        const toSelect = Math.min(targetCount, rule.max, fittingProducts.length);
+        console.log(`   Fitting products: ${fittingProducts.length}, Will select: ${toSelect}`);
+        // =========================================================================
+        // STEP 3: STYLE MATCHING - Score by user preferences (NOT budget yet)
+        // NOTE: Caching + parallel precomputation handle performance
+        // We score ALL products to guarantee best selection quality
+        // =========================================================================
+        const scoredProducts = [];
+        for (const { product, fitValidation } of fittingProducts) {
+            // Start with fit score (physical fit is foundational)
+            let score = fitValidation.fitScore;
+            // Prefer products with better visual descriptions
+            if (product.visualDescriptionFrontView)
+                score += 20;
+            if (product.synthesizedFrontView)
+                score += 15;
+            if (product.visualDescriptionGemini)
+                score += 10;
+            // Match quiz preferences if available
+            if (quizResponse) {
+                // Match styles
+                if (quizResponse.styles && quizResponse.styles.length > 0 && product.designStyle) {
+                    const hasStyleMatch = quizResponse.styles.some(quizStyle => product.designStyle?.some(s => s.toLowerCase().includes(quizStyle.toLowerCase()) ||
+                        quizStyle.toLowerCase().includes(s.toLowerCase())));
+                    if (hasStyleMatch)
+                        score += 30;
+                }
+                // Match colors - map palette names to color keywords
+                if (quizResponse.colorPalettes && product.colors) {
+                    const paletteColorKeywords = {
+                        'Warm Neutrals': ['beige', 'cream', 'tan', 'ivory', 'sand', 'warm white', 'taupe', 'oatmeal', 'camel'],
+                        'Earth & Stone': ['terracotta', 'clay', 'sienna', 'ochre', 'rust', 'brown', 'umber', 'stone', 'copper'],
+                        'Coastal Calm': ['blue', 'white', 'sand', 'aqua', 'seafoam', 'navy', 'teal', 'ivory', 'driftwood'],
+                        'Soft Contrast': ['blush', 'sage', 'dusty rose', 'grey', 'mauve', 'lavender', 'soft pink', 'muted'],
+                        'Monochrome Luxe': ['black', 'white', 'grey', 'charcoal', 'silver', 'graphite', 'onyx', 'ivory'],
+                        'Artful Contrast': ['emerald', 'sapphire', 'coral', 'jewel', 'teal', 'burgundy', 'mustard', 'gold', 'ruby'],
+                        'Heritage Warmth': ['burgundy', 'gold', 'mahogany', 'deep red', 'bronze', 'antique', 'rich', 'walnut'],
+                        'Dark & Moody': ['charcoal', 'midnight', 'navy', 'black', 'deep', 'dark grey', 'forest', 'ebony'],
+                        // Legacy palette names for backwards compatibility
+                        'Light Neutrals': ['beige', 'cream', 'white', 'ivory', 'grey', 'sand'],
+                        'Warm & Cozy': ['terracotta', 'caramel', 'brown', 'rust', 'amber', 'warm'],
+                        'Colourful Accent': ['emerald', 'sapphire', 'coral', 'bold', 'vibrant', 'colorful'],
+                    };
+                    const hasMatchingColor = quizResponse.colorPalettes.some(palette => {
+                        const keywords = paletteColorKeywords[palette] || [palette.toLowerCase()];
+                        return product.colors?.some(color => keywords.some(keyword => color.toLowerCase().includes(keyword) ||
+                            keyword.includes(color.toLowerCase())));
+                    });
+                    if (hasMatchingColor) {
+                        score += 20;
+                        console.log(`🎨 Color palette match for ${product.name}: +20 pts`);
+                    }
+                }
+                // Match textures/materials from quiz against product materials
+                if (quizResponse.textures && quizResponse.textures.length > 0 && product.materials) {
+                    // Map quiz texture options to material keywords
+                    const textureKeywords = {
+                        'Leather, Wool': ['leather', 'wool', 'hide', 'cowhide'],
+                        'Rattan, Wicker, Jute': ['rattan', 'wicker', 'jute', 'seagrass', 'cane', 'woven'],
+                        'Walnut': ['walnut', 'dark wood', 'espresso', 'mahogany'],
+                        'Velvet, Brass, Smoked Glass': ['velvet', 'brass', 'glass', 'smoked', 'gold', 'metal'],
+                        'White Oak, Linen, Travertine': ['oak', 'white oak', 'linen', 'travertine', 'stone', 'natural wood'],
+                        'Satin, Metallics': ['satin', 'chrome', 'nickel', 'stainless', 'polished', 'metallic', 'silver'],
+                    };
+                    const hasTextureMatch = quizResponse.textures.some(texture => {
+                        const keywords = textureKeywords[texture] || texture.toLowerCase().split(/[,\s]+/);
+                        return product.materials?.some(material => keywords.some(keyword => material.toLowerCase().includes(keyword) ||
+                            keyword.includes(material.toLowerCase())));
+                    });
+                    if (hasTextureMatch) {
+                        score += 25;
+                        console.log(`🧶 Texture match for ${product.name}: +25 pts`);
+                    }
+                }
+                // Match lineStyle (design mode) against product design style
+                if (quizResponse.lineStyle && product.designStyle) {
+                    // Map quiz line styles to design style keywords
+                    const lineStyleKeywords = {
+                        'Classic': ['classic', 'traditional', 'timeless', 'elegant', 'formal'],
+                        'Transitional': ['transitional', 'balanced', 'versatile', 'modern traditional'],
+                        'Modern': ['modern', 'contemporary', 'minimalist', 'clean', 'sleek'],
+                        'Eclectic': ['eclectic', 'bohemian', 'mixed', 'artisan', 'global'],
+                        'Relaxed': ['relaxed', 'casual', 'coastal', 'farmhouse', 'cottage', 'organic'],
+                    };
+                    const keywords = lineStyleKeywords[quizResponse.lineStyle] || [quizResponse.lineStyle.toLowerCase()];
+                    const hasLineStyleMatch = product.designStyle.some(style => keywords.some(keyword => style.toLowerCase().includes(keyword) ||
+                        keyword.includes(style.toLowerCase())));
+                    if (hasLineStyleMatch) {
+                        score += 15;
+                        console.log(`✨ Line style match for ${product.name}: +15 pts`);
+                    }
+                }
+                // Match patternPreference - boost solid-colored products for "Just Solids" preference
+                if (quizResponse.patternPreference) {
+                    const productDescription = [
+                        product.name,
+                        product.visualDescriptionFrontView,
+                        product.visualDescriptionGemini,
+                        ...(product.colors || [])
+                    ].filter(Boolean).join(' ').toLowerCase();
+                    // Comprehensive pattern detection regex
+                    const hasPattern = /pattern|stripe|plaid|check|floral|geometric|print|motif|damask|ikat|chevron|herringbone|paisley|botanical|embroidered|speckled|marbled|abstract|trellis|lattice|medallion|toile|chinoiserie|argyle|houndstooth|tartan|gingham/.test(productDescription);
+                    const isSolid = /solid|plain|monochrome|single color|uniform/.test(productDescription) || !hasPattern;
+                    if (quizResponse.patternPreference === 'Just Solids' && isSolid) {
+                        score += 15;
+                        console.log(`🎨 Solid preference match for ${product.name}: +15 pts`);
+                    }
+                    else if (quizResponse.patternPreference === 'I Love Patterns' && hasPattern) {
+                        score += 20;
+                        console.log(`🎨 Pattern preference match for ${product.name}: +20 pts`);
+                    }
+                    else if (quizResponse.patternPreference === 'Patterned Accents') {
+                        // Moderate boost for balanced selection - prefer solids with occasional patterns
+                        if (isSolid) {
+                            score += 10; // Slight preference for solids as base
+                        }
+                        else if (hasPattern) {
+                            score += 8; // Still include some patterns as accents
+                        }
+                    }
+                }
+            }
+            // NOTE: Budget scoring REMOVED from here - applied as FINAL filter (Step 4)
+            // This ensures products are selected by FIT and PREFERENCE first, budget last
+            // NO randomness for set categories - we want consistent matching sets
+            // For other categories, add randomness to avoid always picking the same products
+            if (!SET_CATEGORIES.has(category)) {
+                score += Math.random() * 10;
+            }
+            scoredProducts.push({ product, score });
+        }
+        // Sort by score
+        scoredProducts.sort((a, b) => b.score - a.score);
+        // For SET categories: pick the best product and replicate it
+        // For other categories: pick different products
+        let selected = [];
+        if (SET_CATEGORIES.has(category)) {
+            // Pick the BEST product and replicate it 'toSelect' times
+            if (scoredProducts.length > 0) {
+                const bestProduct = scoredProducts[0].product;
+                selected = Array(toSelect).fill(bestProduct);
+                console.log(`✅ SET: Selected "${bestProduct.name}" x${toSelect} for matching ${category}`);
+            }
+        }
+        else {
+            // Pick different products (original behavior)
+            selected = scoredProducts.slice(0, toSelect).map(s => s.product);
+        }
+        for (const product of selected) {
+            if (selectedProducts.length >= effectiveMaxProducts)
+                break;
+            // CRITICAL FIX: Prevent duplicate selection of same product
+            // This product might already be in selectedProducts if it was added in a previous category iteration
+            if (selectedProducts.some(p => p.id === product.id)) {
+                console.log(`⚠️ Skipping duplicate product: ${product.name} already selected`);
+                continue;
+            }
+            selectedProducts.push(product);
+            console.log(`   ✅ Added: ${product.name} (${product.sku})`);
+            // Only mark as used once per unique product
+            usedProductIds.add(product.id);
+            if (!composition[category]) {
+                composition[category] = [];
+            }
+            composition[category].push(product);
+        }
+        console.log(`   📊 Selected ${composition[category]?.length || 0} products for ${category}`);
+        // Check if we met minimum requirements
+        if (isEssential && selected.length < rule.min) {
+            const warning = `Only found ${selected.length} of ${rule.min} required ${category} items`;
+            warnings.push(warning);
+            console.log(`   ⚠️  ${warning}`);
+        }
+    }
+    console.log(`\n📦 Selection complete (before budget): ${selectedProducts.length} total products`);
+    console.log(`   Composition:`, Object.entries(composition).map(([cat, prods]) => `${cat}: ${prods.length}`).join(', '));
+    // Add some uncategorized items if we have room
+    if (selectedProducts.length < effectiveMaxProducts && uncategorized.length > 0) {
+        const remainingSlots = effectiveMaxProducts - selectedProducts.length;
+        const toAdd = uncategorized.slice(0, Math.min(remainingSlots, 3));
+        selectedProducts.push(...toAdd);
+    }
+    // =========================================================================
+    // STEP 4: BUDGET CONSTRAINTS - DISABLED FOR RENDER QUALITY
+    // Budget enforcement is disabled to prioritize:
+    // 1. Render quality over cost
+    // 2. Products matching user preferences
+    // 3. Visual harmony between products
+    // 4. All required products being fully rendered
+    // =========================================================================
+    console.log('\n💰 STEP 4: BUDGET CONSTRAINTS (DISABLED - focusing on render quality)');
+    if (budgetAllocation) {
+        const currentCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+        const budgetWithFlex = budgetAllocation.totalBudget + budgetAllocation.flexiblePool;
+        console.log(`   Selection cost: $${currentCost.toFixed(2)}`);
+        console.log(`   Budget reference: $${budgetWithFlex.toFixed(2)}`);
+        console.log(`   ⚠️ BUDGET ENFORCEMENT DISABLED - All ${selectedProducts.length} products will be rendered`);
+        console.log(`   📊 Priority: Render quality > Style matching > Visual harmony`);
+    }
+    else {
+        console.log(`   No budget specified - all ${selectedProducts.length} products will be rendered`);
+    }
+    // CRITICAL: Substitute table lamps with floor lamps if no supporting surfaces exist
+    // This prevents AI from inventing tables that aren't in our product catalog
+    const substitutionResult = await substituteTableLampsIfNoSurface(selectedProducts, candidateProducts, composition);
+    // Update selectedProducts with substitutions
+    if (substitutionResult.substitutionsMade > 0) {
+        selectedProducts.length = 0;
+        selectedProducts.push(...substitutionResult.products);
+    }
+    // Add any warnings from the substitution
+    if (substitutionResult.warnings.length > 0) {
+        warnings.push(...substitutionResult.warnings);
+    }
+    // Generate zone-based placements
+    const placements = assignItemsToZones(roomType, selectedProducts, composition);
+    // Final summary
+    const finalCost = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+    console.log('\n' + '='.repeat(70));
+    console.log('✅ PIPELINE COMPLETE: Space → Fit → Preference (Dynamic Mode)');
+    console.log('='.repeat(70));
+    console.log(`   Space tier: ${spaceProfile.tier.toUpperCase()} (${spaceProfile.squareFeet ? spaceProfile.squareFeet + ' sq ft' : 'estimated'})`);
+    console.log(`   Products selected: ${selectedProducts.length}/${effectiveMaxProducts} (max for space)`);
+    console.log(`   Total value: $${finalCost.toFixed(2)} (budget not enforced)`);
+    console.log(`   Essential items: ${Object.entries(composition).filter(([cat]) => template.essentials[cat]).length} categories`);
+    console.log(`   Missing essentials: ${missingEssentials.length > 0 ? missingEssentials.join(', ') : 'None'}`);
+    console.log(`   Dual seating: ${spaceProfile.canFitDualSeating ? 'ENABLED' : 'disabled'}`);
+    console.log(`   Warnings: ${warnings.length}`);
+    console.log(`   Mode: QUALITY-FIRST (all products rendered, no budget cuts)`);
+    console.log('='.repeat(70) + '\n');
+    return {
+        selectedProducts,
+        composition,
+        missingEssentials,
+        warnings,
+        placements
+    };
+}
+/**
+ * Generate composition instructions for AI prompt
+ */
+export function generateCompositionInstructions(roomType, composition) {
+    const instructions = [];
+    instructions.push(`Room type: ${roomType}`);
+    instructions.push('Product composition for this room:');
+    // Essential items first
+    const template = ROOM_TEMPLATES[roomType];
+    if (template) {
+        for (const [category, products] of Object.entries(composition)) {
+            if (template.essentials[category]) {
+                const names = products.map(p => `${p.name} (${p.sku})`).join(', ');
+                instructions.push(`- ${category} (essential): ${names}`);
+            }
+        }
+        // Then complementary items
+        for (const [category, products] of Object.entries(composition)) {
+            if (template.complementary?.[category]) {
+                const names = products.map(p => `${p.name} (${p.sku})`).join(', ');
+                instructions.push(`- ${category}: ${names}`);
+            }
+        }
+    }
+    instructions.push('\nPlacement guidelines:');
+    instructions.push('- Place the primary seating (sofa) as the focal point, typically facing the main view or entertainment center');
+    instructions.push('- Position the coffee table in front of the primary seating at an accessible distance');
+    instructions.push('- Arrange accent seating to create conversation areas');
+    instructions.push('- Place side tables within reach of seating');
+    instructions.push('- Distribute lighting to eliminate dark corners');
+    instructions.push('- Use storage furniture along walls to maximize floor space');
+    instructions.push('- Add decor items last to complement the main furniture arrangement');
+    instructions.push('\nIMPORTANT: Include ALL listed products in the render. Do not duplicate any product - each should appear exactly once.');
+    return instructions.join('\n');
+}
+/**
+ * Validate that a product selection meets room composition requirements
+ */
+export function validateComposition(roomType, products) {
+    const template = ROOM_TEMPLATES[roomType];
+    if (!template) {
+        return { isValid: true, issues: [] };
+    }
+    // Count products by category
+    const categoryCounts = {};
+    for (const product of products) {
+        const categories = detectFunctionalCategory(product);
+        for (const cat of categories) {
+            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+        }
+    }
+    const issues = [];
+    // Check essential requirements
+    for (const [category, rule] of Object.entries(template.essentials)) {
+        const count = categoryCounts[category] || 0;
+        if (count < rule.min) {
+            issues.push(`Missing essential: ${category} (found ${count}, need at least ${rule.min})`);
+        }
+        if (count > rule.max) {
+            issues.push(`Too many ${category} items (found ${count}, maximum ${rule.max})`);
+        }
+    }
+    // Check for excessive duplicates in complementary categories
+    for (const [category, rule] of Object.entries(template.complementary || {})) {
+        const count = categoryCounts[category] || 0;
+        if (count > rule.max) {
+            issues.push(`Too many ${category} items (found ${count}, maximum ${rule.max})`);
+        }
+    }
+    return {
+        isValid: issues.length === 0,
+        issues
+    };
+}
+/**
+ * Get room template for a room type
+ */
+export function getRoomTemplate(roomType) {
+    return ROOM_TEMPLATES[roomType] || null;
+}
+/**
+ * Detect functional category from product (exported for ledger system)
+ */
+export { detectFunctionalCategory };
+//# sourceMappingURL=room-composition-service.js.map

@@ -1,5 +1,5 @@
-import { setGlobalOptions } from "firebase-functions";
-import { onRequest } from "firebase-functions/https";
+import { setGlobalOptions } from "firebase-functions/v2"; // Use v2 import
+import { onRequest, type Request, type Response } from "firebase-functions/v2/https"; // Use v2 import and import types
 import * as logger from "firebase-functions/logger";
 
 // Import the Express app using the path alias
@@ -10,7 +10,7 @@ logger.info("[Functions Init] Firebase Function loading start.");
 setGlobalOptions({ maxInstances: 10 });
 
 // Expose the Express app as a Firebase Function
-export const api = onRequest((req, res) => {
+export const api = onRequest((req: Request, res: Response) => { // Explicitly type req and res
   logger.info(`[Functions Request] Received request for ${req.path}`);
   try {
     // Pass the request and response to the imported Express app

@@ -9,8 +9,9 @@ import {gemini20Flash} from "@genkit-ai/vertexai";
 // Cloud Functions for Firebase supports Genkit natively. The onCallGenkit function creates a callable
 // function from a Genkit action. It automatically implements streaming if your flow does.
 // The https library also has other utility methods such as hasClaim, which verifies that
-// a caller's token has a specific claim (optionally matching a specific value)
-import { onCallGenkit, hasClaim } from "firebase-functions/https";
+// a caller\'s token has a specific claim (optionally matching a specific value)
+import { onCallGenkit } from "firebase-functions/v2/https"; // Use v2 import
+import { hasClaim } from "firebase-functions/v2/auth"; // Import hasClaim from v2/auth
 
 // Genkit models generally depend on an API key. APIs should be stored in Cloud Secret Manager so that
 // access to these sensitive values can be controlled. defineSecret does this for you automatically.
@@ -26,7 +27,7 @@ enableFirebaseTelemetry();
 const ai = genkit({
   plugins: [
     // Load the Vertex AI plugin. You can optionally specify your project ID
-    // by passing in a config object; if you don't, the Vertex AI plugin uses
+    // by passing in a config object; if you don\'t, the Vertex AI plugin uses
     // the value from the GCLOUD_PROJECT environment variable.
     vertexAI({location: "us-central1"}),
   ],

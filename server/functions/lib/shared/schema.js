@@ -1,0 +1,1009 @@
+import { sql } from "drizzle-orm";
+import { index, jsonb, pgTable, text, timestamp, varchar, boolean, decimal, integer, unique, } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+import { relations } from "drizzle-orm";
+// Session storage table (required for Replit Auth)
+export const sessions = pgTable("sessions", {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+}, (table) => [index("IDX_session_expire").on(table.expire)]);
+// User storage table
+export const users = pgTable("users", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    email: varchar("email").notNull().unique(),
+    password: varchar("password").notNull(), // Hashed password
+    firstName: varchar("first_name"),
+    lastName: varchar("last_name"),
+    phoneNumber: varchar("phone_number"), // Optional phone number
+    profileImageUrl: varchar("profile_image_url"),
+    role: varchar("role").notNull().default("user"), // 'admin' or 'user'
+    bio: text("bio"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+// User insert schema for registration
+export const insertUserSchema = createInsertSchema(users).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+}).extend({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+});
+// Content management table (for admin to manage website content)
+export const content = pgTable("content", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    title: text("title").notNull(),
+    description: text("description"),
+    body: text("body"),
+    imageUrl: text("image_url"),
+    category: varchar("category").notNull().default("general"), // 'feature', 'testimonial', 'general'
+    published: boolean("published").notNull().default(false),
+    authorId: varchar("author_id").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const contentRelations = relations(content, ({ one }) => ({
+    author: one(users, {
+        fields: [content.authorId],
+        references: [users.id],
+    }),
+}));
+export const insertContentSchema = createInsertSchema(content).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Settings table (for admin to configure the app)
+export const settings = pgTable("settings", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    key: varchar("key").notNull().unique(),
+    value: text("value").notNull(),
+    description: text("description"),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const insertSettingsSchema = createInsertSchema(settings).omit({
+    id: true,
+    updatedAt: true,
+});
+// Activity log table (for tracking user and admin actions)
+export const activityLog = pgTable("activity_log", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    action: text("action").notNull(),
+    description: text("description"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const activityLogRelations = relations(activityLog, ({ one }) => ({
+    user: one(users, {
+        fields: [activityLog.userId],
+        references: [users.id],
+    }),
+}));
+export const insertActivityLogSchema = createInsertSchema(activityLog).omit({
+    id: true,
+    createdAt: true,
+});
+// ===== CURALINA AI SCHEMA =====
+// Categories - Product categorization (room types and furniture types)
+export const categories = pgTable("categories", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    name: text("name").notNull(),
+    type: varchar("type", { length: 20 }).notNull(), // 'room' or 'furniture'
+    slug: varchar("slug").notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertCategorySchema = createInsertSchema(categories).omit({
+    id: true,
+    createdAt: true,
+});
+// Suppliers - Furniture suppliers
+export const suppliers = pgTable("suppliers", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    name: text("name").notNull(),
+    email: varchar("email").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+    id: true,
+    createdAt: true,
+});
+// Products - Full product catalog
+export const products = pgTable("products", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sku: varchar("sku").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    categoryId: varchar("category_id").notNull().references(() => categories.id),
+    supplierId: varchar("supplier_id").notNull().references(() => suppliers.id),
+    // Pricing
+    tradePrice: decimal("trade_price", { precision: 10, scale: 2 }),
+    price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+    discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
+    // Product attributes
+    roomType: text("room_type").array(), // ['Living room', 'Bedroom']
+    designStyle: text("design_style").array(), // ['Modern', 'Contemporary']
+    styleTags: text("style_tags").array(), // ['modern', 'organic']
+    keyFeatures: text("key_features").array(), // ['pet-friendly', 'casual setting']
+    storageSolutions: text("storage_solutions"), // 'No Storage', '3 Drawers', etc.
+    colors: text("colors").array(),
+    materials: text("materials").array(),
+    // Physical specifications
+    dimensions: jsonb("dimensions"), // { w, d, h, armWidth, armDepth, seatWidth, seatDepth, seatHeight, volume, doorWidth, doorThickness, doorHeight, legBaseDepth1, legBaseHeight1, legBaseWidth1, tabletopThickness, shapeType, unit }
+    weight: text("weight"), // '150 lbs' or '150'
+    seating: text("seating"), // '2 seats', '3-4 people', etc.
+    assembly: text("assembly"), // 'Yes', 'No', 'Partial'
+    // Inventory & shipping
+    inventory: integer("inventory"),
+    leadTime: integer("lead_time"), // days
+    availability: varchar("availability", { length: 20 }).notNull().default("in_stock"), // 'in_stock' or 'preorder'
+    shipping: jsonb("shipping"), // { cost, eta, deliveryOptions, deliveryLocation, deliveryPolicy }
+    // Media & metadata
+    images: text("images").array(), // URLs to images
+    asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
+    visualDescription: text("visual_description"), // AI-generated visual description (400 char max for Gemini render accuracy)
+    imageAnalyses: jsonb("image_analyses"), // { frontView: {...}, multiAngle: {...}, analysisDate, images: [...] }
+    structuredAnalysis: jsonb("structured_analysis"), // { frontView: {...}, multiAngle: {...}, qualityScore: 0-100 }
+    // DEPRECATED: Legacy visual description fields (preserved for migration planning)
+    visualDescriptionGemini: text("visual_description_gemini"),
+    visualDescriptionFrontView: text("visual_description_front_view"),
+    visualDescriptionFrontViewGemini: text("visual_description_front_view_gemini"),
+    synthesizedFrontView: text("synthesized_front_view"),
+    completeProductDescription: text("complete_product_description"),
+    structuredAnalysisQuality: text("structured_analysis_quality"),
+    structuredAnalysisUpdatedAt: timestamp("structured_analysis_updated_at"),
+    tags: text("tags").array(), // General tags for search/categorization
+    sourceFile: text("source_file"), // Original import file reference
+    seoMeta: jsonb("seo_meta"), // { title, description }
+    slug: varchar("slug").notNull().unique(),
+    // Image health validation
+    imageHealth: varchar("image_health", { length: 20 }).notNull().default("healthy"), // 'healthy', 'repairing', 'removed'
+    lastValidatedAt: timestamp("last_validated_at"), // Last time images were validated
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const productRelations = relations(products, ({ one }) => ({
+    category: one(categories, {
+        fields: [products.categoryId],
+        references: [categories.id],
+    }),
+    supplier: one(suppliers, {
+        fields: [products.supplierId],
+        references: [suppliers.id],
+    }),
+}));
+export const insertProductSchema = createInsertSchema(products).omit({
+    id: true,
+    createdAt: true,
+});
+// Quiz Responses - User design preferences
+export const quizResponses = pgTable("quiz_responses", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    userId: varchar("user_id").references(() => users.id), // Links to authenticated user
+    roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
+    styles: text("styles").array().notNull(), // ['Organic Modern', 'Midcentury Scandi'] - max 2
+    colorPalettes: text("color_palettes").array(), // ['Light Neutrals', 'Warm & Cozy'] - max 2
+    lineStyle: text("line_style"), // 'Clean Lines/Structured', 'Upscale/Chic', 'Elegant/Balanced'
+    textures: text("textures").array(), // ['Walnut', 'Velvet, Brass, Smoked Glass'] - max 2
+    lifestyleCue: text("lifestyle_cue"), // 'Everyday Elegance/Gracious', etc.
+    patternPreference: text("pattern_preference"), // 'Just Solids', 'Patterned Accents', 'I Love Patterns'
+    keyFeatures: text("key_features").array(), // ['Comfortable Seat', 'Storage']
+    budgetRange: text("budget_range").notNull(), // '$2K-$5K', etc.
+    vibeImages: text("vibe_images").array(), // User-uploaded reference images
+    vibeBoardUrl: text("vibe_board_url"), // Pinterest board URL
+    preferences: text("preferences").array(), // Design preference bullets
+    roomPhoto: text("room_photo"), // User's room photo
+    floorplanUrl: text("floorplan_url"), // Uploaded floorplan image
+    // Rich visual preferences from vibe image analysis
+    vibeColorPalette: text("vibe_color_palette").array(), // AI-extracted color palette from vibe images
+    vibeMaterials: text("vibe_materials").array(), // AI-extracted materials from vibe images
+    vibeTextures: text("vibe_textures").array(), // AI-extracted textures from vibe images
+    vibeLightingTone: text("vibe_lighting_tone"), // 'warm', 'cool', 'natural', 'dramatic'
+    vibeDensity: text("vibe_density"), // 'minimal', 'moderate', 'layered'
+    vibeOverallDescription: text("vibe_overall_description"), // Overall vibe/aesthetic description
+    // Room measurements and spatial validation
+    roomDescription: text("room_description"), // User's natural language description of space (dimensions, doorways, preferences)
+    parsedRoomData: jsonb("parsed_room_data"), // AI-extracted room measurements: { dimensions: { width, depth, height, unit }, doorway: { width, height, unit }, ceilingHeight, confidence, extractedPreferences, rawText }
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertQuizResponseSchema = createInsertSchema(quizResponses).omit({
+    id: true,
+    createdAt: true,
+});
+// Renders - AI-generated room designs
+export const renders = pgTable("renders", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    quizResponseId: varchar("quiz_response_id").notNull().references(() => quizResponses.id),
+    sessionId: varchar("session_id").notNull(),
+    userId: varchar("user_id").references(() => users.id), // Links to authenticated user
+    imageUrl: text("image_url"), // Public URL to generated render
+    prompt: text("prompt").notNull(), // Full AI prompt used
+    productSkus: text("product_skus").array(), // Products featured in render
+    productPlacements: jsonb("product_placements"), // Spatial metadata: [{ sku, region, boundingBox }]
+    productMetadata: jsonb("product_metadata"), // Product-specific metadata: { [sku]: { visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'Legacy' | 'None' } }
+    qaResults: jsonb("qa_results"), // Post-render quality validation: { overallScore, issues[], productChecks, summary }
+    parentRenderId: varchar("parent_render_id"), // References parent render if this is a swap
+    swappedSku: text("swapped_sku"), // SKU that was replaced (if this is a swap)
+    status: varchar("status", { length: 20 }).notNull().default("generating"), // 'generating', 'completed', 'failed'
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const renderRelations = relations(renders, ({ one }) => ({
+    quizResponse: one(quizResponses, {
+        fields: [renders.quizResponseId],
+        references: [quizResponses.id],
+    }),
+}));
+export const insertRenderSchema = createInsertSchema(renders).omit({
+    id: true,
+    createdAt: true,
+});
+// Selection Ledger - Complete audit trail of product selection decisions
+export const selectionLedger = pgTable("selection_ledger", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    renderId: varchar("render_id").notNull().references(() => renders.id).unique(),
+    selectionHash: varchar("selection_hash", { length: 64 }).notNull().unique(), // SHA-256 hash for idempotency
+    candidatePoolSnapshot: jsonb("candidate_pool_snapshot").notNull(), // All products available before filtering: [{ sku, name, category, ... }]
+    selectionRationale: jsonb("selection_rationale").notNull(), // Decision trail: { essentials: {...}, complementary: {...}, excluded: [...] }
+    compositionOrder: text("composition_order").array().notNull(), // Ordered list of SKUs in composition priority
+    lockedAt: timestamp("locked_at"), // When selection was finalized (null = still selecting)
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const selectionLedgerRelations = relations(selectionLedger, ({ one }) => ({
+    render: one(renders, {
+        fields: [selectionLedger.renderId],
+        references: [renders.id],
+    }),
+}));
+export const insertSelectionLedgerSchema = createInsertSchema(selectionLedger).omit({
+    id: true,
+    createdAt: true,
+});
+// Comparison Renders - Side-by-side AI service comparison
+export const comparisonRenders = pgTable("comparison_renders", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    quizResponseId: varchar("quiz_response_id").references(() => quizResponses.id),
+    sessionId: varchar("session_id").notNull(),
+    // Gemini render
+    geminiImageUrl: text("gemini_image_url"),
+    geminiGenerationTime: integer("gemini_generation_time"), // milliseconds
+    geminiQaScore: integer("gemini_qa_score"), // 0-100
+    geminiProductCount: integer("gemini_product_count"),
+    geminiStatus: varchar("gemini_status", { length: 20 }).default("pending"), // 'pending', 'success', 'failed'
+    geminiError: text("gemini_error"),
+    // OpenAI render
+    openaiImageUrl: text("openai_image_url"),
+    openaiGenerationTime: integer("openai_generation_time"), // milliseconds
+    openaiQaScore: integer("openai_qa_score"), // 0-100
+    openaiProductCount: integer("openai_product_count"),
+    openaiStatus: varchar("openai_status", { length: 20 }).default("pending"),
+    openaiError: text("openai_error"),
+    // Stability AI render
+    stabilityImageUrl: text("stability_image_url"),
+    stabilityGenerationTime: integer("stability_generation_time"), // milliseconds
+    stabilityQaScore: integer("stability_qa_score"), // 0-100
+    stabilityProductCount: integer("stability_product_count"),
+    stabilityStatus: varchar("stability_status", { length: 20 }).default("pending"),
+    stabilityError: text("stability_error"),
+    // User selection
+    selectedService: varchar("selected_service", { length: 20 }), // 'gemini', 'openai', 'stability'
+    selectionReason: text("selection_reason"), // Why user chose this one
+    // Shared metadata
+    productSkus: text("product_skus").array(), // Products requested
+    prompt: text("prompt"), // Original prompt
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const comparisonRenderRelations = relations(comparisonRenders, ({ one }) => ({
+    quizResponse: one(quizResponses, {
+        fields: [comparisonRenders.quizResponseId],
+        references: [quizResponses.id],
+    }),
+}));
+export const insertComparisonRenderSchema = createInsertSchema(comparisonRenders).omit({
+    id: true,
+    createdAt: true,
+});
+// Render Products - Product snapshots at render time for analytics and auditing
+export const renderProducts = pgTable("render_products", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    renderId: varchar("render_id").notNull().references(() => renders.id),
+    productId: varchar("product_id").notNull().references(() => products.id),
+    sku: varchar("sku").notNull(), // Snapshot of SKU at render time
+    name: text("name").notNull(), // Snapshot of product name
+    supplierName: text("supplier_name"), // Snapshot of supplier name (text, not FK)
+    categoryName: text("category_name"), // Snapshot of category name (text, not FK)
+    roomType: text("room_type").array(), // Snapshot of applicable room types
+    designStyle: text("design_style").array(), // Snapshot of design styles
+    styleTags: text("style_tags").array(), // Snapshot of style tags
+    priceAtRender: decimal("price_at_render", { precision: 10, scale: 2 }).notNull(), // Price snapshot
+    availability: varchar("availability", { length: 20 }).notNull(), // Availability at render time
+    imageHealth: varchar("image_health", { length: 20 }).notNull(), // Image health at render time
+    visualDescriptionSource: varchar("visual_description_source", { length: 50 }), // 'Front View' | 'Gemini Vision' | 'Legacy' | 'None'
+    dimensions: jsonb("dimensions"), // Snapshot of product dimensions
+    placementData: jsonb("placement_data"), // Spatial placement in render: { position, orientation, zone, confidence }
+    primaryImageUrl: text("primary_image_url"), // Primary image at render time
+    metadata: jsonb("metadata"), // Additional snapshot data for future evolution
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    unique("render_product_unique").on(table.renderId, table.productId),
+    index("idx_render_products_render").on(table.renderId),
+    index("idx_render_products_product").on(table.productId),
+    index("idx_render_products_sku").on(table.sku),
+]);
+export const renderProductRelations = relations(renderProducts, ({ one }) => ({
+    render: one(renders, {
+        fields: [renderProducts.renderId],
+        references: [renders.id],
+    }),
+    product: one(products, {
+        fields: [renderProducts.productId],
+        references: [products.id],
+    }),
+}));
+export const insertRenderProductSchema = createInsertSchema(renderProducts).omit({
+    id: true,
+    createdAt: true,
+});
+// Render Events - Append-only audit log for render lifecycle
+export const renderEvents = pgTable("render_events", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    renderId: varchar("render_id").notNull().references(() => renders.id),
+    eventType: varchar("event_type", { length: 50 }).notNull(), // 'created', 'generating', 'completed', 'failed', 'swapped', 'archived'
+    occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+    actorUserId: varchar("actor_user_id").references(() => users.id), // Nullable for system events
+    metadata: jsonb("metadata"), // Event-specific data (error details, swap info, etc.)
+}, (table) => [
+    index("idx_render_events_render_time").on(table.renderId, table.occurredAt.desc()),
+    index("idx_render_events_type").on(table.eventType),
+]);
+export const renderEventRelations = relations(renderEvents, ({ one }) => ({
+    render: one(renders, {
+        fields: [renderEvents.renderId],
+        references: [renders.id],
+    }),
+    actor: one(users, {
+        fields: [renderEvents.actorUserId],
+        references: [users.id],
+    }),
+}));
+export const insertRenderEventSchema = createInsertSchema(renderEvents).omit({
+    id: true,
+    occurredAt: true,
+});
+// Cart Items - Shopping cart
+export const cartItems = pgTable("cart_items", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    userId: varchar("user_id").references(() => users.id), // Links to authenticated user
+    productId: varchar("product_id").notNull().references(() => products.id),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const cartItemRelations = relations(cartItems, ({ one }) => ({
+    product: one(products, {
+        fields: [cartItems.productId],
+        references: [products.id],
+    }),
+}));
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({
+    id: true,
+    createdAt: true,
+});
+// Orders - Purchase orders
+export const orders = pgTable("orders", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    userId: varchar("user_id").references(() => users.id), // Links to authenticated user
+    status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'paid', 'fulfilled', 'shipped', 'delivered'
+    totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+    customerEmail: varchar("customer_email").notNull(),
+    customerName: text("customer_name").notNull(),
+    shippingAddress: jsonb("shipping_address").notNull(), // { street, city, state, zip, country }
+    stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+    trackingNumber: varchar("tracking_number"), // Shipping tracking number
+    trackingCarrier: varchar("tracking_carrier"), // Shipping carrier (UPS, FedEx, etc.)
+    estimatedDelivery: timestamp("estimated_delivery"), // Estimated delivery date
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const insertOrderSchema = createInsertSchema(orders).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Order Items - Individual items in orders
+export const orderItems = pgTable("order_items", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    orderId: varchar("order_id").notNull().references(() => orders.id),
+    productId: varchar("product_id").notNull().references(() => products.id),
+    quantity: integer("quantity").notNull(),
+    priceAtPurchase: decimal("price_at_purchase", { precision: 10, scale: 2 }).notNull(), // Price snapshot
+});
+export const orderItemRelations = relations(orderItems, ({ one }) => ({
+    order: one(orders, {
+        fields: [orderItems.orderId],
+        references: [orders.id],
+    }),
+    product: one(products, {
+        fields: [orderItems.productId],
+        references: [products.id],
+    }),
+}));
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+    id: true,
+});
+// ===== USER DASHBOARD FEATURES =====
+// Saved Designs - Users can save/bookmark renders for later
+export const savedDesigns = pgTable("saved_designs", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id),
+    renderId: varchar("render_id").notNull().references(() => renders.id),
+    title: text("title"), // Optional custom title
+    notes: text("notes"), // User notes about the design
+    shareToken: varchar("share_token").unique(), // For sharing designs publicly
+    isPublic: boolean("is_public").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    unique("user_render_unique").on(table.userId, table.renderId),
+    index("idx_saved_designs_user").on(table.userId),
+    index("idx_saved_designs_share").on(table.shareToken),
+]);
+export const savedDesignRelations = relations(savedDesigns, ({ one }) => ({
+    user: one(users, {
+        fields: [savedDesigns.userId],
+        references: [users.id],
+    }),
+    render: one(renders, {
+        fields: [savedDesigns.renderId],
+        references: [renders.id],
+    }),
+}));
+export const insertSavedDesignSchema = createInsertSchema(savedDesigns).omit({
+    id: true,
+    createdAt: true,
+});
+// Product Interactions - Track user engagement with products
+export const productInteractions = pgTable("product_interactions", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    sessionId: varchar("session_id"), // For anonymous users
+    productId: varchar("product_id").notNull().references(() => products.id),
+    interactionType: varchar("interaction_type", { length: 30 }).notNull(), // 'view', 'add_to_cart', 'remove_from_cart', 'purchase', 'like', 'share'
+    metadata: jsonb("metadata"), // Additional context (e.g., source page, render context)
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    index("idx_product_interactions_user").on(table.userId),
+    index("idx_product_interactions_product").on(table.productId),
+    index("idx_product_interactions_type").on(table.interactionType),
+]);
+export const productInteractionRelations = relations(productInteractions, ({ one }) => ({
+    user: one(users, {
+        fields: [productInteractions.userId],
+        references: [users.id],
+    }),
+    product: one(products, {
+        fields: [productInteractions.productId],
+        references: [products.id],
+    }),
+}));
+export const insertProductInteractionSchema = createInsertSchema(productInteractions).omit({
+    id: true,
+    createdAt: true,
+});
+// ===== AI TRAINING DATA SCHEMA =====
+// Design Examples - Reference designs for AI learning (good/bad examples)
+export const designExamples = pgTable("design_examples", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    type: varchar("type", { length: 20 }).notNull(), // 'good' or 'bad'
+    roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
+    styles: text("styles").array(), // ['Modern', 'Contemporary']
+    imageUrl: text("image_url").notNull(), // URL to reference image
+    title: text("title").notNull(), // Short descriptive title
+    description: text("description"), // What makes this good/bad
+    reasoning: text("reasoning").notNull(), // Why this is a good/bad example
+    designPrinciples: text("design_principles").array(), // ['Balance', 'Proportion', 'Color Harmony']
+    tags: text("tags").array(), // Searchable tags
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const designExampleRelations = relations(designExamples, ({ one }) => ({
+    creator: one(users, {
+        fields: [designExamples.createdBy],
+        references: [users.id],
+    }),
+}));
+export const insertDesignExampleSchema = createInsertSchema(designExamples).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Product Packages - Pre-curated product combinations that work well together
+export const productPackages = pgTable("product_packages", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    name: text("name").notNull(), // 'Modern Living Room Essentials'
+    description: text("description"), // What makes this package special
+    roomType: text("room_type").notNull(), // 'Living Room'
+    styles: text("styles").array(), // ['Modern', 'Midcentury']
+    productSkus: text("product_skus").array().notNull(), // SKUs that work together
+    imageUrl: text("image_url"), // Package visualization
+    priceRange: text("price_range"), // '$3,000-$5,000'
+    designNotes: text("design_notes"), // Why these products work together
+    tags: text("tags").array(),
+    active: boolean("active").notNull().default(true),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const productPackageRelations = relations(productPackages, ({ one }) => ({
+    creator: one(users, {
+        fields: [productPackages.createdBy],
+        references: [users.id],
+    }),
+}));
+export const insertProductPackageSchema = createInsertSchema(productPackages).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Placement Guidelines - Rules for where products should be placed in rooms
+export const placementGuidelines = pgTable("placement_guidelines", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    productCategory: text("product_category").notNull(), // 'Sofa', 'Coffee Table', 'Dining Table'
+    roomType: text("room_type").notNull(), // 'Living Room', 'Dining Room'
+    guideline: text("guideline").notNull(), // 'Place sofa 12-18 inches from wall'
+    doExamples: text("do_examples").array(), // List of good placement practices
+    dontExamples: text("dont_examples").array(), // List of bad placement practices
+    imageUrl: text("image_url"), // Visual reference
+    priority: integer("priority").notNull().default(1), // Higher priority = more important rule
+    reasoning: text("reasoning"), // Why this guideline matters
+    tags: text("tags").array(),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const placementGuidelineRelations = relations(placementGuidelines, ({ one }) => ({
+    creator: one(users, {
+        fields: [placementGuidelines.createdBy],
+        references: [users.id],
+    }),
+}));
+export const insertPlacementGuidelineSchema = createInsertSchema(placementGuidelines).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Design Rules - General design principles and rules for AI to follow
+export const designRules = pgTable("design_rules", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    category: varchar("category").notNull(), // 'color', 'spacing', 'proportion', 'balance', 'contrast'
+    rule: text("rule").notNull(), // The actual design rule
+    description: text("description"), // Detailed explanation
+    examples: text("examples").array(), // Examples of the rule in practice
+    counterExamples: text("counter_examples").array(), // What NOT to do
+    priority: integer("priority").notNull().default(1), // Higher = more important
+    applicableRooms: text("applicable_rooms").array(), // Which rooms this applies to
+    applicableStyles: text("applicable_styles").array(), // Which styles this applies to
+    active: boolean("active").notNull().default(true),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const designRuleRelations = relations(designRules, ({ one }) => ({
+    creator: one(users, {
+        fields: [designRules.createdBy],
+        references: [users.id],
+    }),
+}));
+export const insertDesignRuleSchema = createInsertSchema(designRules).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Upload Jobs - Track background upload jobs for products
+export const uploadJobs = pgTable("upload_jobs", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    productId: varchar("product_id").references(() => products.id).notNull(),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'paused'
+    totalFiles: integer("total_files").notNull().default(0),
+    completedFiles: integer("completed_files").notNull().default(0),
+    failedFiles: integer("failed_files").notNull().default(0),
+    skippedFiles: integer("skipped_files").notNull().default(0), // Duplicates
+    currentFileName: text("current_file_name"), // Currently processing file
+    errorMessage: text("error_message"), // Error details if failed
+    metadata: jsonb("metadata"), // Additional job info (folder path, etc.)
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+}, (table) => [
+    index("idx_job_product_status").on(table.productId, table.status),
+    index("idx_job_status").on(table.status),
+]);
+export const uploadJobRelations = relations(uploadJobs, ({ one, many }) => ({
+    user: one(users, {
+        fields: [uploadJobs.userId],
+        references: [users.id],
+    }),
+    product: one(products, {
+        fields: [uploadJobs.productId],
+        references: [products.id],
+    }),
+    files: many(uploadJobFiles),
+}));
+export const insertUploadJobSchema = createInsertSchema(uploadJobs).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Upload Job Files - Track individual files within an upload job
+export const uploadJobFiles = pgTable("upload_job_files", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    jobId: varchar("job_id").references(() => uploadJobs.id).notNull(),
+    fileName: text("file_name").notNull(),
+    fileSize: integer("file_size"), // Size in bytes
+    fileHash: text("file_hash"), // SHA-256 hash for durable duplicate detection
+    status: varchar("status").notNull().default("pending"), // 'pending', 'uploading', 'completed', 'failed', 'skipped'
+    s3Url: text("s3_url"), // URL after successful upload
+    errorMessage: text("error_message"),
+    isDuplicate: boolean("is_duplicate").notNull().default(false),
+    uploadedAt: timestamp("uploaded_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    index("idx_file_job_status").on(table.jobId, table.status),
+]);
+export const uploadJobFileRelations = relations(uploadJobFiles, ({ one }) => ({
+    job: one(uploadJobs, {
+        fields: [uploadJobFiles.jobId],
+        references: [uploadJobs.id],
+    }),
+}));
+export const insertUploadJobFileSchema = createInsertSchema(uploadJobFiles).omit({
+    id: true,
+    createdAt: true,
+});
+// Visual Analysis Jobs - Track AI-powered visual description generation
+export const visualAnalysisJobs = pgTable("visual_analysis_jobs", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'paused'
+    jobType: varchar("job_type").notNull().default("manual"), // 'manual', 'auto_after_upload'
+    uploadJobId: varchar("upload_job_id").references(() => uploadJobs.id), // Link to upload job if auto-triggered
+    totalProducts: integer("total_products").notNull().default(0),
+    analyzedProducts: integer("analyzed_products").notNull().default(0),
+    failedProducts: integer("failed_products").notNull().default(0),
+    skippedProducts: integer("skipped_products").notNull().default(0), // Already have visual descriptions
+    currentProductName: text("current_product_name"), // Currently analyzing product
+    errorMessage: text("error_message"), // Error details if failed
+    metadata: jsonb("metadata"), // Additional job info (batch size, filters, etc.)
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+}, (table) => [
+    index("idx_analysis_job_status").on(table.status),
+    index("idx_analysis_job_upload").on(table.uploadJobId),
+]);
+export const visualAnalysisJobRelations = relations(visualAnalysisJobs, ({ one, many }) => ({
+    user: one(users, {
+        fields: [visualAnalysisJobs.userId],
+        references: [users.id],
+    }),
+    uploadJob: one(uploadJobs, {
+        fields: [visualAnalysisJobs.uploadJobId],
+        references: [uploadJobs.id],
+    }),
+    products: many(visualAnalysisProducts),
+}));
+export const insertVisualAnalysisJobSchema = createInsertSchema(visualAnalysisJobs).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Visual Analysis Products - Track individual products within an analysis job
+export const visualAnalysisProducts = pgTable("visual_analysis_products", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    jobId: varchar("job_id").references(() => visualAnalysisJobs.id).notNull(),
+    productId: varchar("product_id").references(() => products.id).notNull(),
+    productSku: varchar("product_sku").notNull(),
+    productName: text("product_name").notNull(),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'analyzing', 'completed', 'failed', 'skipped'
+    geminiStatus: varchar("gemini_status"), // 'success', 'failed', null
+    openaiStatus: varchar("openai_status"), // 'success', 'failed', null
+    geminiDescription: text("gemini_description"), // Gemini result
+    openaiDescription: text("openai_description"), // OpenAI result
+    errorMessage: text("error_message"),
+    analyzedAt: timestamp("analyzed_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    index("idx_analysis_product_job_status").on(table.jobId, table.status),
+    index("idx_analysis_product_id").on(table.productId),
+    unique("job_product_unique").on(table.jobId, table.productId),
+]);
+export const visualAnalysisProductRelations = relations(visualAnalysisProducts, ({ one }) => ({
+    job: one(visualAnalysisJobs, {
+        fields: [visualAnalysisProducts.jobId],
+        references: [visualAnalysisJobs.id],
+    }),
+    product: one(products, {
+        fields: [visualAnalysisProducts.productId],
+        references: [products.id],
+    }),
+}));
+export const insertVisualAnalysisProductSchema = createInsertSchema(visualAnalysisProducts).omit({
+    id: true,
+    createdAt: true,
+});
+// S3 Renaming Jobs - Track background S3 image normalization tasks
+export const s3RenamingJobs = pgTable("s3_renaming_jobs", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+    totalProducts: integer("total_products").notNull().default(0),
+    processedProducts: integer("processed_products").notNull().default(0),
+    successfulRenames: integer("successful_renames").notNull().default(0),
+    failedRenames: integer("failed_renames").notNull().default(0),
+    currentProductName: text("current_product_name"), // Currently processing product
+    errorMessage: text("error_message"),
+    dryRun: boolean("dry_run").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+}, (table) => [
+    index("idx_s3_job_status").on(table.status),
+]);
+export const s3RenamingJobRelations = relations(s3RenamingJobs, ({ one, many }) => ({
+    user: one(users, {
+        fields: [s3RenamingJobs.userId],
+        references: [users.id],
+    }),
+    products: many(s3RenamingProducts),
+}));
+export const insertS3RenamingJobSchema = createInsertSchema(s3RenamingJobs).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// S3 Renaming Products - Track individual products within a renaming job
+export const s3RenamingProducts = pgTable("s3_renaming_products", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    jobId: varchar("job_id").references(() => s3RenamingJobs.id, { onDelete: "cascade" }).notNull(),
+    productId: varchar("product_id").references(() => products.id).notNull(),
+    productSku: varchar("product_sku").notNull(),
+    productName: text("product_name").notNull(),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'skipped'
+    oldImages: jsonb("old_images"), // Original image URLs
+    newImages: jsonb("new_images"), // Normalized image URLs
+    renamedCount: integer("renamed_count").notNull().default(0),
+    errorMessage: text("error_message"),
+    processedAt: timestamp("processed_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    index("idx_s3_product_job_status").on(table.jobId, table.status),
+    index("idx_s3_product_id").on(table.productId),
+    unique("s3_job_product_unique").on(table.jobId, table.productId),
+]);
+export const s3RenamingProductRelations = relations(s3RenamingProducts, ({ one }) => ({
+    job: one(s3RenamingJobs, {
+        fields: [s3RenamingProducts.jobId],
+        references: [s3RenamingJobs.id],
+    }),
+    product: one(products, {
+        fields: [s3RenamingProducts.productId],
+        references: [products.id],
+    }),
+}));
+export const insertS3RenamingProductSchema = createInsertSchema(s3RenamingProducts).omit({
+    id: true,
+    createdAt: true,
+});
+// Visual Description Jobs - Track background visual description generation tasks
+export const visualDescriptionJobs = pgTable("visual_description_jobs", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+    mode: varchar("mode").notNull().default("missing_only"), // 'missing_only', 'regenerate_all'
+    totalProducts: integer("total_products").notNull().default(0),
+    processedProducts: integer("processed_products").notNull().default(0),
+    successfulAnalyses: integer("successful_analyses").notNull().default(0),
+    failedAnalyses: integer("failed_analyses").notNull().default(0),
+    skippedProducts: integer("skipped_products").notNull().default(0),
+    currentProductName: text("current_product_name"), // Currently processing product
+    lastCheckpointProductId: varchar("last_checkpoint_product_id"), // For resume functionality
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow(),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+}, (table) => [
+    index("idx_visual_desc_job_status").on(table.status),
+]);
+export const visualDescriptionJobRelations = relations(visualDescriptionJobs, ({ one, many }) => ({
+    user: one(users, {
+        fields: [visualDescriptionJobs.userId],
+        references: [users.id],
+    }),
+    products: many(visualDescriptionProducts),
+}));
+export const insertVisualDescriptionJobSchema = createInsertSchema(visualDescriptionJobs).omit({
+    id: true,
+    createdAt: true,
+    startedAt: true,
+    completedAt: true,
+});
+// Visual Description Products - Track individual product analysis within a job
+export const visualDescriptionProducts = pgTable("visual_description_products", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    jobId: varchar("job_id").notNull().references(() => visualDescriptionJobs.id),
+    productId: varchar("product_id").notNull().references(() => products.id),
+    status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'skipped'
+    visualDescription: text("visual_description"), // Generated description
+    wordCount: integer("word_count"), // Word count of generated description
+    imageSource: text("image_source"), // Which image was used (Front View, Main View, etc.)
+    errorMessage: text("error_message"),
+    retryCount: integer("retry_count").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    index("idx_visual_desc_product_job_status").on(table.jobId, table.status),
+    index("idx_visual_desc_product_id").on(table.productId),
+    unique("visual_desc_job_product_unique").on(table.jobId, table.productId),
+]);
+export const visualDescriptionProductRelations = relations(visualDescriptionProducts, ({ one }) => ({
+    job: one(visualDescriptionJobs, {
+        fields: [visualDescriptionProducts.jobId],
+        references: [visualDescriptionJobs.id],
+    }),
+    product: one(products, {
+        fields: [visualDescriptionProducts.productId],
+        references: [products.id],
+    }),
+}));
+export const insertVisualDescriptionProductSchema = createInsertSchema(visualDescriptionProducts).omit({
+    id: true,
+    createdAt: true,
+});
+// Room Templates - Define standard composition for each room type
+export const roomTemplates = pgTable("room_templates", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    roomType: text("room_type").notNull().unique(), // 'Living Room', 'Bedroom', 'Dining Room', 'Office'
+    name: text("name").notNull(), // Human-readable name
+    description: text("description"), // Template description
+    minRoomSize: integer("min_room_size"), // Minimum square footage
+    maxRoomSize: integer("max_room_size"), // Maximum square footage
+    metadata: jsonb("metadata"), // Additional configuration
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const insertRoomTemplateSchema = createInsertSchema(roomTemplates).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Functional Categories - Define product roles in a room
+export const functionalCategories = pgTable("functional_categories", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    name: text("name").notNull().unique(), // 'primary_seating', 'accent_seating', 'coffee_table', 'side_table', 'storage', 'lighting', 'decor'
+    displayName: text("display_name").notNull(), // Human-readable name
+    description: text("description"),
+    spatialRequirements: jsonb("spatial_requirements"), // { minFloorSpace: 20, verticalSpace: 'floor' | 'wall' | 'ceiling' }
+    visualWeight: text("visual_weight"), // 'dominant', 'supporting', 'accent'
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertFunctionalCategorySchema = createInsertSchema(functionalCategories).omit({
+    id: true,
+    createdAt: true,
+});
+// Template Category Rules - Define composition rules for each template
+export const templateCategoryRules = pgTable("template_category_rules", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    templateId: varchar("template_id").notNull().references(() => roomTemplates.id),
+    functionalCategoryId: varchar("functional_category_id").notNull().references(() => functionalCategories.id),
+    minCount: integer("min_count").notNull().default(0), // Minimum required items
+    maxCount: integer("max_count").notNull().default(1), // Maximum allowed items
+    priority: integer("priority").notNull().default(100), // Selection priority (lower = higher priority)
+    isEssential: boolean("is_essential").notNull().default(false), // Must be included
+    placementZone: text("placement_zone"), // 'center', 'perimeter', 'corner', 'focal'
+    adjacencyRules: jsonb("adjacency_rules"), // Rules for what can be placed nearby
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertTemplateCategoryRuleSchema = createInsertSchema(templateCategoryRules).omit({
+    id: true,
+    createdAt: true,
+});
+// Product Functional Categories - Map products to functional categories
+export const productFunctionalCategories = pgTable("product_functional_categories", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    productId: varchar("product_id").notNull().references(() => products.id),
+    functionalCategoryId: varchar("functional_category_id").notNull().references(() => functionalCategories.id),
+    confidence: decimal("confidence", { precision: 3, scale: 2 }).notNull().default("1.00"), // 0.00-1.00 confidence score
+    source: text("source").notNull().default("manual"), // 'manual', 'ai_analysis', 'rule_based'
+    metadata: jsonb("metadata"), // Additional classification data
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    unique("product_functional_unique").on(table.productId, table.functionalCategoryId),
+]);
+export const insertProductFunctionalCategorySchema = createInsertSchema(productFunctionalCategories).omit({
+    id: true,
+    createdAt: true,
+});
+// ===== DOCUMENTATION SYSTEM SCHEMA =====
+// Documentation Sections - Client-facing markdown documentation
+export const documentationSections = pgTable("documentation_sections", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    title: text("title").notNull(),
+    slug: varchar("slug").notNull(), // URL-friendly identifier
+    content: text("content").notNull(), // Markdown content
+    tags: text("tags").array(), // Searchable tags
+    version: integer("version").notNull().default(1), // Version number
+    publishedVersion: integer("published_version"), // Latest published version
+    status: varchar("status", { length: 20 }).notNull().default("draft"), // 'draft', 'published', 'archived'
+    versionNotes: jsonb("version_notes"), // Change history: { [version]: { author, timestamp, changes } }
+    sortOrder: integer("sort_order").notNull().default(0), // Display order
+    parentSectionId: varchar("parent_section_id").references(() => documentationSections.id), // For hierarchical docs
+    createdBy: varchar("created_by").references(() => users.id),
+    updatedBy: varchar("updated_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+    unique("slug_version_unique").on(table.slug, table.version),
+    index("idx_docs_status").on(table.status),
+    index("idx_docs_slug").on(table.slug),
+]);
+export const documentationSectionRelations = relations(documentationSections, ({ one, many }) => ({
+    creator: one(users, {
+        fields: [documentationSections.createdBy],
+        references: [users.id],
+    }),
+    updater: one(users, {
+        fields: [documentationSections.updatedBy],
+        references: [users.id],
+    }),
+    comments: many(documentationComments),
+}));
+export const insertDocumentationSectionSchema = createInsertSchema(documentationSections).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Documentation Comments - Threaded comments on documentation sections
+export const documentationComments = pgTable("documentation_comments", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sectionId: varchar("section_id").notNull().references(() => documentationSections.id),
+    threadRootId: varchar("thread_root_id").references(() => documentationComments.id), // Self-reference for threading
+    parentCommentId: varchar("parent_comment_id").references(() => documentationComments.id), // Parent comment for nesting
+    userId: varchar("user_id").notNull().references(() => users.id),
+    commentText: text("comment_text").notNull(),
+    anchorType: varchar("anchor_type", { length: 20 }).notNull().default("section"), // 'heading', 'paragraph', 'custom', 'section'
+    anchorValue: text("anchor_value"), // Heading slug, element ID, or custom anchor
+    anchorOffset: integer("anchor_offset"), // Position offset for drift detection
+    resolvedAt: timestamp("resolved_at"), // When comment was resolved
+    resolvedBy: varchar("resolved_by").references(() => users.id), // Who resolved it
+    isInternal: boolean("is_internal").notNull().default(false), // Internal admin comment vs client comment
+    metadata: jsonb("metadata"), // Additional comment data
+    editedAt: timestamp("edited_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    index("idx_comments_section").on(table.sectionId),
+    index("idx_comments_thread").on(table.threadRootId),
+    index("idx_comments_parent").on(table.parentCommentId),
+    index("idx_comments_anchor").on(table.anchorValue),
+]);
+export const documentationCommentRelations = relations(documentationComments, ({ one }) => ({
+    section: one(documentationSections, {
+        fields: [documentationComments.sectionId],
+        references: [documentationSections.id],
+    }),
+    user: one(users, {
+        fields: [documentationComments.userId],
+        references: [users.id],
+    }),
+    resolver: one(users, {
+        fields: [documentationComments.resolvedBy],
+        references: [users.id],
+    }),
+}));
+export const insertDocumentationCommentSchema = createInsertSchema(documentationComments).omit({
+    id: true,
+    createdAt: true,
+});
+//# sourceMappingURL=schema.js.map

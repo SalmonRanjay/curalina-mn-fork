@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { getDb } from "./db";
 import { categories, suppliers, products } from "@shared/schema";
 
 async function seed() {
@@ -27,7 +27,7 @@ async function seed() {
   const allCategories = [...roomCategories, ...furnitureCategories];
   
   for (const cat of allCategories) {
-    await db.insert(categories).values(cat).onConflictDoNothing();
+    await getDb().insert(categories).values(cat).onConflictDoNothing();
   }
 
   // Seed Suppliers
@@ -41,15 +41,15 @@ async function seed() {
 
   const insertedSuppliers = [];
   for (const supplier of supplierList) {
-    const [inserted] = await db.insert(suppliers).values(supplier).returning().onConflictDoNothing();
+    const [inserted] = await getDb().insert(suppliers).values(supplier).returning().onConflictDoNothing();
     if (inserted) insertedSuppliers.push(inserted);
   }
 
   // Get inserted categories for product references
-  const sofaCategory = await db.query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "sofa") });
-  const chairCategory = await db.query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "chair") });
-  const tableCategory = await db.query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "table") });
-  const lightingCategory = await db.query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "lighting") });
+  const sofaCategory = await getDb().query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "sofa") });
+  const chairCategory = await getDb().query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "chair") });
+  const tableCategory = await getDb().query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "table") });
+  const lightingCategory = await getDb().query.categories.findFirst({ where: (c, { eq }) => eq(c.slug, "lighting") });
 
   if (!sofaCategory || !chairCategory || !tableCategory || !lightingCategory || insertedSuppliers.length === 0) {
     console.error("Failed to fetch required categories or suppliers");
@@ -210,7 +210,7 @@ async function seed() {
   ];
 
   for (const product of productList) {
-    await db.insert(products).values(product).onConflictDoNothing();
+    await getDb().insert(products).values(product).onConflictDoNothing();
   }
 
   console.log("Seed completed successfully!");

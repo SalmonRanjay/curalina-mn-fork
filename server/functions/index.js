@@ -1,32 +1,38 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
-
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
-
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+import { onRequest } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
+// Import the built application factory
+// @ts-ignore - The file exists after build
+import { createApp } from "./dist/index.js";
+// Cache the app instance to reuse across requests (warm start)
+let appInstance = null;
+// Export the 'api' function which matches your firebase.json rewrites
+export const api = onRequest({
+    // Define secrets required by this function
+    secrets: ["DATABASE_URL", "SESSION_SECRET"],
+    // Adjust memory/timeout as needed
+    memory: "512MiB",
+    timeoutSeconds: 60,
+    // Ensure we are in the same region as your DB/Storage if possible
+    region: "us-central1"
+}, async (req, res) => {
+    try {
+        if (!appInstance) {
+            logger.info("Initializing Express app for request (Cold Start)");
+            appInstance = await createApp();
+        }
+        // Forward the request to Express
+        appInstance(req, res);
+    }
+    catch (error) {
+        // Catch fatal errors that happen BEFORE Express can handle them
+        logger.error("Failed to initialize Express app", {
+            message: error.message,
+            stack: error.stack
+        });
+        // Send JSON error response
+        res.status(500).json({
+            message: "Internal Server Error: Application failed to start.",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
+        });
+    }
+});

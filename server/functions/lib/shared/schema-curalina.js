@@ -1,0 +1,220 @@
+import { sql } from "drizzle-orm";
+import { pgTable, varchar, text, decimal, integer, timestamp, jsonb, } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm";
+// Categories - Product categorization (room types and furniture types)
+export const categories = pgTable("categories", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    name: text("name").notNull(),
+    type: varchar("type", { length: 20 }).notNull(), // 'room' or 'furniture'
+    slug: varchar("slug").notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertCategorySchema = createInsertSchema(categories).omit({
+    id: true,
+    createdAt: true,
+});
+// Suppliers - Furniture suppliers
+export const suppliers = pgTable("suppliers", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    name: text("name").notNull(),
+    email: varchar("email").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+    id: true,
+    createdAt: true,
+});
+// Products - Full product catalog
+export const products = pgTable("products", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sku: varchar("sku").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    categoryId: varchar("category_id").references(() => categories.id),
+    supplierId: varchar("supplier_id").references(() => suppliers.id),
+    // Pricing
+    tradePrice: decimal("trade_price", { precision: 10, scale: 2 }),
+    price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+    discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
+    // Product attributes
+    roomType: text("room_type").array(), // ['Living room', 'Bedroom']
+    designStyle: text("design_style").array(), // ['Modern', 'Contemporary']
+    styleTags: text("style_tags").array(), // ['modern', 'organic']
+    keyFeatures: text("key_features").array(), // ['pet-friendly', 'casual setting']
+    storageSolutions: text("storage_solutions"), // 'No Storage', '3 Drawers', etc.
+    colors: text("colors").array(),
+    materials: text("materials").array(),
+    // Physical specifications
+    dimensions: jsonb("dimensions"), // { w, d, h, unit }
+    weight: text("weight"), // '150 lbs'
+    assembly: text("assembly"), // 'Yes', 'No', 'Partial'
+    // Inventory & shipping
+    inventory: integer("inventory"),
+    leadTime: integer("lead_time"), // days
+    availability: varchar("availability", { length: 20 }).notNull().default("in_stock"), // 'in_stock' or 'preorder'
+    shipping: jsonb("shipping"), // { cost, eta }
+    // Media & metadata
+    images: text("images").array(), // URLs to images
+    asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
+    tags: text("tags").array(), // General tags for search/categorization
+    sourceFile: text("source_file"), // Original import file reference
+    seoMeta: jsonb("seo_meta"), // { title, description }
+    slug: varchar("slug").notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const productRelations = relations(products, ({ one }) => ({
+    category: one(categories, {
+        fields: [products.categoryId],
+        references: [categories.id],
+    }),
+    supplier: one(suppliers, {
+        fields: [products.supplierId],
+        references: [suppliers.id],
+    }),
+}));
+export const insertProductSchema = createInsertSchema(products).omit({
+    id: true,
+    createdAt: true,
+});
+// Quiz Responses - User design preferences
+export const quizResponses = pgTable("quiz_responses", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    roomType: text("room_type").notNull(), // 'Living Room', 'Bedroom', etc.
+    style: text("style").notNull(), // 'Midcentury Scandi', etc.
+    keyFeatures: text("key_features").array(), // ['Comfortable Seat', 'Storage']
+    budgetRange: text("budget_range").notNull(), // '$2K-$5K', etc.
+    vibeImages: text("vibe_images").array(), // User-uploaded reference images
+    preferences: text("preferences").array(), // Design preference bullets
+    floorplanUrl: text("floorplan_url"), // Uploaded floorplan image
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertQuizResponseSchema = createInsertSchema(quizResponses).omit({
+    id: true,
+    createdAt: true,
+});
+// Renders - AI-generated room designs
+export const renders = pgTable("renders", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    quizResponseId: varchar("quiz_response_id").references(() => quizResponses.id),
+    sessionId: varchar("session_id").notNull(),
+    imageUrl: text("image_url"), // Public URL to generated render
+    prompt: text("prompt").notNull(), // Full AI prompt used
+    productSkus: text("product_skus").array(), // Products featured in render
+    status: varchar("status", { length: 20 }).notNull().default("generating"), // 'generating', 'completed', 'failed'
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const renderRelations = relations(renders, ({ one }) => ({
+    quizResponse: one(quizResponses, {
+        fields: [renders.quizResponseId],
+        references: [quizResponses.id],
+    }),
+}));
+export const insertRenderSchema = createInsertSchema(renders).omit({
+    id: true,
+    createdAt: true,
+});
+// Cart Items - Shopping cart
+export const cartItems = pgTable("cart_items", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    productId: varchar("product_id").references(() => products.id),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const cartItemRelations = relations(cartItems, ({ one }) => ({
+    product: one(products, {
+        fields: [cartItems.productId],
+        references: [products.id],
+    }),
+}));
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({
+    id: true,
+    createdAt: true,
+});
+// Orders - Purchase orders
+export const orders = pgTable("orders", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'paid', 'fulfilled', 'shipped', 'delivered'
+    totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+    customerEmail: varchar("customer_email").notNull(),
+    customerName: text("customer_name").notNull(),
+    shippingAddress: jsonb("shipping_address").notNull(), // { street, city, state, zip, country }
+    stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+export const insertOrderSchema = createInsertSchema(orders).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Order Items - Individual items in orders
+export const orderItems = pgTable("order_items", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    orderId: varchar("order_id").references(() => orders.id),
+    productId: varchar("product_id").references(() => products.id),
+    quantity: integer("quantity").notNull(),
+    priceAtPurchase: decimal("price_at_purchase", { precision: 10, scale: 2 }).notNull(), // Price snapshot
+});
+export const orderItemRelations = relations(orderItems, ({ one }) => ({
+    order: one(orders, {
+        fields: [orderItems.orderId],
+        references: [orders.id],
+    }),
+    product: one(products, {
+        fields: [orderItems.productId],
+        references: [products.id],
+    }),
+}));
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+    id: true,
+});
+// Comparison Renders - Side-by-side AI service comparison
+export const comparisonRenders = pgTable("comparison_renders", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    quizResponseId: varchar("quiz_response_id").references(() => quizResponses.id),
+    sessionId: varchar("session_id").notNull(),
+    // Gemini render
+    geminiImageUrl: text("gemini_image_url"),
+    geminiGenerationTime: integer("gemini_generation_time"), // milliseconds
+    geminiQaScore: integer("gemini_qa_score"), // 0-100
+    geminiProductCount: integer("gemini_product_count"),
+    geminiStatus: varchar("gemini_status", { length: 20 }).default("pending"), // 'pending', 'success', 'failed'
+    geminiError: text("gemini_error"),
+    // OpenAI render
+    openaiImageUrl: text("openai_image_url"),
+    openaiGenerationTime: integer("openai_generation_time"), // milliseconds
+    openaiQaScore: integer("openai_qa_score"), // 0-100
+    openaiProductCount: integer("openai_product_count"),
+    openaiStatus: varchar("openai_status", { length: 20 }).default("pending"),
+    openaiError: text("openai_error"),
+    // Stability AI render
+    stabilityImageUrl: text("stability_image_url"),
+    stabilityGenerationTime: integer("stability_generation_time"), // milliseconds
+    stabilityQaScore: integer("stability_qa_score"), // 0-100
+    stabilityProductCount: integer("stability_product_count"),
+    stabilityStatus: varchar("stability_status", { length: 20 }).default("pending"),
+    stabilityError: text("stability_error"),
+    // User selection
+    selectedService: varchar("selected_service", { length: 20 }), // 'gemini', 'openai', 'stability'
+    selectionReason: text("selection_reason"), // Why user chose this one
+    // Shared metadata
+    productSkus: text("product_skus").array(), // Products requested
+    prompt: text("prompt"), // Original prompt
+    createdAt: timestamp("created_at").defaultNow(),
+});
+export const comparisonRenderRelations = relations(comparisonRenders, ({ one }) => ({
+    quizResponse: one(quizResponses, {
+        fields: [comparisonRenders.quizResponseId],
+        references: [quizResponses.id],
+    }),
+}));
+export const insertComparisonRenderSchema = createInsertSchema(comparisonRenders).omit({
+    id: true,
+    createdAt: true,
+});
+//# sourceMappingURL=schema-curalina.js.map
