@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Upload, Camera, FileText, Sparkles } from "lucide-react";
+import { Camera, FileText, Sparkles } from "lucide-react";
 import Dropzone from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

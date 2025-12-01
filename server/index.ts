@@ -114,7 +114,7 @@ export const createApp = async () => {
 // Helper to start server LOCALLY (not in Firebase)
 // We check for FIREBASE_CONFIG to know if we are in the cloud function env
 if (process.env.NODE_ENV === 'development' && !process.env.FIREBASE_CONFIG) {
-    const PORT = process.env.PORT || 3001;
+    const PORT = process.env.PORT || 3002;
     // Call the factory explicitly
     createApp().then(app => {
         app.listen(PORT, () => {

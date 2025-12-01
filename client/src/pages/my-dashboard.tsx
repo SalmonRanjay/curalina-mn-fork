@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, ComponentType } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -309,12 +310,12 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 function EmptyState({ 
-  icon: Icon, 
+  icon: Icon,
   title, 
   description, 
   action 
 }: { 
-  icon: React.ElementType; 
+  icon: ComponentType<any>; 
   title: string; 
   description: string;
   action?: { label: string; href: string };
@@ -439,25 +440,25 @@ export default function MyDashboard() {
           <StatCard
             title="Total Designs"
             value={analyticsLoading ? "..." : analytics?.totalRenders || 0}
-            icon={ImageIcon}
+            icon={ImageIcon as ComponentType<any>}
             description="AI-generated room designs"
           />
           <StatCard
             title="Saved Favorites"
             value={analyticsLoading ? "..." : analytics?.savedDesigns || 0}
-            icon={Heart}
+            icon={Heart as ComponentType<any>}
             description="Your bookmarked designs"
           />
           <StatCard
             title="Products Viewed"
             value={analyticsLoading ? "..." : analytics?.productViews || 0}
-            icon={Eye}
+            icon={Eye as ComponentType<any>}
             description="Items you've explored"
           />
           <StatCard
             title="Orders Placed"
             value={analyticsLoading ? "..." : analytics?.totalOrders || 0}
-            icon={ShoppingBag}
+            icon={ShoppingBag as ComponentType<any>}
             description="Completed purchases"
           />
         </div>
@@ -489,7 +490,7 @@ export default function MyDashboard() {
                     </div>
                   ) : renders.length === 0 ? (
                     <EmptyState
-                      icon={Palette}
+                      icon={Palette as ComponentType<any>}
                       title="No designs yet"
                       description="Start your design journey by taking our style quiz."
                       action={{ label: "Take the Quiz", href: "/quiz" }}
@@ -537,7 +538,7 @@ export default function MyDashboard() {
                     </div>
                   ) : orders.length === 0 ? (
                     <EmptyState
-                      icon={ShoppingBag}
+                      icon={ShoppingBag as ComponentType<any>}
                       title="No orders yet"
                       description="Explore furniture from your designs and start shopping."
                     />
@@ -613,7 +614,7 @@ export default function MyDashboard() {
             ) : renders.length === 0 ? (
               <Card className="p-8">
                 <EmptyState
-                  icon={Palette}
+                  icon={Palette as ComponentType<any>}
                   title="No designs yet"
                   description="Start your interior design journey by taking our personalized style quiz."
                   action={{ label: "Take the Style Quiz", href: "/quiz" }}
@@ -643,7 +644,7 @@ export default function MyDashboard() {
             ) : savedDesigns.length === 0 ? (
               <Card className="p-8">
                 <EmptyState
-                  icon={Heart}
+                  icon={Heart as ComponentType<any>}
                   title="No saved designs"
                   description="Save designs you love by clicking the heart icon on any render."
                 />
@@ -671,7 +672,7 @@ export default function MyDashboard() {
             ) : orders.length === 0 ? (
               <Card className="p-8">
                 <EmptyState
-                  icon={ShoppingBag}
+                  icon={ShoppingBag as ComponentType<any>}
                   title="No orders yet"
                   description="When you purchase furniture from your designs, your orders will appear here."
                 />

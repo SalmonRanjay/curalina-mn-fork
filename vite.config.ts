@@ -28,14 +28,14 @@ export default defineConfig(async () => {
       emptyOutDir: true,
     },
     server: {
-      port: 5001,
+      port: 5173,
       fs: {
         strict: true,
         deny: ["**/.*"],
       },
       proxy: {
         '/api': {
-          target: 'http://localhost:5000', // Your Express server's port
+          target: 'http://localhost:3002', // Your Express server's port
           changeOrigin: true,
         },
       },

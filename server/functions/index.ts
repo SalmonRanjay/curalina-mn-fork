@@ -4,7 +4,7 @@ import express, {
   type NextFunction,
   Router,
 } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes.js";  // ← Added .js
 import dotenv from "dotenv";
 import * as logger from "firebase-functions/logger";
 import cors from "cors";
@@ -54,9 +54,9 @@ export const createApp = async () => {
     let capturedJsonResponse: any = undefined;
 
     const originalResJson = res.json;
-    res.json = function (bodyJson, ...args: any[]) {
+    res.json = function (bodyJson) {
       capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
+      return originalResJson.call(res, bodyJson);
     };
 
     res.on("finish", () => {

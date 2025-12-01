@@ -81,7 +81,7 @@ async function setupAuth(app) {
         }
     });
     // Routes
-    app.post("/api/auth/register", async (req, res) => {
+    app.post("/auth/register", async (req, res) => {
         try {
             const result = registerSchema.safeParse(req.body);
             if (!result.success)
@@ -104,7 +104,7 @@ async function setupAuth(app) {
             res.status(500).json({ message: "Server error" });
         }
     });
-    app.post("/api/auth/login", (req, res, next) => {
+    app.post("/auth/login", (req, res, next) => {
         const result = loginSchema.safeParse(req.body);
         if (!result.success)
             return res.status(400).json({ errors: result.error.errors });
@@ -126,7 +126,7 @@ async function setupAuth(app) {
             });
         })(req, res, next);
     });
-    app.post("/api/auth/logout", (req, res) => {
+    app.post("/auth/logout", (req, res) => {
         req.logout(() => {
             req.session.destroy(() => {
                 res.clearCookie("connect.sid");

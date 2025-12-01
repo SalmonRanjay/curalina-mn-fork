@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ObjectStorageService = exports.ObjectNotFoundError = exports.objectStorageClient = void 0;
 const storage_1 = require("@google-cloud/storage");
 const crypto_1 = require("crypto");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
 // Firebase Functions env provides credentials automatically
 exports.objectStorageClient = new storage_1.Storage();
 // Use the default bucket if not specified
@@ -47,19 +50,41 @@ class ObjectStorageService {
             }
         }
     }
-    async getObjectEntityUploadURL() {
-        // In Firebase, we ideally want the CLIENT to upload directly using the Client SDK
-        // But to keep your current flow working, we will generate a Signed URL.
-        const objectId = (0, crypto_1.randomUUID)();
-        const objectName = `uploads/${objectId}`;
-        const file = this.getBucket().file(objectName);
-        // This URL is for your internal API to PUT to, or for the client to use if you return it
-        // For now, let's keep the Replit compatible return format if your frontend expects a specific string.
-        // BUT normally we would return a signed URL here.
-        // Returning the internal path that the frontend likely uses to POST to your server proxy
-        // If you are proxying uploads through your Express server:
-        return `/api/objects/upload-internal/${this.bucketName}/${objectName}`;
+
+    async getObjectEntityUploadURL(fileName, contentType) {
+        if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_REGION || !process.env.AWS_S3_BUCKET) {
+            console.error("Missing AWS configuration");
+            throw new Error("Server configuration error");
+        }
+
+        const s3Client = new S3Client({
+            region: process.env.AWS_REGION,
+            credentials: {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            },
+        });
+
+        const key = `uploads/${Date.now()}-${fileName}`;
+
+        const command = new PutObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET,
+            Key: key,
+            ContentType: contentType,
+        });
+
+        const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+        return {
+            method: "PUT",
+            url,
+            headers: {
+                "Content-Type": contentType,
+            },
+            key,
+        };
     }
+
     async getObjectEntityFile(objectPath) {
         // Expected format: /objects/<path>
         if (!objectPath.startsWith("/objects/")) {

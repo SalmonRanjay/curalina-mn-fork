@@ -1,15 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+
 import {
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  X,
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
@@ -17,7 +11,6 @@ import { useMutation } from "@tanstack/react-query";
 import { getOrCreateSessionId } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
 import { useQuiz } from "@/contexts/QuizContext";
-import Dropzone from "react-dropzone";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import colorPalette from "@assets/image001_1762335467188.png";
-import RoomTypeStep from "@/components/quiz/RoomTypeStep";
 import RoomTypeStepV2 from "@/components/quiz/RoomTypeStepV2";
 import StyleSelectionStepV2 from "@/components/quiz/StyleSelectionStepV2";
 import ColorMaterialsStepV2 from "@/components/quiz/ColorMaterialsStepV2";
@@ -38,10 +29,7 @@ import QuizLayout from "@/components/quiz/QuizLayout";
 
 const TOTAL_STEPS = 7;
 
-// Define your Firebase Functions API base URL here
-// IMPORTANT: Replace with your actual deployed Firebase Function URL
-// Ensure this URL is correct and points to your API
-const API_BASE_URL = "https://us-central1-curalina-replit-57401799-974b8.cloudfunctions.net/api";
+const API_BASE_URL = "/api";
 
 export default function Quiz() {
   const [, setLocation] = useLocation();
@@ -59,7 +47,6 @@ export default function Quiz() {
   } = useQuiz();
 
   // UI state (local to this component)
-  const [expandedStyles, setExpandedStyles] = useState<string[]>([]);
   const [uploadingVibe, setUploadingVibe] = useState(false);
   const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
   const [showDimensionConfirmation, setShowDimensionConfirmation] =
@@ -279,22 +266,6 @@ export default function Quiz() {
     if (currentStep > 1) {
       previousStep();
     }
-  };
-
-  // Cascade animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
   };
 
   const renderStep1 = () => {
