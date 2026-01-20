@@ -37,6 +37,7 @@ export default function Login() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
@@ -53,7 +54,9 @@ export default function Login() {
       });
 
       try {
-        const userResponse = await fetch("/api/auth/user");
+        const userResponse = await fetch("/api/auth/user", {
+          credentials: "include",
+        });
         if (userResponse.ok) {
           const userData = await userResponse.json();
           if (userData.role === "admin") {

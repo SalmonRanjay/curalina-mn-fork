@@ -141,61 +141,27 @@ export default function Quiz() {
   });
 
   const uploadViaPresignedUrl = async (file: File) => {
-    // 1) Ask backend for a presigned URL
-    // NOTE: This assumes your backend /api/upload now supports this JSON format
-    const initRes = await fetch(`${API_BASE_URL}/upload`, {
+    // Local/dev implementation: use existing multipart /api/upload endpoint
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "quiz-uploads");
+
+    const res = await fetch(`${API_BASE_URL}/upload`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fileName: file.name,
-        contentType: file.type || "application/octet-stream",
-      }),
+      body: formData,
     });
 
-    if (!initRes.ok) {
-       // Fallback for old multipart behavior if server not updated yet
-       // This is a safety measure during transition
-       if (initRes.status === 400 || initRes.status === 404) {
-          console.warn("Presigned URL endpoint might not be ready, trying legacy multipart upload...");
-           // NOTE: We cannot easily fallback to multipart here because the function signature is different
-           // Ideally, the server should be updated first.
-           const errorText = await initRes.text();
-           throw new Error(`Failed to get upload parameters: ${errorText}`);
-       }
-       throw new Error("Failed to get upload parameters");
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => "");
+      throw new Error(errorText || "Failed to upload file");
     }
 
-    const data = await initRes.json() as {
-      method: string;
-      url: string;
-      headers?: Record<string, string>;
-      fields?: Record<string, string>;
-      publicUrl?: string; // Optional: if server returns the final public URL
-    };
-
-    // 2) Upload file directly to S3 with the presigned URL
-    const putRes = await fetch(data.url, {
-      method: data.method || "PUT",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-        ...(data.headers || {}),
-      },
-      body: file,
-    });
-
-    if (!putRes.ok) {
-      throw new Error("Failed to upload file to storage");
+    const data = await res.json() as { url?: string };
+    if (!data.url) {
+      throw new Error("Upload did not return a URL");
     }
 
-    // 3) Return the public (or at least stable) URL
-    // If the server provided a publicUrl, use it. Otherwise, assume presigned URL without query params.
-    if (data.publicUrl) return data.publicUrl;
-    
-    // Fallback: strip query params from presigned URL (works for some setups, but risky if bucket is private)
-    // Better to have server return the public URL.
-    return data.url.split("?")[0]; 
+    return data.url;
   };
 
   const handleFileUpload = async (

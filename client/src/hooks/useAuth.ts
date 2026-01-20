@@ -1,23 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
-import type { User } from "@shared/schema";
+import { getQueryFn } from "@/lib/queryClient";
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  profileImageUrl: string | null;
+}
 
 export function useAuth() {
-  const { data: user, isLoading } = useQuery<User>({
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
-    queryFn: async () => {
-      const response = await fetch("/api/auth/user");
-      if (!response.ok) {
-        // If not authenticated, the server should return 401 or similar
-        // We don't want to throw an error if it's just not logged in,
-        // but rather return undefined so isAuthenticated becomes false.
-        if (response.status === 401 || response.status === 404) {
-          return undefined; 
-        }
-        throw new Error("Failed to fetch user");
-      }
-      return response.json();
-    },
+    // getQueryFn always calls fetch with credentials: "include",
+    // and here we treat 401 as "not logged in" instead of an error.
+    queryFn: getQueryFn<User | null>({ on401: "returnNull" }),
     retry: false,
+    staleTime: 1000 * 60 * 5,
   });
 
   return {
@@ -25,5 +29,7 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",
+    error,
   };
 }
+
