@@ -2,9 +2,9 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "lib",
-    "rootDir": "src",
+    "rootDir": ".",
     "module": "commonjs"
   },
-  "include": ["src/**/*.ts"],
+  "include": ["index.ts", "routes.ts", "db.d.ts"],
   "exclude": ["node_modules"]
 }

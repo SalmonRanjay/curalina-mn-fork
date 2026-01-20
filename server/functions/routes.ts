@@ -4,8 +4,7 @@ import { db } from "./db.js";
 import { users, cartItems } from "@db/schema.js";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { ObjectStorageService } from "../../objectStorage";
 
 
 // Extend Request to include session
@@ -224,53 +223,20 @@ export async function registerRoutes(app: Express) {
   app.post("/upload", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { fileName, contentType } = req.body;
-
       if (!fileName || !contentType) {
         return res.status(400).json({
           message: "fileName and contentType are required",
         });
       }
-
-      // Check AWS credentials
-      if (
-        !process.env.AWS_ACCESS_KEY_ID ||
-        !process.env.AWS_SECRET_ACCESS_KEY ||
-        !process.env.AWS_REGION ||
-        !process.env.AWS_S3_BUCKET
-      ) {
-        console.error("Missing AWS configuration:", {
-          hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
-          hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
-          hasRegion: !!process.env.AWS_REGION,
-          hasBucket: !!process.env.AWS_S3_BUCKET,
-        });
-        return res.status(500).json({
-          message: "Server configuration error - AWS not configured",
-        });
-      }
-
-     const s3Client = new S3Client({
-        region: process.env.AWS_REGION,
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-      });
-
-
       const timestamp = Date.now();
       const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
       const key = `uploads/${timestamp}-${sanitizedFileName}`;
-
-      const command = new PutObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: key,
-        ContentType: contentType,
+      const gcs = new ObjectStorageService();
+      const [url] = await gcs.getBucket().file(key).getSignedUrl({
+        action: "write",
+        expires: Date.now() + 60 * 60 * 1000, // 1 hour
+        contentType,
       });
-
-      const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-
-
       return res.json({
         method: "PUT",
         url,
@@ -285,7 +251,6 @@ export async function registerRoutes(app: Express) {
         stack: error.stack,
         code: error.code,
       });
-
       return res.status(500).json({
         message: "Failed to generate upload URL",
         error: error.message,
