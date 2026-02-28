@@ -109,6 +109,7 @@ export const createApp = async () => {
   });
 
   return app;
+   };
 const PORT = Number(process.env.PORT) || 8080;
 
 // Only start server when running locally
