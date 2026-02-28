@@ -107,20 +107,23 @@ export const createApp = async () => {
         });
     }
   });
-
   return app;
-   };
-
+}; // <-- make sure createApp ends here
 
 const PORT = Number(process.env.PORT) || 8080;
 
-createApp()
-  .then((app) => {
-    app.listen(PORT, "0.0.0.0", () => {
-      logger.info(`[Server] Listening on port ${PORT}`);
+// Start the server when running in Cloud Run (K_SERVICE is set by Cloud Run)
+const isCloudRun = !!process.env.K_SERVICE;
+
+if (isCloudRun || process.env.NODE_ENV === "production") {
+  createApp()
+    .then((app) => {
+      app.listen(PORT, "0.0.0.0", () => {
+        logger.info(`[Server] Listening on port ${PORT}`);
+      });
+    })
+    .catch((error) => {
+      logger.error("[Server Init] Critical startup error:", error);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    logger.error("[Server Init] Critical startup error:", error);
-    process.exit(1);
-  });
+}
