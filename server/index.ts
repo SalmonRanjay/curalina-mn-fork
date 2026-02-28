@@ -110,18 +110,17 @@ export const createApp = async () => {
 
   return app;
    };
+
+
 const PORT = Number(process.env.PORT) || 8080;
 
-// Only start server when running locally
-if (process.env.NODE_ENV !== 'production') {
-  createApp()
-    .then(app => {
-      app.listen(PORT, "0.0.0.0", () => {
-        logger.info(`[Server] Running locally on port ${PORT}`);
-      });
-    })
-    .catch(error => {
-      logger.error("[Server Init] Critical startup error:", error);
-      process.exit(1);
+createApp()
+  .then((app) => {
+    app.listen(PORT, "0.0.0.0", () => {
+      logger.info(`[Server] Listening on port ${PORT}`);
     });
-}
+  })
+  .catch((error) => {
+    logger.error("[Server Init] Critical startup error:", error);
+    process.exit(1);
+  });
