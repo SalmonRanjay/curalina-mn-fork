@@ -109,19 +109,18 @@ export const createApp = async () => {
   });
 
   return app;
-};
-
-// Helper to start server LOCALLY (not in Firebase)
-// We check for FIREBASE_CONFIG to know if we are in the cloud function env
 const PORT = Number(process.env.PORT) || 8080;
 
-createApp()
-  .then(app => {
-    app.listen(PORT, "0.0.0.0", () => {
-      logger.info(`[Server] Running on port ${PORT}`);
+// Only start server when running locally
+if (process.env.NODE_ENV !== 'production') {
+  createApp()
+    .then(app => {
+      app.listen(PORT, "0.0.0.0", () => {
+        logger.info(`[Server] Running locally on port ${PORT}`);
+      });
+    })
+    .catch(error => {
+      logger.error("[Server Init] Critical startup error:", error);
+      process.exit(1);
     });
-  })
-  .catch(error => {
-    logger.error("[Server Init] Critical startup error:", error);
-    process.exit(1);
-  });
+}
