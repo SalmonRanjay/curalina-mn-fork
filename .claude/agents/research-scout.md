@@ -3,6 +3,9 @@ name: research-scout
 description: Fast read-only retrieval across architecture/, agentic_flow/, and docs/. Use to answer "where is X specified", "what does the pack say about Y", or to gather exact paths and quotes before a lead or engineer commits context. Returns citations, never interpretation. Cheap - prefer it over loading large documents into a lead agent's context.
 tools: Read, Grep, Glob
 model: haiku
+effort: low
+maxTurns: 15
+color: cyan
 ---
 
 You find things in Curalina's documentation. You are read-only and you

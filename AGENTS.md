@@ -62,42 +62,62 @@ plus phase scope, mandatory tests, notebook requirements, and known blockers:
 
 ## 4. The agent roster
 
-Nine reusable roles. Claude Code discovers them automatically from
+Ten reusable roles. Claude Code discovers them automatically from
 `.claude/agents/`. Codex equivalents live in `.codex/agents/` and are invoked
 explicitly — see `.codex/README.md`.
 
-| Agent | Tier | Owns |
-|---|---|---|
-| `tech-lead` | Opus | Architecture, service boundaries, contract arbitration, build order, ADRs |
-| `ai-ml-lead` | Opus | Model selection, evaluation methodology, **all gate sign-offs** |
-| `delivery-coordinator` | Opus | Work-packet decomposition, routing, phase and gate status |
-| `code-reviewer` | Opus | Review of code, architecture, and documents. Read-only |
-| `python-services-engineer` | Sonnet | `ai_services/**` — domain logic, FastAPI, workers, tests |
-| `typescript-app-engineer` | Sonnet | `client/`, `server/`, `functions/`, and the UI adapter (A5) |
-| `ml-notebook-engineer` | Sonnet | R/V/G/D notebooks, evaluation runs, notebook-to-package extraction |
-| `contracts-qa-steward` | Sonnet | `contracts/v1`, suite runner, cross-service consistency |
-| `research-scout` | Haiku | Fast read-only retrieval across the doc set, with citations |
+| Agent | Model | Effort | Memory | Owns |
+|---|---|---|---|---|
+| `tech-lead` | Opus | high | project | Architecture, service boundaries, contract arbitration, build order, ADRs |
+| `ai-ml-lead` | Opus | high | project | Model selection, evaluation methodology, **all gate sign-offs** |
+| `code-reviewer` | Opus | high | project | Review of code, architecture, and documents. Read-only |
+| `delivery-coordinator` | Sonnet | medium | project | Work-packet decomposition, routing, phase and gate status |
+| `python-services-engineer` | Sonnet | medium | — | `ai_services/**` — domain logic, FastAPI, workers, tests |
+| `typescript-app-engineer` | Sonnet | medium | — | `client/`, `server/`, `functions/`, and the UI adapter (A5) |
+| `ml-notebook-engineer` | Sonnet | medium | — | R/V/G/D notebooks, evaluation runs, notebook-to-package extraction |
+| `contracts-qa-steward` | Sonnet | medium | — | `contracts/v1`, suite runner, cross-service consistency |
+| `research-scout` | Haiku | low | — | Fast read-only retrieval across the doc set, with citations |
+| `packet-validator` | Haiku | low | — | Six-point completeness check on a work packet before it is assigned |
 
-**Why these tiers.** Opus where a wrong call is expensive and hard to detect
-— architecture, gate decisions, review, decomposition. Sonnet for
-implementation volume, where the specification is already written down and
-tests catch errors. Haiku for retrieval, which is high-frequency and
-verifiable on sight; routing lookups here keeps expensive agents' context
-free for judgment.
+**Why these tiers.** The question is not "how hard is this task" but "how
+expensive is a wrong answer that nobody notices."
+
+- **Opus** where a bad call is costly and invisible until much later:
+  architecture that gets built on, a gate signed without evidence, a defect a
+  review missed. These are also low-volume, so the cost difference is small.
+- **Sonnet** for implementation, where the specification is already written
+  down in `agent_instructions/` and `agentic_flow/`, and tests catch errors
+  in the same session. `delivery-coordinator` sits here too: decomposition
+  sounds like architecture, but the phase content is already fully worked out
+  in the workflow docs — the job is faithful transcription into a packet plus
+  routing, not invention.
+- **Haiku** for work that is mechanical and verifiable on sight. Retrieval
+  and checklist validation both fail loudly and immediately if wrong, so
+  there is nothing to buy with more reasoning. Pushing them down also keeps
+  the expensive agents' context free for judgment, which is the scarcer
+  resource.
+
+**Persistent memory** (`memory: project`) is set on the four roles whose
+value compounds across sessions — accumulated architectural decisions, gate
+status, and recurring review findings. Engineers deliberately do not carry
+memory: their scope is one work packet, and stale cross-session context works
+against the allowed-files discipline.
 
 ## 5. How work flows
 
 ```
 architecture settled
-  └─ tech-lead ratifies design, writes ADR
-       └─ delivery-coordinator decomposes into work packets (one service, one phase, one result)
-            ├─ python-services-engineer   ─┐
-            ├─ typescript-app-engineer     ├─ implement against the packet's allowed-files list
-            ├─ ml-notebook-engineer        │
-            └─ contracts-qa-steward       ─┘
-                 └─ code-reviewer reviews before the packet is marked done
-                      └─ ai-ml-lead signs the stage gate (or declines)
-                           └─ delivery-coordinator updates status
+  └─ tech-lead ratifies the design, writes the ADR
+       └─ delivery-coordinator decomposes it into work packets
+            │    (one service, one phase, one measurable result)
+            └─ packet-validator checks completeness before the packet is assigned
+                 ├─ python-services-engineer  ─┐
+                 ├─ typescript-app-engineer    ├─ implement against the
+                 ├─ ml-notebook-engineer       │  packet's allowed-files list
+                 └─ contracts-qa-steward      ─┘
+                      └─ code-reviewer reviews before the packet is marked done
+                           └─ ai-ml-lead signs the stage gate (or declines)
+                                └─ delivery-coordinator updates status
 ```
 
 Escalation: engineer → `tech-lead` for a design question a packet does not

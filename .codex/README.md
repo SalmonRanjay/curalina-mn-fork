@@ -59,14 +59,28 @@ The roster is defined once, in `AGENTS.md` section 4. Both `.claude/agents/`
 and `.codex/agents/` implement that roster. When a role's responsibilities
 change, update `AGENTS.md` first, then both implementations.
 
-| Role | `.claude/agents/` | `.codex/agents/` | Tier |
-|---|---|---|---|
-| Technical lead | `tech-lead.md` | `tech-lead.md` | Opus / high reasoning |
-| AI/ML lead | `ai-ml-lead.md` | `ai-ml-lead.md` | Opus / high reasoning |
-| Delivery coordinator | `delivery-coordinator.md` | `delivery-coordinator.md` | Opus / high reasoning |
-| Code reviewer | `code-reviewer.md` | `code-reviewer.md` | Opus / high reasoning |
-| Python services engineer | `python-services-engineer.md` | `python-services-engineer.md` | Sonnet / medium |
-| TypeScript app engineer | `typescript-app-engineer.md` | `typescript-app-engineer.md` | Sonnet / medium |
-| ML notebook engineer | `ml-notebook-engineer.md` | `ml-notebook-engineer.md` | Sonnet / medium |
-| Contracts & QA steward | `contracts-qa-steward.md` | `contracts-qa-steward.md` | Sonnet / medium |
-| Research scout | `research-scout.md` | `research-scout.md` | Haiku / low |
+| Role | `.claude/agents/` | `.codex/agents/` | Tier | Codex profile |
+|---|---|---|---|---|
+| Technical lead | `tech-lead.md` | `tech-lead.md` | Opus / high | `curalina-lead` |
+| AI/ML lead | `ai-ml-lead.md` | `ai-ml-lead.md` | Opus / high | `curalina-lead` |
+| Code reviewer | `code-reviewer.md` | `code-reviewer.md` | Opus / high | `curalina-review` |
+| Delivery coordinator | `delivery-coordinator.md` | `delivery-coordinator.md` | Sonnet / medium | `curalina-engineer` |
+| Python services engineer | `python-services-engineer.md` | `python-services-engineer.md` | Sonnet / medium | `curalina-engineer` |
+| TypeScript app engineer | `typescript-app-engineer.md` | `typescript-app-engineer.md` | Sonnet / medium | `curalina-engineer` |
+| ML notebook engineer | `ml-notebook-engineer.md` | `ml-notebook-engineer.md` | Sonnet / medium | `curalina-engineer` |
+| Contracts & QA steward | `contracts-qa-steward.md` | `contracts-qa-steward.md` | Sonnet / medium | `curalina-engineer` |
+| Research scout | `research-scout.md` | `research-scout.md` | Haiku / low | `curalina-scout` |
+| Packet validator | `packet-validator.md` | `packet-validator.md` | Haiku / low | `curalina-scout` |
+
+## Fields that exist only on the Claude side
+
+Claude Code subagents support frontmatter Codex has no equivalent for:
+`model` and `effort` (tier and reasoning depth), `memory: project`
+(persistent cross-session memory, set on the four leadership roles),
+`maxTurns`, `tools`/`disallowedTools`, and `color`.
+
+On the Codex side those map, loosely, onto **profiles** — see
+`config.example.toml` and the profile column above. There is no Codex
+equivalent of `memory: project`; if you need a role's accumulated decisions
+to persist, write them into the repository (an ADR, or the packet's
+completion evidence) rather than relying on session state.

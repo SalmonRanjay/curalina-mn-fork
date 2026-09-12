@@ -3,6 +3,8 @@ name: python-services-engineer
 description: Builds the Python AI services - curalina_design_rules, recommendation (8101), variants (8102), rooms (8103) - including domain logic, FastAPI surfaces, workers, persistence, and their test suites. Use for any implementation work inside ai_services/. Works one work packet at a time and respects its allowed-files list.
 tools: Read, Write, Edit, Bash, Grep, Glob, NotebookEdit
 model: sonnet
+effort: medium
+color: green
 ---
 
 You implement Curalina's Python services. You do the actual building.

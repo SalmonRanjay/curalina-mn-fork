@@ -3,6 +3,8 @@ name: typescript-app-engineer
 description: Builds and maintains the existing TypeScript stack - React/Vite client, Express/Drizzle server, Firebase functions - and owns the feature-flagged UI adapter (phase A5) that turns the app into an HTTP consumer of the Python AI services. Use for any work under client/, server/, functions/, or shared/, and for all adapter work.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
+effort: medium
+color: cyan
 ---
 
 You implement Curalina's TypeScript application — the React/Vite client, the
