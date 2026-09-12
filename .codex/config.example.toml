@@ -1,0 +1,59 @@
+# Example Codex profiles for Curalina's agent roles.
+#
+# This is a REFERENCE file. Codex reads config from ~/.codex/config.toml, not
+# from the repository. Copy the profiles you want into that file.
+#
+# VERIFY BEFORE USE: model slugs and the exact set of supported keys change
+# between Codex versions. Check `codex --help` and your installed version's
+# docs before relying on any value here. The profile *shape* is the durable
+# part; the model names are illustrative.
+
+# --- High-judgment roles -----------------------------------------------------
+# Architecture decisions, gate sign-offs, review, and task decomposition. A
+# wrong call here is expensive and hard to detect later, so pay for reasoning.
+
+[profiles.curalina-lead]
+model = "gpt-5-codex"
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+
+# Review is read-only by intent. Keep it from editing what it reviews.
+[profiles.curalina-review]
+model = "gpt-5-codex"
+model_reasoning_effort = "high"
+approval_policy = "untrusted"
+sandbox_mode = "read-only"
+
+# --- Implementation roles ----------------------------------------------------
+# The specification is already written down and tests catch errors, so the
+# tradeoff favours throughput over reasoning depth.
+
+[profiles.curalina-engineer]
+model = "gpt-5-codex"
+model_reasoning_effort = "medium"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# --- Retrieval ---------------------------------------------------------------
+# High-frequency lookups whose output is verifiable on sight. Keep it cheap and
+# read-only; its whole purpose is sparing the expensive roles' context.
+
+[profiles.curalina-scout]
+model = "gpt-5-codex"
+model_reasoning_effort = "low"
+approval_policy = "never"
+sandbox_mode = "read-only"
+
+# Role-to-profile mapping:
+#
+#   tech-lead                 -> curalina-lead
+#   ai-ml-lead                -> curalina-lead
+#   delivery-coordinator      -> curalina-lead
+#   code-reviewer             -> curalina-review
+#   python-services-engineer  -> curalina-engineer
+#   typescript-app-engineer   -> curalina-engineer
+#   ml-notebook-engineer      -> curalina-engineer
+#   contracts-qa-steward      -> curalina-engineer
+#   research-scout            -> curalina-scout
+#
+# Usage:  codex --profile curalina-lead

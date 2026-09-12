@@ -63,6 +63,31 @@ requirements, and known blockers:
 
 Hand one of these files to an agent as its entire brief for that service.
 
+## The agent roster
+
+Nine reusable roles are defined in `.claude/agents/` and discovered
+automatically — Claude Code will delegate to them based on their
+`description` fields, or you can invoke one by name.
+
+| Agent | Model | Owns |
+|---|---|---|
+| `tech-lead` | Opus | Architecture, service boundaries, contract arbitration, ADRs |
+| `ai-ml-lead` | Opus | Model selection, evaluation methodology, **all gate sign-offs** |
+| `delivery-coordinator` | Opus | Work-packet decomposition, routing, phase and gate status |
+| `code-reviewer` | Opus | Review of code, architecture, and documents. Read-only |
+| `python-services-engineer` | Sonnet | `ai_services/**` — domain logic, FastAPI, workers, tests |
+| `typescript-app-engineer` | Sonnet | `client/`, `server/`, `functions/`, and the UI adapter (A5) |
+| `ml-notebook-engineer` | Sonnet | R/V/G/D notebooks, evaluation runs, logic extraction |
+| `contracts-qa-steward` | Sonnet | `contracts/v1`, suite runner, cross-service consistency |
+| `research-scout` | Haiku | Fast read-only doc retrieval with citations |
+
+**[AGENTS.md](AGENTS.md) is the single source of truth for the roster, the
+model-tier rationale, the handoff chain, and escalation paths.** It is also
+the root instruction file Codex and other `AGENTS.md`-aware tools load
+automatically; `.codex/agents/` holds the Codex-side implementations of the
+same nine roles. When a role's responsibilities change, update `AGENTS.md`
+first, then both implementations.
+
 ## Cross-cutting rules that apply everywhere in this repo
 
 - Recommendation, variants, and room generation are separate services:
