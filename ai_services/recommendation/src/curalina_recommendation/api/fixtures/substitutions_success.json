@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "original_bundle_id": "rev_a1fixture0001",
+  "new_bundle_id": "rev_a1fixture0003",
+  "revision": 2,
+  "feasible": true,
+  "line_items": [
+    {
+      "product_id": "prod_sofa_0002",
+      "category": "sofa",
+      "quantity": 1,
+      "unit_price_minor_units": 154900,
+      "currency": "CAD"
+    },
+    {
+      "product_id": "prod_artwork_0014",
+      "category": "wall_art",
+      "quantity": 2,
+      "unit_price_minor_units": 24900,
+      "currency": "CAD"
+    }
+  ],
+  "violations": []
+}

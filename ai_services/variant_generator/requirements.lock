@@ -1,0 +1,4 @@
+# A0 scaffold placeholder.
+#
+# Runtime dependencies are declared in pyproject.toml. Image/model
+# dependencies are intentionally absent until their later packets.

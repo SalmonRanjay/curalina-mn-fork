@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "snap_a1fixture0001",
+  "report": {
+    "products_seen": 62,
+    "products_imported": 58,
+    "products_rejected": 4,
+    "rejected_reasons": [
+      "duplicate_compound_key",
+      "missing_required_dimension",
+      "missing_required_dimension",
+      "unknown_currency"
+    ]
+  }
+}

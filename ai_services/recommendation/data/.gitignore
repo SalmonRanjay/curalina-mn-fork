@@ -1,0 +1,6 @@
+raw/*
+!raw/.gitkeep
+curated/*
+!curated/.gitkeep
+runs/*
+!runs/.gitkeep

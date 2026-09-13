@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0",
+  "parent_product_id": "prod_00042",
+  "source_asset_id": "asset_000001",
+  "mask_id": "mask_000001",
+  "target_colour": "#1B4D3E",
+  "owner_id": "user_0001"
+}

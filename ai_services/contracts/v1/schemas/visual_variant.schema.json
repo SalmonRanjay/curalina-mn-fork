@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://curalina.local/contracts/v1/visual_variant.schema.json",
+  "title": "VisualVariant",
+  "description": "review_status is pending/approved/rejected. commercial_status is conceptual/custom_order/supplier_confirmed. Approval alone never creates a purchasable variant.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "variant_id",
+    "parent_product_id",
+    "source_asset_id",
+    "target_colour",
+    "mask_id",
+    "review_status",
+    "commercial_status"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "variant_id": { "type": "string" },
+    "parent_product_id": { "type": "string" },
+    "source_asset_id": { "type": "string", "pattern": "^asset_" },
+    "output_asset_id": { "type": ["string", "null"], "pattern": "^asset_" },
+    "target_colour": { "type": "string", "minLength": 1 },
+    "mask_id": { "type": "string", "pattern": "^mask_" },
+    "review_status": { "enum": ["pending", "approved", "rejected"] },
+    "commercial_status": {
+      "enum": ["conceptual", "custom_order", "supplier_confirmed"]
+    },
+    "supplier_variant_sku": { "type": ["string", "null"] },
+    "generation_manifest": { "type": "object" }
+  }
+}

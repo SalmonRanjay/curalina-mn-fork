@@ -1,0 +1,9 @@
+{
+  "bundles": [
+    {
+      "bundle_id": "bundle_liv001",
+      "current_revision": "rev_002",
+      "stale_revisions": ["rev_001"]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+"""Room-generation service ports."""

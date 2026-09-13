@@ -1,0 +1,1 @@
+"""Variant application use cases."""

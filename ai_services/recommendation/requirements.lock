@@ -1,0 +1,4 @@
+# A0 scaffold placeholder.
+#
+# Runtime dependencies are declared in pyproject.toml. A repository-wide lock
+# policy has not been selected for the Python services yet.

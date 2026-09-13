@@ -1,0 +1,1 @@
+"""Room-generation infrastructure adapters."""

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://curalina.local/contracts/v1/review.schema.json",
+  "title": "Review",
+  "description": "Version-checked review record. Candidate existence and matching expected_revision are required; a mismatch returns 409.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_id",
+    "candidate_id",
+    "reviewer_id",
+    "decision",
+    "revision",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "review_id": { "type": "string" },
+    "candidate_id": { "type": "string", "pattern": "^cand_" },
+    "reviewer_id": { "type": "string", "minLength": 1 },
+    "decision": { "enum": ["approved", "rejected"] },
+    "revision": { "type": "integer", "minimum": 1 },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

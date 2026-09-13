@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "catalogue_snapshot_id": "snap_a1fixture0001",
+  "candidates": [
+    {
+      "product_id": "prod_sofa_0001",
+      "category": "sofa",
+      "score": 0.91,
+      "reasons": ["style_match:organic_modern", "atmosphere_match:warm_balanced"]
+    },
+    {
+      "product_id": "prod_sofa_0002",
+      "category": "sofa",
+      "score": 0.74,
+      "reasons": ["style_match:organic_modern"]
+    },
+    {
+      "product_id": "prod_artwork_0014",
+      "category": "wall_art",
+      "score": 0.88,
+      "reasons": ["room_type_match:living_room", "atmosphere_match:warm_balanced"]
+    }
+  ]
+}

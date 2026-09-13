@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://curalina.local/contracts/v1/candidate.schema.json",
+  "title": "Candidate",
+  "description": "A produced VisualVariant awaiting or holding review, at a specific optimistic-concurrency revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate_id", "variant", "revision"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "candidate_id": { "type": "string", "pattern": "^cand_" },
+    "variant": { "$ref": "visual_variant.schema.json" },
+    "revision": { "type": "integer", "minimum": 1 }
+  }
+}

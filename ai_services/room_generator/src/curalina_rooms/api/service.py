@@ -1,0 +1,265 @@
+"""Fixture-backed fake contract service for `curalina_rooms` `/v1` routes.
+
+This is the A1 deliverable: it validates requests against the shapes in
+`curalina_rooms.api.schemas`, enforces the shared error vocabulary from
+`curalina_rooms.api.errors`, and returns deterministic fake data. There is
+no rendering, homography, model loading, or real durable-job execution —
+`workers/`, `domain/`, `application/`, `ports/` and `adapters/` are untouched.
+A3 is expected to wrap these methods in an actual ASGI transport and a real
+job/worker split; this module only has to get the contract right.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any, TypeVar
+from uuid import uuid4
+
+from pydantic import BaseModel, ValidationError
+
+from curalina_rooms.api.errors import (
+    malformed_request_error,
+    missing_reference_image_error,
+    resource_not_found_error,
+    review_version_conflict_error,
+    stale_bundle_revision_error,
+    unknown_bundle_error,
+    unsupported_schema_version_error,
+)
+from curalina_rooms.api.fixtures import load_fixture
+from curalina_rooms.api.schemas import (
+    AssetContentResponse,
+    AssetImportRequest,
+    AssetResponse,
+    CandidateReviewRequest,
+    CandidateReviewResponse,
+    JobCancelResponse,
+    JobStatusResponse,
+    RenderJobRequest,
+    RenderJobResponse,
+)
+
+_SUPPORTED_SCHEMA_MAJOR = "1"
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
+@dataclass(frozen=True)
+class ContractResult:
+    """What a real transport layer (A3) would turn into an HTTP response."""
+
+    http_status: int
+    body: BaseModel
+    headers: dict[str, str] = field(default_factory=dict)
+
+
+def _new_request_id() -> str:
+    return f"req_{uuid4().hex[:16]}"
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _check_schema_version(payload: dict[str, Any], request_id: str) -> None:
+    """Reject an unsupported major version before structural validation.
+
+    A missing `schema_version` is left to the structural validator so it
+    produces a 400 malformed-request error rather than being conflated with
+    an explicit, well-formed but unsupported version.
+    """
+
+    version = payload.get("schema_version")
+    if isinstance(version, str) and "." in version:
+        major = version.split(".", 1)[0]
+        if major != _SUPPORTED_SCHEMA_MAJOR:
+            raise unsupported_schema_version_error(request_id, version)
+
+
+def _validate(
+    model_cls: type[ModelT], payload: dict[str, Any], request_id: str
+) -> ModelT:
+    try:
+        return model_cls.model_validate(payload)
+    except ValidationError as exc:
+        errors: list[dict[str, Any]] = [dict(error) for error in exc.errors()]
+        raise malformed_request_error(request_id, errors) from exc
+
+
+class RoomsContractService:
+    """In-memory, fixture-seeded fake behind the room-generator `/v1` API."""
+
+    def __init__(self) -> None:
+        self._bundle_current_revision: dict[str, str] = {}
+        self._assets: dict[str, AssetResponse] = {}
+        self._jobs: dict[str, JobStatusResponse] = {}
+        self._candidate_review_versions: dict[str, int] = {}
+        self._seed_from_fixtures()
+
+    def _seed_from_fixtures(self) -> None:
+        bundles = load_fixture("bundle_snapshots.json")["bundles"]
+        for bundle in bundles:
+            self._bundle_current_revision[bundle["bundle_id"]] = bundle[
+                "current_revision"
+            ]
+
+        assets = load_fixture("seed_assets.json")["assets"]
+        for asset in assets:
+            response = AssetResponse.model_validate(asset)
+            self._assets[response.asset_id] = response
+
+        candidates = load_fixture("seed_candidates.json")["candidates"]
+        for candidate in candidates:
+            self._candidate_review_versions[candidate["candidate_id"]] = candidate[
+                "review_version"
+            ]
+
+    # -- Assets ---------------------------------------------------------
+
+    def import_asset(
+        self, payload: dict[str, Any], request_id: str | None = None
+    ) -> ContractResult:
+        request_id = request_id or _new_request_id()
+        _check_schema_version(payload, request_id)
+        request: AssetImportRequest = _validate(
+            AssetImportRequest, payload, request_id
+        )
+
+        digest_source = "|".join(
+            [
+                request.owner_id,
+                request.original_filename,
+                str(request.content_length),
+                request.upstream_asset_id or "",
+            ]
+        ).encode("utf-8")
+        content_hash = "sha256:" + hashlib.sha256(digest_source).hexdigest()
+        asset_id = f"asset_{uuid4().hex[:16]}"
+
+        response = AssetResponse(
+            asset_id=asset_id,
+            owner_id=request.owner_id,
+            content_hash=content_hash,
+            media_type=request.media_type,
+            original_filename=request.original_filename,
+            storage_key=f"rooms/{asset_id}",
+            provenance=request.provenance,
+            created_at=_utc_now_iso(),
+        )
+        self._assets[asset_id] = response
+        return ContractResult(http_status=201, body=response)
+
+    def get_asset_content(
+        self, asset_id: str, request_id: str | None = None
+    ) -> ContractResult:
+        request_id = request_id or _new_request_id()
+        asset = self._assets.get(asset_id)
+        if asset is None:
+            raise resource_not_found_error(request_id, "asset", asset_id)
+
+        response = AssetContentResponse(
+            asset_id=asset.asset_id,
+            content_hash=asset.content_hash,
+            media_type=asset.media_type,
+            byte_size=1,
+            content_ref=f"content://{asset.storage_key}",
+        )
+        return ContractResult(http_status=200, body=response)
+
+    # -- Render jobs ------------------------------------------------------
+
+    def create_render_job(
+        self, payload: dict[str, Any], request_id: str | None = None
+    ) -> ContractResult:
+        request_id = request_id or _new_request_id()
+        _check_schema_version(payload, request_id)
+        request: RenderJobRequest = _validate(RenderJobRequest, payload, request_id)
+
+        current_revision = self._bundle_current_revision.get(
+            request.bundle.bundle_id
+        )
+        if current_revision is None:
+            raise unknown_bundle_error(request_id, request.bundle.bundle_id)
+        if current_revision != request.bundle.bundle_revision:
+            raise stale_bundle_revision_error(
+                request_id,
+                request.bundle.bundle_id,
+                request.bundle.bundle_revision,
+                current_revision,
+            )
+
+        for reference in request.reference_images:
+            if reference.asset_id not in self._assets:
+                raise missing_reference_image_error(request_id, reference.asset_id)
+
+        job_id = f"job_{uuid4().hex[:16]}"
+        response = RenderJobResponse(
+            job_id=job_id,
+            location=f"/v1/jobs/{job_id}",
+            bundle_id=request.bundle.bundle_id,
+            bundle_revision=request.bundle.bundle_revision,
+            created_at=_utc_now_iso(),
+        )
+        self._jobs[job_id] = JobStatusResponse(
+            job_id=job_id, status="queued", attempt_count=0
+        )
+        return ContractResult(
+            http_status=202,
+            body=response,
+            headers={"Location": response.location},
+        )
+
+    def get_job(self, job_id: str, request_id: str | None = None) -> ContractResult:
+        request_id = request_id or _new_request_id()
+        job = self._jobs.get(job_id)
+        if job is None:
+            raise resource_not_found_error(request_id, "job", job_id)
+        return ContractResult(http_status=200, body=job)
+
+    def cancel_job(self, job_id: str, request_id: str | None = None) -> ContractResult:
+        request_id = request_id or _new_request_id()
+        job = self._jobs.get(job_id)
+        if job is None:
+            raise resource_not_found_error(request_id, "job", job_id)
+
+        cancelled = JobCancelResponse(job_id=job_id)
+        self._jobs[job_id] = JobStatusResponse(
+            job_id=job_id, status="cancelled", attempt_count=job.attempt_count
+        )
+        return ContractResult(http_status=200, body=cancelled)
+
+    # -- Candidate reviews -------------------------------------------------
+
+    def create_candidate_review(
+        self,
+        candidate_id: str,
+        payload: dict[str, Any],
+        request_id: str | None = None,
+    ) -> ContractResult:
+        request_id = request_id or _new_request_id()
+        _check_schema_version(payload, request_id)
+        request: CandidateReviewRequest = _validate(
+            CandidateReviewRequest, payload, request_id
+        )
+
+        current_version = self._candidate_review_versions.get(candidate_id)
+        if current_version is None:
+            raise resource_not_found_error(request_id, "candidate", candidate_id)
+        if request.expected_review_version != current_version:
+            raise review_version_conflict_error(
+                request_id, candidate_id, request.expected_review_version,
+                current_version,
+            )
+
+        next_version = current_version + 1
+        self._candidate_review_versions[candidate_id] = next_version
+        response = CandidateReviewResponse(
+            review_id=f"cand_review_{uuid4().hex[:12]}",
+            candidate_id=candidate_id,
+            decision=request.decision,
+            review_version=next_version,
+            reviewed_at=_utc_now_iso(),
+        )
+        return ContractResult(http_status=201, body=response)

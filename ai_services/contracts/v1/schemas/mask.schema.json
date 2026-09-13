@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://curalina.local/contracts/v1/mask.schema.json",
+  "title": "Mask",
+  "description": "References a source asset. 1 == editable, 0 == protected, with an explicit feathering policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mask_id",
+    "source_asset_id",
+    "width_px",
+    "height_px",
+    "feather_band_px"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "mask_id": { "type": "string", "pattern": "^mask_" },
+    "source_asset_id": { "type": "string", "pattern": "^asset_" },
+    "width_px": { "type": "integer", "exclusiveMinimum": 0 },
+    "height_px": { "type": "integer", "exclusiveMinimum": 0 },
+    "feather_band_px": { "type": "integer", "minimum": 0 }
+  }
+}

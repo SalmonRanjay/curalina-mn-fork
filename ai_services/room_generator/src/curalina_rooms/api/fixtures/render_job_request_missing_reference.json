@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "bundle": {
+    "bundle_id": "bundle_liv001",
+    "bundle_revision": "rev_002"
+  },
+  "room_type": "living_room",
+  "layout_version": "layout_v3",
+  "instances": [
+    {
+      "instance_id": "inst_sofa_1",
+      "product_id": "product_sofa001",
+      "variant_id": "variant_sofa001",
+      "quantity": 1
+    }
+  ],
+  "reference_images": [
+    { "asset_id": "asset_room000001", "role": "room_photo" },
+    { "asset_id": "asset_not_imported_999", "role": "hero_product" }
+  ]
+}

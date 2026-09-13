@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "bundle_id": "rev_a1fixture0002",
+  "revision": 1,
+  "feasible": false,
+  "line_items": [],
+  "total_minor_units": 0,
+  "currency": null,
+  "violations": [
+    {
+      "code": "budget_below_minimum_category_set",
+      "message": "furniture_budget_minor_units is too low to cover the requested categories with any known fixture product."
+    }
+  ],
+  "warnings": ["fixture_backed_response_no_real_ranking"]
+}
