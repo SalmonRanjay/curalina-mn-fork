@@ -4,6 +4,7 @@ PYTHON ?= python3
 
 setup:
 	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e ../design_rules
 	$(PYTHON) -m pip install -e ".[dev]"
 
 test:

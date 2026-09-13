@@ -13,6 +13,13 @@ authors = [{ name = "Curalina" }]
 dependencies = [
     "pydantic>=2.8",
     "pydantic-settings>=2.4",
+    # `curalina_design_rules` is the one shared package this service is
+    # allowed to import (agentic_flow/00_agentic_workflow_overview.md:
+    # "The only shared package is `curalina_design_rules`"). No PyPI
+    # release exists; `make setup` installs it in editable mode from
+    # `../design_rules` before installing this package, so pip resolves
+    # this unpinned dependency against the already-installed local copy.
+    "curalina-design-rules",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +46,11 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "ANN"]
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12, not the 3.11 `requires-python` floor: numpy's stubs (pulled in
+# transitively via curalina_design_rules -> shapely) use 3.12-only stub
+# syntax. Same fix as ai_services/design_rules/pyproject.toml; this does
+# not raise the runtime floor, only the stub-parsing target.
+python_version = "3.12"
 strict = true
 warn_unused_configs = true
 mypy_path = "src"
