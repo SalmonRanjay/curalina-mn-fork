@@ -1,9 +1,12 @@
 """Spatial and clearance rule contracts, loaders, and evaluation engine."""
 
 from curalina_design_rules.spatial.geometry import (
+    ADR_0004_MARKER,
+    Adr0004WalkwayResult,
     check_collisions,
     check_reachability,
     check_walkways,
+    check_walkways_adr0004,
     footprint,
     has_walkway,
     room_polygon,
@@ -29,6 +32,8 @@ from curalina_design_rules.spatial.rules import (
 )
 
 __all__ = [
+    "ADR_0004_MARKER",
+    "Adr0004WalkwayResult",
     "check_br_closet_path",
     "check_br_ensuite_path",
     "check_br_rug_landing_strip",
@@ -44,6 +49,7 @@ __all__ = [
     "check_reachability",
     "check_sightline_12in",
     "check_walkways",
+    "check_walkways_adr0004",
     "footprint",
     "has_walkway",
     "load_home_category_rules",

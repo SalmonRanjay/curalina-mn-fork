@@ -5,6 +5,7 @@ Works in integer millimetres throughout (converted once at load time — see
 design (`agentic_flow/12_design_rules_engine.md`, "Spatial engine (§9)").
 """
 
+from dataclasses import dataclass
 from itertools import combinations
 
 from shapely import affinity
@@ -169,3 +170,128 @@ def check_reachability(
     if origin_component is None or destination_component is None:
         return False
     return bool(origin_component.equals(destination_component))
+
+
+# ---------------------------------------------------------------------------
+# ADR-0004 interim reading of §9.1 MIN_WALKWAY (reachability, not whole-floor
+# clearance). See
+# `architecture/adr/ADR-0004-walkway-clearance-interim-interpretation.md`.
+#
+# This is an explicitly interim, reversible engineering interpretation adopted
+# because the literal reading (`has_walkway`/`check_walkways` above) and
+# §9.2.1's own furniture-spacing rules are jointly unsatisfiable for every
+# correctly composed living/dining room (OQ-013, open, owner
+# design_authority). `has_walkway`/`check_walkways` are UNCHANGED by this
+# addition and remain the revert path if the design authority rules the
+# other way -- see the ADR's "Consequences and reversal" section.
+# ---------------------------------------------------------------------------
+
+#: Marker every result produced under the ADR-0004 interim reading must
+#: carry, so a later design-authority ruling on OQ-013 can find every
+#: affected result (ADR-0004, "Implementation notes for that engineer").
+ADR_0004_MARKER = "9.1 (ADR-0004 interim)"
+
+_MIN_WALKWAY_OPEN_QUESTION_ID = "OQ-013"
+
+
+@dataclass(frozen=True)
+class Adr0004WalkwayResult:
+    """Outcome of the ADR-0004 interim `MIN_WALKWAY` reading.
+
+    Unlike the plain `tuple[Violation, ...]` the other §9 checks return, this
+    always carries `interim_marker` -- including on a pass, which produces no
+    `Violation` of its own to carry a marker on. That is required by
+    ADR-0004: "Every `Violation` produced, and every layout accepted, under
+    this reading must carry a marker tying it to this ADR."
+    """
+
+    violations: tuple[Violation, ...]
+    interim_marker: str = ADR_0004_MARKER
+
+    @property
+    def passes(self) -> bool:
+        return not self.violations
+
+
+def check_walkways_adr0004(
+    placements: tuple[Placement, ...],
+    room: RoomGeometry,
+    min_walkway_mm: int,
+    doorway_points: tuple[Point, ...],
+    functional_zone_points: tuple[Point, ...],
+) -> Adr0004WalkwayResult:
+    """ADR-0004 interim reading of §9.1's `MIN_WALKWAY`: a **reachability**
+    test between circulation endpoints, composed over `check_reachability`'s
+    existing connected-component semantics -- not `has_walkway`'s
+    whole-free-floor opening test.
+
+    A layout satisfies this reading when every required circulation-endpoint
+    pair -- each doorway to every other doorway, and each doorway to each
+    primary functional zone of the room -- lies in the same connected
+    component of the free space opened by `min_walkway_mm / 2`. A pinched
+    region that no required pair depends on (e.g. a §9.2.1 furniture gap
+    narrower than the category walkway minimum) is not a violation.
+
+    `doorway_points` and `functional_zone_points` are circulation endpoints
+    the current `RoomGeometry`/`Placement` inputs do not themselves carry.
+    Per ADR-0004's implementation notes, if a caller cannot supply them this
+    function must not synthesise coordinates to guess an answer -- it
+    returns `needs_input` citing `OQ-013` instead.
+    """
+    if not doorway_points or not functional_zone_points:
+        return Adr0004WalkwayResult(
+            violations=(
+                Violation(
+                    rule_id="MIN_WALKWAY",
+                    severity=Severity.NEEDS_INPUT,
+                    message=(
+                        "MIN_WALKWAY (ADR-0004 interim reachability reading) "
+                        "requires circulation-endpoint input (doorway and "
+                        "primary-functional-zone positions) that was not "
+                        "supplied; Section 9.1's scope is unresolved -- see "
+                        "OQ-013."
+                    ),
+                    source_section=ADR_0004_MARKER,
+                    subject_ids=tuple(
+                        placement.instance_id for placement in placements
+                    ),
+                    open_question_id=_MIN_WALKWAY_OPEN_QUESTION_ID,
+                ),
+            )
+        )
+
+    required_pairs: list[tuple[Point, Point]] = list(combinations(doorway_points, 2))
+    required_pairs.extend(
+        (doorway, zone)
+        for doorway in doorway_points
+        for zone in functional_zone_points
+    )
+
+    unreachable_pairs = [
+        (origin, destination)
+        for origin, destination in required_pairs
+        if not check_reachability(placements, room, origin, destination, min_walkway_mm)
+    ]
+
+    if not unreachable_pairs:
+        return Adr0004WalkwayResult(violations=())
+
+    return Adr0004WalkwayResult(
+        violations=(
+            Violation(
+                rule_id="MIN_WALKWAY",
+                severity=Severity.HARD,
+                message=(
+                    f"No continuous {min_walkway_mm}mm circulation path for "
+                    f"{len(unreachable_pairs)} of {len(required_pairs)} "
+                    f"required doorway/functional-zone pair(s)"
+                ),
+                source_section=ADR_0004_MARKER,
+                subject_ids=tuple(
+                    placement.instance_id for placement in placements
+                ),
+                measured=float(min_walkway_mm - 1),
+                required=float(min_walkway_mm),
+            ),
+        )
+    )
