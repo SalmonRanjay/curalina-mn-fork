@@ -8,8 +8,7 @@
       "width_px": 4032,
       "height_px": 3024,
       "original_filename": "living_room_source.jpg",
-      "storage_key": "rooms/asset_room000001.jpg",
-      "provenance": { "source": "customer_upload" },
+      "provenance": "customer_upload",
       "created_at": "2026-01-05T14:00:00Z"
     },
     {
@@ -20,11 +19,7 @@
       "width_px": 2048,
       "height_px": 2048,
       "original_filename": "hero_sofa_variant.png",
-      "storage_key": "rooms/asset_hero000001.png",
-      "provenance": {
-        "source": "variant_export",
-        "variant_id": "variant_sofa001"
-      },
+      "provenance": "variant_export:variant_sofa001",
       "created_at": "2026-01-05T14:05:00Z"
     }
   ]

@@ -25,7 +25,7 @@ def test_valid_review_with_matching_version_is_accepted(
     assert result.http_status == 201
     assert isinstance(result.body, CandidateReviewResponse)
     assert result.body.candidate_id == SEEDED_CANDIDATE_ID
-    assert result.body.review_version == 2
+    assert result.body.revision == 2
 
 
 def test_review_with_stale_version_returns_409_conflict(
@@ -33,7 +33,7 @@ def test_review_with_stale_version_returns_409_conflict(
 ) -> None:
     payload = {
         **load_fixture("candidate_review_request.json"),
-        "expected_review_version": 99,
+        "expected_revision": 99,
     }
 
     with pytest.raises(ContractError) as excinfo:
@@ -62,19 +62,19 @@ def test_a_rejection_does_not_rewrite_earlier_review_history(
     approve_payload = load_fixture("candidate_review_request.json")
     approved = service.create_candidate_review(SEEDED_CANDIDATE_ID, approve_payload)
     assert approved.body.decision == "approved"
-    assert approved.body.review_version == 2
+    assert approved.body.revision == 2
 
     reject_payload = {
         **approve_payload,
         "decision": "rejected",
-        "expected_review_version": 2,
+        "expected_revision": 2,
         "notes": "Colour drifted from the approved variant.",
     }
     rejected = service.create_candidate_review(SEEDED_CANDIDATE_ID, reject_payload)
 
     assert rejected.body.decision == "rejected"
-    assert rejected.body.review_version == 3
-    assert approved.body.review_version == 2  # earlier record is untouched
+    assert rejected.body.revision == 3
+    assert approved.body.revision == 2  # earlier record is untouched
 
 
 def test_missing_required_field_returns_structured_400(

@@ -12,12 +12,17 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
 SCHEMA_VERSION = "1.0"
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-ReviewDecision = Literal["approved", "rejected", "needs_changes"]
+
+# Two outcomes only, per `architecture/guides/03_data_contracts.md`
+# ("`review_status` is pending/approved/rejected") and
+# `ai_services/contracts/v1/schemas/review.schema.json`. A "needs changes"
+# outcome is expressed as `rejected` plus `notes`; see ADR-0003.
+ReviewDecision = Literal["approved", "rejected"]
 
 
 class StrictModel(BaseModel):
@@ -57,20 +62,34 @@ class AssetImportRequest(StrictModel):
     media_type: str
     content_length: PositiveInt
     upstream_asset_id: str | None = None
-    provenance: dict[str, Any] = {}
+    provenance: str = Field(min_length=1)
 
 
 class AssetResponse(StrictModel):
+    """Public view of an Asset, matching
+    `ai_services/contracts/v1/schemas/asset.schema.json`.
+
+    `storage_key` is deliberately absent: storage-adapter keys are internal
+    and are never serialized (`03_data_contracts.md`, and the shared
+    schema's own description). `provenance` is a string, not an object, for
+    the same reason the shared schema says so — see ADR-0003.
+
+    `width_px`/`height_px` are nullable here while the shared schema
+    requires them. That is a known, recorded gap: the A1 fake does not
+    decode image bytes and must not invent pixel dimensions. They become
+    non-null at A2 when a real importer decodes the upload. See ADR-0003.
+    """
+
     schema_version: str = SCHEMA_VERSION
     asset_id: str
+    upstream_asset_id: str | None = None
     owner_id: str
     content_hash: str
     media_type: str
     width_px: PositiveInt | None = None
     height_px: PositiveInt | None = None
     original_filename: str
-    storage_key: str
-    provenance: dict[str, Any]
+    provenance: str
     created_at: str
 
 
@@ -161,14 +180,19 @@ class CandidateReviewRequest(StrictModel):
     schema_version: str
     reviewer_id: str
     decision: ReviewDecision
-    expected_review_version: int
+    expected_revision: int
     notes: str | None = None
 
 
 class CandidateReviewResponse(StrictModel):
+    """Matches `ai_services/contracts/v1/schemas/review.schema.json`:
+    `revision` (not `review_version`), `created_at` (not `reviewed_at`),
+    and `reviewer_id` carried through. See ADR-0003."""
+
     schema_version: str = SCHEMA_VERSION
     review_id: str
     candidate_id: str
+    reviewer_id: str
     decision: ReviewDecision
-    review_version: int
-    reviewed_at: str
+    revision: int
+    created_at: str

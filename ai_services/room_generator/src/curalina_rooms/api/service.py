@@ -113,7 +113,7 @@ class RoomsContractService:
         candidates = load_fixture("seed_candidates.json")["candidates"]
         for candidate in candidates:
             self._candidate_review_versions[candidate["candidate_id"]] = candidate[
-                "review_version"
+                "revision"
             ]
 
     # -- Assets ---------------------------------------------------------
@@ -140,11 +140,11 @@ class RoomsContractService:
 
         response = AssetResponse(
             asset_id=asset_id,
+            upstream_asset_id=request.upstream_asset_id,
             owner_id=request.owner_id,
             content_hash=content_hash,
             media_type=request.media_type,
             original_filename=request.original_filename,
-            storage_key=f"rooms/{asset_id}",
             provenance=request.provenance,
             created_at=_utc_now_iso(),
         )
@@ -164,7 +164,9 @@ class RoomsContractService:
             content_hash=asset.content_hash,
             media_type=asset.media_type,
             byte_size=1,
-            content_ref=f"content://{asset.storage_key}",
+            # Derived from the public asset id only. The storage-adapter key
+            # is internal and is never serialized (ADR-0003).
+            content_ref=f"content://assets/{asset.asset_id}",
         )
         return ContractResult(http_status=200, body=response)
 
@@ -247,19 +249,20 @@ class RoomsContractService:
         current_version = self._candidate_review_versions.get(candidate_id)
         if current_version is None:
             raise resource_not_found_error(request_id, "candidate", candidate_id)
-        if request.expected_review_version != current_version:
+        if request.expected_revision != current_version:
             raise review_version_conflict_error(
-                request_id, candidate_id, request.expected_review_version,
+                request_id, candidate_id, request.expected_revision,
                 current_version,
             )
 
         next_version = current_version + 1
         self._candidate_review_versions[candidate_id] = next_version
         response = CandidateReviewResponse(
-            review_id=f"cand_review_{uuid4().hex[:12]}",
+            review_id=f"review_{uuid4().hex[:12]}",
             candidate_id=candidate_id,
+            reviewer_id=request.reviewer_id,
             decision=request.decision,
-            review_version=next_version,
-            reviewed_at=_utc_now_iso(),
+            revision=next_version,
+            created_at=_utc_now_iso(),
         )
         return ContractResult(http_status=201, body=response)

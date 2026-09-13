@@ -243,3 +243,29 @@ Limitations / follow-up:
   commands still match reality unchanged.
 - This phase intentionally added no domain/application code; A2 depends on
   R01/R02 notebooks and `curalina_design_rules` and is not started here.
+
+## Tech-lead note (2026-09-13) — A1/A3 phase-boundary ruling
+
+This packet was flagged in `agent_instructions/STATUS.md` because it built
+a live FastAPI app (`api/routes.py`, `create_app()`) and added `fastapi` +
+`httpx` during A1, where `agentic_flow/recommendation_workflow.md` names
+HTTP exposure only under A3, and where variants and rooms both built
+plain-callable A1 fakes instead.
+
+Ruled in `architecture/adr/ADR-0002-recommendation-a1-http-wiring.md`:
+**this packet is accepted as-is and is A1-complete.** Declaring routes on
+an in-process ASGI app whose handlers return canned fixtures is A1 work —
+it is what makes this A1's own done-evidence ("returns `422`", "structured
+error, not a 500") obtainable, and what
+`architecture/guides/08_engineering_and_tests.md` line 44 ("contract tests
+must use a real in-process HTTP client") requires. The `fastapi`/`httpx`
+additions were already inside this packet's allowed-files list.
+
+**No A3 deliverable is claimed by this packet.** To be explicit for anyone
+reading this trail later: there is no port binding on `8101`, no
+`bootstrap.py`/`Settings` injection into the app, no SQLite persistence,
+no repository, and no `domain`/`application`/`ports`/`adapters` code behind
+any handler. All four of A3's deliverables remain outstanding; A3's scope
+is unchanged apart from the four routes already being declared.
+
+Recommendation is unblocked for A2.
