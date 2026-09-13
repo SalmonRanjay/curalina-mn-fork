@@ -1,0 +1,11 @@
+scenario_id,rule_id,severity,message,source_section,open_question_id
+condo_living_room_conversation_circle,MIN_WALKWAY,hard,No continuous walkway of at least 813mm found,9.1,
+condo_living_room_conversation_circle,CMR_VALIDATION,needs_input,"Circulation-to-Mass Ratio formula is undefined in the Design Manual (Section 9 implementation note, Section 10 STEP 5); cannot evaluate until the design authority resolves OQ-001.","9 implementation note, 10 STEP 5",OQ-001
+mid_dining_room_service_perimeter,MIN_WALKWAY,hard,No continuous walkway of at least 914mm found,9.1,
+mid_dining_room_service_perimeter,CMR_VALIDATION,needs_input,"Circulation-to-Mass Ratio formula is undefined in the Design Manual (Section 9 implementation note, Section 10 STEP 5); cannot evaluate until the design authority resolves OQ-001.","9 implementation note, 10 STEP 5",OQ-001
+large_living_room_floating_anchor_violation,MIN_WALKWAY,hard,No continuous walkway of at least 1219mm found,9.1,
+large_living_room_floating_anchor_violation,CMR_VALIDATION,needs_input,"Circulation-to-Mass Ratio formula is undefined in the Design Manual (Section 9 implementation note, Section 10 STEP 5); cannot evaluate until the design authority resolves OQ-001.","9 implementation note, 10 STEP 5",OQ-001
+large_living_room_floating_anchor_violation,LR_FLOATING_ANCHOR,hard,Sofa is 0mm off the wall; rooms over the width threshold require >= 762mm,9.2.2.3,
+condo_bedroom_pinched_ensuite_path,MIN_WALKWAY,hard,No continuous walkway of at least 813mm found,9.1,
+condo_bedroom_pinched_ensuite_path,CMR_VALIDATION,needs_input,"Circulation-to-Mass Ratio formula is undefined in the Design Manual (Section 9 implementation note, Section 10 STEP 5); cannot evaluate until the design authority resolves OQ-001.","9 implementation note, 10 STEP 5",OQ-001
+condo_bedroom_pinched_ensuite_path,BR_ENSUITE_PATH,hard,No continuous 1067mm path from bed to ensuite door,9.4.4,

@@ -1,0 +1,5 @@
+# A0 scaffold placeholder.
+#
+# This file is intentionally empty until dependency locking policy is settled
+# for the Python services workspace. Runtime dependencies are currently empty;
+# development dependencies are declared in pyproject.toml.

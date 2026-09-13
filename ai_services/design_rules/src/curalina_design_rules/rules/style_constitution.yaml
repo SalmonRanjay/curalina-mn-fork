@@ -1,0 +1,281 @@
+# Curalina design rules — style constitution
+# Source: Training_Doc_1_-_Design_Manual.pdf, Sections 1, 3, 7
+# Every rule carries `source` pointing at the manual section it encodes.
+# Nothing in this file is invented; unresolved items are listed in
+# rules/open_questions.yaml instead of being guessed.
+
+schema_version: "1.0"
+rules_version: "2026.09.12-a"
+
+styles:
+
+  organic_modern:
+    code: OM
+    essence: [calm, grounded, soft, natural]
+    source: "1.1"
+
+    materials_allowed: [linen, boucle, cotton, wool, warm_oak, ash, travertine, honed_stone, ceramic]
+    metals_allowed: [brushed_brass, antique_brass, blackened_steel, aged_bronze_matte]
+    shapes: [soft_curves, round_edges, chunky_silhouettes]
+
+    rejects:
+      - hard_angles
+      - boxy_silhouettes
+      - square_arms
+      - straight_line_sofas
+      - rigid_architectural_chairs
+      - exposed_skinny_legs
+      - shiny_reflective_finishes
+      - busy_high_contrast_artwork
+      - clutter
+    source_rejects: "1.1"
+
+    # Section 1.1 "70/30 Edge Rule"
+    edge_rule:
+      id: OM_EDGE_70_30
+      type: proportion_constraint
+      severity: hard
+      predicate: curved_or_radiused_edge
+      min_fraction: 0.70
+      scope: room_items
+      remedy: >
+        If a foundation piece has a straight back, require a bridge piece
+        (armchair or coffee table) that is fully circular or pebble-shaped.
+      source: "1.1"
+
+    # Section 3.5.1 HSL Electric Fence
+    hsl_caps:
+      saturation_max_pct: 15
+      lightness_range_pct: [40, 92]
+      hue_range_deg: [25, 55]
+      rejects_undertone: [cool, blue]
+      source: "3.5.1, 3.4"
+
+    # Section 7.3 composition ratio
+    material_ratio:
+      anchor_wood_pct: 40
+      comfort_textile_pct: 50
+      feature_stone_pct: 10
+      tolerance_pct: 5
+      note: "Stone must be honed/matte."
+      source: "7.3"
+
+    accent_pool:
+      mode: single_family_monopoly
+      options: [sage, clay, ochre]
+      source: "3.5 Gate 2B"
+
+    edge_condition: bullnose_radius_half_inch
+    source_edge_condition: "6.6.4"
+
+    sofa_to_table_in: [15, 16]
+    source_spacing: "9.2.1"
+
+  mid_century_scandinavian:
+    code: MS
+    aliases: [MCS]
+    essence: [airy, functional, sleek, friendly, minimal]
+    source: "1.2"
+
+    materials_allowed: [light_oak, walnut, ash, cotton, wool, leather, flatweave, black_metal]
+    metals_allowed: [black_brushed, muted_metal, gun_metal]
+    shapes: [thin_slim_profiles, tapered_legs, clean_geometry]
+
+    gloss_max_fraction: 0.10
+    source_gloss: "1.2"
+
+    visual_lightness_rule:
+      id: MS_VISUAL_LIGHTNESS_80
+      type: proportion_constraint
+      severity: hard
+      predicate: raised_on_visible_legs
+      min_fraction: 0.80
+      scope: furniture_items
+      source: "1.2"
+
+    hsl_caps:
+      saturation_max_pct: 8
+      lightness_range_pct: [65, 98]
+      hue_constraint: neutral
+      rejects_undertone: [orange, red, yellowing, high_chroma]
+      source: "3.5.1, 3.4"
+
+    material_ratio:
+      anchor_wood_pct: 60
+      comfort_textile_pct: 30
+      feature_stone_pct: 10
+      tolerance_pct: 5
+      note: "Keep stone and textile thin to maintain Visual Breeze."
+      source: "7.3"
+
+    accent_pool:
+      mode: single_pop
+      options: [denim_blue, smoke_blue, mustard]
+      max_per_room: 1
+      saturation_exemption: true   # the only exemption to the 60% anti-vibrancy cap
+      source: "3.2, 3.4.3"
+
+    edge_condition: recessed_channel_2in_matte_black
+    source_edge_condition: "6.6.4"
+
+    sofa_to_table_in: [17, 17]
+    source_spacing: "9.2.1"
+
+  contemporary_luxe:
+    code: CL
+    essence: [visual_mass, gallery, quiet_luxury]
+    source: "1.3"
+
+    visual_mass_rule:
+      id: CL_PLINTH_BASE
+      type: preference_constraint
+      severity: soft
+      predicate: plinth_or_block_base
+      source: "1.3"
+
+    hsl_caps:
+      saturation_max_pct: 10           # applies to the 60% foundation only
+      saturation_cap_scope: foundation_60
+      lightness_range_pct: [5, 95]
+      hue_constraint: true_neutral
+      rejects_undertone: [cream, beige, muddy]
+      source: "3.5.1, 3.4"
+
+    material_ratio:
+      anchor_wood_pct: 30
+      comfort_textile_pct: 30
+      feature_stone_pct: 40
+      tolerance_pct: 5
+      note: "High-contrast veining permitted; stone dominates visual gravity."
+      source: "7.3"
+
+    accent_pool:
+      mode: drama_path_exclusive     # Path A and Path B may never be mixed
+      path_a_gemstone: [navy, emerald, oxblood, plum]
+      path_b_tonal_neutral: [espresso, graphite, iron, sandstone]
+      vary: lightness_only            # hue is locked once selected
+      source: "3.5 Gate 2A"
+
+    edge_condition: knife_edge_miter_45deg
+    source_edge_condition: "6.6.4"
+
+    sofa_to_table_in: [18, 20]
+    source_spacing: "9.2.1"
+
+    # Section 3.5.2 Luster Fail-Safe
+    luster_failsafe:
+      id: CL_SPARK_RULE
+      severity: hard
+      when:
+        style: CL
+        tonality: dark_moody
+        accent_path: path_b_tonal_neutral
+      then:
+        force_high_luster_hardware: true
+        allowed: [gunmetal, brushed_champagne, silver_slate]
+        prohibit_matte_hardware: true
+      rationale: >
+        In a dark monochromatic room the absence of reflective metal causes
+        architectural lines to collapse into a flat mass.
+      source: "3.4.4, 3.5.2"
+
+# ---------------------------------------------------------------------------
+# Cross-style guardrails (Section 3.4, 7.4)
+# ---------------------------------------------------------------------------
+
+universal_color_guardrails:
+
+  anti_vibrancy:
+    id: ANTI_VIBRANCY_60
+    severity: hard
+    saturation_max_pct: 60
+    exemption: mid_century_scandinavian.accent_pool   # Nordic Pop only
+    source: "3.4.3"
+
+  material_color_inversion:
+    id: MATERIAL_COLOR_INVERSION
+    severity: hard
+    pairs:
+      - when_color_temperature: cold
+        require_material_class: warm      # velvet, mohair, thick wool
+      - when_color_temperature: warm
+        require_material_class: hard_sleek # leather, stone, polished wood
+    source: "3.4.2"
+
+  metal_mixing:
+    id: METAL_PRIMARY_SECONDARY
+    severity: hard
+    rule: primary_secondary_hierarchy
+    prohibit: two_high_shine_metals_together
+    source: "1.x Metal Mixing Rule"
+
+  metal_temperature_match:      # Section 3.5 Gate 3
+    id: GATE3_METAL_MATCH
+    severity: hard
+    lookup:
+      cool_gemstone:  {CL: [gunmetal, silver_slate], OM: [blackened_steel], MS: [matte_black]}
+      warm_gemstone:  {CL: [burnished_bronze, champagne], OM: [warm_umber], MS: [natural_walnut, brass]}
+      cool_neutral:   {CL: [black_onyx, gunmetal], OM: [blackened_steel], MS: [matte_black]}
+      warm_neutral:   {CL: [burnished_bronze, champagne], OM: [warm_umber], MS: [natural_walnut, brass]}
+    source: "3.5 Gate 3"
+
+composition_guardrails:
+
+  material_buffer:
+    id: MATERIAL_BUFFER
+    severity: hard
+    description: Never place a Feature material directly against another Feature material.
+    fail_example: stone coffee table on a stone-patterned rug
+    pass_example: stone coffee table on a textile (Comfort) rug
+    source: "7.4.1"
+
+  wood_continuity:
+    id: WOOD_SPECIES_CONTINUITY
+    severity: hard
+    description: >
+      Anchor (wood) species must match across the entire room. Mixing species
+      within the same layer is rejected.
+    source: "7.4.2"
+
+  luster_sync:
+    id: LUSTER_SYNC
+    severity: hard
+    description: Feature stone finish temperature must match shadow metal temperature.
+    pairs:
+      - {stone: cool, example: statuario, metal: cool, metal_example: gunmetal}
+      - {stone: warm, example: taj_mahal, metal: warm, metal_example: burnished_bronze}
+    source: "7.4.4"
+
+  monolith_prohibition:
+    id: NO_MONOLITHIC_FURNITURE
+    severity: hard
+    description: >
+      Items must be deconstructed into Anchor / Feature / Comfort sub-components.
+      A wood table with wood legs is prohibited unless a style-specific
+      Monolith Mode is explicitly triggered.
+    source: "7.2"
+
+# ---------------------------------------------------------------------------
+# Section 6.7 Priority Stack — conflict resolution order
+# ---------------------------------------------------------------------------
+
+priority_stack:
+  - rank: 1
+    name: pet_friendly_child_safe
+    effect: Overrides material selection; substitute performance-grade alternatives.
+  - rank: 2
+    name: physical_scale
+    effect: Bed size, seating count and room dimensions are non-negotiable.
+  - rank: 3
+    name: functional_selection
+    effect: Fireplace / media / storage determines architectural path.
+  - rank: 4
+    name: style
+    effect: Determines material language, edge condition, form behaviour.
+  - rank: 5
+    name: tonality
+    effect: Determines light/dark/warm material pool.
+  - rank: 6
+    name: variation
+    effect: Archetype, hardware, lighting, texture randomized within guardrails.
+source_priority_stack: "6.7"

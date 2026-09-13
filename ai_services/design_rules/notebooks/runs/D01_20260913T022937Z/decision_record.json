@@ -1,0 +1,50 @@
+{
+  "run_id": "20260913T022937Z",
+  "gate": "D01 / A6-equivalent (rules-engine conformance and handoff)",
+  "decision": "accept-with-limitations",
+  "rationale": "The A3 consumer-facing entry point and the A2b spatial checks it wraps run deterministically end to end against four representative scenarios, and CMR_VALIDATION surfaced needs_input with the correct OQ-001 citation on every scenario, never a silent pass -- that part of the engine behaves exactly as designed. \n\nHowever, this run's own results do NOT cleanly match the fixture module's documented expectations: only 1 of 4 scenarios (the deliberate large_living_room_floating_anchor_violation failure case) matches its stated expect_passes_hard_spatial once CMR is set aside. The other 3 additionally trip MIN_WALKWAY (and, for the bedroom case, BR_ENSUITE_PATH) as hard violations despite being documented as passing -- see the finding recorded above. This is evidence the engine's spatial primitives run correctly against *some* interpretation of the rules, but it is NOT evidence that the representative fixtures demonstrate a clean pass, and it must not be reported as one. \n\nSeparately and independently: this is NOT evidence of Design Manual section 8 conformance, because section 8's text (the client's four worked examples) is not present anywhere in this repository -- verified by full-tree search, see RULES-A3-01.md 'Known blockers'. The scenarios exercised here are representative fixtures built from already-loaded YAML thresholds, explicitly labelled as such everywhere they appear in this notebook. A conformance claim against section 8 cannot be made -- accepted, rejected, or otherwise -- until the Design Manual (or an authoritative extract of its section 8) is supplied. \n\nFurther separately: this run cannot say anything about the style/material/palette rule families the manual's section 8 compositions also depend on, because those modules (style.py, palette.py) do not exist yet in curalina_design_rules.",
+  "sample_size": {
+    "scenarios": 4,
+    "home_categories_covered": [
+      "condo",
+      "large",
+      "mid"
+    ],
+    "room_types_covered": [
+      "bedroom",
+      "dining_room",
+      "living_room"
+    ]
+  },
+  "blocked_by_design_manual_absence": true,
+  "unanticipated_findings": [
+    "MIN_WALKWAY fires as a hard violation on 3 of 4 representative fixtures whose docstrings assert an easy pass (see the cell above). Root cause: has_walkway's strict 'no pinched free area anywhere' semantics vs. fixtures authored for a different rule family without full-perimeter clearance. Not an existing OQ-xxx -- flagged here as a new gap for the design authority and/or fixture author to resolve, not folded into the metrics as a pass."
+  ],
+  "open_questions_touched": {
+    "OQ-001": "CMR_VALIDATION formula undefined -- fires needs_input on every scenario in this run (100%); blocks spatial validation step 5 and final validation step 11 per the Design Manual. Directly exercised by this notebook's Section 5.",
+    "OQ-002": "OM 70/30 edge-radius rule denominator undefined -- blocks OM style validation. Not exercised: style.py does not exist yet.",
+    "OQ-004": "Material composition ratio measurement basis undefined (area vs count vs footprint vs visual mass) -- blocks material composition validation. Not exercised: style.py does not exist yet.",
+    "OQ-007": "Anchor colour hex library missing -- blocks palette generation and wall-paint recalibration. Not exercised: palette.py does not exist yet."
+  },
+  "open_questions_still_open_project_wide_not_exercised_here": [
+    "OQ-003",
+    "OQ-005",
+    "OQ-006",
+    "OQ-008",
+    "OQ-009",
+    "OQ-010",
+    "OQ-011",
+    "OQ-012"
+  ],
+  "what_would_promote_this_to_a_clean_accept": [
+    "The Design Manual section 8 text (or an equivalent client-authored extract) is supplied and the real four worked examples are encoded and reproduced exactly.",
+    "OQ-001 (CMR formula) is resolved so CMR_VALIDATION can return a firm pass/fail instead of needs_input.",
+    "The MIN_WALKWAY mismatch above is resolved -- either by re-authoring the fixtures with full-perimeter clearance, or by design-authority confirmation that the strict whole-room opening test is the intended reading of section 9.1.",
+    "style.py and palette.py are built so material/colour rules can be exercised in the same conformance run (their own OQ-002/004/005/006/007/008 blockers would still need resolving independently)."
+  ],
+  "what_would_force_a_no_go_instead": [
+    "The deliberate failure scenario (large_living_room_floating_anchor_violation) failing to fire LR_FLOATING_ANCHOR (it did fire, in this run).",
+    "CMR_VALIDATION returning a silent pass instead of needs_input (it did not, in this run).",
+    "A collision (NO_PLACEMENT_ON_VIOLATION) appearing in any scenario not designed to have one (none appeared, in this run)."
+  ]
+}

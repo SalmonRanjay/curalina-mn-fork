@@ -1,0 +1,18 @@
+{
+  "run_id": "20260913T022937Z",
+  "notebook": "D01_rules_conformance",
+  "timestamp_utc": "2026-09-13T02:29:37.596849+00:00",
+  "git_sha": "6c35d20af5e2fad6b58c05661f4f05e569374d52",
+  "git_dirty": true,
+  "seed": 20260912,
+  "python": "3.14.0",
+  "platform": "macOS-26.6.2-x86_64-i386-64bit-Mach-O",
+  "rules_version": "2026.09.12-a",
+  "snapshot_id": null,
+  "packages": {
+    "curalina_design_rules": "0.0.0",
+    "shapely": "2.1.2",
+    "PyYAML": "6.0.3"
+  },
+  "hardware": "CPU-only, no GPU/accelerator required"
+}

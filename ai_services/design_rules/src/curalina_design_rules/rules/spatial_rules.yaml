@@ -1,0 +1,276 @@
+# Curalina design rules — spatial engine
+# Source: Training_Doc_1_-_Design_Manual.pdf, Section 9 (+ 6.6)
+# All linear measurements are INCHES unless suffixed otherwise.
+# Section 9 is the Primary Constraint Engine: it runs BEFORE style/material
+# logic (see Section 10 pipeline order). These are hard constraints.
+
+schema_version: "1.0"
+rules_version: "2026.09.12-a"
+
+# ---------------------------------------------------------------------------
+# 9.1 Scaling Hierarchy — home size categories
+# ---------------------------------------------------------------------------
+home_categories:
+  condo:
+    typical_sqft: 1200
+    intent: efficiency_multi_use
+    min_walkway_in: 32
+    void_rule: prioritize_circulation_flow
+    max_statement_chandeliers: 1        # 9.6.3
+  mid:
+    typical_sqft_range: [2500, 3500]
+    intent: balance_zone_logic
+    min_walkway_in: 36
+    void_rule: prioritize_symmetry
+  large:
+    typical_sqft_min: 4500
+    intent: grandeur_axial_flow
+    min_walkway_in: 48
+    preferred_walkway_in: 60
+    void_rule: prioritize_gallery_walk
+    min_statement_pieces: 3             # 9.6.3
+    requires_niche_lighting_k: 3000
+source: "9.1"
+
+# ---------------------------------------------------------------------------
+# 9.2 Living room — Conversation Circle
+# ---------------------------------------------------------------------------
+living_room:
+  foundation: seating_monolith          # sofa / sectional
+  non_prunable: [sofa]
+
+  sofa_to_table_in:                     # 9.2.1 style-weighted
+    OM: [15, 16]
+    MS: [17, 17]
+    CL: [18, 20]
+  source_spacing: "9.2.1"
+
+  hard_guardrails:                      # 9.2.2 "The Unbreakables"
+    - id: LR_RUG_FRONT_LEG
+      severity: hard
+      description: All front legs of the seating group must sit at least 8" onto the rug.
+      min_front_leg_on_rug_in: 8
+      large_category_override: full_room_rug_all_legs_on
+      source: "9.2.2.1"
+
+    - id: LR_MEDIA_SIGHTLINE
+      severity: hard
+      when: media_selected
+      tv_center_aff_in: 42              # exact, not a range
+      source: "9.2.2.2"
+
+    - id: LR_FLOATING_ANCHOR
+      severity: hard
+      when_room_width_gt_ft: 16
+      prohibit: sofa_against_wall
+      require_layout: floating
+      min_behind_sofa_circulation_in: 30
+      source: "9.2.2.3"
+
+  multi_zone_trigger:                   # 9.2.3, Large category only
+    applies_to_category: large
+    when_footprint_sqft_gt: 500
+    prohibit: single_seating_group
+    require: secondary_zone
+    archetypes:
+      - id: viewpoint_niche
+        trigger: floor_to_ceiling_windows_or_architectural_bay
+        components: [accent_chair_low_profile x2, drinks_table x1]
+        placement: facing_primary_window_independent_of_sofa_group
+      - id: library_nook
+        trigger: large_uninterrupted_wall_span
+        components: [oversized_lounge_chair x1, floor_lamp x1, bookcase_or_art_pedestal x1]
+        placement: corner_or_adjacent_to_fireplace
+      - id: transition_plinth
+        trigger: thoroughfare_to_dining_or_patio
+        components: [backless_bench_or_daybed x1]
+        placement: parallel_to_main_sofa_as_low_profile_divider
+    source: "9.2.3"
+
+# ---------------------------------------------------------------------------
+# 9.3 Dining room — Service Perimeter
+# ---------------------------------------------------------------------------
+dining_room:
+  foundation: dining_plinth             # the table
+  non_prunable: [dining_table, credenza]
+
+  clearances:
+    pull_back_zone_in: 36               # chair movement
+    pull_back_with_walkway_behind_in: 44
+    credenza_buffer_in: 48              # table edge to credenza
+  source_clearances: "9.3.1"
+
+  table_sizing:
+    linear_width_per_person_in: [24, 30]
+    large_category_default_in: 30       # "State Dining"
+  source_table_sizing: "9.3.1"
+
+  perimeter_accents:                    # 9.3.2, Large only
+    applies_to_category: large
+    when_footprint_sqft_gt: 300
+    require:
+      - id: host_accent_chair
+        spec: one high-backed sculptural chair, must differ from dining chairs
+        placement: far_corner
+      - id: gallery_buffer
+        spec: long credenza/sideboard paired with large-scale art or mirror
+        credenza_min_fraction_of_table_length: 0.75
+    source: "9.3.2"
+
+# ---------------------------------------------------------------------------
+# 9.4 Primary bedroom — Sleep Island
+# ---------------------------------------------------------------------------
+primary_bedroom:
+  foundation: sleep_island              # the bed
+  non_prunable: [bed]
+
+  symmetry:
+    - id: BR_TWIN_NIGHTSTAND
+      severity: hard
+      applies_to_category: [mid, large]
+      prohibit: asymmetrical_nightstands
+      require: matched_pair
+      source: "9.4.1"
+
+  rug:
+    - id: BR_RUG_LANDING_STRIP
+      severity: hard
+      min_extension_beyond_bed_in: 24   # sides and foot
+      failure_label: critical_aesthetic_error
+      description: A rug ending at the bed frame is a Critical Aesthetic Error.
+      source: "9.4.1"
+
+  clearances:
+    foot_of_bed_bypass_in: 36           # bed (or bench) to dresser/wall
+    bench_variable: >
+      If a bench is present the 36" bypass is measured from the bench edge.
+      If available space is <36", the bench is automatically pruned.
+    source: "9.4.2"
+
+  retreat_zone:                         # 9.4.3, Large only
+    applies_to_category: large
+    when_home_sqft_gt: 4500
+    when_suite_footprint_sqft_gt: 400
+    archetypes:
+      - id: conversation_niche
+        trigger: bay_window_or_deep_corner_void
+        components: [sculptural_accent_chair x2, stone_or_wood_pedestal_table x1]
+        placement: 45deg_to_room_corner_or_centered_on_window
+        min_clear_area_ft: [8, 8]
+      - id: dressing_plinth
+        trigger: long_uninterrupted_wall_opposite_or_adjacent_to_bed
+        components: [oversized_floor_mirror x1, sculptural_stool_or_bench x1, floor_lamp x1]
+        placement: away_from_bed_to_bathroom_circulation
+        min_wall_adjacent_zone_ft: [6, 4]
+    source: "9.4.3"
+
+  suite_circulation:                    # 9.4.4
+    - id: BR_ENSUITE_PATH
+      severity: hard
+      min_clear_path_in: 42
+      from: bed
+      to: ensuite_door
+      source: "9.4.4"
+    - id: BR_CLOSET_PATH
+      severity: hard
+      min_clear_path_in: 36
+      from: bed
+      to: walk_in_closet
+      source: "9.4.4"
+    - id: BR_NO_CLUTTER_CHECK
+      severity: hard
+      description: >
+        If adding a retreat zone reduces any primary walkway below 36",
+        prune the retreat items and revert to a Gallery Void (empty space).
+      min_primary_walkway_in: 36
+      source: "9.4.4"
+
+# ---------------------------------------------------------------------------
+# 9.6 Lumen Density guardrail — final validation
+# ---------------------------------------------------------------------------
+lighting_validation:
+  three_point_coverage:
+    id: LIGHT_3_POINT
+    severity: hard
+    description: Every seating group requires 1 ambient + 1 task + 1 accent source.
+    required_sources: [ambient, task, accent]
+    scope: per_seating_group
+    source: "9.6.1"
+
+  shadow_check:
+    id: LIGHT_SHADOW_CHECK
+    severity: hard
+    when_tonality: dark_moody
+    prohibit: single_high_output_central_light
+    require: distributed_low_level_portables
+    source: "9.6.2"
+
+  cl_corner_sconce:
+    id: CL_SHADOW_SCONCE
+    severity: hard
+    when: {style: CL, tonality: dark_moody}
+    place_sconce_within_in_of_corner: 12
+    source: "9.5"
+
+  z_axis:
+    pendant_over_surface: see_section_9_5
+    wall_art_center_aff_in: [60, 66]    # eye-level anchor
+    source: "1.x, 9.5"
+
+# ---------------------------------------------------------------------------
+# 9.7 / 9.8 Pruning hierarchy — conflict resolution
+# ---------------------------------------------------------------------------
+pruning:
+  # 9.7 standard: applied when Spatial Conflict Check fails (room too crowded)
+  standard_order:
+    - {rank: 1, item: floor_lamp, substitute: wall_sconce}
+    - {rank: 2, item: ottoman_or_bench}
+    - {rank: 3, item: side_table_lamp, substitute: floating_sconce}
+    - {rank: 4, item: accent_chairs, action: reduce_pair_to_single}
+    - {rank: 5, item: accent_sconces}
+  non_prunable: [sofa, dining_table, bed]
+  source: "9.7"
+
+  # 9.8 "Aesthetic Breath": applied when a LARGE room fails walkway check
+  # after secondary zones have been added
+  large_room_order:
+    - {rank: 1, item: smallest_accent_moment, example: drinks_table}
+    - {rank: 2, item: secondary_zone, action: revert_to_gallery_void}
+    - {rank: 3, item: perimeter_accent_chair}
+    - {rank: 4, item: bench_or_daybed}
+  non_prunable_large: [credenza, primary_dining_group, primary_living_group]
+  source: "9.8"
+
+# ---------------------------------------------------------------------------
+# Global spatial invariants (Section 9 System Implementation Note)
+# ---------------------------------------------------------------------------
+invariants:
+  - id: SPATIAL_TRUE_DIMENSIONS
+    severity: hard
+    description: >
+      Use true supplier dimensions (W x D x H) with no scaling, distortion or
+      proportional approximation. A sofa specified as 98" x 32" x 28" must
+      occupy exactly that footprint.
+    source: "Section 9 implementation note, Section 10 hard guardrail"
+
+  - id: SPATIAL_BEFORE_STYLE
+    severity: hard
+    description: >
+      A dimensionally accurate floor plan must be generated BEFORE any style,
+      material or aesthetic logic is applied.
+    source: "Section 9 implementation note, Section 10 hard guardrail"
+
+  - id: NO_PLACEMENT_ON_VIOLATION
+    severity: hard
+    description: >
+      No object may be placed if it violates minimum clearance rules, causes
+      circulation breaks or dead zones, or exceeds available spatial dimensions.
+    source: "Section 9 implementation note"
+
+  - id: SIGHTLINE_12IN
+    severity: hard
+    description: >
+      Any opaque object over 12" in height must be placed at table height
+      (not blocking seated sightlines).
+    threshold_in: 12
+    source: "1.11"
