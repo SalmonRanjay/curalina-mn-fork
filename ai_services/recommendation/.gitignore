@@ -6,3 +6,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .hypothesis/
+
+# ADR-0006 §D7: MiniLM weight cache. Never committed — record model id,
+# revision, and weight hash in the notebook manifest instead.
+model_cache/

@@ -1,0 +1,97 @@
+canonical_rooms:
+- Living room
+- Dining room
+- Bedroom
+- Home office
+- Nursery
+- Entryway
+canonical_styles:
+- Mid-Century Scandi
+- Modern Farmhouse
+- Warm Transitional
+- Organic Modern
+- Contemporary Lux
+- Artful Eclectic
+canonical_tags:
+- Calm/Serene
+- Clean Line/Structured
+- Rustic/Inviting
+- Upscale/Chic
+- Elegant/Balanced
+- Warm Neutrals
+- Earth & Stone
+- Coastal Calm
+- Soft Contrast
+- Monochrome Luxe
+- Artful Contrast
+- Heritage Warmth
+- Dark & Moody
+- White Oak/Linen/Travertine
+- Walnut
+- Shiplap/Wrought Iron
+- Velvet/Brass/Smoked Glass
+- Satin/Metallics
+- Everyday Elegance/Gracious
+- Statement Living/Glamorous Evenings
+- Relaxed Sophistication/ Minimalist
+- Nurturing/Refined
+- Family Gatherings/ Humble
+- Just Solids
+- Patterned Accents
+- I Love Patterns
+material_family_tags:
+- Walnut
+- White Oak/Linen/Travertine
+- Shiplap/Wrought Iron
+- Velvet/Brass/Smoked Glass
+- Satin/Metallics
+room_synonyms:
+  dining room: Dining room
+  entryway: Entryway
+  home office: Home office
+  living room: Living room
+style_out_of_axis:
+  bedroom: room_type_string_in_style_column
+  cabinet/sideboard/buffet: category_string_in_style_column
+  chaise lounge: category_string_in_style_column
+  entryway: room_type_string_in_style_column
+  home office: room_type_string_in_style_column
+  living room: room_type_string_in_style_column
+style_synonyms:
+  contemporary luxe: Contemporary Lux
+  farmhouse: Modern Farmhouse
+  mid-century scandinavian: Mid-Century Scandi
+  midcentury scandi: Mid-Century Scandi
+  warm transittional: Warm Transitional
+tag_out_of_axis:
+  concrete: material_noun_not_a_tag
+  marble: material_noun_not_a_tag
+  outdoor suitable: functional_tag_no_atmosphere_equivalent
+  terrazo: material_noun_not_a_tag
+tag_reference:
+  Calm/Serene: Organic Modern
+  Clean Line/Structured: Mid-Century Scandinavian
+  Elegant/Balanced: Warm Transitional
+  Family Gatherings/ Humble: Modern Farmhouse
+  Just Solids: Contemporary Luxe
+  Nurturing/Refined: Mid-Century Scandinavian
+  Patterned Accents: Warm Transitional
+  Relaxed Sophistication/ Minimalist: Organic Modern
+  Rustic/Inviting: Modern Farmhouse
+  Upscale/Chic: Contemporary Luxe
+tag_synonyms:
+  earthy & stone: Earth & Stone
+  earty & stone: Earth & Stone
+  elegant balanced: Elegant/Balanced
+  elegant/balanced: Elegant/Balanced
+  everyday elegance: Everyday Elegance/Gracious
+  everyday elegence/gracious: Everyday Elegance/Gracious
+  family gatherinegs/hunble: Family Gatherings/ Humble
+  family gatherings/humble: Family Gatherings/ Humble
+  family gatherings/hunble: Family Gatherings/ Humble
+  i love patters: I Love Patterns
+  nurtuing/refined: Nurturing/Refined
+  nurturing refined: Nurturing/Refined
+  relaxed sophisitication/minimalist: Relaxed Sophistication/ Minimalist
+  statement living/glamorous evenings: Statement Living/Glamorous Evenings
+  white/oak/linen/travertine: White Oak/Linen/Travertine

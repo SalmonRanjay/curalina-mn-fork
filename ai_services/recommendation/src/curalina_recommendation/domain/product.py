@@ -66,6 +66,16 @@ class Product:
     lacked the fact; in that case `availability` must be `UNKNOWN`
     (enforced below) so a downstream ranking/bundle step can never treat a
     missing fact as a confirmed `AVAILABLE` product.
+
+    `overview` is supplier-authored descriptive prose (the workbook's
+    `Overview` column), added additively by ADR-0007 as the encoder-visible
+    text surface R02 needs. It is deliberately the *only* text field here:
+    ADR-0006 §D2 requires the label-source fields (`Room Type`,
+    `Design Style`, `Tags`) to be structurally absent from anything a
+    `FeatureEncoder` can reach, so the rule-only baseline cannot win by
+    reading the column its own labels are derived from. Do not add those
+    three fields, and do not add a free-form `attributes` bag that could
+    carry them — see ADR-0007 for why that shape was rejected.
     """
 
     product_id: str
@@ -76,12 +86,19 @@ class Product:
     price: Money | None = None
     dimensions: Dimensions | None = None
     source_snapshot_id: str | None = None
+    overview: str | None = None
 
     def __post_init__(self) -> None:
         if not self.product_id.strip():
             raise ValueError("product_id must not be blank")
         if not self.category.strip():
             raise ValueError("category must not be blank")
+        if self.overview is not None and not self.overview.strip():
+            raise ValueError(
+                "overview must be None when absent, not blank — "
+                "a blank string would let an encoder treat a missing "
+                "fact as empty text (ADR-0007)"
+            )
         if self.availability is Availability.AVAILABLE:
             if self.price is None:
                 raise MissingRequiredFactError(self.product_id, "price")

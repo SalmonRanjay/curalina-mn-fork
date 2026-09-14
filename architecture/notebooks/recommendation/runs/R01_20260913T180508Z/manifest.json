@@ -1,0 +1,33 @@
+{
+  "run_id": "20260913T180508Z",
+  "notebook": "R01_catalogue_audit",
+  "timestamp_utc": "2026-09-13T18:05:08.529393+00:00",
+  "git_sha": "83e3a7f978da96ee95a722729afa0d9fd658a0c6",
+  "seed": 20260913,
+  "python": "3.14.0",
+  "platform": "macOS-26.6.2-x86_64-i386-64bit-Mach-O",
+  "rules_version": null,
+  "snapshot_id": [
+    "snap_3ad1f5d7_four-hands",
+    "snap_3ad1f5d7_moes-home"
+  ],
+  "packages": {
+    "openpyxl": "3.1.5",
+    "curalina-recommendation": "0.0.0"
+  },
+  "pinned_inputs": {
+    "product_workbook": {
+      "path": "/Users/rjsalmon/Documents/Humber/curalina/attached_assets/All_Four_Hands_and_Moes_Products_Combined New_1762391396825.xlsx",
+      "md5": "3ad1f5d7e47cca273e3fecd5ede64054"
+    },
+    "mapper_workbook": {
+      "path": "/Users/rjsalmon/Documents/Humber/curalina/attached_assets/Quiz and Product Mapper file instruction_1762400632880.xlsx",
+      "md5": "555e673c1374efc53b0beae68e5ccfc1"
+    },
+    "excluded_third_copy": {
+      "path": "/Users/rjsalmon/Documents/Humber/curalina/attached_assets/All_Four_Hands_and_Moes_Products_Combined New_1762332689675.xlsx",
+      "md5": "ef5288a5f1a277ac0d67dbbf45d343a0",
+      "status": "excluded, byte-differing sibling, not used"
+    }
+  }
+}

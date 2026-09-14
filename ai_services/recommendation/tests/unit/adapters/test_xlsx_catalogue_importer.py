@@ -33,9 +33,11 @@ def _row(
     dims_moes: object = None,
     dims_four_hands: object = None,
     source_file: str = "Four Hands Sofas.xlsx",
+    overview: object = None,
 ) -> list[object]:
     row = [None] * 36
     row[0] = name
+    row[1] = overview
     row[2] = supplier
     row[3] = sku
     row[5] = retail_price
@@ -209,6 +211,27 @@ def test_source_file_is_never_used_for_supplier_attribution(tmp_path: Path) -> N
 
     assert len(snapshot.products) == 1
     assert snapshot.products[0].key.supplier_id == "Moes Home"
+
+
+def test_overview_column_is_mapped_to_product_overview(tmp_path: Path) -> None:
+    path = _write_workbook(
+        tmp_path,
+        [_row(sku="OV-1", overview="A sofa in warm oak and linen.")],
+    )
+    importer = XlsxCatalogueImporter()
+
+    snapshot = importer.import_catalogue(source_uri=str(path), supplier_id="Four Hands")
+
+    assert snapshot.products[0].overview == "A sofa in warm oak and linen."
+
+
+def test_blank_overview_cell_maps_to_none_not_empty_string(tmp_path: Path) -> None:
+    path = _write_workbook(tmp_path, [_row(sku="OV-2", overview=None)])
+    importer = XlsxCatalogueImporter()
+
+    snapshot = importer.import_catalogue(source_uri=str(path), supplier_id="Four Hands")
+
+    assert snapshot.products[0].overview is None
 
 
 @pytest.mark.parametrize("supplier_id", ["Four Hands", "Moes Home"])

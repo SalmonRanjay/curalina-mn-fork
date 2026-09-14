@@ -1,0 +1,252 @@
+[
+  {
+    "brief_id": "A1-1",
+    "stratum": "A",
+    "room_type": "Dining room",
+    "categories": [
+      "Dining Chairs",
+      "Dining Table",
+      "Dining Bench"
+    ],
+    "style": "Artful Eclectic",
+    "atmosphere": "Earth & Stone",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A1-2",
+    "stratum": "A",
+    "room_type": "Dining room",
+    "categories": [
+      "Dining Chairs",
+      "Dining Table",
+      "Dining Bench"
+    ],
+    "style": "Organic Modern",
+    "atmosphere": "Everyday Elegance/Gracious",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A1-3",
+    "stratum": "A",
+    "room_type": "Dining room",
+    "categories": [
+      "Dining Chairs",
+      "Dining Table",
+      "Dining Bench"
+    ],
+    "style": "Modern Farmhouse",
+    "atmosphere": "Monochrome Luxe",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A2-1",
+    "stratum": "A",
+    "room_type": "Bedroom",
+    "categories": [
+      "Nightstand"
+    ],
+    "style": "Warm Transitional",
+    "atmosphere": "Calm/Serene",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A2-2",
+    "stratum": "A",
+    "room_type": "Bedroom",
+    "categories": [
+      "Nightstand"
+    ],
+    "style": "Modern Farmhouse",
+    "atmosphere": "Heritage Warmth",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A2-3",
+    "stratum": "A",
+    "room_type": "Bedroom",
+    "categories": [
+      "Nightstand"
+    ],
+    "style": "Mid-Century Scandi",
+    "atmosphere": "Patterned Accents",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A3-1",
+    "stratum": "A",
+    "room_type": "Living room",
+    "categories": [
+      "Sofa",
+      "Sectional",
+      "Console Table",
+      "Shelving Unit",
+      "Bookcase"
+    ],
+    "style": "Organic Modern",
+    "atmosphere": "Calm/Serene",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A3-2",
+    "stratum": "A",
+    "room_type": "Living room",
+    "categories": [
+      "Sofa",
+      "Sectional",
+      "Console Table",
+      "Shelving Unit",
+      "Bookcase"
+    ],
+    "style": "Contemporary Lux",
+    "atmosphere": "Elegant/Balanced",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "A3-3",
+    "stratum": "A",
+    "room_type": "Living room",
+    "categories": [
+      "Sofa",
+      "Sectional",
+      "Console Table",
+      "Shelving Unit",
+      "Bookcase"
+    ],
+    "style": "Artful Eclectic",
+    "atmosphere": "Monochrome Luxe",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": ""
+  },
+  {
+    "brief_id": "B1",
+    "stratum": "B",
+    "room_type": "Dining room",
+    "categories": [
+      "Dining Chairs"
+    ],
+    "style": null,
+    "atmosphere": null,
+    "budget_max": "999",
+    "budget_percentile": 0.4,
+    "max_dimension_in": null,
+    "note": "low-budget: 40th percentile of eligible price distribution"
+  },
+  {
+    "brief_id": "B2",
+    "stratum": "B",
+    "room_type": "Entryway",
+    "categories": [
+      "Console Table"
+    ],
+    "style": null,
+    "atmosphere": null,
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": "36",
+    "note": "tight dimension ceiling: 36in width cap for an entryway console"
+  },
+  {
+    "brief_id": "B3",
+    "stratum": "B",
+    "room_type": "Bedroom",
+    "categories": [
+      "Nightstand"
+    ],
+    "style": null,
+    "atmosphere": null,
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": "single required category, unconstrained budget/dimension"
+  },
+  {
+    "brief_id": "B4",
+    "stratum": "B",
+    "room_type": "Living room",
+    "categories": [
+      "Sofa",
+      "Console Table"
+    ],
+    "style": null,
+    "atmosphere": null,
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": "multi-category: sofa or console table for one living room brief"
+  },
+  {
+    "brief_id": "C1",
+    "stratum": "C",
+    "room_type": "Living room",
+    "categories": [
+      "Table Lamp",
+      "Floor Lamp",
+      "Outdoor Lamp",
+      "Pendant Light",
+      "Chandelier Light",
+      "Light Sconce"
+    ],
+    "style": null,
+    "atmosphere": null,
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": "expected outcome: insufficient inventory (zero lighting, ADR-0005)"
+  },
+  {
+    "brief_id": "C2",
+    "stratum": "C",
+    "room_type": "Living room",
+    "categories": [
+      "Accent Chair"
+    ],
+    "style": null,
+    "atmosphere": null,
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": "expected: insufficient inventory (zero accent chairs, ADR-0005)"
+  },
+  {
+    "brief_id": "C3",
+    "stratum": "C",
+    "room_type": "Dining room",
+    "categories": [
+      "Dining Chairs",
+      "Dining Table",
+      "Dining Bench"
+    ],
+    "style": "Mid-Century Scandi",
+    "atmosphere": "Elegant/Balanced",
+    "budget_max": null,
+    "budget_percentile": null,
+    "max_dimension_in": null,
+    "note": "expected outcome: zero/near-zero positives \u2014 'Elegant/Balanced' is supplier-disjoint toward Moe's Home while pool A1 is ~100% Four Hands (\u00a7D3a-G); real inventory exists, the correct ranking answer is 'no relevant items', not an empty pool"
+  }
+]

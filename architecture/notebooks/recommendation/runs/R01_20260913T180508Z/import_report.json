@@ -1,0 +1,93 @@
+{
+  "pinned_workbook_md5": "3ad1f5d7e47cca273e3fecd5ede64054",
+  "per_supplier": {
+    "Four Hands": {
+      "products_seen": 271,
+      "products_imported": 271,
+      "products_rejected": 0,
+      "rejected_reasons": []
+    },
+    "Moes Home": {
+      "products_seen": 114,
+      "products_imported": 72,
+      "products_rejected": 42,
+      "rejected_reasons": [
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key",
+        "duplicate_product_key"
+      ]
+    }
+  },
+  "workbook_audit": {
+    "total_rows": 385,
+    "supplier_counts": {
+      "Moes Home": 114,
+      "Four Hands": 271
+    },
+    "distinct_supplier_sku_pairs": 343,
+    "duplicate_key_count": 42,
+    "source_file_supplier_mismatch_count": 42,
+    "category_blank_row_count": 0,
+    "junk_category_rows": [
+      [
+        369,
+        "ER-1073-03",
+        "Final CSV-Ready Summary"
+      ]
+    ],
+    "coffee_table_row_count": 0,
+    "rug_lighting_accent_chair_row_count": 5,
+    "dimensions_parsed_row_count": 385,
+    "dimensions_unparsed_row_indices": [],
+    "lead_time_datetime_row_count": 65,
+    "lead_time_populated_row_count": 65,
+    "delivery_columns_all_empty": true
+  },
+  "oq009_attribute_presence": {
+    "edge_geometry": false,
+    "leg_style_and_height": false,
+    "material_class_anchor_feature_comfort": false,
+    "gloss_level": false,
+    "undertone_temperature": false,
+    "performance_fabric_flag": false
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "Four Hands": [
+    {
+      "product_id": "four-hands:107936-009",
+      "supplier_id": "Four Hands",
+      "sku": "107936-009",
+      "name": "Matthes Console Table - 79\"",
+      "category": "Console Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "1469",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 2000,
+        "height": 781,
+        "depth": 381
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_four-hands"
+    },
+    {
+      "product_id": "four-hands:248342-001",
+      "supplier_id": "Four Hands",
+      "sku": "248342-001",
+      "name": "Eva Console Table",
+      "category": "Console Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "2619",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 2007,
+        "height": 762,
+        "depth": 330
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_four-hands"
+    },
+    {
+      "product_id": "four-hands:IMYA-002",
+      "supplier_id": "Four Hands",
+      "sku": "IMYA-002",
+      "name": "Columbus Trunk Console",
+      "category": "Console Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "1539",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 1245,
+        "height": 787,
+        "depth": 381
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_four-hands"
+    },
+    {
+      "product_id": "four-hands:249525-002",
+      "supplier_id": "Four Hands",
+      "sku": "249525-002",
+      "name": "Rosenell Console Table - 78\"",
+      "category": "Console Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "4009",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 1981,
+        "height": 870,
+        "depth": 356
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_four-hands"
+    },
+    {
+      "product_id": "four-hands:241379-001",
+      "supplier_id": "Four Hands",
+      "sku": "241379-001",
+      "name": "Josette Console Table",
+      "category": "Console Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "2309",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 1981,
+        "height": 762,
+        "depth": 457
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_four-hands"
+    }
+  ],
+  "Moes Home": [
+    {
+      "product_id": "moes-home:BC-1147-03",
+      "supplier_id": "Moes Home",
+      "sku": "BC-1147-03",
+      "name": "Carrie Side Table Walnut",
+      "category": "End Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "779",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 521,
+        "height": 577,
+        "depth": 470
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_moes-home"
+    },
+    {
+      "product_id": "moes-home:LX-1076-20",
+      "supplier_id": "Moes Home",
+      "sku": "LX-1076-20",
+      "name": "Eton Side Table Dark Brown",
+      "category": "End Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "1299",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 508,
+        "height": 533,
+        "depth": 508
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_moes-home"
+    },
+    {
+      "product_id": "moes-home:BC-1147-24",
+      "supplier_id": "Moes Home",
+      "sku": "BC-1147-24",
+      "name": "Carrie Side Table Natural Oak",
+      "category": "End Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "669",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 521,
+        "height": 577,
+        "depth": 470
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_moes-home"
+    },
+    {
+      "product_id": "moes-home:BC-1122-03",
+      "supplier_id": "Moes Home",
+      "sku": "BC-1122-03",
+      "name": "Grace Accent Table Walnut Brown",
+      "category": "End Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "399",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 356,
+        "height": 508,
+        "depth": 356
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_moes-home"
+    },
+    {
+      "product_id": "moes-home:QJ-1026-34",
+      "supplier_id": "Moes Home",
+      "sku": "QJ-1026-34",
+      "name": "Holli Side Table Travertine",
+      "category": "End Table",
+      "availability": "unknown",
+      "price": {
+        "amount": "659",
+        "currency": "XXX"
+      },
+      "dimensions_mm": {
+        "width": 406,
+        "height": 584,
+        "depth": 406
+      },
+      "source_snapshot_id": "snap_3ad1f5d7_moes-home"
+    }
+  ]
+}

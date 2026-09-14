@@ -1,0 +1,7 @@
+coverage_guard_max_unmapped_rate: 0.15
+grades:
+  acceptable: 1
+  none: 0
+  strong: 2
+layer1_min_eligible_a_and_b: 20
+version: v1

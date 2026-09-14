@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-settings>=2.4",
     "fastapi>=0.111",
     "openpyxl>=3.1",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -26,13 +27,28 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "types-openpyxl>=3.1",
+    "types-PyYAML>=6.0",
+]
+# ADR-0006 §D7: neither of these is a runtime dependency. Adding either to
+# `dependencies` before a gate accepts it would pre-decide R02's outcome.
+# `MiniLMEncoder` must import `sentence-transformers` lazily (inside
+# `__init__`/`rank`), never at module load time, so `make test` stays green
+# with this extra absent.
+eval = [
+    "scikit-learn>=1.4",
+    "sentence-transformers>=3.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-curalina_recommendation = ["api/fixtures/*.json"]
+curalina_recommendation = [
+    "api/fixtures/*.json",
+    "evaluation/*.yaml",
+    "evaluation/*.json",
+    "evaluation/*.csv",
+]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --cov=curalina_recommendation --cov-branch --cov-report=term-missing"
@@ -50,3 +66,10 @@ python_version = "3.11"
 strict = true
 warn_unused_configs = true
 mypy_path = "src"
+
+# ADR-0006 §D7: neither is a runtime/dev dependency (they are the `eval`
+# extra, installed only for a real evaluation run). Type-checking the fast
+# suite must not require them to be present.
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "sentence_transformers.*"]
+ignore_missing_imports = true

@@ -1,0 +1,11 @@
+{
+  "files": {
+    "vocabulary_map_v1.yaml": "e952d72f5cecec692097b3b7a0070150d580a4b6eed3f04d95a85372c225e7f9",
+    "briefs_v1.json": "801e1462a9733b63b8237c46da4f73854feb103b00666c95a68745dea7bc8c9a",
+    "label_rules_v1.yaml": "b154cc32185b871dcc70bce27c1c737a4311c65c2d30c69037638cb99602edca",
+    "relevance_labels_v1.csv": "6fd06939efc03c392b924efebb3702a76271829e4d73e07042d9cc4dade38a29"
+  },
+  "workbook_md5": "3ad1f5d7e47cca273e3fecd5ede64054",
+  "git_sha": "16da1537f6d68b3e489df4c3a21b34775ce6e98e",
+  "timestamp_utc": "2026-09-14T01:20:33.973406+00:00"
+}

@@ -84,3 +84,46 @@ def test_unknown_availability_permits_missing_price_and_dimensions() -> None:
 
     assert product.availability is Availability.UNKNOWN
     assert product.price is None
+
+
+def test_overview_defaults_to_none_and_accepts_prose() -> None:
+    key = ProductKey.build(supplier_id="sup-1", raw_sku="ART-001")
+    common = {
+        "product_id": "prod-1",
+        "key": key,
+        "category": "side_table",
+        "name": "Carrie Side Table Walnut",
+        "availability": Availability.UNKNOWN,
+    }
+
+    assert Product(**common).overview is None
+    assert (
+        Product(**common, overview="Crafted from rich walnut.").overview
+        == "Crafted from rich walnut."
+    )
+
+
+def test_blank_overview_is_rejected_rather_than_coerced() -> None:
+    """ADR-0007: absence is `None`, never `""` — a blank string would read
+    to an encoder as empty text rather than as a missing fact."""
+    key = ProductKey.build(supplier_id="sup-1", raw_sku="ART-001")
+
+    with pytest.raises(ValueError, match="overview must be None when absent"):
+        Product(
+            product_id="prod-1",
+            key=key,
+            category="side_table",
+            name="Carrie Side Table Walnut",
+            availability=Availability.UNKNOWN,
+            overview="   ",
+        )
+
+
+def test_product_carries_no_label_source_fields() -> None:
+    """ADR-0006 §D2 leakage firewall, asserted structurally: the fields the
+    R02 relevance labels are derived from must not exist on `Product`, so
+    no `FeatureEncoder` can reach them however it is written.
+    """
+    forbidden = {"room_type", "design_style", "tags", "style", "attributes"}
+
+    assert forbidden.isdisjoint(set(Product.__dataclass_fields__))

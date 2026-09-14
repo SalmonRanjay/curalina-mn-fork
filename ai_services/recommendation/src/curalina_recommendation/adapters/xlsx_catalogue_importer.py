@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from curalina_recommendation.adapters.xlsx_parsing import (
     COL_CATEGORY,
     COL_NAME,
+    COL_OVERVIEW,
     COL_RETAIL_PRICE,
     COL_SKU,
     COL_SUPPLIER,
@@ -115,6 +116,7 @@ class XlsxCatalogueImporter:
             name = str(row[COL_NAME]) if row[COL_NAME] is not None else key.raw_sku
             price = self._build_price(row)
             dimensions = self._build_dimensions(row)
+            overview = self._build_overview(row)
             product_id = f"{_slugify(supplier_id)}:{key.normalized_sku}"
 
             products.append(
@@ -127,6 +129,7 @@ class XlsxCatalogueImporter:
                     price=price,
                     dimensions=dimensions,
                     source_snapshot_id=snapshot_id,
+                    overview=overview,
                 )
             )
 
@@ -153,6 +156,18 @@ class XlsxCatalogueImporter:
         # would make this authoritative" item 2) so the ISO 4217 "no
         # currency" sentinel stands in rather than a guessed USD/CAD.
         return Money(amount, UNCONFIRMED_CURRENCY)
+
+    @staticmethod
+    def _build_overview(row: tuple[object, ...]) -> str | None:
+        # Column 1 (`Overview`), per ADR-0007 §D1 — authorized as
+        # consequential implementation, not a new decision. Must NOT map
+        # columns 7/8/26 (`Room Type`/`Design Style`/`Tags`): ADR-0006 §D2's
+        # leakage firewall requires those label-source fields to stay
+        # structurally absent from `Product`.
+        raw = row[COL_OVERVIEW] if len(row) > COL_OVERVIEW else None
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        return raw.strip()
 
     @staticmethod
     def _build_dimensions(row: tuple[object, ...]) -> Dimensions | None:
