@@ -4,3 +4,12 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+/agentic_flow/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
