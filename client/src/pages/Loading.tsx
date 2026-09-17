@@ -44,7 +44,7 @@ export default function Loading() {
   const searchString = useSearch();
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState("Kicking off the design process...");
+  const progressMessage = "Our AI is analyzing your preferences and generating personalized designs...";
 
   const { renderId, sessionId } = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -69,46 +69,6 @@ export default function Loading() {
     refetchInterval: 2000,
   });
 
-  // WebSocket effect for real-time progress
-  useEffect(() => {
-    if (!sessionId) return;
-
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/render-progress/${sessionId}`;
-    
-    const socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-      console.log("WebSocket connection established for render progress.");
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (typeof data.progress === 'number') {
-          setProgress(data.progress);
-        }
-        if (typeof data.step === 'string') {
-          setProgressMessage(data.step);
-        }
-      } catch (e) {
-        console.error("Failed to parse progress update:", e);
-      }
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    socket.onclose = () => {
-      console.log("WebSocket connection closed. Polling will continue.");
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, [sessionId]);
-
   useEffect(() => {
     const factInterval = setInterval(() => {
       setCurrentFactIndex((prev) => (prev + 1) % designFacts.length);
@@ -117,8 +77,24 @@ export default function Loading() {
     return () => clearInterval(factInterval);
   }, []);
 
+  // Cosmetic progress animation while we wait on polling for a terminal
+  // status — asymptotically approaches 90% so it never falsely implies
+  // completion before the render actually resolves.
   useEffect(() => {
-    if (render && (render.status === 'completed' || render.status === 'failed')) {
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => (prev >= 90 ? prev : prev + (90 - prev) * 0.1));
+    }, 500);
+
+    return () => clearInterval(progressInterval);
+  }, []);
+
+  useEffect(() => {
+    if (
+      render &&
+      (render.status === 'completed' ||
+        render.status === 'failed' ||
+        render.status === 'needs_input')
+    ) {
       setProgress(100);
       setTimeout(() => {
         const { id: actualRenderId, sessionId: actualSessionId } = render;
