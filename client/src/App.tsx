@@ -21,7 +21,6 @@ import Styles from "@/pages/styles";
 import Pricing from "@/pages/pricing";
 import About from "@/pages/about";
 import Blog from "@/pages/blog";
-import Dashboard from "@/pages/dashboard";
 import PortalDashboard from "@/pages/portal/dashboard";
 import PortalSettings from "@/pages/portal/settings";
 import MyDashboard from "@/pages/my-dashboard";
@@ -65,7 +64,12 @@ function Router() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/about" component={About} />
             <Route path="/blog" component={Blog} />
-            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/dashboard">
+              {() => {
+                window.location.href = "/my-dashboard";
+                return null;
+              }}
+            </Route>
             <Route path="/quiz" component={Quiz} />
             <Route path="/loading" component={Loading} />
             <Route path="/results" component={Results} />
@@ -101,7 +105,12 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/about" component={About} />
           <Route path="/blog" component={Blog} />
-          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/dashboard">
+            {() => {
+              window.location.href = "/my-dashboard";
+              return null;
+            }}
+          </Route>
           <Route path="/quiz" component={Quiz} />
           <Route path="/loading" component={Loading} />
           <Route path="/results" component={Results} />

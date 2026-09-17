@@ -7,10 +7,10 @@ import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight, Sparkles, Heart, Share2, Download, Copy, Check } from "lucide-react";
+import { ShoppingCart, X, Eye, RefreshCw, ChevronLeft, ChevronRight, Sparkles, Heart, Share2, Download, Copy, Check, LayoutDashboard } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import type { Render, Product, ProductMetadata, SelectionLedger, QuizResponse } from "@shared/schema";
 
 /**
@@ -490,6 +490,17 @@ export default function Results() {
                 {stageIcons[stage] || 'Our AI is working its magic'}
               </p>
             </div>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                className="w-full mt-4"
+                onClick={() => setLocation("/my-dashboard")}
+                data-testid="button-back-to-dashboard-generating"
+              >
+                <LayoutDashboard className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            )}
           </Card>
         </div>
       </GlobalLayout>
@@ -507,9 +518,57 @@ export default function Results() {
             <p className="text-muted-foreground mb-6 font-inter" style={{ fontSize: 'var(--font-size-base)' }}>
               {render.errorMessage || "Something went wrong while generating your design."}
             </p>
-            <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz">
-              Try Again
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz">
+                Try Again
+              </Button>
+              {isAuthenticated && (
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation("/my-dashboard")}
+                  data-testid="button-back-to-dashboard-failed"
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+      </GlobalLayout>
+    );
+  }
+
+  // `needs_input` falls through to here otherwise, rendering a broken
+  // <img> (render.imageUrl is null in this state) as if generation had
+  // succeeded. No real image exists yet — show the same honest, no-image
+  // pattern as the `failed` branch instead of fabricating one.
+  if (render.status === 'needs_input') {
+    return (
+      <GlobalLayout>
+        <div className="flex-1 flex items-center justify-center p-6 py-24">
+          <Card className="p-8 max-w-md text-center">
+            <h2 className="font-cormorant text-foreground mb-4" style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 500 }}>
+              More Info Needed
+            </h2>
+            <p className="text-muted-foreground mb-6 font-inter" style={{ fontSize: 'var(--font-size-base)' }}>
+              {render.errorMessage || "We need a bit more information before we can generate this design."}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz-needs-input">
+                Update Answers
+              </Button>
+              {isAuthenticated && (
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation("/my-dashboard")}
+                  data-testid="button-back-to-dashboard-needs-input"
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              )}
+            </div>
           </Card>
         </div>
       </GlobalLayout>
@@ -538,6 +597,16 @@ export default function Results() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-3"
           >
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                onClick={() => setLocation("/my-dashboard")}
+                data-testid="button-back-to-dashboard"
+              >
+                <LayoutDashboard className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setLocation("/cart")}

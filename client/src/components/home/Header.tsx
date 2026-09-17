@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Menu, X, ShoppingBag, User, ChevronRight, LogOut, LayoutDashboard } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   DropdownMenu,

@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import GlobalLayout from "@/components/GlobalLayout";
 import {
   ImageIcon,
@@ -25,6 +25,8 @@ import {
   TrendingUp,
   Star,
   ArrowRight,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -37,11 +39,14 @@ interface DashboardAnalytics {
 
 interface Render {
   id: number;
-  roomType: string;
-  designStyle: string;
+  status: "generating" | "completed" | "failed";
+  errorMessage: string | null;
   imageUrl: string | null;
-  thumbnailUrl: string | null;
   createdAt: string;
+  quizResponse?: {
+    roomType: string;
+    styles: string[];
+  } | null;
 }
 
 interface SavedDesign {
@@ -107,18 +112,34 @@ function StatCard({
 
 function RenderCard({ render, onSave, isSaved }: { render: Render; onSave?: () => void; isSaved?: boolean }) {
   const [, setLocation] = useLocation();
-  const imageUrl = render.thumbnailUrl || render.imageUrl;
+  const roomType = render.quizResponse?.roomType || "Room design";
+  const designStyle = render.quizResponse?.styles?.[0];
 
   return (
-    <Card className="overflow-hidden hover-elevate group">
+    <Card
+      className="overflow-hidden hover-elevate group cursor-pointer"
+      onClick={() => setLocation(`/results?renderId=${render.id}`)}
+    >
       <div className="relative aspect-video bg-muted">
-        {imageUrl ? (
+        {render.status === "completed" && render.imageUrl ? (
           <img
-            src={imageUrl}
-            alt={`${render.roomType} - ${render.designStyle}`}
+            src={render.imageUrl}
+            alt={designStyle ? `${roomType} - ${designStyle}` : roomType}
             className="w-full h-full object-cover"
             data-testid={`img-render-${render.id}`}
           />
+        ) : render.status === "generating" ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground" data-testid={`status-generating-${render.id}`}>
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="text-xs">Generating…</span>
+          </div>
+        ) : render.status === "failed" ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4 text-muted-foreground" data-testid={`status-failed-${render.id}`}>
+            <AlertTriangle className="h-8 w-8" />
+            <span className="text-xs line-clamp-2">
+              {render.errorMessage || "Needs input to finish this design."}
+            </span>
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <ImageIcon className="h-12 w-12 text-muted-foreground" />
@@ -156,11 +177,15 @@ function RenderCard({ render, onSave, isSaved }: { render: Render; onSave?: () =
       </div>
       <CardContent className="p-4">
         <div className="space-y-1">
-          <h3 className="font-medium">{render.roomType}</h3>
+          <h3 className="font-medium">{roomType}</h3>
           <div className="flex items-center justify-between">
-            <Badge variant="secondary" className="text-xs">
-              {render.designStyle}
-            </Badge>
+            {designStyle ? (
+              <Badge variant="secondary" className="text-xs">
+                {designStyle}
+              </Badge>
+            ) : (
+              <span />
+            )}
             <span className="text-xs text-muted-foreground">
               {format(new Date(render.createdAt), "MMM d, yyyy")}
             </span>
@@ -179,18 +204,30 @@ function SavedDesignCard({
   onRemove: () => void;
 }) {
   const [, setLocation] = useLocation();
-  const imageUrl = design.render?.thumbnailUrl || design.render?.imageUrl;
+  const render = design.render;
 
   return (
     <Card className="overflow-hidden hover-elevate group">
       <div className="relative aspect-video bg-muted">
-        {imageUrl ? (
+        {render?.status === "completed" && render.imageUrl ? (
           <img
-            src={imageUrl}
+            src={render.imageUrl}
             alt={design.name || "Saved design"}
             className="w-full h-full object-cover"
             data-testid={`img-saved-design-${design.id}`}
           />
+        ) : render?.status === "generating" ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="text-xs">Generating…</span>
+          </div>
+        ) : render?.status === "failed" ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4 text-muted-foreground">
+            <AlertTriangle className="h-8 w-8" />
+            <span className="text-xs line-clamp-2">
+              {render.errorMessage || "Needs input to finish this design."}
+            </span>
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <ImageIcon className="h-12 w-12 text-muted-foreground" />
@@ -248,9 +285,9 @@ function SavedDesignCard({
             <p className="text-sm text-muted-foreground line-clamp-2">{design.notes}</p>
           )}
           <div className="flex items-center justify-between">
-            {design.render && (
+            {design.render?.quizResponse?.roomType && (
               <Badge variant="secondary" className="text-xs">
-                {design.render.roomType}
+                {design.render.quizResponse.roomType}
               </Badge>
             )}
             <span className="text-xs text-muted-foreground">

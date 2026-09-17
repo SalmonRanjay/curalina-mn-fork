@@ -68,7 +68,7 @@ export default function Login() {
         console.error("Error fetching user data for redirect:", error);
       }
       
-      setLocation("/");
+      setLocation("/my-dashboard");
     } catch (error) {
       toast({
         title: "Error",

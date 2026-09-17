@@ -845,7 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI services adapter status (phase A5) — local verification that the
   // CURALINA_AI_SERVICES_ENABLED flag mechanism works end to end. Does not
   // call any AI service.
-  app.get("/api/ai-adapter/status", async (req: Request, res: Response): Promise<Response> => {
+  app.get("/api/ai-adapter/status", async (_req: Request, res: Response): Promise<Response> => {
     const settings = getAiServicesSettings();
     return res.json({
       enabled: settings.enabled,

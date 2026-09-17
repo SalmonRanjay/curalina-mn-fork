@@ -5,7 +5,7 @@ import midcenturyScandi from "@assets/stock_images/midcentury_scandinav_77cf4d78
 import contemporaryLuxe from "@assets/stock_images/contemporary_luxe_be_e74c2402.jpg";
 import warmTransitional from "@assets/stock_images/warm_transitional_li_b3bb947d.jpg";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 
 const styles = [
   {

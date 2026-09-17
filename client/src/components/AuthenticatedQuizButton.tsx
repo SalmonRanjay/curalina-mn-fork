@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 interface AuthenticatedQuizButtonProps {

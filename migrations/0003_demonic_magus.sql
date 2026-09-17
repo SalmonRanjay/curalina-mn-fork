@@ -1,0 +1,1 @@
+ALTER TABLE "renders" ADD COLUMN "ai_service_ref" jsonb;

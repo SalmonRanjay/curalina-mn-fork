@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { AuthenticatedQuizButton } from "@/components/AuthenticatedQuizButton";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 
 import organicModern from "@assets/stock_images/organic_modern_bedro_d4118219.jpg";

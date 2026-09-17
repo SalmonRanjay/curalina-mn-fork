@@ -77,7 +77,7 @@ export default function Register() {
         description: "Account created successfully",
       });
 
-      setLocation(redirectTo || "/");
+      setLocation(redirectTo || "/my-dashboard");
     } catch (error) {
       toast({
         title: "Error",

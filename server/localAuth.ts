@@ -45,9 +45,15 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      // Secure cookies require HTTPS. Firebase Functions runs on HTTPS.
-      // In local dev (http), we might want secure: false.
-      secure: process.env.NODE_ENV === "production",
+      // "auto" resolves per-request via `req.secure`, which respects
+      // `trust proxy` (set below) against X-Forwarded-Proto. So this is
+      // still a real Secure cookie behind Firebase's HTTPS-terminating
+      // load balancer in production, but correctly non-secure when
+      // testing over plain HTTP (e.g. local `docker compose up`) —
+      // `secure: NODE_ENV === "production"` silently dropped every
+      // session cookie in that case regardless of NODE_ENV, since the
+      // browser refuses to store a Secure cookie set over HTTP.
+      secure: "auto",
       maxAge: sessionTtl,
     },
   });
@@ -106,7 +112,14 @@ export async function setupAuth(app: Express) {
 
       req.login(user, (err) => {
         if (err) return res.status(500).json({ message: "Login failed" });
-        res.json({ id: user.id, email: user.email, role: user.role });
+        res.json({
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          profileImageUrl: user.profileImageUrl,
+        });
       });
     } catch (e) {
       res.status(500).json({ message: "Server error" });
@@ -129,6 +142,7 @@ export async function setupAuth(app: Express) {
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role,
+            profileImageUrl: user.profileImageUrl,
         });
       });
     })(req, res, next);
