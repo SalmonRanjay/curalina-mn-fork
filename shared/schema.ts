@@ -168,12 +168,12 @@ export const products = pgTable("products", {
   description: text("description"),
   categoryId: varchar("category_id").notNull().references(() => categories.id),
   supplierId: varchar("supplier_id").notNull().references(() => suppliers.id),
-  
+
   // Pricing
   tradePrice: decimal("trade_price", { precision: 10, scale: 2 }),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
-  
+
   // Product attributes
   roomType: text("room_type").array(), // ['Living room', 'Bedroom']
   designStyle: text("design_style").array(), // ['Modern', 'Contemporary']
@@ -182,26 +182,26 @@ export const products = pgTable("products", {
   storageSolutions: text("storage_solutions"), // 'No Storage', '3 Drawers', etc.
   colors: text("colors").array(),
   materials: text("materials").array(),
-  
+
   // Physical specifications
   dimensions: jsonb("dimensions"), // { w, d, h, armWidth, armDepth, seatWidth, seatDepth, seatHeight, volume, doorWidth, doorThickness, doorHeight, legBaseDepth1, legBaseHeight1, legBaseWidth1, tabletopThickness, shapeType, unit }
   weight: text("weight"), // '150 lbs' or '150'
   seating: text("seating"), // '2 seats', '3-4 people', etc.
   assembly: text("assembly"), // 'Yes', 'No', 'Partial'
-  
+
   // Inventory & shipping
   inventory: integer("inventory"),
   leadTime: integer("lead_time"), // days
   availability: varchar("availability", { length: 20 }).notNull().default("in_stock"), // 'in_stock' or 'preorder'
   shipping: jsonb("shipping"), // { cost, eta, deliveryOptions, deliveryLocation, deliveryPolicy }
-  
+
   // Media & metadata
   images: text("images").array(), // URLs to images
   asset3dUrl: text("asset_3d_url"), // .glb or .usdz for AR
   visualDescription: text("visual_description"), // AI-generated visual description (400 char max for Gemini render accuracy)
   imageAnalyses: jsonb("image_analyses"), // { frontView: {...}, multiAngle: {...}, analysisDate, images: [...] }
   structuredAnalysis: jsonb("structured_analysis"), // { frontView: {...}, multiAngle: {...}, qualityScore: 0-100 }
-  
+
   // DEPRECATED: Legacy visual description fields (preserved for migration planning)
   visualDescriptionGemini: text("visual_description_gemini"),
   visualDescriptionFrontView: text("visual_description_front_view"),
@@ -210,16 +210,16 @@ export const products = pgTable("products", {
   completeProductDescription: text("complete_product_description"),
   structuredAnalysisQuality: text("structured_analysis_quality"),
   structuredAnalysisUpdatedAt: timestamp("structured_analysis_updated_at"),
-  
+
   tags: text("tags").array(), // General tags for search/categorization
   sourceFile: text("source_file"), // Original import file reference
   seoMeta: jsonb("seo_meta"), // { title, description }
   slug: varchar("slug").notNull().unique(),
-  
+
   // Image health validation
   imageHealth: varchar("image_health", { length: 20 }).notNull().default("healthy"), // 'healthy', 'repairing', 'removed'
   lastValidatedAt: timestamp("last_validated_at"), // Last time images were validated
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -314,11 +314,11 @@ export const quizResponses = pgTable("quiz_responses", {
   vibeLightingTone: text("vibe_lighting_tone"), // 'warm', 'cool', 'natural', 'dramatic'
   vibeDensity: text("vibe_density"), // 'minimal', 'moderate', 'layered'
   vibeOverallDescription: text("vibe_overall_description"), // Overall vibe/aesthetic description
-  
+
   // Room measurements and spatial validation
   roomDescription: text("room_description"), // User's natural language description of space (dimensions, doorways, preferences)
   parsedRoomData: jsonb("parsed_room_data"), // AI-extracted room measurements: { dimensions: { width, depth, height, unit }, doorway: { width, height, unit }, ceilingHeight, confidence, extractedPreferences, rawText }
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -346,6 +346,13 @@ export const renders = pgTable("renders", {
   status: varchar("status", { length: 20 }).notNull().default("generating"), // 'generating', 'completed', 'failed'
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow(),
+  // Phase A5, packet 3 of 3 (UI-A5-03): traceability back to the AI
+  // services when this render was produced via that path. Nullable and
+  // additive — null for every render made through the legacy in-app AI
+  // path (the default, flag off). Shape: { schemaVersion, jobId,
+  // candidateId, bundleId, bundleRevision, reviewId, assetIds: string[] }.
+  // See server/services/ai-adapter/provenance-mapper.ts (toAiServiceRef).
+  aiServiceRef: jsonb("ai_service_ref"),
 });
 
 export const renderRelations = relations(renders, ({ one }) => ({
@@ -358,8 +365,8 @@ export const renderRelations = relations(renders, ({ one }) => ({
 export type Render = typeof renders.$inferSelect;
 
 // Type for productMetadata JSONB field structure
-export type ProductMetadata = Record<string, { 
-  visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'Legacy' | 'None' 
+export type ProductMetadata = Record<string, {
+  visualDescriptionSource: 'Front View' | 'Gemini Vision' | 'Legacy' | 'None'
 }>;
 
 export const insertRenderSchema = createInsertSchema(renders).omit({
@@ -431,7 +438,7 @@ export const comparisonRenders = pgTable("comparison_renders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   quizResponseId: varchar("quiz_response_id").references(() => quizResponses.id),
   sessionId: varchar("session_id").notNull(),
-  
+
   // Gemini render
   geminiImageUrl: text("gemini_image_url"),
   geminiGenerationTime: integer("gemini_generation_time"), // milliseconds
@@ -439,7 +446,7 @@ export const comparisonRenders = pgTable("comparison_renders", {
   geminiProductCount: integer("gemini_product_count"),
   geminiStatus: varchar("gemini_status", { length: 20 }).default("pending"), // 'pending', 'success', 'failed'
   geminiError: text("gemini_error"),
-  
+
   // OpenAI render
   openaiImageUrl: text("openai_image_url"),
   openaiGenerationTime: integer("openai_generation_time"), // milliseconds
@@ -447,7 +454,7 @@ export const comparisonRenders = pgTable("comparison_renders", {
   openaiProductCount: integer("openai_product_count"),
   openaiStatus: varchar("openai_status", { length: 20 }).default("pending"),
   openaiError: text("openai_error"),
-  
+
   // Stability AI render
   stabilityImageUrl: text("stability_image_url"),
   stabilityGenerationTime: integer("stability_generation_time"), // milliseconds
@@ -455,15 +462,15 @@ export const comparisonRenders = pgTable("comparison_renders", {
   stabilityProductCount: integer("stability_product_count"),
   stabilityStatus: varchar("stability_status", { length: 20 }).default("pending"),
   stabilityError: text("stability_error"),
-  
+
   // User selection
   selectedService: varchar("selected_service", { length: 20 }), // 'gemini', 'openai', 'stability'
   selectionReason: text("selection_reason"), // Why user chose this one
-  
+
   // Shared metadata
   productSkus: text("product_skus").array(), // Products requested
   prompt: text("prompt"), // Original prompt
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 

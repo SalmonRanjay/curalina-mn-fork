@@ -4,11 +4,7 @@ import multer from "multer";
 import { storage } from "./storage.js";
 import { curalinaStorage } from "./storage-curalina";
 import { setupAuth, isAuthenticated } from "./localAuth.js";
-import {
-  ObjectStorageService,
-  ObjectNotFoundError
-} from "./objectStorage.js";
-import { ObjectPermission } from "./objectAcl.js";
+import { ObjectStorageService } from "./objectStorage.js";
 import { insertContentSchema, insertSettingsSchema, insertQuizResponseSchema, insertRenderSchema, User } from "@shared/schema.js";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -16,6 +12,8 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import mappingAnalysisRoutes from "./routes-mapping-analysis.js";
 import { registerCuralinaRoutes } from "./routes-curalina.js";
+import { getAiServicesSettings } from "./config/ai-services.js";
+import { isAiServicesEnabled, orchestrateAiRender } from "./services/ai-adapter/index.js";
 
 // Define a custom Request type that includes the user property
 interface RequestWithUser extends Request {
@@ -95,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin user management routes
-  app.get('/admin/users', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/admin/users', isAuthenticated, isAdmin, async (_req: Request, res: Response): Promise<Response> => {
     try {
       const allUsers = await storage.getAllUsers();
       const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
@@ -232,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Content routes
-  app.get('/content', async (req: Request, res: Response): Promise<Response> => {
+  app.get('/content', async (_req: Request, res: Response): Promise<Response> => {
     try {
       const items = await storage.getAllContent();
       return res.json(items);
@@ -335,7 +333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Settings routes
-  app.get('/settings', isAuthenticated, isAdmin, async (req: Request, res: Response): Promise<Response> => {
+  app.get('/settings', isAuthenticated, isAdmin, async (_req: Request, res: Response): Promise<Response> => {
     try {
       const allSettings = await storage.getAllSettings();
       return res.json(allSettings);
@@ -533,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = (req as RequestWithUser).user!.id;
       const { productId, quantity = 1 } = req.body as { productId: string; quantity?: number };
 
-      const cartItem = await storage.addToCart({
+      const cartItem = await curalinaStorage.addToCart({
         userId,
         productId,
         quantity,
@@ -563,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = (req as RequestWithUser).user!.id;
       const { productId, quantity = 1 } = req.body as { productId: string; quantity?: number };
 
-      const cartItem = await storage.addToCart({
+      const cartItem = await curalinaStorage.addToCart({
         userId,
         productId,
         quantity,
@@ -581,14 +579,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== FILE UPLOAD ROUTES =====
 
   // Legacy object storage upload URL generator
-  app.post("/objects/upload", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.post("/objects/upload", isAuthenticated, async (_req: Request, res: Response): Promise<Response> => {
     const objectStorageService = new ObjectStorageService();
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     return res.json({ uploadURL });
   });
 
   // Also expose the upload URL generator under /api for frontend consistency
-  app.post("/api/objects/upload", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
+  app.post("/api/objects/upload", isAuthenticated, async (_req: Request, res: Response): Promise<Response> => {
     const objectStorageService = new ObjectStorageService();
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     return res.json({ uploadURL });
@@ -608,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       fileName: req.file.filename,
       path: req.file.path,
       // In a real app, you would return a public URL here
-      url: `/uploads/${req.file.filename}`, 
+      url: `/uploads/${req.file.filename}`,
     });
   });
 
@@ -749,8 +747,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a render record for a quiz response.
-  // This local implementation does NOT call external AI services; it simply
-  // creates a completed render record so the UI flow works in development.
+  //
+  // Phase A5, packet 4 of 4 (UI-A5-04): with CURALINA_AI_SERVICES_ENABLED
+  // true, this delegates to render-orchestrator.ts, which splices the real
+  // AI services (recommendation -> rooms) into the request. With the flag
+  // off (the default), the legacy in-app path below is byte-for-byte
+  // unchanged from before this packet — it does NOT call external AI
+  // services; it simply creates a completed render record so the UI flow
+  // works in development.
   app.post("/api/render", async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = (req as RequestWithUser).user?.id;
@@ -762,6 +766,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!quizResponseId || !sessionId) {
         return res.status(400).json({ message: "quizResponseId and sessionId are required" });
+      }
+
+      if (isAiServicesEnabled()) {
+        const outcome = await orchestrateAiRender({
+          quizResponseId,
+          sessionId,
+          userId: userId ?? undefined,
+          productSkus,
+          storage: curalinaStorage,
+        });
+        return res.status(outcome.status).json(outcome.body);
       }
 
       const renderInput = insertRenderSchema.parse({
@@ -826,7 +841,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Curalina AI routes
   registerCuralinaRoutes(app);
-  
+
+  // AI services adapter status (phase A5) — local verification that the
+  // CURALINA_AI_SERVICES_ENABLED flag mechanism works end to end. Does not
+  // call any AI service.
+  app.get("/api/ai-adapter/status", async (req: Request, res: Response): Promise<Response> => {
+    const settings = getAiServicesSettings();
+    return res.json({
+      enabled: settings.enabled,
+      contractVersion: settings.contractVersion,
+    });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
