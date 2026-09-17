@@ -11,6 +11,7 @@ nothing here is a stand-in for the durable job/lease/fencing design in
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import itertools
 from dataclasses import dataclass, field
@@ -30,11 +31,13 @@ from curalina_variants.api.schemas import (
     AssetRecord,
     CandidateRecord,
     CreateAssetRequest,
+    CreateMaskRequest,
     CreateReviewRequest,
     CreateVariantJobRequest,
     ErrorSummary,
     JobRecord,
     JobStatus,
+    MaskRecord,
     ReviewRecord,
     ReviewStatus,
     VisualVariant,
@@ -85,6 +88,7 @@ class FakeJobStore:
 
     assets: dict[str, AssetRecord] = field(default_factory=dict)
     _asset_bytes: dict[str, bytes] = field(default_factory=dict)
+    masks: dict[str, MaskRecord] = field(default_factory=dict)
     jobs: dict[str, JobRecord] = field(default_factory=dict)
     _job_requests: dict[str, CreateVariantJobRequest] = field(default_factory=dict)
     candidates: dict[str, CandidateRecord] = field(default_factory=dict)
@@ -137,6 +141,46 @@ class FakeJobStore:
             content_bytes=self._asset_bytes[asset_id],
         )
 
+    def create_mask(
+        self, request: CreateMaskRequest, *, request_id: str
+    ) -> MaskRecord:
+        """Ingest a human-authored mask record.
+
+        Validates that the editable_mask_b64 decodes and length matches
+        width_px * height_px, and that all bytes are 0 or 1. Persists the
+        mask under its mask_id for later resolution in variant job creation."""
+
+        decoded = base64.b64decode(request.editable_mask_b64)
+        expected_len = request.width_px * request.height_px
+        if len(decoded) != expected_len:
+            raise ValueError(
+                f"editable_mask_b64 decoded to {len(decoded)} bytes, but "
+                f"{request.width_px}x{request.height_px}={expected_len} "
+                "were expected"
+            )
+
+        record = MaskRecord(
+            mask_id=request.mask_id,
+            source_asset_id=request.source_asset_id,
+            width_px=request.width_px,
+            height_px=request.height_px,
+            editable_mask_b64=request.editable_mask_b64,
+            protected_subregions=request.protected_subregions,
+            feather_band_px=request.feather_band_px,
+            human_corrected=request.human_corrected,
+            revision=request.revision,
+            created_at=datetime.now(UTC),
+        )
+        self.masks[request.mask_id] = record
+        return record
+
+    def get_mask(self, mask_id: str, *, request_id: str) -> MaskRecord:
+        """Retrieve a stored mask by ID."""
+        mask = self.masks.get(mask_id)
+        if mask is None:
+            raise not_found_error(request_id, resource="mask", resource_id=mask_id)
+        return mask
+
     def create_variant_job(
         self,
         request: CreateVariantJobRequest,
@@ -145,7 +189,17 @@ class FakeJobStore:
         request_id: str,
     ) -> tuple[JobRecord, bool]:
         """Returns (job, created). `created` is False when an identical
-        request replayed an existing idempotency key."""
+        request replayed an existing idempotency key.
+
+        Validates that the mask_id references an ingested mask; if not found,
+        raises a 404 not_found error per the contract."""
+
+        # Validate that the mask exists before creating the job
+        mask = self.masks.get(request.mask_id)
+        if mask is None:
+            raise not_found_error(
+                request_id, resource="mask", resource_id=request.mask_id
+            )
 
         request_hash = _canonical_request_hash(request)
         index_key = (request.owner_id, "create_variant_job", idempotency_key)

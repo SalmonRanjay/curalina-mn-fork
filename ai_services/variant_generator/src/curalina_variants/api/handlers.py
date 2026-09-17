@@ -15,7 +15,7 @@ unexpected exception escape as a 500 with details opaque to the caller;
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -26,13 +26,54 @@ from curalina_variants.api.errors import (
 )
 from curalina_variants.api.schemas import (
     SUPPORTED_SCHEMA_MAJOR,
+    AssetContent,
+    AssetRecord,
     CreateAssetRequest,
+    CreateMaskRequest,
     CreateReviewRequest,
     CreateVariantJobRequest,
+    JobRecord,
+    MaskRecord,
+    ReviewRecord,
 )
-from curalina_variants.api.store import FakeJobStore
 
 RequestModelT = TypeVar("RequestModelT", bound=BaseModel)
+
+
+class VariantJobStore(Protocol):
+    def create_asset(
+        self, request: CreateAssetRequest, *, request_id: str
+    ) -> AssetRecord: ...
+
+    def get_asset_content(
+        self, asset_id: str, *, request_id: str
+    ) -> AssetContent: ...
+
+    def create_mask(
+        self, request: CreateMaskRequest, *, request_id: str
+    ) -> MaskRecord: ...
+
+    def get_mask(self, mask_id: str, *, request_id: str) -> MaskRecord: ...
+
+    def create_variant_job(
+        self,
+        request: CreateVariantJobRequest,
+        *,
+        idempotency_key: str,
+        request_id: str,
+    ) -> tuple[JobRecord, bool]: ...
+
+    def get_job(self, job_id: str, *, request_id: str) -> JobRecord: ...
+
+    def cancel_job(self, job_id: str, *, request_id: str) -> JobRecord: ...
+
+    def create_review(
+        self,
+        candidate_id: str,
+        request: CreateReviewRequest,
+        *,
+        request_id: str,
+    ) -> ReviewRecord: ...
 
 
 @dataclass(frozen=True)
@@ -87,7 +128,7 @@ def _validated(
 
 
 def create_asset(
-    store: FakeJobStore,
+    store: VariantJobStore,
     payload: dict[str, Any],
     *,
     request_id: str,
@@ -98,14 +139,14 @@ def create_asset(
 
 
 def get_asset_content(
-    store: FakeJobStore, asset_id: str, *, request_id: str
+    store: VariantJobStore, asset_id: str, *, request_id: str
 ) -> ApiResponse:
     content = store.get_asset_content(asset_id, request_id=request_id)
     return ApiResponse(status_code=200, body=content, headers={})
 
 
 def create_variant_job(
-    store: FakeJobStore,
+    store: VariantJobStore,
     payload: dict[str, Any],
     *,
     idempotency_key: str,
@@ -122,18 +163,18 @@ def create_variant_job(
     )
 
 
-def get_job(store: FakeJobStore, job_id: str, *, request_id: str) -> ApiResponse:
+def get_job(store: VariantJobStore, job_id: str, *, request_id: str) -> ApiResponse:
     job = store.get_job(job_id, request_id=request_id)
     return ApiResponse(status_code=200, body=job, headers={})
 
 
-def cancel_job(store: FakeJobStore, job_id: str, *, request_id: str) -> ApiResponse:
+def cancel_job(store: VariantJobStore, job_id: str, *, request_id: str) -> ApiResponse:
     job = store.cancel_job(job_id, request_id=request_id)
     return ApiResponse(status_code=200, body=job, headers={})
 
 
 def create_review(
-    store: FakeJobStore,
+    store: VariantJobStore,
     candidate_id: str,
     payload: dict[str, Any],
     *,
@@ -144,14 +185,43 @@ def create_review(
     return ApiResponse(status_code=201, body=review, headers={})
 
 
+def create_mask(
+    store: VariantJobStore,
+    payload: dict[str, Any],
+    *,
+    request_id: str,
+) -> ApiResponse:
+    """Ingest a human-authored mask.
+
+    Per `agentic_flow/15_variant_generation_technical_design.md`, masks are
+    authored externally (labelme, notebook tools) and must be persisted before
+    they can be used in variant jobs. Returns 201 with the stored mask record."""
+    request = _validated(CreateMaskRequest, payload, request_id=request_id)
+    try:
+        record = store.create_mask(request, request_id=request_id)
+    except ValueError as exc:
+        raise validation_error(request_id, message=str(exc)) from exc
+    return ApiResponse(status_code=201, body=record, headers={})
+
+
+def get_mask(
+    store: VariantJobStore, mask_id: str, *, request_id: str
+) -> ApiResponse:
+    """Retrieve a stored mask by ID."""
+    mask = store.get_mask(mask_id, request_id=request_id)
+    return ApiResponse(status_code=200, body=mask, headers={})
+
+
 __all__ = [
     "ApiError",
     "ApiResponse",
     "cancel_job",
     "check_schema_version",
     "create_asset",
+    "create_mask",
     "create_review",
     "create_variant_job",
     "get_asset_content",
     "get_job",
+    "get_mask",
 ]

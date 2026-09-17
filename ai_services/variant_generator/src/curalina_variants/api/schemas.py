@@ -15,11 +15,12 @@ Conventions enforced here (per `ai_services/contracts/v1/id_versioning.md`):
 
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SUPPORTED_SCHEMA_MAJOR = 1
 SUPPORTED_SCHEMA_VERSION = "1.0"
@@ -101,9 +102,24 @@ class CreateAssetRequest(VersionedModel):
     content_bytes: bytes
 
 
+class ProtectedSubregion(BaseModel):
+    """A rectangular protected subregion in source-image pixel coordinates.
+
+    Corresponds to `domain/mask_spec.py:Region`. Editable/protected convention:
+    pixels inside this region must not be modified by recolouring."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    x_px: int = Field(ge=0)
+    y_px: int = Field(ge=0)
+    width_px: int = Field(gt=0)
+    height_px: int = Field(gt=0)
+
+
 class MaskRecord(BaseModel):
     """Editable/protected convention: 1 == editable, 0 == protected, per
-    `03_data_contracts.md`."""
+    `03_data_contracts.md` and
+    `agentic_flow/15_variant_generation_technical_design.md`."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -112,7 +128,50 @@ class MaskRecord(BaseModel):
     source_asset_id: str
     width_px: int = Field(gt=0)
     height_px: int = Field(gt=0)
+    editable_mask_b64: str  # base64-encoded bytes: 1 = editable, 0 = protected
+    protected_subregions: list[ProtectedSubregion] = Field(default_factory=list)
     feather_band_px: int = Field(ge=0)
+    human_corrected: bool = False
+    revision: int = Field(ge=1)
+    created_at: datetime | None = None
+
+
+class CreateMaskRequest(VersionedModel):
+    """Request to ingest a human-authored mask.
+
+    The editable_mask must be base64-encoded bytes where each byte is either
+    0 (protected) or 1 (editable), in row-major order matching width_px * height_px.
+
+    Per `agentic_flow/15_variant_generation_technical_design.md`, masks are
+    human-authored per-region artifacts, never auto-generated."""
+
+    mask_id: str = Field(min_length=1)
+    source_asset_id: str = Field(min_length=1)
+    width_px: int = Field(gt=0)
+    height_px: int = Field(gt=0)
+    editable_mask_b64: str = Field(min_length=1)
+    protected_subregions: list[ProtectedSubregion] = Field(default_factory=list)
+    feather_band_px: int = Field(ge=0, default=3)
+    human_corrected: bool = Field(default=False)
+    revision: int = Field(ge=1, default=1)
+
+    @field_validator("editable_mask_b64")
+    @classmethod
+    def validate_mask_bytes(cls, v: str) -> str:
+        """Ensure the base64 string decodes to valid byte values."""
+        try:
+            decoded = base64.b64decode(v)
+        except Exception as exc:
+            raise ValueError("editable_mask_b64 must be valid base64") from exc
+
+        # Check that all bytes are 0 or 1
+        if any(byte not in (0, 1) for byte in decoded):
+            raise ValueError(
+                "editable_mask_b64 must decode to bytes with only 0 "
+                "(protected) or 1 (editable)"
+            )
+
+        return v
 
 
 class VisualVariant(BaseModel):

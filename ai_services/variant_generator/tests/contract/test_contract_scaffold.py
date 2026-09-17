@@ -10,18 +10,35 @@ idempotency-key behaviour, all per `architecture/guides/03_data_contracts.md`.
 
 from __future__ import annotations
 
+import base64
+
 import pytest
 
 from curalina_variants.api import handlers
 from curalina_variants.api.errors import ApiError
 from curalina_variants.api.fixtures import load_asset_request_payload, load_fixture
-from curalina_variants.api.schemas import JobStatus, ReviewStatus
+from curalina_variants.api.schemas import CreateMaskRequest, JobStatus, ReviewStatus
 from curalina_variants.api.store import MAX_ASSET_BYTES, FakeJobStore
 
 
 @pytest.fixture
 def store() -> FakeJobStore:
-    return FakeJobStore()
+    store = FakeJobStore()
+    # Seed the default mask that create_variant_job_request.json expects,
+    # per the mask-existence gate added in VAR-A2-03.
+    mask_request = CreateMaskRequest(
+        mask_id="mask_000001",
+        source_asset_id="asset_000001",
+        width_px=2,
+        height_px=2,
+        editable_mask_b64=base64.b64encode(bytes([1, 1, 1, 1])).decode("utf-8"),
+        protected_subregions=[],
+        feather_band_px=3,
+        human_corrected=False,
+        revision=1,
+    )
+    store.create_mask(mask_request, request_id="fixture-setup")
+    return store
 
 
 def test_create_asset_returns_201_with_public_fields_only(store: FakeJobStore) -> None:
