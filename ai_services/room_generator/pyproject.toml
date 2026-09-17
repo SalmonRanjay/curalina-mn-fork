@@ -13,6 +13,8 @@ authors = [{ name = "Curalina" }]
 dependencies = [
     "pydantic>=2.8",
     "pydantic-settings>=2.4",
+    "fastapi>=0.111",
+    "uvicorn>=0.30",
     # `curalina_design_rules` is the one shared package this service is
     # allowed to import (agentic_flow/00_agentic_workflow_overview.md:
     # "The only shared package is `curalina_design_rules`"). No PyPI
@@ -33,6 +35,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+curalina_rooms = ["api/fixtures/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --cov=curalina_rooms --cov-branch --cov-report=term-missing"

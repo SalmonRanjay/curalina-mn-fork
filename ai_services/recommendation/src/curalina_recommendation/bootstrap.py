@@ -6,11 +6,12 @@ def build_settings() -> Settings:
 
 
 def main() -> int:
+    import uvicorn
+
+    from curalina_recommendation.api.routes import create_app
+
     settings = build_settings()
-    print(
-        "curalina_recommendation scaffold ready "
-        f"on {settings.service_host}:{settings.service_port}"
-    )
+    uvicorn.run(create_app(), host=settings.service_host, port=settings.service_port)
     return 0
 
 

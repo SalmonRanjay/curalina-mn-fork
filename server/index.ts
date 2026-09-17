@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import dotenv from "dotenv";
 import * as logger from "firebase-functions/logger";
 import cors from "cors";
+import path from "path";
 
 // Export a factory function instead of a running promise
 // This prevents side-effects (like DB connection) from happening at import time
@@ -36,8 +37,11 @@ export const createApp = async () => {
   });
 
   // In Firebase Hosting, static files are served by the CDN, not Express.
-  // But strictly for local dev or fallback, we can keep this:
-  app.use(express.static("public"));
+  // When running as a standalone container (e.g. Docker Compose), Express
+  // must serve the Vite build output itself: `vite build` writes it to
+  // dist/public relative to the project root, which is also process.cwd()
+  // for the bundled dist/index.js started via `npm start`.
+  app.use(express.static(path.join(process.cwd(), "dist", "public")));
 
   // Enhanced request logging middleware
   app.use((req, res, next) => {
@@ -81,6 +85,14 @@ export const createApp = async () => {
   // registerRoutes handles Auth, API, Storage routes
   await registerRoutes(app);
   logger.info("[Server Init] Routes registered successfully.");
+
+  // SPA fallback for standalone (non-CDN) deployments: any non-API GET that
+  // didn't match a static file or API route falls through to index.html so
+  // client-side routing (wouter/react-router) can take over.
+  app.get(/^(?!\/api).*/, (req, res, next) => {
+    if (req.method !== "GET") return next();
+    res.sendFile(path.join(process.cwd(), "dist", "public", "index.html"));
+  });
 
   // Central Error handling middleware
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
