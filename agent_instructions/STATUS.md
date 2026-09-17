@@ -14,7 +14,72 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-09-16 (session 17)
+# OPERATIONAL REFERENCE — current as of 2026-09-17 (session 18)
+
+## Session 18 (2026-09-17) — post-auth dashboard, two live bugs found and fixed, Express question answered
+
+*Full detail in the archive entry below and in `ADR-0019`. Summary for
+dispatch purposes:*
+
+**UI flow rebuilt per the project owner's direct request.** The app no
+longer behaves like a single landing page. `register`/`login` now redirect
+to `/my-dashboard` (not `/`); the quiz moved off the dashboard entirely —
+the dashboard shows a "Start Quiz" entry point plus a card per past render,
+and clicking a card opens its real detail state. The old thinner
+`dashboard.tsx` and a duplicate `use-auth.tsx` hook were deleted (6
+importers repointed at the canonical `useAuth.ts`). `/dashboard` now
+redirects to `/my-dashboard`.
+
+**Two real defects found by driving the live UI myself (browser
+automation, real screenshots, not a subagent's self-report), fixed the
+same session:**
+- `server/localAuth.ts` session cookie was `secure: NODE_ENV ===
+  "production"`, which silently drops the cookie when testing prod mode
+  over plain HTTP (the browser refuses to store a `Secure` cookie set over
+  HTTP). Registration succeeded server-side but left the user logged out.
+  Fixed to `secure: "auto"`, which resolves per-request via `req.secure`
+  and `trust proxy` — still a real `Secure` cookie behind Firebase's HTTPS
+  load balancer in production.
+- `client/src/pages/Results.tsx` had no branch for `render.status ===
+  'needs_input'` — it fell through to the completed-render UI and rendered
+  a broken `<img>` (`imageUrl` is null in that state). Added a
+  `needs_input` branch mirroring the existing `failed` branch.
+
+**Also closed a real DB drift gap, independent of the two bugs above.**
+Item 10c (session 16) added `renders.aiServiceRef` to `shared/schema.ts`
+but that migration was never generated or applied to the live Neon
+database — every `POST /api/render` 500'd with `column "ai_service_ref" of
+relation "renders" does not exist`. `drizzle-kit push` was correctly
+avoided (it would have silently dropped 11 live columns not present in
+`schema.ts`: `renders.rating`/`rating_feedback`/`rated_at`,
+`users.duo_*`, five `documentation_sections` columns). Used `drizzle-kit
+generate` instead (diffs against local snapshot history) — produced
+`migrations/0003_demonic_magus.sql`, reviewed, then applied.
+
+**Auth profile gap closed.** `POST /api/auth/register` previously returned
+only `{id, email, role}` after collecting `firstName`/`lastName` — now
+returns the full profile, matching what `POST /api/auth/login` already
+returned.
+
+**Live-verified end to end**, register through the known `atmosphere`
+`needs_input` wall (item 20 — unchanged, still the next real blocker):
+register → auto-login → dashboard → "Start Quiz" → all 7 quiz steps →
+submit → render row created (`needs_input`, expected) → dashboard shows an
+honest entry (correct room/style metadata, no fake photo) → click through
+→ honest "More Info Needed" state, not a broken image.
+
+Committed as `5927e74`.
+
+**The Express question, asked directly by the project owner, is answered
+in `ADR-0019`: no, Express is not removable today.** It is the only place
+identity/sessions, the real product/user/cart/order database, and the
+recommendation→rooms orchestration exist — none of the three Python
+services replicate any of that, by design (`AGENTS.md`'s "separate
+services, separate databases" rule). `ADR-0019` documents what a
+decommissioning path would look like *if* that ever changes, explicitly as
+reference material, not as an approved or scheduled piece of work — the
+project owner was explicit that execution waits until the system reaches a
+stable, fully-working state first. That means items 19-24 below, not this.
 
 ## Read this first: what stands between us and a demo you can click through
 
@@ -209,6 +274,17 @@ that the room picture stays unbuilt until `OQ-010` is answered.
 every later packet is type-checked. 18/19 are contract changes and should
 land before their consumers. 21 is independent of everything and can run in
 parallel with any of them.
+
+**Session 18 addendum, not a numbered item:** `renders.aiServiceRef` (added
+to `shared/schema.ts` by item 10c, session 16) had never actually been
+migrated onto the live Neon database — `migrations/0003_demonic_magus.sql`
+closes that drift. Nothing in the dispatch table above changes as a
+result: item 20 (`atmosphere`) is still the next real blocker in the
+chain, exactly as `ADR-0018` traced it. The post-auth dashboard rebuild
+(register/login → `/my-dashboard`, quiz moved off the dashboard, honest
+per-status render cards) is UI-flow work the project owner asked for
+directly, outside this packet numbering — see the session 18 summary
+above and the archive entry below for what changed.
 
 ## Implementation guidance (`tech-lead`)
 
@@ -1189,7 +1265,13 @@ of it is current dispatch guidance.
 scope, all three services) → `c1bc6b6` (status) → `83e3a7f` (ADR-0004
 implemented; ADR-0005 catalogue-workbook ruling) → `203649f` (R01 catalogue
 audit complete) → `16da153` (status) → `aec8436` (R02 ranking baseline:
-methodology chain + engineering + coverage remediation).
+methodology chain + engineering + coverage remediation) → ... →
+`2424e0c` (close items 18, 25; document the git-reset data-loss incident) →
+`0f25a4a` (recover routes.ts AI-adapter wiring, schema.ts aiServiceRef) →
+`ad355de` (recover variants mask/schema work, items 15-16) → `318679f`
+(recover bootstrap.py, package-data, index.ts static-serving fixes) →
+`5927e74` (session 18: post-auth dashboard flow; session cookie and DB
+migration fixes).
 
 Sessions 4–7 have uncommitted changes: session 4 cleared the ADR-0002
 HTTP/application wiring gap across recommendation, variants, and rooms;
@@ -1198,6 +1280,131 @@ slice; session 6 finished variants' remaining A3 durable-store/worker/
 process-serving slice; session 7 implemented the contracts A4 suite runner
 across recommendation and variants, with rooms explicitly deferred. All on
 `main`, none pushed to `origin`.
+
+## Session 18 (2026-09-17) — post-auth dashboard, two live-found bugs, Express question
+
+Two explicit asks from the project owner: (1) fix known issues, connect
+the UI/frontend properly, and change the flow so authentication lands on a
+dashboard with the quiz moved off it and an honest per-render history; (2)
+answer whether the Express web app layer is still needed, documenting but
+not executing any removal, with execution gated on reaching a stable
+working state first.
+
+### What was fixed, all independently re-verified rather than taken on a
+subagent's report
+
+Two work packets were dispatched (backend fixes; frontend dashboard
+rebuild) and both were checked by driving the actual running app with live
+browser automation — registering a real user, walking all 7 quiz steps,
+inspecting network requests, checking the dashboard, clicking into a
+render's detail view — the same verification discipline used throughout
+this project, restated here because it is what caught the two defects
+below that neither packet's own report surfaced.
+
+**Backend:**
+- `migrations/0003_demonic_magus.sql`: `renders.ai_service_ref` existed in
+  `shared/schema.ts` (added by item 10c, session 16) but was never
+  migrated onto the live Neon database — every `POST /api/render` 500'd.
+  `drizzle-kit push` was checked and rejected before use: it would have
+  silently dropped 11 live columns absent from `schema.ts`
+  (`renders.rating`/`rating_feedback`/`rated_at`, `users.duo_*`, five
+  `documentation_sections` columns) because `push` diffs directly against
+  the live database rather than local migration history. `drizzle-kit
+  generate` was used instead, producing a single additive-only statement,
+  reviewed before applying.
+- `server/localAuth.ts` register/login handlers: register previously
+  returned `{id, email, role}` only; both now return the full profile
+  (`firstName`, `lastName`, `profileImageUrl` included) matching what the
+  client actually needs to render a name/avatar without a second request.
+
+**Frontend:**
+- `client/src/App.tsx`, `register.tsx`, `login.tsx`: post-auth redirect
+  changed from `/` to `/my-dashboard` (admin redirect to `/admin`
+  unchanged); `/dashboard` now redirects client-side to `/my-dashboard`.
+- `client/src/pages/dashboard.tsx` deleted (thinner, non-auth-gated,
+  superseded by `my-dashboard.tsx`); `client/src/hooks/use-auth.tsx`
+  deleted as a duplicate of the canonical `useAuth.ts` (6 importers
+  repointed: `AuthenticatedQuizButton.tsx`, `Header.tsx`,
+  `StylesCarousel.tsx`, `HeroSection.tsx`, `Results.tsx`,
+  `my-dashboard.tsx`).
+- `client/src/pages/my-dashboard.tsx`: fixed a real bug found while
+  extending it — `Render`/`RenderCard`/`SavedDesignCard` read flat
+  `roomType`/`designStyle`/`thumbnailUrl` fields that do not exist on the
+  `renders` table (the real data is nested under
+  `render.quizResponse.roomType`/`.styles`; `thumbnailUrl` doesn't exist at
+  all). Fixed to read the real nested fields. Render display made honest:
+  a real `<img>` only when `status === "completed" && imageUrl`;
+  `"generating"` shows a spinner; anything else shows
+  `render.errorMessage` — verified live, a `needs_input` render showed
+  correct metadata plus an honest placeholder, never a fabricated photo.
+
+### Two defects found only by driving the live app myself, not by either
+dispatched packet's own report
+
+- **Session cookie silently dropped.** `secure: process.env.NODE_ENV ===
+  "production"` in `getSession()` (`server/localAuth.ts`) meant no
+  `Secure` cookie could ever be stored by a browser testing prod mode over
+  plain HTTP (browsers refuse to persist a `Secure` cookie set without
+  TLS) — registration succeeded server-side (confirmed via network
+  inspection, `201` with a full profile body) but the user stayed logged
+  out client-side, with no error surfaced anywhere. Root-caused by
+  checking the actual `Set-Cookie` response header and the browser's
+  cookie jar, not by reading the handler code in isolation. Fixed to
+  `secure: "auto"` — `express-session` resolves this per-request via
+  `req.secure`, which itself respects `app.set("trust proxy", 1)` against
+  `X-Forwarded-Proto`, so production behind Firebase's HTTPS-terminating
+  load balancer still gets a real `Secure` cookie; only the
+  plain-HTTP-in-dev case changes.
+- **`Results.tsx` broken image for `needs_input` renders.** No branch
+  existed for `render.status === 'needs_input'`; it fell through to the
+  default (completed) branch, which unconditionally rendered `<img
+  src={render.imageUrl ?? ''}>` — a broken-image icon, since `imageUrl` is
+  null in that state. Found by clicking through to a real
+  `needs_input` render's detail page and seeing the broken icon directly,
+  not by code inspection. Fixed by adding a `needs_input` branch that
+  mirrors the existing `failed` branch: shows `render.errorMessage`
+  (falling back to a generic "more info needed" message), an "Update
+  Answers" button back to the quiz, and (when authenticated) a "Back to
+  Dashboard" button.
+
+### End-to-end live verification, through the known blocker
+
+Full walkthrough via real browser automation, screenshots at each step:
+register → cookie persists → lands on `/my-dashboard` authenticated →
+"Start Quiz" → all 7 quiz steps → submit → `POST /api/render` succeeds
+(post-migration-fix) → render row created at `needs_input` (expected —
+item 20, the `atmosphere` mapping gap, is unchanged and untouched this
+session) → dashboard shows one new entry with correct room/style metadata
+and an honest non-photo placeholder, "Total Designs" counter correctly at
+1 → click the entry → `Results.tsx` shows the new "More Info Needed" state
+with the real blocking reason, not a broken image. This confirms items 1-3
+of `ADR-0018`'s reasoning still hold and that nothing in this session's
+work regressed them; item 20 remains the next real blocker in the chain.
+
+Committed as `5927e74`, 16 files changed. Two files with unrelated,
+pre-existing uncommitted changes from earlier session recovery work
+(`room_generator` adapter files) were deliberately left unstaged rather
+than bundled into an unrelated commit.
+
+### The Express question
+
+`ADR-0019` answers it: **no, not removable today.** Traced from the actual
+code, not from assumption — `server/localAuth.ts` is the only place a user
+identity/session exists; `shared/schema.ts`/Drizzle/the real Neon database
+is the only system of record for users/products/carts/orders; and
+`render-orchestrator.ts` is the only thing that sequences
+recommendation → rooms and persists the result against a durable user
+record. None of the three Python AI services has an equivalent — each is
+deliberately a narrow, stateless-per-request domain service with its own
+local database, per this project's "separate services, separate
+databases" invariant, not designed to absorb identity, e-commerce data, or
+cross-service orchestration. `ADR-0019` also records, as documentation
+only and explicitly not authorized for execution, what a four-prerequisite,
+five-step decommissioning path would look like if this answer ever
+changes after real usage data justifies revisiting it. Per the project
+owner's explicit instruction, no part of that path is to be started before
+the system reaches the stable, fully-working state items 19-24 are aimed
+at.
 
 ## Session 8 (2026-09-14) — full sweep of everything blocked or queued
 
