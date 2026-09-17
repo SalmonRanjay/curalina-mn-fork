@@ -23,6 +23,7 @@
     },
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["server/functions/**/*.ts", "client/src/**/*.ts", "client/src/**/*.tsx", "types/**/*.d.ts"],
+  "include": ["server/**/*.ts", "client/src/**/*.ts", "client/src/**/*.tsx", "types/**/*.d.ts"],
+  "exclude": ["node_modules", "server/functions/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
