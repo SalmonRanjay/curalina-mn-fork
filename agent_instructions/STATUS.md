@@ -307,6 +307,7 @@ that the room picture stays unbuilt until `OQ-010` is answered.
 | 24 | **Wire the real catalogue into recommendation's runtime** | `python-services-engineer` | `ADR-0005`, `ADR-0007`, `ADR-0013` §D3 (forbidden phrasing); `adapters/xlsx_workbook_reader.py`; `api/application_services.py:103-130` | Replace `FakeCatalogueImporter`'s four hardcoded fixtures in the composition root with the real workbook importer. Must emit `supplier_id`/`supplier_sku` per item 19. **No accuracy, feasibility or acceptance claim** may be derived — the composer stays logic-only | items 19, 20; `ADR-0013` | **Ready.** Recommendation currently serves 4 hardcoded products priced in **CAD** while the app sends USD (see "What needs the client" item 14). A real parser exists and is wired to nothing |
 | 26 | **Async room-render job UX: queue submission, dashboard polling badge** | `typescript-app-engineer` | `ADR-0018` §D6; item 22 (server-side reconciliation, a prerequisite); `client/src/pages/my-dashboard.tsx`; `client/src/pages/Loading.tsx` | After quiz submission, redirect straight to `/my-dashboard` instead of `/loading` — the render is created in `needs_input`/`generating` state and the dashboard shows a small loading indicator over that entry until item 22's poller resolves it to a terminal state. No blocking full-screen loading page for the room-render step. **Not started — explicitly deferred by the project owner as future work**, requested alongside the session-19 stuck-loading fix below | item 22 | **Not yet dispatched, and not to be started before item 22** (there is no backend job-completion poller yet for this UX to react to) |
 | 25 | ~~**`tsconfig.json` `include` covers the live `server/` tree**~~ | `typescript-app-engineer` | `ADR-0018` §D8, §C5 | Widen `include` to `server/**/*.ts`. Fix or explicitly annotate whatever pre-existing errors surface. **Do not narrow the glob back to make the build pass** | nothing; do it early, items 20-24 all edit `server/` | **Closed 2026-09-16.** `include` widened to `server/**/*.ts` with `server/functions/**` excluded (a stale, separately-built Firebase sub-package — confirmed unrelated by diffing its `routes.ts` against the real one). Added `esModuleInterop: true`, a legitimate systemic fix without which every default CommonJS import (`express`, `cors`, `multer`, `sharp`...) cascaded into spurious `implicit any` errors. 206 previously-invisible errors surfaced in real `server/` source on first run; traced the live import graph from `server/index.ts` via `madge` and fixed every error in every file actually reachable from the running app (`db.ts`, `storage.ts`, `storage-curalina.ts`, `localAuth.ts`, `objectAcl.ts`, `objectStorage.ts`, `routes.ts`, `routes-curalina.ts`, `routes-mapping-analysis.ts`). **Two of the fixes are real production bugs, not lint noise, independently verified:** (1) `storage-curalina.ts` had ~50 methods (including `getProductAlternatives`, which item 21/`ADR-0018` §C3 explicitly relies on as "already complete and tested" — it wasn't) referencing a bare, unimported `db` identifier instead of the file's real `getDb()` accessor; every one would have thrown `ReferenceError: db is not defined` at runtime. Fixed, spot-checked directly. (2) Both cart routes in `routes.ts` called `storage.addToCart(...)`, but that method only exists on `curalinaStorage`, not `DatabaseStorage` — every add-to-cart request would 500. Fixed to call `curalinaStorage.addToCart`, confirmed via direct read. 93 errors remain, all confirmed (via the same `madge` trace) to sit in the orphaned legacy Gemini/Stability/OpenAI render stack that `ADR-0018` §C2 already identified as dead code, unreachable from `server/index.ts` — correctly left untouched rather than rewriting abandoned business logic under a "fix the config" packet; deletion/revival of that stack is an explicit open decision for the owner, not something to resolve here. `npm run check`: exit 2, 209 errors (93 confirmed-dead-code server + 116 pre-existing client, both out of this packet's scope and unchanged by it). `npm run build`: exit 0, independently re-run. This is the highest-quality, most accurately self-reported packet of the session — no correction round needed |
+| 27 | **Real room generation: model + adapter architecture (`ADR-0020`)** — the standalone, independently trackable initiative for actual photorealistic room output. Six phases P1-P6 in `ADR-0020` §D8 | `python-services-engineer` (P1-P4, P6), `ml-notebook-engineer` + `ai-ml-lead` (P5) | `ADR-0020` **in full**, then `agentic_flow/14_room_generation_technical_design.md` (approaches A/B/C) and `agentic_flow/15_variant_generation_technical_design.md:92-103` (the `hard_composite` precedent this design copies) | `room_generator/` only. **Mode S (`synthetic_scene`) only** — mode G (a real room photograph) stays blocked on `OQ-010` and is not in this item. No G01/G02/G03 claim may be derived from any phase. `torch`/`diffusers` go in a `[gpu]` extra, never the base install. One phase per packet | P1-P3: nothing. P4/P6: GPU hardware (unfunded — see the item 27 guidance below). P5: `ai-ml-lead` first | **Newly scoped 2026-09-17, not yet dispatched.** `ADR-0020` §C1's finding is what makes this dispatchable: `OQ-010` blocks `RoomPrepAdapter` (geometry), **not** `GroundedGenerationAdapter` (pixels) — `PlannedInsertion.image_space_box` is already image-space by the time the generation adapter is called. P1-P3 are ordinary CPU engineering and produce a real image file with real product pixels before a single model weight is downloaded. Dispatch P1 first |
 
 **Suggested order:** 25 → 18 → 19 → 20 → 21 → 24 → 22 → 23. 25 first so
 every later packet is type-checked. 18/19 are contract changes and should
@@ -957,6 +958,56 @@ exists to enforce, and `ADR-0018` rejects that explicitly. Second, whether
 it should be deleted, revived or left alone is a question about the
 *existing* product's roadmap and needs the owner's intent — it is not an
 architecture ruling and no packet should touch it on its own initiative.
+
+### Item 27 — real room generation: build the guarantee before the model (`ADR-0020`)
+
+Read `ADR-0020` before forming an opinion about which model to use, because
+the model is deliberately the least load-bearing decision in that ruling.
+Four things are worth restating here so a packet author does not have to
+re-derive them:
+
+**Dispatch P1 first and do not skip it.** Rooms cannot store bytes at all —
+`api/schemas.py`'s `AssetContentResponse` returns a `content_ref` string and
+its own docstring admits it "describes the authorized content reference
+rather than serving raw bytes", and `ports/` has no `asset_store.py`.
+Separately, `workers/runner.py`'s `process_one_job` leases a job and calls
+`complete_leased_job` directly — the generation adapter is never invoked.
+Both are CPU-only fixes and both must land before any model work is worth
+starting. P1 is also where `ADR-0018` §C2's phantom-asset defect is actually
+closed.
+
+**P1's failure classification is the part that gets reviewed hardest.** This
+is the same shape as dispatch item 16 / `VAR-A3-03`, which was sent back
+because a bare `except Exception: pass` let a failed real transform fall
+through to a fabricated successful job. `GenerationOutcome.__post_init__`
+already forbids a succeeded outcome with no `candidate_asset_id` and a failed
+one with no `failure_reason`, so the enforced shape exists — use it. Every
+exception path classifies and marks the job `FAILED`. No silent
+succeeded-with-placeholder.
+
+**P2's byte-exactness test is the deliverable, not a nicety.** Pixels
+strictly inside `erode(product_mask, E)` must be byte-identical to the pasted
+cutout, and pixels inside a `ProtectedRegion` outside the feather band
+byte-identical to the backplate — for any backend, asserted by reading the
+output PNG back to an array, exactly as `VAR-A3-03` did. This is what makes
+the catalogue-grounding claim structural instead of hopeful, and it is why
+`ADR-0020` forbids starting P4 before it exists.
+
+**P2 must check the SKU join before writing the cutout loader.** ATRIANI
+(312 files) and LUXUS (131) are white-background product photography, so
+cutouts are derivable on CPU — but nobody has confirmed those images join to
+the SKUs recommendation returns (dispatch item 19's
+`supplier_id`/`supplier_sku` work). If they do not, mode S is artwork-only
+for now, which is fine and honest: artwork is planar, composites cleanly at
+any angle, and is the only fully-catalogued category. A product with no
+cutout returns `needs_input` citing `OQ-011` — never a substitute product and
+never a grey box.
+
+**Owner ask, not an `OQ-xxx`:** P4 needs a GPU with ~12 GB VRAM (rentable by
+the hour); P6's Qwen comparison needs a ~40 GB-class card and is not worth
+scheduling until someone funds it. This is a commercial decision, not a
+Design Manual gap, which is why it is written here rather than minted as an
+open question.
 
 ## What needs the client — escalate as concrete asks, not open questions
 
