@@ -87,6 +87,11 @@ class Product:
     dimensions: Dimensions | None = None
     source_snapshot_id: str | None = None
     overview: str | None = None
+    # Set to `adapters.logic_only_bundle_composer.SYNTHETIC_FIXTURE_LABEL`
+    # for labelled-synthetic fixture products only; `None` for every real
+    # catalogue import. The composer uses this, not `source_snapshot_id`,
+    # to gate the `real_catalogue_composition` violation per `ADR-0013`.
+    fixture_label: str | None = None
 
     def __post_init__(self) -> None:
         if not self.product_id.strip():
