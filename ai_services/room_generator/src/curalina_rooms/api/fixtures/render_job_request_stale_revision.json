@@ -6,6 +6,7 @@
   },
   "room_type": "living_room",
   "layout_version": "layout_v3",
+  "provenance_mode": "measured",
   "instances": [
     {
       "instance_id": "inst_sofa_1",

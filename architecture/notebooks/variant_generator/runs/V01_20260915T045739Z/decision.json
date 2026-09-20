@@ -1,0 +1,64 @@
+{
+  "run_id": "20260915T045739Z",
+  "gate": "V01",
+  "decision": "revise",
+  "rationale": "The deterministic LAB colour-transfer baseline behaves as ADR-0012 predicted on this small, human-reviewed development sample: M1 holds exactly (assertion, not a score); M2a passes on all 4 admitted pairs while M2b passes on only 1 of 4 (forma_sofa), so 1 of 4 pairs passes M2a and M2b together and the remaining 3 (artigiano_dining_chair, alice_chair, poltrona_chair_studio) fail specifically on M2b. All three mandatory controls (C1 identity, C2 non-product, C3 wrong-target) reproduced their required outcomes on this run's own pairs, not merely by citation, with one correction to C3: M2a and M4 are indistinguishable between the correct target and a wrong one, exactly as ADR-0012 predicts, but M2b is not \u2014 it flips pass/fail in both directions across two pairs, which strengthens rather than weakens the finding that 0.02 is not a stable, target-independent operating point. The dark_to_light_risk predictor had zero discriminative range on these 4 pairs (every target was darker than its source, which the formula floors to zero regardless of actual clipping) \u2014 a stronger falsification than a weak correlation would be. source_mask_l_std correlated +0.61 with observed clipping in the same direction as ADR-0012's probe, but n=4, with one pair carrying much of that correlation's weight, means this is a candidate predictor to test at larger n, not a confirmed replacement mechanism. This supports revising the failure predictor toward std(L*) and re-running with more admitted pairs before any V02 go/no-go call \u2014 it does not by itself support 'accept as-is' or 'reject the baseline'.",
+  "sample_size": {
+    "folders_allowlisted": 42,
+    "folders_with_admitted_webp": 40,
+    "webp_admitted_corpus_wide": 163,
+    "material_samples_excluded_corpus_wide": 19,
+    "full_product_images_available_corpus_wide": 95,
+    "candidate_pairs_reviewed_this_run": 8,
+    "pairs_admitted_this_run": 4,
+    "pairs_rejected_this_run": 4
+  },
+  "metric_set": {
+    "M1_changed_pixels_outside_mask": "assertion_held (all admitted pairs) \u2014 never a score, never a pass rate",
+    "M2a_l_variance_ratio_threshold": 0.9,
+    "M2a_pass_rate": 1.0,
+    "M2b_gamut_clipped_fraction_threshold": "0.02 (operating point, not a perceptual constant, V01-only)",
+    "M2b_pass_rate": 0.25,
+    "M3_delta_e00_to_target": "reported as a distribution only; no tolerance applied (needs_input, no OQ-xxx, ADR-0012 D4)",
+    "M4_silhouette_iou": "reported unthresholded; instrument calibration only, V02's 0.98 bar not applied"
+  },
+  "controls": {
+    "C1_identity_no_op": "confirmed: M1/M2/M4 pass trivially, M3 fails at do-nothing distance on every admitted pair",
+    "C2_non_product_swatch": "confirmed: BZ 28 EL-MALIBU-VELVET-ICE.webp scores at/near ceiling on every metric \u2014 the metric set cannot detect a non-product input; human per-file review is load-bearing",
+    "C3_wrong_target": "confirmed and strengthened, with a correction: M2a/M4 are indistinguishable between the correct target and a rotated wrong target, exactly as expected. M2b is NOT indistinguishable \u2014 it flips pass/fail in both directions (forma_sofa: correct M2b 0.0022 PASS vs wrong-target 0.3627 FAIL; alice_chair: correct M2b 0.6146 FAIL vs wrong-target 0.0035 PASS), showing M2b is strongly target-dependent and 0.02 should not be treated as a stable, target-independent operating point without more evidence."
+  },
+  "predictor_test": {
+    "dark_to_light_risk_corr_with_clip": "undefined on this run (zero variance: every admitted target is darker than its source)",
+    "source_mask_l_std_corr_with_clip": 0.6067892108968499,
+    "caveat": "n=4; this is a small-sample replication attempt of ADR-0012 Finding 5, not a re-derivation of a reliable coefficient"
+  },
+  "known_limitations": [
+    "n=4 admitted pairs from 8 human-reviewed folders out of 40 folders with admitted images \u2014 a curated slice, not a corpus-wide or random sample. Corpus-wide: 19 of 163 admitted webp files are material samples (not products) and 95 of 163 are full-product images, per ADR-0012 Findings 1-2; this run's 8 folders are a small hand-picked slice of that larger admitted corpus.",
+    "7 of 8 target swatches matched the manifest's Finish text on visual inspection during selection, far above the corpus-wide 2-of-42 rate ADR-0008 measured; this run's swatch-match rate is not representative of the corpus.",
+    "Editable-region rectangles are hand-authored approximations from visual inspection, not pixel-precise segmentations.",
+    "No per-image colourway ground truth exists anywhere in this corpus (ADR-0008); M3 measures attainment of the requested target only.",
+    "Each admitted swatch's own intra-file Delta-E00 p90 travels with every number derived from it (ADR-0012 D5.4) \u2014 see swatch_disagreement_delta_e00 and swatch_intra_file_delta_e00_p90 in pair_admission.csv."
+  ],
+  "claim_ceiling": {
+    "supports": [
+      "The LAB baseline and hard_composite behave as specified on 4 human-reviewed ATRIANI product renders; M1 holds exactly; M2 is quantified per pair.",
+      "A revise signal on the failure predictor: replace dark_to_light_risk with a mask-region std(L*) probe, pending a larger-n confirmation.",
+      "Evidence relevant to a future V02 go/no-go call, not a go/no-go decision itself."
+    ],
+    "does_not_support": [
+      "No G-series stage gate (that binds to V03 + G1/G2, per variant_generator_workflow.md).",
+      "No claim about camera photography \u2014 these are CGI renders (uniform lighting, no sensor noise, geometrically perfect edges).",
+      "No colour-accuracy claim against a true variant \u2014 no reference exists in this corpus. M3 measures attainment of a requested target only. The words 'colour accuracy', 'fidelity', 'matches the variant' and 'ground truth' do not apply.",
+      "No 'synthetic-free corpus' claim \u2014 filename screening is necessary but not sufficient (ADR-0008, ADR-0012 Finding 2).",
+      "No Delta-E tolerance claim (ADR-0012 D4 \u2014 a designer-agreement gap with no OQ-xxx).",
+      "No generalisation claim beyond ATRIANI: this is a development-set result. A second supplier is reserved for a follow-up run and was not touched here.",
+      "No movement on V02, V03, G01, OQ-009, OQ-010 or OQ-011."
+    ]
+  },
+  "blocked_by": [
+    "ADR-0012 D4 (Delta-E tolerance, no OQ-xxx)",
+    "OQ-009",
+    "OQ-010",
+    "OQ-011"
+  ]
+}

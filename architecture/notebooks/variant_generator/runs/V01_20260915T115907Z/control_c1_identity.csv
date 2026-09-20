@@ -1,0 +1,5 @@
+pair_id,m1_assertion_held,m2a_l_variance_ratio,m2b_gamut_clipped_fraction,m3_delta_e00_to_target,m3_fails_at_do_nothing_distance,m4_silhouette_iou
+artigiano_dining_chair,True,1.0,0.0,50.86,True,1.0
+forma_sofa,True,1.0,0.0,33.36,True,1.0
+alice_chair,True,1.0,0.0,27.034,True,1.0
+poltrona_chair_studio,True,1.0,0.0,16.072,True,1.0

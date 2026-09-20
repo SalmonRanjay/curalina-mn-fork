@@ -43,7 +43,6 @@ import {
   type InsertCartItem,
   type Order,
   type InsertOrder,
-  type OrderItem,
   type InsertOrderItem,
   type User,
   type DesignExample,
@@ -379,7 +378,7 @@ export class CuralinaStorage implements ICuralinaStorage {
     if (!product) return [];
     
     // Find products with same category and overlapping style tags
-    const alternatives = await db
+    const alternatives = await getDb()
       .select()
       .from(products)
       .where(eq(products.categoryId, product.categoryId!))
@@ -399,7 +398,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateProduct(id: string, productData: Partial<InsertProduct>): Promise<Product> {
-    const [product] = await db
+    const [product] = await getDb()
       .update(products)
       .set(productData)
       .where(eq(products.id, id))
@@ -442,7 +441,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       };
     }
 
-    const [product] = await db
+    const [product] = await getDb()
       .update(products)
       .set(updateData)
       .where(eq(products.id, id))
@@ -480,7 +479,7 @@ export class CuralinaStorage implements ICuralinaStorage {
     analysis: any,
     quality: number
   ): Promise<Product> {
-    const [product] = await db
+    const [product] = await getDb()
       .update(products)
       .set({
         structuredAnalysis: analysis,
@@ -493,7 +492,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getProductsByQualityScore(minScore: number = 0, maxScore: number = 100): Promise<Product[]> {
-    return db
+    return getDb()
       .select()
       .from(products)
       .where(
@@ -507,7 +506,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getProductsNeedingAnalysis(limit: number = 50): Promise<Product[]> {
-    return db
+    return getDb()
       .select()
       .from(products)
       .where(
@@ -538,7 +537,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateRender(id: string, data: Partial<InsertRender>): Promise<Render> {
-    const [render] = await db
+    const [render] = await getDb()
       .update(renders)
       .set(data)
       .where(eq(renders.id, id))
@@ -552,7 +551,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getLatestRenderBySession(sessionId: string): Promise<Render | undefined> {
-    const [render] = await db
+    const [render] = await getDb()
       .select()
       .from(renders)
       .where(eq(renders.sessionId, sessionId))
@@ -562,7 +561,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getRendersBySession(sessionId: string): Promise<Render[]> {
-    return db
+    return getDb()
       .select()
       .from(renders)
       .where(eq(renders.sessionId, sessionId))
@@ -581,7 +580,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateComparisonRender(id: string, data: Partial<InsertComparisonRender>): Promise<ComparisonRender> {
-    const [comparison] = await db
+    const [comparison] = await getDb()
       .update(comparisonRenders)
       .set(data)
       .where(eq(comparisonRenders.id, id))
@@ -590,7 +589,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getLatestComparisonRenderBySession(sessionId: string): Promise<ComparisonRender | undefined> {
-    const [comparison] = await db
+    const [comparison] = await getDb()
       .select()
       .from(comparisonRenders)
       .where(eq(comparisonRenders.sessionId, sessionId))
@@ -606,7 +605,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getSelectionLedgerByHash(hash: string): Promise<SelectionLedger | undefined> {
-    const [ledger] = await db
+    const [ledger] = await getDb()
       .select()
       .from(selectionLedger)
       .where(eq(selectionLedger.selectionHash, hash))
@@ -615,7 +614,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getSelectionLedgerByRender(renderId: string): Promise<SelectionLedger | undefined> {
-    const [ledger] = await db
+    const [ledger] = await getDb()
       .select()
       .from(selectionLedger)
       .where(eq(selectionLedger.renderId, renderId))
@@ -624,7 +623,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getAllLedgers(limit: number = 100): Promise<SelectionLedger[]> {
-    return db
+    return getDb()
       .select()
       .from(selectionLedger)
       .orderBy(desc(selectionLedger.createdAt))
@@ -647,7 +646,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       updateData.diversityScore = details.diversityScore;
     }
     
-    const [ledger] = await db
+    const [ledger] = await getDb()
       .update(selectionLedger)
       .set(updateData)
       .where(eq(selectionLedger.id, id))
@@ -656,7 +655,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async lockSelectionLedger(id: string): Promise<SelectionLedger> {
-    const [ledger] = await db
+    const [ledger] = await getDb()
       .update(selectionLedger)
       .set({ lockedAt: new Date() })
       .where(eq(selectionLedger.id, id))
@@ -670,7 +669,7 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   // Cart operations
   async getCartBySession(sessionId: string): Promise<Array<CartItem & { product: Product }>> {
-    const items = await db
+    const items = await getDb()
       .select({
         cartItem: cartItems,
         product: products,
@@ -687,7 +686,7 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async addToCart(itemData: InsertCartItem): Promise<CartItem> {
     // Check if item already exists in cart
-    const [existing] = await db
+    const [existing] = await getDb()
       .select()
       .from(cartItems)
       .where(
@@ -700,7 +699,7 @@ export class CuralinaStorage implements ICuralinaStorage {
     if (existing) {
       // Update quantity
       const newQuantity = existing.quantity + (itemData.quantity || 1);
-      const [updated] = await db
+      const [updated] = await getDb()
         .update(cartItems)
         .set({ quantity: newQuantity })
         .where(eq(cartItems.id, existing.id))
@@ -714,7 +713,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateCartItem(id: string, quantity: number): Promise<CartItem> {
-    const [item] = await db
+    const [item] = await getDb()
       .update(cartItems)
       .set({ quantity })
       .where(eq(cartItems.id, id))
@@ -752,7 +751,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getOrdersBySession(sessionId: string): Promise<Order[]> {
-    return db
+    return getDb()
       .select()
       .from(orders)
       .where(eq(orders.sessionId, sessionId))
@@ -764,7 +763,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateOrderStatus(id: string, status: string): Promise<Order> {
-    const [order] = await db
+    const [order] = await getDb()
       .update(orders)
       .set({ status, updatedAt: new Date() })
       .where(eq(orders.id, id))
@@ -778,7 +777,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateUserRole(id: string, role: string): Promise<User> {
-    const [user] = await db
+    const [user] = await getDb()
       .update(users)
       .set({ role, updatedAt: new Date() })
       .where(eq(users.id, id))
@@ -826,7 +825,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateDesignExample(id: string, exampleData: Partial<InsertDesignExample>): Promise<DesignExample> {
-    const [example] = await db
+    const [example] = await getDb()
       .update(designExamples)
       .set({ ...exampleData, updatedAt: new Date() })
       .where(eq(designExamples.id, id))
@@ -868,7 +867,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateProductPackage(id: string, pkgData: Partial<InsertProductPackage>): Promise<ProductPackage> {
-    const [pkg] = await db
+    const [pkg] = await getDb()
       .update(productPackages)
       .set({ ...pkgData, updatedAt: new Date() })
       .where(eq(productPackages.id, id))
@@ -910,7 +909,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updatePlacementGuideline(id: string, guidelineData: Partial<InsertPlacementGuideline>): Promise<PlacementGuideline> {
-    const [guideline] = await db
+    const [guideline] = await getDb()
       .update(placementGuidelines)
       .set({ ...guidelineData, updatedAt: new Date() })
       .where(eq(placementGuidelines.id, id))
@@ -952,7 +951,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateDesignRule(id: string, ruleData: Partial<InsertDesignRule>): Promise<DesignRule> {
-    const [rule] = await db
+    const [rule] = await getDb()
       .update(designRules)
       .set({ ...ruleData, updatedAt: new Date() })
       .where(eq(designRules.id, id))
@@ -1001,7 +1000,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateUploadJob(id: string, data: Partial<InsertUploadJob>): Promise<UploadJob> {
-    const [job] = await db
+    const [job] = await getDb()
       .update(uploadJobs)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(uploadJobs.id, id))
@@ -1037,7 +1036,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateUploadJobFile(id: string, data: Partial<InsertUploadJobFile>): Promise<UploadJobFile> {
-    const [file] = await db
+    const [file] = await getDb()
       .update(uploadJobFiles)
       .set(data)
       .where(eq(uploadJobFiles.id, id))
@@ -1069,7 +1068,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateVisualAnalysisJob(id: string, data: Partial<InsertVisualAnalysisJob>): Promise<VisualAnalysisJob> {
-    const [job] = await db
+    const [job] = await getDb()
       .update(visualAnalysisJobs)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(visualAnalysisJobs.id, id))
@@ -1097,7 +1096,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getPendingVisualAnalysisProducts(jobId: string, limit: number): Promise<VisualAnalysisProduct[]> {
-    return db
+    return getDb()
       .select()
       .from(visualAnalysisProducts)
       .where(
@@ -1110,7 +1109,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateVisualAnalysisProduct(id: string, data: Partial<InsertVisualAnalysisProduct>): Promise<VisualAnalysisProduct> {
-    const [product] = await db
+    const [product] = await getDb()
       .update(visualAnalysisProducts)
       .set(data)
       .where(eq(visualAnalysisProducts.id, id))
@@ -1163,7 +1162,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateS3RenamingJob(id: string, data: Partial<InsertS3RenamingJob>): Promise<S3RenamingJob> {
-    const [job] = await db
+    const [job] = await getDb()
       .update(s3RenamingJobs)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(s3RenamingJobs.id, id))
@@ -1191,7 +1190,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getPendingS3RenamingProducts(jobId: string, limit: number): Promise<S3RenamingProduct[]> {
-    return db
+    return getDb()
       .select()
       .from(s3RenamingProducts)
       .where(
@@ -1204,7 +1203,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateS3RenamingProduct(id: string, data: Partial<InsertS3RenamingProduct>): Promise<S3RenamingProduct> {
-    const [product] = await db
+    const [product] = await getDb()
       .update(s3RenamingProducts)
       .set(data)
       .where(eq(s3RenamingProducts.id, id))
@@ -1236,7 +1235,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateVisualDescriptionJob(id: string, data: Partial<InsertVisualDescriptionJob>): Promise<VisualDescriptionJob> {
-    const [job] = await db
+    const [job] = await getDb()
       .update(visualDescriptionJobs)
       .set(data)
       .where(eq(visualDescriptionJobs.id, id))
@@ -1265,7 +1264,7 @@ export class CuralinaStorage implements ICuralinaStorage {
 
   async getPendingVisualDescriptionProducts(jobId: string, limit: number): Promise<VisualDescriptionProduct[]> {
     if (limit > 10000) limit = 10000; // Safety cap
-    return db
+    return getDb()
       .select()
       .from(visualDescriptionProducts)
       .where(
@@ -1278,7 +1277,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateVisualDescriptionProduct(id: string, data: Partial<InsertVisualDescriptionProduct>): Promise<VisualDescriptionProduct> {
-    const [product] = await db
+    const [product] = await getDb()
       .update(visualDescriptionProducts)
       .set(data)
       .where(eq(visualDescriptionProducts.id, id))
@@ -1344,7 +1343,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async getRenderEventsByType(renderId: string, eventType: string): Promise<RenderEvent[]> {
-    return db
+    return getDb()
       .select()
       .from(renderEvents)
       .where(and(eq(renderEvents.renderId, renderId), eq(renderEvents.eventType, eventType)))
@@ -1379,7 +1378,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       conditions.push(eq(documentationSections.version, version));
     }
     
-    const [section] = await db
+    const [section] = await getDb()
       .select()
       .from(documentationSections)
       .where(and(...conditions))
@@ -1394,7 +1393,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateDocumentationSection(id: string, sectionData: Partial<InsertDocumentationSection>): Promise<DocumentationSection> {
-    const [section] = await db
+    const [section] = await getDb()
       .update(documentationSections)
       .set({ ...sectionData, updatedAt: new Date() })
       .where(eq(documentationSections.id, id))
@@ -1412,7 +1411,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       throw new Error('Section not found');
     }
     
-    const [updated] = await db
+    const [updated] = await getDb()
       .update(documentationSections)
       .set({
         status: 'published',
@@ -1440,7 +1439,7 @@ export class CuralinaStorage implements ICuralinaStorage {
       conditions.push(eq(documentationComments.isInternal, filters.isInternal));
     }
     
-    return db
+    return getDb()
       .select()
       .from(documentationComments)
       .where(and(...conditions))
@@ -1458,7 +1457,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async updateComment(id: string, commentData: Partial<InsertDocumentationComment>): Promise<DocumentationComment> {
-    const [comment] = await db
+    const [comment] = await getDb()
       .update(documentationComments)
       .set({ ...commentData, editedAt: new Date() })
       .where(eq(documentationComments.id, id))
@@ -1471,7 +1470,7 @@ export class CuralinaStorage implements ICuralinaStorage {
   }
 
   async resolveComment(id: string, userId: string): Promise<DocumentationComment> {
-    const [comment] = await db
+    const [comment] = await getDb()
       .update(documentationComments)
       .set({
         resolvedAt: new Date(),

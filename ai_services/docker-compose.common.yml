@@ -1,0 +1,40 @@
+# Shared infrastructure services for Curalina AI services
+# This file defines infrastructure that is provisioned for future use but NOT
+# currently wired to any service.
+#
+# STATUS: Postgres is available here for a future migration from SQLite.
+# TODAY: All three services (recommendation, variants, rooms) persist via SQLite
+# in their own named Docker volumes. SQLite persistence is durable and survives
+# container restarts via volume mounts.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: curalina_postgres
+    environment:
+      # Default user and database; change these in production
+      POSTGRES_USER: curalina
+      POSTGRES_PASSWORD: curalina_dev_password
+      POSTGRES_DB: curalina
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume for persistent database storage
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U curalina -d curalina"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - curalina
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  curalina:
+    driver: bridge

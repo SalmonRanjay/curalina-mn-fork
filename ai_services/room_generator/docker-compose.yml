@@ -1,0 +1,54 @@
+# Docker Compose for rooms service
+# Run independently with: cd ai_services/room_generator && docker compose up
+# Or include in root orchestrator via `include:` directive
+#
+# This compose defines two services from the same Dockerfile:
+# - api: FastAPI server on port 8103
+# - worker: Background job processor (runs once and exits)
+
+services:
+  rooms_api:
+    build:
+      context: ../
+      dockerfile: room_generator/Dockerfile
+    container_name: curalina_rooms_api
+    command: ["python3", "-m", "curalina_rooms.bootstrap", "api"]
+    ports:
+      - "8103:8103"
+    environment:
+      CURALINA_DATABASE_URL: sqlite:////data/rooms.sqlite3
+      SERVICE_PORT: "8103"
+      CURALINA_DATA_DIR: /data
+    volumes:
+      # Named volume for SQLite database persistence across container restarts
+      - rooms_data:/data
+    restart: unless-stopped
+    networks:
+      - curalina
+
+  rooms_worker:
+    build:
+      context: ../
+      dockerfile: room_generator/Dockerfile
+    container_name: curalina_rooms_worker
+    command: ["python3", "-m", "curalina_rooms.bootstrap", "worker"]
+    environment:
+      CURALINA_DATABASE_URL: sqlite:////data/rooms.sqlite3
+      CURALINA_DATA_DIR: /data
+    volumes:
+      # Same volume as API for shared database access
+      - rooms_data:/data
+    restart: "no"
+    networks:
+      - curalina
+    depends_on:
+      rooms_api:
+        condition: service_started  # Ensure api starts first (worker will read from shared database)
+
+volumes:
+  rooms_data:
+    driver: local
+
+networks:
+  curalina:
+    driver: bridge

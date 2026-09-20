@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="All Services - API" type="CompoundRunConfigurationType">
+    <toRun name="Recommendation - API" type="PythonConfigurationType" />
+    <toRun name="Rooms - API" type="PythonConfigurationType" />
+    <toRun name="Variants - API" type="PythonConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -126,6 +126,26 @@ def resource_not_found_error(
     )
 
 
+def invalid_job_state_error(
+    request_id: str, job_id: str, current_status: str, action: str
+) -> ContractError:
+    return ContractError(
+        http_status=409,
+        code="invalid_job_state",
+        message=(
+            f"job '{job_id}' cannot be {action}d while in status "
+            f"'{current_status}'."
+        ),
+        details={
+            "job_id": job_id,
+            "current_status": current_status,
+            "action": action,
+        },
+        retryable=False,
+        request_id=request_id,
+    )
+
+
 def review_version_conflict_error(
     request_id: str, candidate_id: str, expected_version: int, current_version: int
 ) -> ContractError:

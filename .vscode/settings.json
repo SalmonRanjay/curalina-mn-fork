@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+  "python.analysis.extraPaths": [
+    "ai_services/design_rules/src",
+    "ai_services/recommendation/src",
+    "ai_services/variant_generator/src",
+    "ai_services/room_generator/src"
+  ]
+}

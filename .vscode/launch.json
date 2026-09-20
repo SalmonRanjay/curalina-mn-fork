@@ -1,0 +1,109 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "App (Express + Vite)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Recommendation - API",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "curalina_recommendation.bootstrap",
+      "cwd": "${workspaceFolder}/ai_services/recommendation",
+      "python": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "justMyCode": true
+    },
+    {
+      "name": "Variants - API",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "curalina_variants.bootstrap",
+      "args": ["api"],
+      "cwd": "${workspaceFolder}/ai_services/variant_generator",
+      "python": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "justMyCode": true
+    },
+    {
+      "name": "Variants - Worker",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "curalina_variants.bootstrap",
+      "args": ["worker"],
+      "cwd": "${workspaceFolder}/ai_services/variant_generator",
+      "python": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "justMyCode": true
+    },
+    {
+      "name": "Rooms - API",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "curalina_rooms.bootstrap",
+      "args": ["api"],
+      "cwd": "${workspaceFolder}/ai_services/room_generator",
+      "python": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "justMyCode": true
+    },
+    {
+      "name": "Rooms - Worker",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "curalina_rooms.bootstrap",
+      "args": ["worker"],
+      "cwd": "${workspaceFolder}/ai_services/room_generator",
+      "python": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "justMyCode": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "All AI Services (API only)",
+      "configurations": ["Recommendation - API", "Variants - API", "Rooms - API"]
+    },
+    {
+      "name": "All AI Services (API + Workers)",
+      "configurations": [
+        "Recommendation - API",
+        "Variants - API",
+        "Variants - Worker",
+        "Rooms - API",
+        "Rooms - Worker"
+      ]
+    },
+    {
+      "name": "Everything (App + All AI Services)",
+      "configurations": [
+        "App (Express + Vite)",
+        "Recommendation - API",
+        "Variants - API",
+        "Variants - Worker",
+        "Rooms - API",
+        "Rooms - Worker"
+      ]
+    }
+  ]
+}

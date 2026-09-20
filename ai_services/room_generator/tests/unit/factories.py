@@ -40,6 +40,7 @@ from curalina_rooms.domain.render_request import (
     ReferenceAssetInfo,
     RenderRequest,
     RenderRequestInstance,
+    RoomInputProvenance,
     VariantReviewStatus,
     VisibilityExpectation,
 )
@@ -130,6 +131,7 @@ def make_render_request(
     reference_assets: tuple[ReferenceAssetInfo, ...] | None = None,
     protected_regions: tuple[ProtectedRegion, ...] = (),
     max_attempts: int = 3,
+    provenance_mode: RoomInputProvenance = RoomInputProvenance.SYNTHETIC_DEFAULTS,
 ) -> RenderRequest:
     return RenderRequest(
         schema_version=schema_version,
@@ -144,6 +146,7 @@ def make_render_request(
         ),
         protected_regions=protected_regions,
         max_attempts=max_attempts,
+        provenance_mode=provenance_mode,
     )
 
 

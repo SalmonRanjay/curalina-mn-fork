@@ -17,6 +17,30 @@ from curalina_rooms.domain.geometry import BoundingBox
 from curalina_rooms.domain.room_prep import ProtectedRegion
 
 
+class RoomInputProvenance(StrEnum):
+    """Provenance mode for room input geometry.
+
+    Per `ADR-0015`, room generation supports multiple input modes. All outputs
+    must carry their provenance mode so synthetic/inferred results cannot be
+    mistaken for grounded evidence. Only `MEASURED` and `FLOORPLAN` may support
+    G01/G02/G03 claims; `INFERRED_FROM_IMAGE` and `SYNTHETIC_DEFAULTS` are
+    for E2E/demo only and must be explicitly labelled in all reports.
+
+    `MEASURED`: User/client supplied measured room dimensions, openings and
+      ceiling height.
+    `FLOORPLAN`: Geometry extracted from or entered against a scaled floorplan.
+    `INFERRED_FROM_IMAGE`: Approximate geometry extracted from a room photo/
+      render (never certified as measured, per OQ-010).
+    `SYNTHETIC_DEFAULTS`: Known default dimensions by room/home category drive
+      a generated room (demo/E2E only, not grounded evidence).
+    """
+
+    MEASURED = "measured"
+    FLOORPLAN = "floorplan"
+    INFERRED_FROM_IMAGE = "inferred_from_image"
+    SYNTHETIC_DEFAULTS = "synthetic_defaults"
+
+
 class VisibilityExpectation(StrEnum):
     """What the render is expected to show for one instance.
 
@@ -87,7 +111,14 @@ class RenderRequestInstance:
 @dataclass(frozen=True)
 class RenderRequest:
     """Fully-typed, already-structurally-valid render request, ready for
-    `curalina_rooms.application.validate_render_request`."""
+    `curalina_rooms.application.validate_render_request`.
+
+    `provenance_mode` tracks how room geometry was sourced: measured, from a
+    floorplan, inferred from an image, or synthetic defaults. Per ADR-0015,
+    only MEASURED and FLOORPLAN may support G01/G02/G03 claims; INFERRED_FROM_IMAGE
+    and SYNTHETIC_DEFAULTS are for E2E/demo only. This field must travel through
+    the entire pipeline so outputs carry the provenance label.
+    """
 
     schema_version: str
     bundle_id: str
@@ -97,6 +128,7 @@ class RenderRequest:
     reference_assets: tuple[ReferenceAssetInfo, ...]
     protected_regions: tuple[ProtectedRegion, ...]
     max_attempts: int
+    provenance_mode: RoomInputProvenance = RoomInputProvenance.MEASURED
 
     def __post_init__(self) -> None:
         if not self.instances:

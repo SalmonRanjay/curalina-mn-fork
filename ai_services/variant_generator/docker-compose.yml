@@ -1,0 +1,54 @@
+# Docker Compose for variants service
+# Run independently with: cd ai_services/variant_generator && docker compose up
+# Or include in root orchestrator via `include:` directive
+#
+# This compose defines two services from the same Dockerfile:
+# - api: FastAPI server on port 8102
+# - worker: Background job processor (runs once and exits)
+
+services:
+  variants_api:
+    build:
+      context: ../
+      dockerfile: variant_generator/Dockerfile
+    container_name: curalina_variants_api
+    command: ["python3", "-m", "curalina_variants.bootstrap", "api"]
+    ports:
+      - "8102:8102"
+    environment:
+      CURALINA_DATABASE_URL: sqlite:////data/variants.sqlite3
+      SERVICE_PORT: "8102"
+      CURALINA_DATA_DIR: /data
+    volumes:
+      # Named volume for SQLite database persistence across container restarts
+      - variants_data:/data
+    restart: unless-stopped
+    networks:
+      - curalina
+
+  variants_worker:
+    build:
+      context: ../
+      dockerfile: variant_generator/Dockerfile
+    container_name: curalina_variants_worker
+    command: ["python3", "-m", "curalina_variants.bootstrap", "worker"]
+    environment:
+      CURALINA_DATABASE_URL: sqlite:////data/variants.sqlite3
+      CURALINA_DATA_DIR: /data
+    volumes:
+      # Same volume as API for shared database access
+      - variants_data:/data
+    restart: "no"
+    networks:
+      - curalina
+    depends_on:
+      variants_api:
+        condition: service_started  # Ensure api starts first (worker will read from shared database)
+
+volumes:
+  variants_data:
+    driver: local
+
+networks:
+  curalina:
+    driver: bridge

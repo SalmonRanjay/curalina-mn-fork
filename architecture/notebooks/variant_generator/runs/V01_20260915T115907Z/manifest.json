@@ -1,0 +1,29 @@
+{
+  "run_id": "20260915T115907Z",
+  "notebook": "01_masks_and_colour",
+  "timestamp_utc": "2026-09-15T11:59:07.576302+00:00",
+  "git_sha": "339f578e90dffd020f298378353693647aaca52f",
+  "seed": 20260915,
+  "python": "3.14.0",
+  "platform": "macOS-26.6.2-x86_64-i386-64bit-Mach-O",
+  "rules_version": null,
+  "snapshot_id": "f4b00dce359dbf19d5a0abad9eba56ecdadaf3f1490116bcfb83d9e69872c0bb",
+  "packages": {
+    "curalina-variants": "0.0.0",
+    "numpy": "2.5.3",
+    "pillow": "12.3.0",
+    "openpyxl": "3.1.5",
+    "colour_transfer_adapter": "LabColourTransferAdapter"
+  },
+  "corpus": {
+    "source_assets_dir_env": "CURALINA_SOURCE_ASSETS_DIR (notebook-scope only)",
+    "workbook_sha256": "f4b00dce359dbf19d5a0abad9eba56ecdadaf3f1490116bcfb83d9e69872c0bb",
+    "funnel": {
+      "folders_allowlisted": 42,
+      "folders_with_admitted_webp": 40,
+      "webp_seen_total": 197,
+      "webp_excluded_by_name": 34,
+      "webp_admitted": 163
+    }
+  }
+}

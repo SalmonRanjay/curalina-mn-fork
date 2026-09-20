@@ -1,0 +1,12 @@
+node_modules
+.git
+.idea
+dist
+out
+.env
+.env.*
+!.env.example
+**/__pycache__
+**/*.pyc
+ai_services/**/node_modules
+architecture/notebooks/**/runs

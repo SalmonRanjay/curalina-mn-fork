@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "parent_product_id": "product-example",
+  "source_asset_id": "variant-service-asset-001",
+  "mask_asset_id": "variant-service-mask-001",
+  "target_colours": [
+    {
+      "name": "olive",
+      "srgb_hex": "#70784B"
+    }
+  ],
+  "mode": "research",
+  "fixture_only": true
+}

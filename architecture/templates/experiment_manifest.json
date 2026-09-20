@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "status": "not_run",
+  "run_id": null,
+  "dataset_sha256": null,
+  "split_id": null,
+  "model_id": null,
+  "model_revision": null,
+  "dependency_lock_sha256": null,
+  "device": null,
+  "precision": null,
+  "seed": null,
+  "prompt_version": null,
+  "attempt_cap": 3,
+  "metrics": null,
+  "review": null
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "scenario_id":"condo_living_room_conversation_circle",
+    "label":"REPRESENTATIVE (not Design Manual \u00a78)",
+    "home_category":"condo",
+    "room_type":"living_room",
+    "expected_passes_hard_spatial":true,
+    "api_passes_hard":false,
+    "n_violations":2,
+    "hard":0,
+    "soft":0,
+    "needs_input":2,
+    "rule_ids_fired":"CMR_VALIDATION, MIN_WALKWAY"
+  },
+  {
+    "scenario_id":"mid_dining_room_service_perimeter",
+    "label":"REPRESENTATIVE (not Design Manual \u00a78)",
+    "home_category":"mid",
+    "room_type":"dining_room",
+    "expected_passes_hard_spatial":true,
+    "api_passes_hard":false,
+    "n_violations":2,
+    "hard":0,
+    "soft":0,
+    "needs_input":2,
+    "rule_ids_fired":"CMR_VALIDATION, MIN_WALKWAY"
+  },
+  {
+    "scenario_id":"large_living_room_floating_anchor_violation",
+    "label":"REPRESENTATIVE (not Design Manual \u00a78)",
+    "home_category":"large",
+    "room_type":"living_room",
+    "expected_passes_hard_spatial":false,
+    "api_passes_hard":false,
+    "n_violations":3,
+    "hard":1,
+    "soft":0,
+    "needs_input":2,
+    "rule_ids_fired":"CMR_VALIDATION, LR_FLOATING_ANCHOR, MIN_WALKWAY"
+  },
+  {
+    "scenario_id":"condo_bedroom_pinched_ensuite_path",
+    "label":"REPRESENTATIVE (not Design Manual \u00a78)",
+    "home_category":"condo",
+    "room_type":"bedroom",
+    "expected_passes_hard_spatial":true,
+    "api_passes_hard":false,
+    "n_violations":3,
+    "hard":1,
+    "soft":0,
+    "needs_input":2,
+    "rule_ids_fired":"BR_ENSUITE_PATH, CMR_VALIDATION, MIN_WALKWAY"
+  }
+]

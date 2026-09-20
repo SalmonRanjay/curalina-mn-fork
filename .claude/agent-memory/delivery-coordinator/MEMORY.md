@@ -1,0 +1,3 @@
+- [Monolith structure gotchas](monolith_structure_gotchas.md) — schema.ts vs schema-curalina.ts, no test runner in the monolith
+- [Decomposing flat workflow docs into packets](decomposing_flat_workflow_docs.md) — how to split a single-phase workflow doc (e.g. A5) into sequential scoped packets
+- [Specify then flag for lead review](specify_then_flag_for_lead_review.md) — when a packet needs a product decision, specify a default so the engineer isn't blocked, and log it separately as a tech-lead-confirmable follow-up

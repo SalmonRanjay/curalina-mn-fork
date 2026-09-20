@@ -1,0 +1,30 @@
+# Docker Compose for recommendation service
+# Run independently with: cd ai_services/recommendation && docker compose up
+# Or include in root orchestrator via `include:` directive
+
+services:
+  recommendation_api:
+    build:
+      context: ../
+      dockerfile: recommendation/Dockerfile
+    container_name: curalina_recommendation_api
+    ports:
+      - "8101:8101"
+    environment:
+      CURALINA_DATABASE_URL: sqlite:////data/recommendation.sqlite3
+      SERVICE_PORT: "8101"
+      CURALINA_DATA_DIR: /data
+    volumes:
+      # Named volume for SQLite database persistence across container restarts
+      - recommendation_data:/data
+    restart: unless-stopped
+    networks:
+      - curalina
+
+volumes:
+  recommendation_data:
+    driver: local
+
+networks:
+  curalina:
+    driver: bridge

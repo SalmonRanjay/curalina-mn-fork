@@ -23,6 +23,10 @@ from curalina_rooms.domain.room_prep import (
     RoomPrepResult,
     RoomPrepSource,
 )
+from curalina_rooms.domain.synthetic_defaults import (
+    create_synthetic_room_geometry,
+    create_synthetic_wall_color,
+)
 
 _FAKE_WALL_COLOR = Color(hex="#EDE7DD", h_deg=38, s_pct=24, l_pct=91)
 
@@ -30,22 +34,38 @@ _FAKE_WALL_COLOR = Color(hex="#EDE7DD", h_deg=38, s_pct=24, l_pct=91)
 class FakeRoomPrepAdapter:
     """Fake `RoomPrepAdapter` implementation. Deterministic and fast."""
 
-    def prepare(self, request: RoomPrepRequest) -> RoomPrepResult:
-        geometry = RoomGeometry(
-            room_id=f"fake-geometry:{request.room_asset_id}",
-            room_type=RoomType.LIVING_ROOM,
-            home_category=HomeCategory.MID,
-            boundary=(
-                Point(x_mm=0, y_mm=0),
-                Point(x_mm=4000, y_mm=0),
-                Point(x_mm=4000, y_mm=3000),
-                Point(x_mm=0, y_mm=3000),
-            ),
-            ceiling_height_mm=2400,
-        )
+    def prepare(
+        self,
+        request: RoomPrepRequest,
+        *,
+        geometry_source_mode: str = "measured",
+    ) -> RoomPrepResult:
+        if geometry_source_mode == "synthetic_defaults":
+            # ADR-0015: synthetic defaults are demo-only stand-in dimensions,
+            # never a measured or inferred fact about the actual room.
+            geometry = create_synthetic_room_geometry(
+                room_type=RoomType.LIVING_ROOM,
+                home_category=HomeCategory.MID,
+                room_id=f"fake-geometry:{request.room_asset_id}",
+            )
+            wall_color = create_synthetic_wall_color()
+        else:
+            geometry = RoomGeometry(
+                room_id=f"fake-geometry:{request.room_asset_id}",
+                room_type=RoomType.LIVING_ROOM,
+                home_category=HomeCategory.MID,
+                boundary=(
+                    Point(x_mm=0, y_mm=0),
+                    Point(x_mm=4000, y_mm=0),
+                    Point(x_mm=4000, y_mm=3000),
+                    Point(x_mm=0, y_mm=3000),
+                ),
+                ceiling_height_mm=2400,
+            )
+            wall_color = _FAKE_WALL_COLOR
         normalized_room = NormalizedRoom(
             geometry=geometry,
-            recommended_wall_color=_FAKE_WALL_COLOR,
+            recommended_wall_color=wall_color,
             existing_wall_color=None,
         )
         protected_regions = tuple(
@@ -62,6 +82,7 @@ class FakeRoomPrepAdapter:
             homography_reference=None,
             measurement_certified=False,
             source=RoomPrepSource.FAKE_FIXTURE,
+            geometry_source_mode=geometry_source_mode,
         )
 
 

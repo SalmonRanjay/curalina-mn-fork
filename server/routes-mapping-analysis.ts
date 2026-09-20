@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getDb } from "./db"; // Add .js extension
 import { products } from "@shared/schema"; // Add .js extension
-import { sql, isNotNull } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -308,7 +308,7 @@ function analyzeFilterOptimization(allProducts: any[]) {
  * GET /api/admin/mapping-analysis
  * Returns comprehensive mapping analysis between quiz options and product database values
  */
-router.get("/mapping-analysis", async (req, res) => {
+router.get("/mapping-analysis", async (_req, res) => {
   try {
     // Get all products
     const allProducts = await getDb().select().from(products);
@@ -530,7 +530,7 @@ router.get("/mapping-analysis", async (req, res) => {
  * POST /api/admin/mapping-analysis/normalize-room-types
  * Normalizes room type capitalization to match quiz options
  */
-router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
+router.post("/mapping-analysis/normalize-room-types", async (_req, res) => {
   try {
     const allProducts = await getDb().select().from(products);
     
@@ -586,7 +586,7 @@ router.post("/mapping-analysis/normalize-room-types", async (req, res) => {
  * POST /api/admin/mapping-analysis/normalize-design-styles
  * Maps product design styles to quiz options
  */
-router.post("/mapping-analysis/normalize-design-styles", async (req, res) => {
+router.post("/mapping-analysis/normalize-design-styles", async (_req, res) => {
   try {
     const allProducts = await getDb().select().from(products);
     

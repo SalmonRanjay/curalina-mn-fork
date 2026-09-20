@@ -21,6 +21,14 @@ from curalina_design_rules.pipeline.types import NormalizedRoom
 
 from curalina_rooms.domain.geometry import BoundingBox
 
+# Mirrors `curalina_rooms.domain.render_request.RoomInputProvenance`'s values
+# exactly (ADR-0015's four admitted provenance modes). Kept as a plain string
+# set here, rather than importing that enum, to avoid a domain-module import
+# cycle (`render_request` already imports `ProtectedRegion` from this module).
+_VALID_GEOMETRY_SOURCE_MODES = frozenset(
+    {"measured", "floorplan", "inferred_from_image", "synthetic_defaults"}
+)
+
 
 class ProtectedRegionKind(StrEnum):
     """What a protected image-space region guards against alteration."""
@@ -91,6 +99,7 @@ class RoomPrepResult:
     homography_reference: str | None
     measurement_certified: bool
     source: RoomPrepSource
+    geometry_source_mode: str = "measured"
 
     def __post_init__(self) -> None:
         if self.measurement_certified:
@@ -101,4 +110,10 @@ class RoomPrepResult:
             raise ValueError(
                 "measurement_certified may not be True while OQ-010 is "
                 "unresolved; see curalina_rooms.domain.room_prep.RoomPrepResult"
+            )
+        if self.geometry_source_mode not in _VALID_GEOMETRY_SOURCE_MODES:
+            raise ValueError(
+                "geometry_source_mode must be one of "
+                f"{sorted(_VALID_GEOMETRY_SOURCE_MODES)}, got "
+                f"{self.geometry_source_mode!r}"
             )

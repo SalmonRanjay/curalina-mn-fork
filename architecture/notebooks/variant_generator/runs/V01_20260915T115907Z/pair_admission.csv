@@ -1,0 +1,9 @@
+pair_id,folder,do_nothing_delta_e00,admitted,rejection_reasons,background_note,manifest_finish_match,target_hex,swatch_disagreement_delta_e00,swatch_intra_file_delta_e00_p90
+artigiano_dining_chair,Artigiano Dining Chair,51.06,True,-,border_ring_white_fraction=1.000,True,#4d413a,0.235,16.568
+vela_arm_chair,Vela Arm Chair,11.53,False,do_nothing_delta_e_below_floor,border_ring_white_fraction=1.000,True,#969389,0.778,21.193
+forma_sofa,Forma,33.56,True,-,"border_ring_white_fraction=0.000 (non-white backdrop, human-confirmed per D5.2)",False,#4e4e4d,0.042,8.12
+alice_chair,Alice Chair,27.04,True,-,"border_ring_white_fraction=0.000 (non-white backdrop, human-confirmed per D5.2)",True,#9f4b24,0.061,2.706
+cielo_accent_chair,Cielo Accent Chair,8.9,False,do_nothing_delta_e_below_floor,"border_ring_white_fraction=0.000 (non-white backdrop, human-confirmed per D5.2)",True,#90928c,1.075,17.813
+abbraccio_armchair,Abbraccio Armchair,6.53,False,do_nothing_delta_e_below_floor,"border_ring_white_fraction=0.000 (non-white backdrop, human-confirmed per D5.2)",True,#534733,0.541,7.878
+poltrona_chair_studio,Poltrona Chair Studio,16.1,True,-,border_ring_white_fraction=1.000,True,#8f918c,0.537,21.932
+mia_chair,Mia Chair,5.86,False,do_nothing_delta_e_below_floor,border_ring_white_fraction=1.000,True,#dbcdb3,0.672,7.991

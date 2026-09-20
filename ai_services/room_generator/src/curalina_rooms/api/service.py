@@ -1,12 +1,22 @@
-"""Fixture-backed fake contract service for `curalina_rooms` `/v1` routes.
+"""Contract service for `curalina_rooms` `/v1` routes.
 
-This is the A1 deliverable: it validates requests against the shapes in
-`curalina_rooms.api.schemas`, enforces the shared error vocabulary from
-`curalina_rooms.api.errors`, and returns deterministic fake data. There is
-no rendering, homography, model loading, or real durable-job execution —
-`workers/`, `domain/`, `application/`, `ports/` and `adapters/` are untouched.
-A3 is expected to wrap these methods in an actual ASGI transport and a real
-job/worker split; this module only has to get the contract right.
+`RoomsContractService` validates requests against the shapes in
+`curalina_rooms.api.schemas` and enforces the shared error vocabulary from
+`curalina_rooms.api.errors`. It has two backends, selected by whether a
+`SQLiteRoomStore` is supplied at construction time:
+
+* **No store (the A1 fake):** an in-memory, fixture-seeded fake with no
+  durable persistence and no worker split. This is what the contract-level
+  tests (`tests/contract/`) exercise directly, since they test the contract
+  shape, not durability.
+* **A `SQLiteRoomStore` (the A3 durable path):** every method delegates to
+  the store after validating and schema-version-checking the payload, so
+  jobs survive process restarts and are completed by a separate worker
+  (`curalina_rooms.workers`) via lease/complete rather than inline.
+
+`create_app()` (`curalina_rooms.api.app`) wires the store-backed path by
+default; tests that want the fast in-memory fake construct
+`RoomsContractService()` explicitly.
 """
 
 from __future__ import annotations
@@ -40,8 +50,10 @@ from curalina_rooms.api.schemas import (
     RenderJobRequest,
     RenderJobResponse,
 )
+from curalina_rooms.api.sqlite_store import SQLiteRoomStore
 
 _SUPPORTED_SCHEMA_MAJOR = "1"
+_DEFAULT_MAX_ATTEMPTS = 3
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -89,14 +101,28 @@ def _validate(
 
 
 class RoomsContractService:
-    """In-memory, fixture-seeded fake behind the room-generator `/v1` API."""
+    """Contract service behind the room-generator `/v1` API.
 
-    def __init__(self) -> None:
-        self._bundle_current_revision: dict[str, str] = {}
-        self._assets: dict[str, AssetResponse] = {}
-        self._jobs: dict[str, JobStatusResponse] = {}
-        self._candidate_review_versions: dict[str, int] = {}
-        self._seed_from_fixtures()
+    Backed by an in-memory fixture-seeded fake when `store` is `None`, or by
+    a durable `SQLiteRoomStore` otherwise. See the module docstring.
+    """
+
+    def __init__(
+        self,
+        store: SQLiteRoomStore | None = None,
+        *,
+        max_attempts: int = _DEFAULT_MAX_ATTEMPTS,
+        failure_after_insertions: int | None = None,
+    ) -> None:
+        self._store = store
+        self._max_attempts = max_attempts
+        self._failure_after_insertions = failure_after_insertions
+        if store is None:
+            self._bundle_current_revision: dict[str, str] = {}
+            self._assets: dict[str, AssetResponse] = {}
+            self._jobs: dict[str, JobStatusResponse] = {}
+            self._candidate_review_versions: dict[str, int] = {}
+            self._seed_from_fixtures()
 
     def _seed_from_fixtures(self) -> None:
         bundles = load_fixture("bundle_snapshots.json")["bundles"]
@@ -127,6 +153,10 @@ class RoomsContractService:
             AssetImportRequest, payload, request_id
         )
 
+        if self._store is not None:
+            response = self._store.import_asset(request, request_id=request_id)
+            return ContractResult(http_status=201, body=response)
+
         digest_source = "|".join(
             [
                 request.owner_id,
@@ -155,6 +185,12 @@ class RoomsContractService:
         self, asset_id: str, request_id: str | None = None
     ) -> ContractResult:
         request_id = request_id or _new_request_id()
+        if self._store is not None:
+            store_response = self._store.get_asset_content(
+                asset_id, request_id=request_id
+            )
+            return ContractResult(http_status=200, body=store_response)
+
         asset = self._assets.get(asset_id)
         if asset is None:
             raise resource_not_found_error(request_id, "asset", asset_id)
@@ -178,6 +214,19 @@ class RoomsContractService:
         request_id = request_id or _new_request_id()
         _check_schema_version(payload, request_id)
         request: RenderJobRequest = _validate(RenderJobRequest, payload, request_id)
+
+        if self._store is not None:
+            store_response = self._store.create_render_job(
+                request,
+                request_id=request_id,
+                max_attempts=self._max_attempts,
+                failure_after_insertions=self._failure_after_insertions,
+            )
+            return ContractResult(
+                http_status=202,
+                body=store_response,
+                headers={"Location": store_response.location},
+            )
 
         current_revision = self._bundle_current_revision.get(
             request.bundle.bundle_id
@@ -215,6 +264,10 @@ class RoomsContractService:
 
     def get_job(self, job_id: str, request_id: str | None = None) -> ContractResult:
         request_id = request_id or _new_request_id()
+        if self._store is not None:
+            store_job = self._store.get_job(job_id, request_id=request_id)
+            return ContractResult(http_status=200, body=store_job)
+
         job = self._jobs.get(job_id)
         if job is None:
             raise resource_not_found_error(request_id, "job", job_id)
@@ -222,6 +275,12 @@ class RoomsContractService:
 
     def cancel_job(self, job_id: str, request_id: str | None = None) -> ContractResult:
         request_id = request_id or _new_request_id()
+        if self._store is not None:
+            self._store.cancel_job(job_id, request_id=request_id)
+            return ContractResult(
+                http_status=200, body=JobCancelResponse(job_id=job_id)
+            )
+
         job = self._jobs.get(job_id)
         if job is None:
             raise resource_not_found_error(request_id, "job", job_id)
@@ -245,6 +304,12 @@ class RoomsContractService:
         request: CandidateReviewRequest = _validate(
             CandidateReviewRequest, payload, request_id
         )
+
+        if self._store is not None:
+            store_response = self._store.create_review(
+                candidate_id, request, request_id=request_id
+            )
+            return ContractResult(http_status=201, body=store_response)
 
         current_version = self._candidate_review_versions.get(candidate_id)
         if current_version is None:

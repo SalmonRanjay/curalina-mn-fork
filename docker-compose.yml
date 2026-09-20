@@ -1,0 +1,93 @@
+# Root orchestrator for the full Curalina stack — the existing app plus
+# all three AI services. Use this file to bring everything up together for
+# a local end-to-end test.
+#
+# Usage:
+#   docker compose build       # first time, or after a dependency change
+#   docker compose up          # Start everything: app + recommendation + variants + rooms
+#   docker compose down        # Stop everything
+#   docker compose logs -f     # Follow logs from all services
+#
+# This file uses the Docker Compose `include:` directive to bring together:
+# 1. Recommendation service (ai_services/recommendation/docker-compose.yml)
+# 2. Variants service (ai_services/variant_generator/docker-compose.yml)
+# 3. Rooms service (ai_services/room_generator/docker-compose.yml)
+# 4. Shared infrastructure (ai_services/docker-compose.common.yml)
+# ...plus the `app` service defined directly below, since the existing
+# TypeScript/Express monolith already has its own Dockerfile at the repo
+# root (predates this compose setup) rather than living in a per-service
+# subdirectory the way the three Python services do.
+#
+# All three AI services persist data via SQLite in named Docker volumes, not
+# the container's ephemeral layer, so data survives restarts.
+#
+# Postgres is available (see docker-compose.common.yml) as infrastructure for
+# a future AI-service SQLite→Postgres migration — the three AI services do
+# not use it today. It is ALSO NOT what `app` uses: the existing monolith's
+# database is Neon serverless Postgres (`server/db.ts` uses
+# `@neondatabase/serverless`, which speaks Neon's own WebSocket/HTTP
+# protocol, not plain Postgres wire protocol — a stock `postgres:16-alpine`
+# container cannot serve it directly without a Neon-compatible local proxy,
+# which is not set up here). `app` connects to whatever real Neon database
+# `DATABASE_URL` in your `.env` file already points at for local `npm run
+# dev` — Docker cannot fabricate a working substitute for a real external
+# database, so this passes your existing credentials through rather than
+# inventing a local one.
+#
+# Real external services `app` still needs and cannot self-contain: the
+# Neon database above, AWS S3 (product images), Google Cloud Storage (user
+# uploads), and the OpenAI/Stability AI keys for the legacy in-app image
+# generation path — all read from `.env` via `env_file` below, none
+# fabricated. This compose brings up the CONTAINERS; it does not grant
+# access to accounts you don't already have configured in `.env`.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: curalina_app
+    env_file:
+      - .env
+    environment:
+      # Wires the app to the AI services over the shared Docker network by
+      # service name (not 127.0.0.1 — that only works for processes on the
+      # same host, not separate containers). Overrides whatever
+      # CURALINA_* values are set in .env for local (non-Docker) dev.
+      CURALINA_AI_SERVICES_ENABLED: "true"
+      CURALINA_RECOMMENDATION_URL: http://recommendation_api:8101
+      CURALINA_VARIANTS_URL: http://variants_api:8102
+      CURALINA_ROOMS_URL: http://rooms_api:8103
+      CURALINA_AI_CONTRACT_VERSION: "1.0"
+      # Matches recommendation's own auto-seeded A3 fixture snapshot
+      # (application_services.py: _SNAPSHOT_ID / rules_version) — real
+      # values that exist the moment recommendation's container starts,
+      # not invented. If recommendation's seed data ever changes, update
+      # these two to match; a mismatch fails closed with
+      # "ai_services_misconfigured" per UI-A5-04, it does not guess.
+      CURALINA_CATALOGUE_SNAPSHOT_ID: snap_a3fixture0001
+      CURALINA_RULES_VERSION: rules_2024_01
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      recommendation_api:
+        condition: service_started
+      variants_api:
+        condition: service_started
+      rooms_api:
+        condition: service_started
+    networks:
+      - curalina
+    restart: unless-stopped
+
+include:
+  - ai_services/docker-compose.common.yml
+  - ai_services/recommendation/docker-compose.yml
+  - ai_services/variant_generator/docker-compose.yml
+  - ai_services/room_generator/docker-compose.yml
+
+networks:
+  curalina:
+    driver: bridge
+    name: curalina

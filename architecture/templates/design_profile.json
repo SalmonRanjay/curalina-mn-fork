@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "profile_id": "profile-example",
+  "room_type": "living_room",
+  "style": "organic_modern",
+  "atmosphere": "warm_balanced",
+  "pattern_level": "accents",
+  "lifestyle": {
+    "pet_friendly_required": false
+  },
+  "furniture_budget": {
+    "amount": "20000.00",
+    "currency": "CAD"
+  },
+  "budget_inclusions": [
+    "products_only"
+  ],
+  "room_geometry": {
+    "units": "mm",
+    "width": 6000,
+    "length": 5000,
+    "origin": "southwest",
+    "x_direction": "east",
+    "y_direction": "north",
+    "measurements_confirmed": true,
+    "openings": []
+  },
+  "retained_items": [],
+  "fixture_only": true
+}

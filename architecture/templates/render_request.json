@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "room_asset_id": "room-service-asset-001",
+  "bundle_id": "bundle-example",
+  "bundle_revision": 1,
+  "layout_version": "layout-001",
+  "references": [
+    {
+      "product_id": "product-example",
+      "variant_id": "variant-example",
+      "asset_id": "room-service-imported-asset-002",
+      "instance_id": "chair-1",
+      "image_region_normalized": [
+        0.2,
+        0.3,
+        0.5,
+        0.8
+      ]
+    }
+  ],
+  "mode": "research",
+  "fixture_only": true
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "mask_id": "mask_000001",
+  "source_asset_id": "asset_000001",
+  "width_px": 2,
+  "height_px": 2,
+  "editable_mask_b64": "AQEBAQ==",
+  "protected_subregions": [],
+  "feather_band_px": 3,
+  "human_corrected": false,
+  "revision": 1
+}

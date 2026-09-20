@@ -30,9 +30,17 @@ from curalina_rooms.domain.room_prep import RoomPrepRequest, RoomPrepResult
 
 
 class RoomPrepAdapter(Protocol):
-    def prepare(self, request: RoomPrepRequest) -> RoomPrepResult:
+    def prepare(
+        self,
+        request: RoomPrepRequest,
+        *,
+        geometry_source_mode: str = "measured",
+    ) -> RoomPrepResult:
         """Normalize a room asset into geometry, homography and protected
-        regions. Must return `needs_input` (by raising, in a real
-        implementation) rather than silently estimating geometry it cannot
-        establish (`architecture/guides/06_room_generation.md` step 3)."""
+        regions, labelled with the requested `geometry_source_mode` (one of
+        the four ADR-0015 provenance modes; see
+        `curalina_rooms.domain.render_request.RoomInputProvenance`). Must
+        return `needs_input` (by raising, in a real implementation) rather
+        than silently estimating geometry it cannot establish
+        (`architecture/guides/06_room_generation.md` step 3)."""
         ...

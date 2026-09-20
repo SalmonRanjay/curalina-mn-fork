@@ -1,0 +1,5 @@
+pair_id,m1_assertion_held,m2a_l_variance_ratio,m2a_pass_ge_0_90,m2b_gamut_clipped_fraction,m2b_pass_le_0_02,m3_delta_e00_to_target_demoted,m4_silhouette_iou_unthresholded,source_mask_l_std,editable_pixel_count
+artigiano_dining_chair,True,0.9434,True,0.3471,False,50.379,0.9581,14.854,204672
+forma_sofa,True,0.9997,True,0.0022,True,32.887,1.0,17.309,1649472
+alice_chair,True,0.9039,True,0.6146,False,20.57,1.0,21.503,90718
+poltrona_chair_studio,True,0.9925,True,0.167,False,15.051,0.9998,13.6,828180

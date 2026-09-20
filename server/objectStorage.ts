@@ -62,7 +62,6 @@ export class ObjectStorageService {
     
     const objectId = randomUUID();
     const objectName = `uploads/${objectId}`;
-    const file = this.getBucket().file(objectName);
 
     // This URL is for your internal API to PUT to, or for the client to use if you return it
     // For now, let's keep the Replit compatible return format if your frontend expects a specific string.
@@ -97,11 +96,11 @@ export class ObjectStorageService {
   }
   
   // Stubs for ACL to prevent compilation errors, can be implemented fully if needed
-  async trySetObjectEntityAclPolicy(path: string, policy: any): Promise<string> {
+  async trySetObjectEntityAclPolicy(path: string, _policy: any): Promise<string> {
     return path;
   }
 
-  async canAccessObjectEntity(params: any): Promise<boolean> {
+  async canAccessObjectEntity(_params: any): Promise<boolean> {
     return true; 
   }
 }

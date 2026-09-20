@@ -1,0 +1,5 @@
+pair_id,wrong_target_from,m2a_correct_target,m2a_wrong_target,m2b_correct_target,m2b_wrong_target,m4_correct_target,m4_wrong_target
+artigiano_dining_chair,forma_sofa,0.9434,0.9985,0.3471,0.3409,0.9581,1.0
+forma_sofa,alice_chair,0.9997,0.8564,0.0022,0.3627,1.0,1.0
+alice_chair,poltrona_chair_studio,0.9039,1.0,0.6146,0.0035,1.0,1.0
+poltrona_chair_studio,artigiano_dining_chair,0.9925,0.9615,0.167,0.1722,0.9998,0.9137

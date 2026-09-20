@@ -1,16 +1,8 @@
 import type { Express, Request, Response } from "express";
-import { z } from "zod";
-import { storage } from "./storage";
 import { isAuthenticated } from "./localAuth";
-import { User } from "@shared/schema";
-
-// Define a custom Request type that includes the user property
-interface RequestWithUser extends Request {
-  user?: User;
-}
 
 // Basic Curalina AI route
-async function handleCuralinaQuery(req: RequestWithUser, res: Response): Promise<Response> {
+async function handleCuralinaQuery(req: Request, res: Response): Promise<Response> {
   const { query } = req.body;
 
   if (!query) {

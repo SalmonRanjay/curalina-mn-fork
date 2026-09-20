@@ -133,6 +133,7 @@ class RenderJobRequest(StrictModel):
     bundle: BundleReference
     room_type: str
     layout_version: str
+    provenance_mode: str
     instances: list[RenderInstanceRequirement]
     reference_images: list[ReferenceImage]
     idempotency_key: str | None = None

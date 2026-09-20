@@ -1,0 +1,55 @@
+{
+  "run_id": "20260915T041535Z",
+  "gate": "D01 / A6-equivalent (rules-engine conformance and handoff)",
+  "decision": "accept-with-limitations",
+  "rationale": "This is a re-run under ADR-0014 D2, and it stays accept-with-limitations -- the same gate verdict as the superseded 20260913T022937Z run, but for a materially different and smaller set of reasons (see what_changed_since_the_prior_run above). \n\nThe A3 consumer-facing entry point and the A2b spatial checks it wraps run deterministically end to end against four representative scenarios. CMR_VALIDATION surfaced needs_input with the correct OQ-001 citation on every scenario, never a silent pass -- unchanged from the prior run. MIN_WALKWAY now also surfaces needs_input with the correct OQ-013 citation on every scenario, per ADR-0010's wiring -- this is a genuine behaviour change from the prior run's hard violations, and it is correct: no doorway/functional-zone position exists anywhere in this project (OQ-010), so a hard verdict would have been fabricated. \n\nAgainst the fixture module's stated expect_passes_hard_spatial (CMR and MIN_WALKWAY set aside as their own separate, always-needs_input findings): the mismatch count computed in Section 5 is reported verbatim from this run's execution, not assumed from ADR-0014's prediction of 1/4 -- see the printed cell output above for the actual count and which scenario(s) it names. \n\nSeparately and independently: Design Manual section 8 (pp147-150, manual sha256 7d450d28facc0ff87c40e7e6f5c33bbbb7f7d13e653aec6be07ced79b4c65cca) is now available and was read directly, and ADR-0014 D4 rules it inapplicable to this notebook -- it is four narrative colour/material/ tectonic proofs with zero spatial content, and this notebook's claims are entirely spatial. This is a resolved-as-inapplicable finding, not an unavailable-source finding as the prior run recorded it. Section 8 cannot confirm or falsify a spatial conformance claim either way. \n\nFurther separately, and unchanged: this run cannot say anything about the style/material/palette rule families the manual's section 8 compositions also depend on, because those modules (style.py, palette.py) do not exist yet in curalina_design_rules; and OQ-001/CMR remains genuinely undefined, confirmed by ADR-0009's full-text search (Circulation-to-Mass Ratio appears twice in 169 pages, both bare names, no formula).",
+  "sample_size": {
+    "scenarios": 4,
+    "home_categories_covered": [
+      "condo",
+      "large",
+      "mid"
+    ],
+    "room_types_covered": [
+      "bedroom",
+      "dining_room",
+      "living_room"
+    ]
+  },
+  "design_manual_admitted": true,
+  "design_manual_sha256": "7d450d28facc0ff87c40e7e6f5c33bbbb7f7d13e653aec6be07ced79b4c65cca",
+  "section_8_status": "inapplicable to this notebook (zero spatial content; ADR-0014 D4)",
+  "what_changed_since_the_prior_run": "Two things changed under ai_services/design_rules since the 20260913T022937Z run this notebook superseded, both examined and reflected here rather than left as a stale record: \n\n1. ADR-0010 rewired evaluate_spatial_layout's MIN_WALKWAY handling to take optional doorway_points/functional_zone_points and return needs_input citing OQ-013 when they are absent, instead of the prior literal whole-room check_walkways. Since every scenario in this run supplies no endpoints (none exist anywhere in this project -- OQ-010), MIN_WALKWAY moved from a hard violation on 3 of 4 scenarios to needs_input on 4 of 4. This is a correct behaviour change, not a silent improvement: this notebook's original run correctly caught a real defect (an over-strict whole-free-floor reading of section 9.1 that agentic_flow/12_design_rules_engine.md's derived pseudocode specified, but the Design Manual itself does not), and that defect is now fixed at the engine level. ADR-0009 independently corroborates the original diagnosis: a full-text search of the Design Manual (sha256 7d450d28facc0ff87c40e7e6f5c33bbbb7f7d13e653aec6be07ced79b4c65cca, 169 pages, read in place per ADR-0009 -- never copied into this repository) for walkway/circulation path/access path/dead zone found 9 hits, all path/corridor language, zero whole-floor language; p151 lists minimum walkways, access paths, and functional spacing as three distinct things. \n\n2. This notebook's own cell 7 (prior run) synthesised bed_point = Point(10, 10) and ensuite_point = Point(boundary[1].x_mm - 10, 10) inline, and inferred the sofa placement as placements[0] by list position. ADR-0014 identified this as exactly the fabricated-geometry pattern ADR-0004 and ADR-0010 forbid, and ruled that the prior run's recorded BR_ENSUITE_PATH hard violation was therefore a verdict computed from invented input, not a genuine finding. This re-run fixes it per ADR-0014 D2 option (b): bed_point, ensuite_door_point and sofa_placement_id are now declared fields on GoldenScenario in tests/fixtures/golden_scenarios.py, labelled in a comment on the dataclass as synthetic, fixture-authored, and NOT client geometry -- the notebook cell only reads them, it does not mint them.",
+  "unanticipated_findings_from_the_original_run_now_closed": [
+    "MIN_WALKWAY firing as a hard violation on 3 of 4 representative fixtures documented as passing. This was correctly diagnosed in the original run as either a fixture-authoring gap or an over-strict engine reading of section 9.1; ADR-0009/ADR-0010 confirm the latter and the engine has been fixed. MIN_WALKWAY now returns needs_input on every scenario instead."
+  ],
+  "open_questions_touched": {
+    "OQ-001": "CMR_VALIDATION formula undefined -- fires needs_input on every scenario in this run (100%); blocks spatial validation step 5 and final validation step 11 per the Design Manual. Directly exercised by this notebook's Section 5. Unchanged since the prior run.",
+    "OQ-013": "MIN_WALKWAY circulation-endpoint set -- fires needs_input on every scenario in this run (100%) under ADR-0010's wiring, because no doorway/functional-zone position exists anywhere in this project (OQ-010). Narrowed, not closed, by ADR-0009: the manual's model is a small set of named, rule-specific paths plus a category-wide default, not a whole-free-floor predicate -- ADR-0004's original interim reading is corroborated, not overturned.",
+    "OQ-002": "OM 70/30 edge-radius rule denominator undefined -- blocks OM style validation. Not exercised: style.py does not exist yet.",
+    "OQ-004": "Material composition ratio measurement basis undefined (area vs count vs footprint vs visual mass) -- blocks material composition validation. Not exercised: style.py does not exist yet.",
+    "OQ-007": "Anchor colour hex library missing -- blocks palette generation and wall-paint recalibration. Not exercised: palette.py does not exist yet."
+  },
+  "open_questions_still_open_project_wide_not_exercised_here": [
+    "OQ-003",
+    "OQ-005",
+    "OQ-006",
+    "OQ-008",
+    "OQ-009",
+    "OQ-010",
+    "OQ-011",
+    "OQ-012"
+  ],
+  "what_would_promote_this_to_a_clean_accept": [
+    "OQ-001 (CMR formula) is resolved so CMR_VALIDATION can return a firm pass/fail instead of needs_input -- the single highest-value unblock per ADR-0014.",
+    "OQ-010 resolves with a real doorway/functional-zone geometry source, so MIN_WALKWAY can return a firm verdict instead of needs_input.",
+    "style.py and palette.py are built so material/colour rules can be exercised in the same conformance run (their own OQ-002/004/005/006/007/008 blockers would still need resolving independently).",
+    "design_authority accepts representative fixtures as a permanent substitute for a spatial acceptance gate, since section 8 cannot serve that role for this notebook regardless of any future manual revision to section 8's colour/material content."
+  ],
+  "what_would_force_a_no_go_instead": [
+    "The deliberate failure scenario (large_living_room_floating_anchor_violation) failing to fire LR_FLOATING_ANCHOR (it did fire, in this run).",
+    "CMR_VALIDATION returning a silent pass instead of needs_input (it did not, in this run).",
+    "MIN_WALKWAY returning a silent pass or a fabricated hard verdict instead of needs_input (it did not, in this run).",
+    "A collision (NO_PLACEMENT_ON_VIOLATION) appearing in any scenario not designed to have one (none appeared, in this run)."
+  ]
+}
