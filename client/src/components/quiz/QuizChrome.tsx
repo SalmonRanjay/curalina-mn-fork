@@ -29,16 +29,16 @@ export function ChromeHeader() {
       <div className="relative flex items-center justify-between h-20 md:h-24 px-6 md:px-14">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button aria-label="Open menu" className="text-white/90 hover:text-white transition-colors" data-testid="button-menu">
+            <button aria-label="Open menu" className="!text-white/90 hover:!text-white transition-colors" data-testid="button-menu">
               <Menu className="w-7 h-7" strokeWidth={1} />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="cc-root">
+          <SheetContent side="left" className="cc-root !bg-white !text-[#231f20] border-r border-[#231f20]/20 [&>button]:!text-[#231f20] [&>button_svg]:!text-[#231f20]">
             <SheetTitle className="cc-wordmark !text-[#231f20]">Curalina &amp; Co.</SheetTitle>
             <nav className="mt-8 flex flex-col gap-5">
               {links.map((l) => (
                 <Link key={l.href} href={l.href}>
-                  <span onClick={() => setOpen(false)} className="cursor-pointer text-lg">{l.label}</span>
+                  <span onClick={() => setOpen(false)} className="cursor-pointer text-lg !text-[#231f20] hover:!text-[#7f807a] transition-colors">{l.label}</span>
                 </Link>
               ))}
             </nav>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 
@@ -51,7 +51,19 @@ export default function Quiz() {
     previousStep,
     canProceed,
     getStepContext,
+    resetQuiz,
   } = useQuiz();
+
+  // A quiz starts blank. Saved answers are only kept when the user arrives
+  // through an explicit edit link (e.g. "Update Answers" on a render that
+  // needs input), which carries ?edit=1.
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    const isEdit = new URLSearchParams(window.location.search).get("edit") === "1";
+    if (!isEdit) resetQuiz();
+  }, [resetQuiz]);
 
   // UI state (local to this component)
   const [uploadingPhoto, setUploadingPhoto] = useState(false);

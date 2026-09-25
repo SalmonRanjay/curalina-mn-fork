@@ -519,7 +519,7 @@ export default function Results() {
               {render.errorMessage || "Something went wrong while generating your design."}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz">
+              <Button onClick={() => setLocation("/quiz?edit=1")} data-testid="button-retry-quiz">
                 Try Again
               </Button>
               {isAuthenticated && (
@@ -555,7 +555,7 @@ export default function Results() {
               {render.errorMessage || "We need a bit more information before we can generate this design."}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => setLocation("/quiz")} data-testid="button-retry-quiz-needs-input">
+              <Button onClick={() => setLocation("/quiz?edit=1")} data-testid="button-retry-quiz-needs-input">
                 Update Answers
               </Button>
               {isAuthenticated && (
