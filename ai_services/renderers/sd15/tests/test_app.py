@@ -133,3 +133,19 @@ def test_package_imports_without_torch() -> None:
     import curalina_sd15.pipeline  # noqa: F401
 
     assert "torch" not in sys.modules
+
+
+def test_lora_settings_and_trigger() -> None:
+    from curalina_sd15.pipeline import Settings, apply_trigger, model_label
+
+    off = Settings.from_env({})
+    assert off.lora_path is None
+    assert apply_trigger("a room", off) == "a room"
+    assert model_label(off) == off.model_id
+
+    on = Settings.from_env({"SD15_LORA_PATH": "/lora", "SD15_LORA_SCALE": "0.8"})
+    assert on.lora_scale == 0.8
+    assert apply_trigger("a bright room", on) == "crlnstyle, a bright room"
+    twice = apply_trigger("crlnstyle, a room", on)
+    assert twice == "crlnstyle, a room"  # not duplicated
+    assert model_label(on).endswith("+lora")

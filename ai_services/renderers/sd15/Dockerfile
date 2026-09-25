@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir diffusers transformers accelerate safetensors \
+RUN pip install --no-cache-dir diffusers transformers accelerate safetensors peft \
     fastapi uvicorn pillow pydantic
 
 COPY pyproject.toml README.md /app/

@@ -14,6 +14,10 @@ class Settings:
     model_id: str = "stable-diffusion-v1-5/stable-diffusion-v1-5"
     steps: int = 20
     guidance: float = 7.5
+    # Optional LoRA: folder with pytorch_lora_weights.safetensors, or the file.
+    lora_path: str | None = None
+    lora_scale: float = 1.0
+    lora_trigger: str = "crlnstyle"
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -23,7 +27,22 @@ class Settings:
             model_id=e.get("SD15_MODEL_ID", d.model_id),
             steps=int(e.get("SD15_STEPS", d.steps)),
             guidance=float(e.get("SD15_GUIDANCE", d.guidance)),
+            lora_path=e.get("SD15_LORA_PATH") or None,
+            lora_scale=float(e.get("SD15_LORA_SCALE", d.lora_scale)),
+            lora_trigger=e.get("SD15_LORA_TRIGGER", d.lora_trigger),
         )
+
+
+def model_label(settings: Settings) -> str:
+    return settings.model_id + ("+lora" if settings.lora_path else "")
+
+
+def apply_trigger(prompt: str, settings: Settings) -> str:
+    """With a LoRA loaded, ensure its trigger word is in the prompt."""
+    trigger = settings.lora_trigger.strip()
+    if settings.lora_path and trigger and trigger.lower() not in prompt.lower():
+        return f"{trigger}, {prompt}"
+    return prompt
 
 
 class Pipeline(Protocol):
@@ -66,7 +85,7 @@ class _DiffusersPipeline:
         if seed is not None:
             generator = torch.Generator(device="cpu").manual_seed(seed)
         result = self._pipe(
-            prompt=prompt,
+            prompt=apply_trigger(prompt, self._settings),
             negative_prompt=negative_prompt,
             width=width,
             height=height,
@@ -100,6 +119,12 @@ class DiffusersPipelineFactory:
             safety_checker=None,
             requires_safety_checker=False,
         )
+        if settings.lora_path:
+            lora = os.path.abspath(settings.lora_path)
+            if not os.path.exists(lora):  # fail closed: no silent fallback
+                raise FileNotFoundError(f"SD15_LORA_PATH does not exist: {lora}")
+            pipe.load_lora_weights(lora)
+            pipe.fuse_lora(lora_scale=settings.lora_scale)  # bake in: no per-step cost
         pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
         pipe.enable_attention_slicing()
         pipe = pipe.to(device)

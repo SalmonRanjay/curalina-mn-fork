@@ -23,9 +23,15 @@ services:
       SD15_STEPS: ${SD15_STEPS:-20}
       SD15_GUIDANCE: ${SD15_GUIDANCE:-7.5}
       HF_HOME: /hf_cache
+      # Optional LoRA trained in the Colab notebook. Put pytorch_lora_weights.safetensors in ./sd15/lora and set
+      # SD15_LORA_PATH=/lora in your shell (or .env) to use it.
+      SD15_LORA_PATH: ${SD15_LORA_PATH:-}
+      SD15_LORA_SCALE: ${SD15_LORA_SCALE:-1.0}
+      SD15_LORA_TRIGGER: ${SD15_LORA_TRIGGER:-crlnstyle}
     volumes:
       # Hugging Face cache so weights download once.
       - hf_cache:/hf_cache
+      - ./sd15/lora:/lora:ro
     healthcheck:
       # Only needs HTTP 200; readiness (model loaded) is not health.
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8104/healthz', timeout=2)"]

@@ -16,6 +16,7 @@ from .pipeline import (
     Pipeline,
     PipelineFactory,
     Settings,
+    model_label,
 )
 from .schemas import LABEL, RENDERER_NAME, ErrorBody, RenderRequest
 
@@ -79,7 +80,7 @@ def create_app(
             media_type="image/png",
             headers={
                 "X-Renderer": RENDERER_NAME,
-                "X-Model-Id": cfg.model_id,
+                "X-Model-Id": model_label(cfg),
                 "X-Elapsed-Ms": str(int((time.monotonic() - start) * 1000)),
                 "X-Label": LABEL,
             },
