@@ -221,3 +221,21 @@ def test_healthz(tmp_path: Path) -> None:
     assert ok.json() == {"status": "ok", "renderer": "composite", "ready": True}
     missing = TestClient(create_app(tmp_path / "nope")).get("/healthz")
     assert missing.status_code == 200 and missing.json()["ready"] is False
+
+
+def test_matte_removes_white_background_but_keeps_interior_white() -> None:
+    from PIL import Image as _I
+
+    from curalina_composite.matting import matte_white_background
+
+    img = _I.new("RGBA", (40, 40), (255, 255, 255, 255))  # opaque white studio bg
+    for x in range(10, 30):
+        for y in range(10, 30):
+            img.putpixel((x, y), (30, 60, 90, 255))  # product body
+    for x in range(18, 22):
+        for y in range(18, 22):
+            img.putpixel((x, y), (255, 255, 255, 255))  # white detail inside product
+    out = matte_white_background(img)
+    assert out.getpixel((0, 0))[3] == 0
+    assert out.getpixel((20, 20))[3] == 255
+    assert out.getpixel((12, 12)) == (30, 60, 90, 255)

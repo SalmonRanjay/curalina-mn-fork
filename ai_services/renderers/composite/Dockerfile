@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir fastapi uvicorn pillow pydantic
+RUN pip install --no-cache-dir fastapi uvicorn pillow pydantic numpy
 
 COPY pyproject.toml README.md /app/
 COPY src /app/src

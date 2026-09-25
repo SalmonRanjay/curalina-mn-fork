@@ -11,6 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 from .catalogue import ART, Product, scan
+from .matting import matte_white_background
 from .palette import UnsupportedBrief, palette_for
 from .scene import BACK_LEFT, BACK_RIGHT, Geometry, draw_shell, soft_shadow
 
@@ -121,8 +122,12 @@ def _is_usable(img: Image.Image, is_art: bool) -> bool:
     if is_art:
         return True
     # A furniture "cutout" with no transparency at all is not a cutout.
-    alpha = img.convert("RGBA").getchannel("A")
-    return min(alpha.tobytes()) < 255
+    alpha = img.convert("RGBA").getchannel("A").tobytes()
+    if min(alpha) == 255:
+        return False
+    # After matting, almost nothing visible left means it was not a product photo.
+    visible = sum(1 for a in alpha if a > 127)
+    return visible >= 0.02 * len(alpha)
 
 
 def _load(product: Product, is_art: bool) -> Image.Image | None:
@@ -132,6 +137,8 @@ def _load(product: Product, is_art: bool) -> Image.Image | None:
             loaded = im.convert("RGBA")
     except (OSError, ValueError):
         return None
+    if not is_art:
+        loaded = matte_white_background(loaded)
     return loaded if _is_usable(loaded, is_art) else None
 
 
