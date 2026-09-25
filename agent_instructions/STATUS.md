@@ -14,7 +14,78 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-09-17 (session 19)
+# OPERATIONAL REFERENCE — current as of 2026-09-24 (session 20)
+
+## Session 20 (2026-09-24) — client "Consultation 1" design document analysed (`ADR-0021`)
+
+*Full decision record, impact matrix, verbatim option strings and
+look-and-feel tokens are in `ADR-0021`. This is the dispatch summary.*
+
+**What the consultation is.** A 22-page client PDF of UI mockups with red
+programmer annotations. It covers the whole customer journey: a new quiz
+(3 rooms, Home Office dropped; 3 aesthetic personas tied to the catalogue
+styles `Organic Modern` / `Contemporary Luxe` / `Mid-Century Scandinavian`;
+materiality; atmosphere `Bright & Airy` / `Warm & Balanced` /
+`Dark & Moody`; pattern density; room-scoped practical touches with dining
+seating and bedroom bed size; $20K-$66K+ investment bands), a verify/refine
+gate, room photo/floorplan upload, a narrative loading screen, a light
+theme and email-first auth. After that: a package paywall ($1,499 /
+$4,100), cart and payment, an AI-written design reveal, "refine up to 3
+times and see it in your space", fabric samples ($35), a concierge call,
+and a product detail page with AI "curator" copy.
+
+**Where it lives (untracked).** Page images:
+`docs/consultation-1/pages/page-01.jpg` ... `page-22.jpg`. The only trusted
+extraction is `docs/consultation-1/EXTRACTION.md`, verified against the
+images. An earlier automated extraction was discarded for invented content.
+`tech-lead` re-verified p2, p4, p8, p9, p10, p12, p14, p22 against the
+images this session.
+
+**What was decided (`ADR-0021`).**
+- **Quiz, auth and loading are in scope now.** They are being built by
+  `typescript-app-engineer` (item 28, dispatched this session), with four
+  nullable `quizResponses` columns and hand-reviewed migration
+  `migrations/0004_modern_wither.sql`. **Never `drizzle-kit push`.**
+- Aesthetic (p2) and materiality (p4) are two steps. Only aesthetic drives
+  `style`; materiality is stored and not sent.
+- p8 is treated as Dining (seating 4-12, single-select), and bed size is
+  Bedroom-only and single-select. Assumptions, now asked of the client.
+- p10's five bands are used everywhere; p11/p12's numbers are mock errors.
+- **Currency: CAD default, configurable (`CURALINA_CURRENCY`), by owner
+  instruction.** This closes item 20's currency half as a decision; the
+  implementation is still pending.
+- **Atmosphere now has a real quiz source (p5).** This supersedes
+  `ADR-0018` §D1's `colorPalettes` route, and closes item 20's atmosphere
+  half.
+- The wire vocabulary becomes snake-case codes (`living_room`,
+  `organic_modern`, `bright_airy`...) per `03_data_contracts.md`.
+  Recommendation's `DesignProfileIn` gets closed enums plus optional
+  `pattern_level` / `lifestyle_requirements` / `seating_capacity` /
+  `bed_size`. **Major bump** (item 29).
+- Paywall, checkout, reveal, refine loop, AI copy, fabric samples, concierge
+  and PDP are **deferred** as items 31-34. Each is blocked on either real
+  room pixels (item 27) or client business facts.
+
+**Three things found that nobody had recorded.**
+1. **A fifth chain break:** the mapper sends `quizResponses.keyFeatures` as
+   recommendation's product `categories`. Those were never categories, and
+   under the new quiz they are practical-touch sentences. Fixed by design in
+   item 29 (`ADR-0021` §D5).
+2. **The client's supplier "Programmer Handoff" workbooks** (Celadon /
+   Lazzoni / Luxus) are tagged on exactly the new quiz's axes. Their
+   `Practical Touches` column uses the quiz's own sentences verbatim,
+   including `Seating: N` and `Queen Size Bed`. **No ADR has admitted them
+   as a catalogue** (item 35). They moved from `~/Downloads` to
+   `/Users/rjsalmon/Documents/Humber/misc.curalina/Supplier CSV Files/`.
+3. **Recommendation's evaluation vocabulary** (`vocabulary_map_v1.yaml`,
+   built from the older Four Hands / Moe's workbook) contains neither
+   `Bright & Airy` nor `Warm & Balanced`, and spells styles
+   `Contemporary Lux` / `Mid-Century Scandi`.
+
+**Honesty rules binding on item 28 (`ADR-0021` §D9).** The p14 checklist
+ticks only on real state transitions. "Finalizing room design" is never
+checked while rooms produces no image, and no stand-in render is ever
+shown. Header initials come from a real stored name, never the email.
 
 ## Session 19 (2026-09-17) — fixed the stuck-loading-screen bug
 
@@ -300,7 +371,7 @@ that the room picture stays unbuilt until `OQ-010` is answered.
 | 17 | **`/admin/product` page in the monolith** | `typescript-app-engineer` | `ADR-0017` (scope ruling); `ADR-0016` (fail-closed precedent) | Upload + product listing + existing image management only. **Variant generation ships visibly disabled and labelled unavailable.** No placeholder mask, no heuristic mask, no invented `OQ-xxx` | items 15+16 for the generation flow; the rest is dispatchable now | **Now fully dispatchable.** Items 15+16 both closed 2026-09-16, so the generation flow is no longer blocked — `ADR-0017`'s block is lifted. Settled and not to be re-argued: N colours = N jobs (no batch endpoint); "Accept" is two writes (variants review + monolith `products` write) and must not collapse job success / candidate approval / commercial availability. The mask is a **human-authored upload** on this screen, not something the page generates |
 | 18 | ~~**Rooms contract: required `provenance_mode`, own `layout_version`**~~ | `contracts-qa-steward` + `python-services-engineer` | `ADR-0018` §D4, §D5; `ADR-0015`; `ai_services/room_generator/src/curalina_rooms/api/schemas.py:131-139` | Rooms' wire contract + both in-repo consumers (`server/services/ai-adapter/render-job-client.ts`, `ai_services/suite_client.py`). **`provenance_mode` is required with no default** — a request that omits it is a contract error. `CURALINA_ROOMS_LAYOUT_VERSION` is a new fail-closed setting. **Major version bump for rooms' request contract** | `ADR-0018` | **Closed 2026-09-16 → `ROOM-A2-02`, after a serious correction round.** `provenance_mode`/`layout_version` are now required on `RenderJobRequest`, `suite_client.py` updated to send them. **But independent full-suite verification (not the narrow `tests/contract/` subset the first report cited) found the real rooms FastAPI app could not even start** — `ImportError` on `sqlite_store.py` importing `invalid_job_state_error` (didn't exist in `errors.py`), plus `app.py` calling `RoomsContractService(store)` against a zero-argument constructor. Root cause traced to a **`git reset --hard HEAD` that silently wiped uncommitted edits to `errors.py`/`service.py`** — confirmed via `git reflog` showing two reset-to-HEAD events this session, almost certainly run by a background agent unaware this project's institutional state lives in uncommitted files (see the incident note in "Environment notes" below). Not this packet's fault, but it broke on top of this packet's work and had to be fixed here. Fixed: `invalid_job_state_error` added back, `RoomsContractService` now takes an optional `store` param (delegates to SQLite when present, in-memory fake when `None`), `api/__init__.py`/`workers/__init__.py` re-export what they should have. Also found and fixed: `RenderRequest.provenance_mode` had no default (breaking existing callers) and `RoomPrepResult` was missing `geometry_source_mode` entirely — both required by test files the first report never ran. `python3 -c "from curalina_rooms.api.app import create_app; app = create_app()"` now succeeds. Full suite: **142 passed**, 95% branch coverage, ruff clean, mypy clean — all independently re-verified by the orchestrating session. Also flagged, not fixed (out of scope): `ai_services/recommendation/tests/` has an identical duplicate-test-basename collision, reproduced independently, needs its own fix |
 | 19 | **Recommendation contract: `supplier_id` + `supplier_sku` on `BundleLineItem`** | `contracts-qa-steward` + `python-services-engineer` | `ADR-0018` §D3 and C1-break-2; `architecture/guides/03_data_contracts.md:9,28`; `api/schemas.py:72-79` | Additive optional fields on `BundleLineItem` only. **Do not redefine `product_id`** — it stays recommendation's internal identifier per the data contract. Minor bump, no consumer breaks | `ADR-0018` | **Ready.** Without this the app has no way to resolve a bundle line item to its own `products` row — every AI-path render 500s with `product_mapping_mismatch`, guaranteed, regardless of fixtures |
-| 20 | **Unblock `design-profile-mapper.ts`: real `atmosphere`, decide `currency`** | `typescript-app-engineer` | `ADR-0018` §D1, §D2; `vocabulary_map_v1.yaml:14-40`; `client/src/components/quiz/ColorMaterialsStepV2.tsx:16-58` | `design-profile-mapper.ts` only. `atmosphere` = the single `quizResponses.colorPalettes` value when it is an exact `canonical_tags` member; two values or a non-member → `needs_input`. **No fuzzy matching, no synonym table.** A contract test asserting the quiz option list and `canonical_tags` agree is mandatory | `ADR-0018`; `currency` needs the client answer (see "What needs the client" item 14) | **Ready for `atmosphere`; `currency` blocked on one client sentence.** This is the first break in the chain — today the AI path returns `needs_input` on *every* request and never calls recommendation at all |
+| 20 | **Unblock `design-profile-mapper.ts`: real `atmosphere`, decide `currency`** | `typescript-app-engineer` | `ADR-0018` §D1, §D2; `vocabulary_map_v1.yaml:14-40`; `client/src/components/quiz/ColorMaterialsStepV2.tsx:16-58` | `design-profile-mapper.ts` only. `atmosphere` = the single `quizResponses.colorPalettes` value when it is an exact `canonical_tags` member; two values or a non-member → `needs_input`. **No fuzzy matching, no synonym table.** A contract test asserting the quiz option list and `canonical_tags` agree is mandatory | `ADR-0018`; `currency` needs the client answer (see "What needs the client" item 14) | **Ready for `atmosphere`; `currency` blocked on one client sentence.** This is the first break in the chain — today the AI path returns `needs_input` on *every* request and never calls recommendation at all. **Session 20 update (`ADR-0021`), superseding the Scope column's `colorPalettes`/`canonical_tags` rule:** *Atmosphere half closed.* Consultation p5 supplies a dedicated atmosphere question with exactly the catalogue's three values (`Bright & Airy` / `Warm & Balanced` / `Dark & Moody`). The `quizResponses.atmosphere` column and exact-match validation are being built in item 28; `ADR-0018` §D1 and its `03_data_contracts.md:14` amendment are superseded/withdrawn (`ADR-0021` §D3). *Currency half decided, not yet implemented.* Owner instruction: **CAD default, configurable**, via a new app setting `CURALINA_CURRENCY` (default `CAD`, 3-letter uppercase ISO-4217, fails closed on an invalid value), replacing the hardcoded `"USD"` and the `currencyConfirmedUsdOnly = false` gate in `design-profile-mapper.ts`. This is an owner decision, not an inference from Canadian context, so `03_data_contracts.md:11` is respected. **Remaining scope of this item is therefore just the currency setting plus its test**; dispatch it after item 28 lands, because both edit `design-profile-mapper.ts`. The code translation and `categories` fix are item 29, not this item |
 | 21 | **The four missing Results-page endpoints** | `typescript-app-engineer` | `ADR-0018` §C3; `client/src/pages/Results.tsx:112-198`; `server/storage-curalina.ts:367,377,617,1304` | Add `GET /api/render/:id/products`, `GET /api/render/:id/ledger`, `GET /api/products/:id`, `GET /api/products/alternatives/:id`. Move `GET /api/render/latest` **above** `GET /api/render/:id`. Decide `/api/quiz-response/:id`'s auth. Also: `orchestrateAiRender` must write `renderProducts` rows. Thin handlers over existing storage methods — no new business logic | nothing | **Ready, and the cheapest high-value item in the backlog.** All four endpoints are fetched by the live Results page and none has ever existed in this repo. Storage layer already complete and tested |
 | 22 | **Job-completion reconciliation (`generating` → terminal)** | `typescript-app-engineer` | `ADR-0018` §D6; `ADR-0016`; `render-orchestrator.ts:42-47` | A background poller in the app over `GET /v1/jobs/{job_id}` using `renders.aiServiceRef`. **Not** a webhook from rooms into the app; **not** inline in `GET /api/render/:id`. Mandatory: a succeeded job whose output asset cannot be retrieved sets `failed` with a reason, never `completed` | items 18, 19, 20 | **Ready after 18-20; the client-side symptom is fixed, the server-side reconciliation is not.** ~~Add the `needs_input` terminal branch to `Loading.tsx`~~ **done session 19** — it was previously the only unhandled terminal status and every AI-path request landed there (item 20 still unresolved), so `Loading.tsx` hung on the spinner forever with no error; now redirects to `Results.tsx`'s existing honest `needs_input` state within one poll interval, independently re-verified live. What item 22 itself still needs is unchanged: a real backend poller against rooms' `GET /v1/jobs/{job_id}` so a `completed` render is ever reachable, not just `needs_input`/`failed` |
 | 23 | **Honest demo surface: remove the stock photo, label the room gap** | `typescript-app-engineer` | `ADR-0018` §D7.3, §C2; `ADR-0011`; `ADR-0015` | Delete the hardcoded Pexels URL at `server/routes.ts:792-793`. Results page shows the render job's real state and states plainly that room image generation is not built and is blocked on `OQ-010`. **No placeholder image of any kind** | item 22 | **Ready after 22.** Expect this to read as a regression — it is deliberate. Rooms has no image-producing code path at all (`fake_grounded_generation.py:24-40` returns an asset id for an asset that was never written), so any picture shown here would be fabricated |
@@ -308,11 +379,24 @@ that the room picture stays unbuilt until `OQ-010` is answered.
 | 26 | **Async room-render job UX: queue submission, dashboard polling badge** | `typescript-app-engineer` | `ADR-0018` §D6; item 22 (server-side reconciliation, a prerequisite); `client/src/pages/my-dashboard.tsx`; `client/src/pages/Loading.tsx` | After quiz submission, redirect straight to `/my-dashboard` instead of `/loading` — the render is created in `needs_input`/`generating` state and the dashboard shows a small loading indicator over that entry until item 22's poller resolves it to a terminal state. No blocking full-screen loading page for the room-render step. **Not started — explicitly deferred by the project owner as future work**, requested alongside the session-19 stuck-loading fix below | item 22 | **Not yet dispatched, and not to be started before item 22** (there is no backend job-completion poller yet for this UX to react to) |
 | 25 | ~~**`tsconfig.json` `include` covers the live `server/` tree**~~ | `typescript-app-engineer` | `ADR-0018` §D8, §C5 | Widen `include` to `server/**/*.ts`. Fix or explicitly annotate whatever pre-existing errors surface. **Do not narrow the glob back to make the build pass** | nothing; do it early, items 20-24 all edit `server/` | **Closed 2026-09-16.** `include` widened to `server/**/*.ts` with `server/functions/**` excluded (a stale, separately-built Firebase sub-package — confirmed unrelated by diffing its `routes.ts` against the real one). Added `esModuleInterop: true`, a legitimate systemic fix without which every default CommonJS import (`express`, `cors`, `multer`, `sharp`...) cascaded into spurious `implicit any` errors. 206 previously-invisible errors surfaced in real `server/` source on first run; traced the live import graph from `server/index.ts` via `madge` and fixed every error in every file actually reachable from the running app (`db.ts`, `storage.ts`, `storage-curalina.ts`, `localAuth.ts`, `objectAcl.ts`, `objectStorage.ts`, `routes.ts`, `routes-curalina.ts`, `routes-mapping-analysis.ts`). **Two of the fixes are real production bugs, not lint noise, independently verified:** (1) `storage-curalina.ts` had ~50 methods (including `getProductAlternatives`, which item 21/`ADR-0018` §C3 explicitly relies on as "already complete and tested" — it wasn't) referencing a bare, unimported `db` identifier instead of the file's real `getDb()` accessor; every one would have thrown `ReferenceError: db is not defined` at runtime. Fixed, spot-checked directly. (2) Both cart routes in `routes.ts` called `storage.addToCart(...)`, but that method only exists on `curalinaStorage`, not `DatabaseStorage` — every add-to-cart request would 500. Fixed to call `curalinaStorage.addToCart`, confirmed via direct read. 93 errors remain, all confirmed (via the same `madge` trace) to sit in the orphaned legacy Gemini/Stability/OpenAI render stack that `ADR-0018` §C2 already identified as dead code, unreachable from `server/index.ts` — correctly left untouched rather than rewriting abandoned business logic under a "fix the config" packet; deletion/revival of that stack is an explicit open decision for the owner, not something to resolve here. `npm run check`: exit 2, 209 errors (93 confirmed-dead-code server + 116 pre-existing client, both out of this packet's scope and unchanged by it). `npm run build`: exit 0, independently re-run. This is the highest-quality, most accurately self-reported packet of the session — no correction round needed |
 | 27 | **Real room generation: model + adapter architecture (`ADR-0020`)** — the standalone, independently trackable initiative for actual photorealistic room output. Six phases P1-P6 in `ADR-0020` §D8 | `python-services-engineer` (P1-P4, P6), `ml-notebook-engineer` + `ai-ml-lead` (P5) | `ADR-0020` **in full**, then `agentic_flow/14_room_generation_technical_design.md` (approaches A/B/C) and `agentic_flow/15_variant_generation_technical_design.md:92-103` (the `hard_composite` precedent this design copies) | `room_generator/` only. **Mode S (`synthetic_scene`) only** — mode G (a real room photograph) stays blocked on `OQ-010` and is not in this item. No G01/G02/G03 claim may be derived from any phase. `torch`/`diffusers` go in a `[gpu]` extra, never the base install. One phase per packet | P1-P3: nothing. P4/P6: GPU hardware (unfunded — see the item 27 guidance below). P5: `ai-ml-lead` first | **Newly scoped 2026-09-17, not yet dispatched.** `ADR-0020` §C1's finding is what makes this dispatchable: `OQ-010` blocks `RoomPrepAdapter` (geometry), **not** `GroundedGenerationAdapter` (pixels) — `PlannedInsertion.image_space_box` is already image-space by the time the generation adapter is called. P1-P3 are ordinary CPU engineering and produce a real image file with real product pixels before a single model weight is downloaded. Dispatch P1 first |
+| 28 | **Consultation 1 quiz/UI rebuild: quiz flow, auth page, loading screen (`ADR-0021`)** | `typescript-app-engineer` | `ADR-0021` §D1, §D2, §D7, §D9 and "How to replicate" §R2-§R4; `docs/consultation-1/EXTRACTION.md`; page images `docs/consultation-1/pages/` | Quiz p1-p13 (3 rooms, aesthetic personas → `Organic Modern` / `Contemporary Luxe` / `Mid-Century Scandinavian`, materiality, atmosphere, pattern, room-scoped practical touches + Dining seating + Bedroom bed size, p10 investment bands reused on Refine, Verify + Refine gate, Environmental Context upload), "Synthesizing Your Curation" loading screen, light-theme email-first auth page. Four nullable `quizResponses` columns (`atmosphere`, `materiality`, `seatingCapacity`, `bedSize`) via `drizzle-kit generate` + reviewed SQL, **never `push`**. `design-profile-mapper.ts` for `atmosphere` + new budget bands only. **Out of scope:** docs, currency (item 20), wire codes/`categories` (item 29), anything after p14 | nothing | **Dispatched 2026-09-24 (session 20), in progress.** Not yet reviewed. On review, check the `ADR-0021` §D9 honesty rules (checklist bound to real state, no stand-in render, initials only from a stored name), that `budgetRange` stored values use ASCII `-` (`consultationOptions.ts` does), and that the migration is exactly four `ADD COLUMN`s (`migrations/0004_modern_wither.sql` is) |
+| 29 | **Recommendation profile contract for the consultation fields (`ADR-0021` §D3-§D6)** | `python-services-engineer` + `contracts-qa-steward`; app side `typescript-app-engineer` | `ADR-0021` §D3, §D4, §D5, §D6 **in full**, "How to replicate" §R3; `ADR-0006` §D2; `ADR-0013` §D2.3, §D3; `api/schemas.py:55-69`; `architecture/guides/03_data_contracts.md:12-14,34` | Recommendation: closed enums for `room_type`/`style`/`atmosphere` (snake-case codes); new optional `pattern_level`, `lifestyle_requirements`, `seating_capacity` (Dining only), `bed_size` (Bedroom only); importer normalises handoff-workbook strings to codes and **counts** rejects (e.g. `Birght & Airy`); per-requirement `needs_input` citing `OQ-012` for `media_area`/`fireplace`; `categories` from a Design Manual per-room rule or `needs_input` (**check the pinned PDF first**). App: display→code lookup in `design-profile-mapper.ts`, stop sending `keyFeatures` as `categories`, send `lifestyle_requirements`. **Major bump** on recommendation's request contract; recommendation ships first (`extra="forbid"`). **No tag-equality filtering or ranking on catalogue tags** until `ai-ml-lead` rules (escalation below) | items 19, 20, 28; item 35 for any run against the handoff workbooks; `ai-ml-lead` ruling for tag filtering only | **Ready after 19/20/28, except tag filtering.** Escalated to `ai-ml-lead`: may catalogue `Room Type` / `Design Style` / `Atmosphere` / `Practical Touches` be read by a Layer-1 filter through a separate `ProductTags` record no `FeatureEncoder` can reach? `tech-lead` recommends yes, as the deterministic rules-first route (`ADR-0021` §D6). Until ruled, the fields are accepted and persisted but do not filter |
+| 30 | **Contracts suite + contract documents for `ADR-0021`** | `contracts-qa-steward` | `ADR-0021` §D4, §D12, impact matrix "Contracts suite" row; `ai_services/contracts/v1/CONTRIBUTING.md`; `agentic_flow/AMENDMENTS.md` (pattern) | `ai_services/suite_client.py` gains the optional D4 fields in one case (its profile already uses codes, `:285-292`). New contract test: the app mapper's display→code lookup tables and recommendation's enums are identical sets (replaces `ADR-0018` §D1's palette-vs-`canonical_tags` test, now moot). Two targeted amendments: `03_data_contracts.md:12` names the closed room set `living_room, dining_room, bedroom`; `:34` names the D4 field codes. No new shared `design_profile.schema.json` (the profile is recommendation-owned) | item 29 | Not started |
+| 31 | **Package paywall, cart, checkout, payment (consultation p15-p17) — future** | `typescript-app-engineer` (monolith only, `ADR-0019`) after `tech-lead` design | `ADR-0021` §D11, FW-1/FW-2/FW-9; `ADR-0016`; `ADR-0018` §D7 | Singular $1,499 / Harmonized $4,100 packages, blurred-render paywall, package cart, hosted-checkout processor (card data never touches Express), taxes, bill-to address. Payment gated on render job succeeded **and** curator review approved, never job success alone | **Client answers:** "What needs the client" items 19 (package vs rooms / multi-room quiz) and 23 (processor, tax, returns, refunds); item 27 P1-P4 (something to reveal); item 32's review state | **Future, not dispatchable.** Needs client answers and real render pixels |
+| 32 | **Design reveal, curated selections, refine-up-to-3x loop, product detail page (consultation p18-p22) — future** | `typescript-app-engineer` + `python-services-engineer` (recommendation substitution) + rooms (re-render) | `ADR-0021` FW-3/FW-4/FW-8, §D9.4; `ADR-0020`; `ADR-0011`; `04_recommendation.md` step 8 (substitution) | Each refine = recommendation substitution (freeze others, re-budget, revalidate) **plus** a new rooms render job, never a mutation of the old one. The 3-refinement entitlement counter lives in the monolith (commercial state), per environment for Harmonized. PDP shows catalogue `Structure` / `Upholstery` / `Fabric Composition` / `Fabric Feel` and dimensions (mm internally, in + cm displayed); **no delivery date or production timeline without source data** | **Blocked on room generation:** item 27 P1-P4 for any image; `OQ-010` for "see this in your space" (mode G); item 21 (alternatives endpoint); item 35; client item 23 (delivery-date logic) | **Future, blocked on rooms generation** |
+| 33 | **AI-generated narrative copy: "About Your Design" (p18), "From the Curator" (p22) — future** | `tech-lead` (design) → `ai-ml-lead` (acceptance if any model is used) → engineers | `ADR-0021` §D10; `ADR-0016`; `ADR-0013` §D3 | Deterministic first: PDP curator text = supplier `Product Overview` verbatim; reveal text = template from stored profile + actual bundle attributes. Any LLM path needs a grounding check that every named material/product exists in the bundle. **Failure state: the section is omitted and the failure logged** — no generic paragraph, no fabricated prose. Machine text is never attributed to a human curator | A design under `ADR-0016`/`ADR-0021` §D10; client item 22 (AI disclosure / "Genius"); item 32 for the reveal page to exist | **Future, needs a design first** |
+| 34 | **Fabric samples ($35) and concierge / design-support add-ons (p19-p21) — future** | `typescript-app-engineer` | `ADR-0021` FW-6/FW-7 | Fabric samples: a monolith add-on product plus a fulfilment process. Concierge: email capture sent to the client's inbox (p21 annotation), "follow up within two business days", no scheduling integration | Client item 23 (sample fulfilment, destination inbox, consent wording) | **Future.** The concierge half is cheap and needs only the inbox and consent answer |
+| 35 | **Admit the Celadon / Lazzoni / Luxus "Programmer Handoff" workbooks as a catalogue source (provenance ADR)** | `tech-lead` | `ADR-0005`, `ADR-0007`, `ADR-0009` (read-in-place / by-hash pattern); `ADR-0021` §C1-§C2 | Read in place at `/Users/rjsalmon/Documents/Humber/misc.curalina/Supplier CSV Files/`, pinned by sha256 (`ADR-0021` §C1), **never copied into the repo**. Record the measured defects: `Birght & Airy` x3; 97/689 Luxus rows with `Retail Price` 0; `Return Policy` / `Delivery Options` = `None` everywhere; `Lead Time` `None` for Lazzoni/Luxus; no currency column; multi-valued `Room Type` split on `; `; noisy `Seating:`/bed-size tags. State how item 24 changes (which workbook set the runtime imports) | nothing | **Ready.** Gates item 29's importer work and any item 24 run against these workbooks |
 
 **Suggested order:** 25 → 18 → 19 → 20 → 21 → 24 → 22 → 23. 25 first so
 every later packet is type-checked. 18/19 are contract changes and should
 land before their consumers. 21 is independent of everything and can run in
 parallel with any of them.
+
+**Session 20 addendum (`ADR-0021`):** 28 (in progress) → 20 (currency
+setting only) → 35 → 19 → 29 → 30. Item 21 can still run in parallel with
+any of them. 31-34 are not dispatchable: each needs client answers, real
+room pixels (item 27), or both.
 
 **Session 18 addendum, not a numbered item:** `renders.aiServiceRef` (added
 to `shared/schema.ts` by item 10c, session 16) had never actually been
@@ -1009,6 +1093,64 @@ scheduling until someone funds it. This is a commercial decision, not a
 Design Manual gap, which is why it is written here rather than minted as an
 open question.
 
+### Items 28-35 — Consultation 1 (`ADR-0021`)
+
+**The replication source is `ADR-0021`'s "How to replicate" section.** It
+carries every verbatim option string (§R2), the stored-value vs wire-code
+table (§R3) and the look-and-feel tokens (§R4). Do not re-extract from the
+PDF, and do not trust any extraction other than
+`docs/consultation-1/EXTRACTION.md`.
+
+**Item 28 review checklist, beyond "tests pass".** This packet touches the
+loading screen, and the loading screen is where fabricated success would
+creep in:
+- Read the actual checklist state logic. Every tick must correspond to a
+  real event (`ADR-0021` §D9.1). Step 4 must never tick while rooms has no
+  image.
+- The "dissolve into the final render" must end in `Results.tsx`'s real
+  terminal state, with no stand-in image.
+- Check the verify card shows the customer's real band, not p11's
+  `$12,000 - $15,000`.
+- Check that initials never come from the email.
+- Check the migration is exactly four `ADD COLUMN`s before it is applied.
+
+**Item 20 and item 28 both edit `design-profile-mapper.ts`.** Dispatch 20
+after 28 closes, not in parallel. Item 20 is now small: `CURALINA_CURRENCY`
+setting, default `CAD`, strict ISO-4217 validation, fail closed on an
+invalid value (copy `CURALINA_CATALOGUE_SNAPSHOT_ID`'s fail-closed pattern
+in `server/config/ai-services.ts`), plus a test that an invalid value is
+rejected.
+
+**Item 29 has one step that must come first: check whether the Design
+Manual defines a per-room set of required furniture categories.**
+- If it does, cite the page, encode it in `curalina_design_rules` (the one
+  shared package, where room composition belongs), and have recommendation
+  read it.
+- If it does not, `categories` becomes `needs_input` and the gap goes to
+  the client (item 27 below).
+- Either way, **do not hardcode a room-to-category list in the app or in
+  recommendation**, and do not keep forwarding `keyFeatures`. Under the new
+  quiz those are sentences like "Storage to keep everything tidy", and
+  recommendation would treat them as product categories.
+
+**Item 29's other trap: splitting `Practical Touches`.** The catalogue
+delimiter is `; `, and the first option itself contains a comma ("Cozy,
+relaxing space for everyday comfort"). A comma split produces two junk
+tags per row: `ADR-0021`'s own first measurement script made exactly that
+mistake. Match whole sentences against the §R3 table.
+
+**Item 29 ordering.** Recommendation's `DesignProfileIn` has
+`extra="forbid"`, so the app cannot send a new field until the service
+accepts it. Ship recommendation first. Update `suite_client.py` in the same
+sequence. Then switch the app mapper. The enum narrowing is a **major**
+bump: say so in the contract version, not just the commit message.
+
+**Item 35 is `tech-lead`'s own, and it is quick.** The measurements are
+already in `ADR-0021` §C1-§C2 and the hashes are pinned. What remains is
+the admissibility ruling in `ADR-0005`'s shape, plus a decision on how item
+24 changes. Item 24 currently names the Four Hands / Moe's importer; the
+consultation's vocabulary lines up with these workbooks instead.
+
 ## What needs the client — escalate as concrete asks, not open questions
 
 1. **`OQ-010` / G01 room scenes.** Stated as a shopping list because "what is
@@ -1144,6 +1286,99 @@ open question.
     `currency` — which means **item 20 does not fully open the chain
     without this answer**, even after `atmosphere` is fixed. We will not
     infer a currency from supplier nationality.
+    **Session 20: answered by the project owner: CAD default,
+    configurable** (`ADR-0021` §D8). The remaining workbook-price
+    question is item 26 below.
+
+*Items 15-27 come from the client's "Consultation 1" design document
+(`ADR-0021`; `docs/consultation-1/EXTRACTION.md` §"Ambiguities", A1-A10).
+Where we had to proceed, the working assumption is stated. Each is phrased
+so the client can answer in a sentence or two.*
+
+15. **(A1) Aesthetic vs materiality, pp.2 and 4.** *"Are 'Identify Your
+    Aesthetic' (p2) and 'Define the materiality and depth of the
+    environment' (p4) two separate questions, or two drafts of one? If two,
+    what should the materiality answer change when it differs from the
+    aesthetic answer?"* Also confirm the persona order: *"p2's three photos
+    are, in order, Organic Modern, Contemporary Luxe, Mid-Century
+    Scandinavian: correct?"* Only p4 is annotated. **Working assumption:**
+    two steps; aesthetic drives style; materiality is stored but unused
+    (`ADR-0021` §D1).
+16. **(A2) Which room is p8?** *"The practical-touches screen with 'Seating:
+    4 6 8 10 12' has no room label. Is it the Dining Room, and is seating
+    asked for Dining only?"* Your own supplier sheets put `Seating: N`
+    mostly on dining tables. **Working assumption:** Dining only,
+    single-select.
+17. **(A3) Bed size.** *"Is bed size one choice (Double, Queen or King), and
+    should it limit which beds we show, or only inform the picture?"*
+    **Working assumption:** single-select, Bedroom only, stored. It does not
+    yet filter products.
+18. **(A4) Investment bands, and what they cover.** p10 ($20,000-$66,000+),
+    p12 ($12,000-$31,000+) and p11 ($12,000-$15,000) disagree. *"Which bands
+    are correct?"* **Working assumption:** p10's five bands everywhere.
+    Ask in the same breath: *"Does the investment cover furniture only, or
+    also the $1,499 / $4,100 design fee, delivery and tax?"* This decides
+    what budget the recommender works to.
+19. **(A5) Packages vs rooms.** *"Singular covers one room and Harmonized
+    covers three. For Harmonized, does the customer take the quiz once per
+    room, or once for all three? Is the investment per room or total?"*
+    Blocks item 31.
+20. **(A6) Currency.** Answered by the owner (CAD default, configurable).
+    Recorded here so it is not re-asked. See item 26 for the
+    supplier-price side.
+21. **(A7) Pattern wording.** p6 says *Just Solids / Patterned Accents /
+    Pattern Forward*; p12 says *Mostly Solids / A touch of pattern /
+    Embrace pattern*. *"Which wording should customers see?"* **Working
+    assumption:** p6's words are stored and p12's are display-only. Also
+    ask whether the bedroom's "Refined space for hosting guests" (p9) is
+    meant to differ from "hosting and socializing". Your supplier sheets
+    only use the latter.
+22. **(A8) AI-written text and disclosure.** *"'About Your Design' (p18) and
+    'From the Curator' (p22) are to be AI-generated. Should customers be
+    told the text is AI-written? Is 'Genius' (p22 note) the name of an AI
+    persona, or a person?"* We will not present machine-written text as a
+    human curator's words (`ADR-0021` §D10). Also ask: *"Is the supplier's
+    own 'Product Overview' acceptable as the curator note for now?"*
+23. **(A9) Commerce facts, all needed before items 31/32/34.**
+    - *Returns:* p20's own note asks whether returns are accepted at all,
+      and every row of all three supplier sheets has `Return Policy` =
+      `None`. *"Do you accept returns, and what is the one policy text?"*
+    - *Payment:* *"Which payment processor (Stripe, Shopify, other), and
+      are refunds possible on the $1,499 / $4,100 packages?"*
+    - *Tax:* *"Which provinces/countries do you sell to?"*
+    - *Delivery dates:* p19's "Get it Fri Jun 18 - Jun 20" and p22's "8 -
+      16 weeks, made to order" have no data behind them (`Lead Time` is
+      empty for Lazzoni and Luxus). *"Where should delivery estimates come
+      from?"*
+    - *Fabric samples:* *"Who ships them, and from where?"*
+    - *Concierge:* *"Which inbox receives call requests, and what consent
+      wording do you want?"*
+24. **(A10) Customer names.** *"The sign-up screen (p3) collects only email
+    and password, but the reveal says 'Kash, here is…' and the header shows
+    initials. Should we collect a first and last name at sign-up?"* Until
+    answered, we show no name and no initials rather than guess one from
+    the email address.
+25. **Brand assets.** *"Please send the brand colour palette, the licensed
+    heading and body fonts, the 'Curalina & Co.' wordmark and 'CC'
+    monogram as vector files, and the lifestyle/mood-board photography used
+    in the mockups (p1, p2, p4, p5), with permission to use it on the
+    site."* The build currently uses colours sampled from the mockups and
+    stand-in imagery (`ADR-0021` §R4).
+26. **Supplier price currency and data gaps (non-blocking).** *"Are the
+    Retail/Trade prices in the Celadon, Lazzoni and Luxus sheets in CAD?"*
+    None of them has a currency column, and Lazzoni is a Turkish
+    manufacturer. Also: *"97 Luxus products have a Retail Price of 0: are
+    these unavailable, or missing a price?"*; and three Luxus rows say
+    `Birght & Airy`. We will reject and count those, not auto-correct them.
+27. **`design_authority`: which furniture pieces make up each room?** The
+    recommender needs, per room (Living, Dining, Bedroom), the set of
+    furniture categories a complete design must contain, e.g. *"a living
+    room = sofa + coffee table + accent chair + rug + lighting + art"*.
+    **If the Design Manual already defines this, point us to the page**:
+    `tech-lead` has not yet confirmed it does (dispatch item 29 checks
+    first). Without it, recommendation cannot honestly decide what to
+    recommend, and it returns `needs_input` rather than use a list we made
+    up.
 
 **`agentic_flow/open_questions.yaml` has not been edited by any ADR to date.**
 Client- and `design_authority`-owned questions are not closed on our reading
@@ -1173,6 +1408,12 @@ of their documents.
 | R03 no-go on real furniture data; synthetic-fixture conditions | `ADR-0013-r03-no-go-on-real-furniture-data.md` |
 | D01 status + Design Manual §8's evidentiary role | `ADR-0014-d01-status-and-design-manual-section-8-evidentiary-role.md` |
 | Synthetic/default-dimension room mode for E2E progress while G01 remains blocked | `ADR-0015-synthetic-room-mode-does-not-unblock-g01.md` |
+| App fails closed when AI services are unreachable; no fabricated success | `ADR-0016-app-fails-closed-when-ai-services-unreachable.md` |
+| Variant masks are human-authored; admin variants scope | `ADR-0017-variant-masks-are-human-authored-and-admin-variants-are-blocked.md` |
+| End-to-end demo scope and the four chain breaks (§D1 atmosphere route **superseded by `ADR-0021` §D3**) | `ADR-0018-end-to-end-demo-scope-and-the-four-chain-breaks.md` |
+| Express layer still required; decommission path documented only | `ADR-0019-express-layer-is-still-required-decommission-path-documented-only.md` |
+| Real room generation: model + adapter architecture (item 27) | `ADR-0020-real-room-generation-model-and-adapter-architecture.md` |
+| Client "Consultation 1": new quiz, wire vocabulary, profile contract, deferred commerce/reveal features, replication spec (items 28-35) | `ADR-0021-consultation-1-quiz-and-flow-changes.md`; source images `docs/consultation-1/pages/`, extraction `docs/consultation-1/EXTRACTION.md` |
 
 **Build briefs, one per service** — `agent_instructions/00_design_rules_engine.md`,
 `01_recommendation_service.md`, `02_variant_generator_service.md`
