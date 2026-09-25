@@ -46,6 +46,8 @@ export interface DesignProfileNeedsInput {
 
 export type DesignProfileMappingResult = DesignProfileIn | DesignProfileNeedsInput;
 
+const CANONICAL_ATMOSPHERES = ["Bright & Airy", "Warm & Balanced", "Dark & Moody"] as const;
+
 function needsInput(missingField: string): DesignProfileNeedsInput {
   return { needsInput: true, missingField };
 }
@@ -114,6 +116,18 @@ export function parseBudgetRangeToMinorUnits(budgetRange: string | null | undefi
     return closedRangeMidpointMinorUnits(low, high);
   }
 
+  // "$66,000+" (open-ended top band of the consultation investment step).
+  // Lower bound is used as-is: there is no upper bound to average against
+  // and none is invented. Other open-ended forms ("Over $20,000") stay null.
+  const openEndedMatch = trimmed.match(/^\$?\s*([\d,]+)\s*\+$/);
+  if (openEndedMatch) {
+    const low = parseFloat(openEndedMatch[1].replace(/,/g, ""));
+    if (!Number.isFinite(low) || low <= 0) {
+      return null;
+    }
+    return Math.round(low * 100);
+  }
+
   return null;
 }
 
@@ -157,11 +171,14 @@ export function toDesignProfile(quizResponse: QuizResponse): DesignProfileMappin
     return needsInput("categories");
   }
 
-  // `atmosphere` has no source field anywhere on `quizResponses` today.
-  // This is not a business-rule gap or an OQ-xxx blocker — it is a
-  // missing-field gap in the existing app's own schema, and the correct
-  // response is `needsInput`, per this packet's known-blockers note.
-  const atmosphere: string | null = null;
+  // `atmosphere` comes from the quiz's own `atmosphere` field, and only when
+  // it exactly equals one of the three canonical catalogue strings. No
+  // fuzzy/case-insensitive matching: anything else is `needsInput`.
+  const atmosphere: string | null = CANONICAL_ATMOSPHERES.includes(
+    quizResponse.atmosphere as (typeof CANONICAL_ATMOSPHERES)[number]
+  )
+    ? (quizResponse.atmosphere as string)
+    : null;
   if (!atmosphere) {
     return needsInput("atmosphere");
   }

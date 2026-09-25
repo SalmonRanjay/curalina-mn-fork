@@ -16,6 +16,12 @@ export interface QuizData {
   roomPhoto: string;
   floorplanUrl: string;
   roomDescription: string; // Natural language description of room dimensions and preferences
+  // Consultation-1 fields
+  atmosphere: string; // 'Bright & Airy' | 'Warm & Balanced' | 'Dark & Moody'
+  materiality: string; // canonical style string chosen on the materiality step
+  seatingCapacity: number | null; // Dining Room only
+  bedSize: string; // Bedroom only
+  aestheticCaption: string; // persona caption shown back on the Verify screen (client-only, not submitted)
 }
 
 interface QuizContextType {
@@ -48,9 +54,14 @@ const INITIAL_QUIZ_DATA: QuizData = {
   roomPhoto: "",
   floorplanUrl: "",
   roomDescription: "",
+  atmosphere: "",
+  materiality: "",
+  seatingCapacity: null,
+  bedSize: "",
+  aestheticCaption: "",
 };
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 9;
 const QUIZ_STORAGE_KEY = "curalina_quiz_progress";
 
 const VALID_COLOR_PALETTES = [
@@ -63,6 +74,10 @@ const VALID_COLOR_PALETTES = [
   "Heritage Warmth",
   "Dark & Moody",
 ];
+
+const CANONICAL_STYLES = ["Organic Modern", "Contemporary Luxe", "Mid-Century Scandinavian"];
+const CONSULTATION_ROOMS = ["Living Room", "Dining Room", "Bedroom"];
+const CONSULTATION_BUDGETS = ["$20,000-$30,000", "$31,000-$40,000", "$41,000-$50,000", "$51,000-$65,000", "$66,000+"];
 
 function migrateQuizData(data: Partial<QuizData>): QuizData {
   // Merge with defaults to ensure all fields exist (handles old localStorage data)
@@ -77,6 +92,16 @@ function migrateQuizData(data: Partial<QuizData>): QuizData {
     vibeImages: Array.isArray(data.vibeImages) ? data.vibeImages : [],
   };
   
+  // Consultation flow: drop saved answers that are no longer valid options
+  // rather than silently carrying them into the new steps.
+  if (merged.styles.length !== 1 || !CANONICAL_STYLES.includes(merged.styles[0])) {
+    merged.styles = [];
+    merged.aestheticCaption = "";
+  }
+  if (!CONSULTATION_ROOMS.includes(merged.roomType)) merged.roomType = "";
+  if (!CONSULTATION_BUDGETS.includes(merged.budgetRange)) merged.budgetRange = "";
+  if (merged.seatingCapacity !== null && typeof merged.seatingCapacity !== "number") merged.seatingCapacity = null;
+
   // Filter to only valid color palettes
   const migratedPalettes = merged.colorPalettes.filter((p) =>
     VALID_COLOR_PALETTES.includes(p)
@@ -126,33 +151,39 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       case 1:
         return quizData.roomType.length > 0;
       case 2:
-        return quizData.styles.length >= 1 && quizData.styles.length <= 2;
+        return quizData.styles.length === 1;
       case 3:
-        return quizData.colorPalettes.length >= 1; // Combined Color & Materials step
+        return quizData.materiality.length > 0;
       case 4:
-        return quizData.keyFeatures.length > 0; // Features
+        return quizData.atmosphere.length > 0;
       case 5:
-        return quizData.budgetRange.length > 0; // Budget
+        return quizData.patternPreference.length > 0;
       case 6:
-        return true; // Vibe check - optional
+        return quizData.keyFeatures.length > 0; // seating / bed size rows are optional
       case 7:
-        return true; // Final step - optional
+        return quizData.budgetRange.length > 0;
+      case 8:
+        return true; // Verify/Refine has its own Authorize control
+      case 9:
+        return true; // photo and floorplan are both optional
       default:
         return false;
     }
   };
 
   const getStepContext = (step: number): { previous: string; next: string } => {
-    const contexts = {
-      1: { previous: "Home", next: "Style" },
-      2: { previous: "Room", next: "Palette" },
-      3: { previous: "Style", next: "Features" },
-      4: { previous: "Palette", next: "Budget" },
-      5: { previous: "Features", next: "Vibe" },
-      6: { previous: "Budget", next: "Final" },
-      7: { previous: "Vibe", next: "Results" },
+    const contexts: Record<number, { previous: string; next: string }> = {
+      1: { previous: "Home", next: "Aesthetic" },
+      2: { previous: "Room", next: "Materiality" },
+      3: { previous: "Aesthetic", next: "Atmosphere" },
+      4: { previous: "Materiality", next: "Pattern" },
+      5: { previous: "Atmosphere", next: "Practical touches" },
+      6: { previous: "Pattern", next: "Investment" },
+      7: { previous: "Practical touches", next: "Verify" },
+      8: { previous: "Investment", next: "Context" },
+      9: { previous: "Verify", next: "Results" },
     };
-    return contexts[step as keyof typeof contexts] || { previous: "", next: "" };
+    return contexts[step] || { previous: "", next: "" };
   };
 
   const canProceed = validateStep(currentStep);

@@ -63,6 +63,10 @@ function baseQuizResponse(overrides: Partial<QuizResponse> = {}): QuizResponse {
     vibeOverallDescription: null,
     roomDescription: null,
     parsedRoomData: null,
+    atmosphere: null,
+    materiality: null,
+    seatingCapacity: null,
+    bedSize: null,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     ...overrides,
   } as QuizResponse;
@@ -303,9 +307,47 @@ async function main() {
     }
   }
 
+  // --- Test 8: canonical atmosphere is accepted; anything else is needsInput
+  {
+    const canonical = ["Bright & Airy", "Warm & Balanced", "Dark & Moody"];
+    const okAll = canonical.every((a) => {
+      const r = toDesignProfile(baseQuizResponse({ atmosphere: a }));
+      // Passes the atmosphere check, so the next blocker (currency) surfaces.
+      return "needsInput" in r && r.missingField === "currency";
+    });
+    const rejected = ["warm & balanced", "Warm and Balanced", "cozy", "", null].every((a) => {
+      const r = toDesignProfile(baseQuizResponse({ atmosphere: a as string | null }));
+      return "needsInput" in r && r.missingField === "atmosphere";
+    });
+    if (okAll && rejected) {
+      pass("8. Atmosphere: exact canonical strings only", "no fuzzy matching");
+    } else {
+      fail("8. Atmosphere: exact canonical strings only", `okAll=${okAll}, rejected=${rejected}`);
+    }
+  }
+
+  // --- Test 9: consultation investment bands ------------------------------
+  {
+    const expected: Array<[string, number | null]> = [
+      ["$20,000-$30,000", 2500000],
+      ["$20,000 - $30,000", 2500000],
+      ["$31,000-$40,000", 3550000],
+      ["$41,000-$50,000", 4550000],
+      ["$51,000-$65,000", 5800000],
+      ["$66,000+", 6600000], // open-ended: lower bound
+      ["Over $20,000", null], // legacy open-ended form stays unparseable
+    ];
+    const bad = expected.filter(([input, want]) => parseBudgetRangeToMinorUnits(input) !== want);
+    if (bad.length === 0) {
+      pass("9. Consultation budget bands parse", "five bands + open-ended lower bound");
+    } else {
+      fail("9. Consultation budget bands parse", `mismatches: ${JSON.stringify(bad)}`);
+    }
+  }
+
   console.log("");
   if (failures === 0) {
-    console.log("ALL 7 NAMED TESTS PASSED");
+    console.log("ALL 9 NAMED TESTS PASSED");
     process.exit(0);
   } else {
     console.error(`${failures} TEST(S) FAILED`);

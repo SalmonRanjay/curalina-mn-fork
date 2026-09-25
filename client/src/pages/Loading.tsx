@@ -1,50 +1,30 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { Check, Plus } from "lucide-react";
 import { getSessionId } from "@/lib/session";
-import { Sparkles, Home, Palette, Lightbulb, Sofa, Leaf } from "lucide-react";
 import type { Render } from "@shared/schema";
+import "@/components/quiz/consultation.css";
+// Cropped from docs/consultation-1/pages/page-14.jpg (the client's mockup artwork).
+import chairImg from "@/assets/synth-chair-wireframe.jpg";
 
-const designFacts = [
-  {
-    icon: Lightbulb,
-    fact: "Natural light can increase productivity by up to 20%",
-    category: "Light & Space"
-  },
-  {
-    icon: Home,
-    fact: "The average person spends 90% of their time indoors",
-    category: "Home Life"
-  },
-  {
-    icon: Leaf,
-    fact: "Plants in your space can improve air quality by up to 25%",
-    category: "Biophilic Design"
-  },
-  {
-    icon: Palette,
-    fact: "Color psychology shows blue tones promote calmness and focus",
-    category: "Color Theory"
-  },
-  {
-    icon: Sofa,
-    fact: "Well-designed spaces can reduce stress levels by 30%",
-    category: "Wellness"
-  },
-  {
-    icon: Home,
-    fact: "Open floor plans increase natural light by 40% on average",
-    category: "Layout Design"
-  },
+const CHECKLIST = [
+  "Calibrating stylistic alignment",
+  "Optimizing procurement parameters",
+  "Curating Furniture & Finishes",
+  "Finalizing room design",
 ];
+
+// Cosmetic pacing only: items 1-3 tick off on a slow timer while we wait. The
+// last item is NEVER ticked by the timer; it only completes when the real
+// render status resolves to "completed".
+const PACING_MS = [5000, 12000, 21000];
 
 export default function Loading() {
   const [, setLocation] = useLocation();
   const searchString = useSearch();
-  const [currentFactIndex, setCurrentFactIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const progressMessage = "Our AI is analyzing your preferences and generating personalized designs...";
+  const [pacedDone, setPacedDone] = useState(0); // 0..3, timer-driven, cosmetic
 
   const { renderId, sessionId } = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -58,8 +38,8 @@ export default function Loading() {
   const { data: render } = useQuery<Render>({
     queryKey: renderId ? ["/api/render", renderId] : ["/api/render/latest", sessionId],
     queryFn: async () => {
-      const url = renderId 
-        ? `/api/render/${renderId}` 
+      const url = renderId
+        ? `/api/render/${renderId}`
         : `/api/render/latest?sessionId=${sessionId}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch render status");
@@ -70,140 +50,70 @@ export default function Loading() {
   });
 
   useEffect(() => {
-    const factInterval = setInterval(() => {
-      setCurrentFactIndex((prev) => (prev + 1) % designFacts.length);
-    }, 4000);
-
-    return () => clearInterval(factInterval);
+    const timers = PACING_MS.map((ms, i) => setTimeout(() => setPacedDone((p) => Math.max(p, i + 1)), ms));
+    return () => timers.forEach(clearTimeout);
   }, []);
 
-  // Cosmetic progress animation while we wait on polling for a terminal
-  // status — asymptotically approaches 90% so it never falsely implies
-  // completion before the render actually resolves.
-  useEffect(() => {
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => (prev >= 90 ? prev : prev + (90 - prev) * 0.1));
-    }, 500);
-
-    return () => clearInterval(progressInterval);
-  }, []);
+  const resolved =
+    !!render &&
+    (render.status === "completed" || render.status === "failed" || render.status === "needs_input");
+  const completed = render?.status === "completed";
 
   useEffect(() => {
-    if (
-      render &&
-      (render.status === 'completed' ||
-        render.status === 'failed' ||
-        render.status === 'needs_input')
-    ) {
-      setProgress(100);
-      setTimeout(() => {
-        const { id: actualRenderId, sessionId: actualSessionId } = render;
-        setLocation(`/results?renderId=${actualRenderId}&sessionId=${actualSessionId}`);
-      }, 300);
-    }
-  }, [render, setLocation]);
+    if (!render || !resolved) return;
+    // Let the glow settle after a real completion; failures/needs_input leave immediately.
+    const delay = completed ? 2200 : 300;
+    const t = setTimeout(() => {
+      const { id: actualRenderId, sessionId: actualSessionId } = render;
+      setLocation(`/results?renderId=${actualRenderId}&sessionId=${actualSessionId}`);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [render, resolved, completed, setLocation]);
 
-  const currentFact = designFacts[currentFactIndex];
-  const FactIcon = currentFact.icon;
+  // Real status can only finish the checklist when the render actually completed.
+  const doneCount = completed ? CHECKLIST.length : Math.min(pacedDone, CHECKLIST.length - 1);
+  const slow = { duration: 1.6, ease: [0.33, 1, 0.68, 1] as [number, number, number, number] };
 
   return (
-    <div className="loading-container">
-      <div className="max-w-2xl w-full text-center space-y-12">
-        {/* Main Heading */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            >
-              <Sparkles className="w-8 h-8 text-primary" />
-            </motion.div>
-          </div>
-          
-          <h1 
-            className="font-serif font-medium text-foreground"
-            style={{ fontSize: 'var(--font-size-3xl)', lineHeight: 'var(--line-tight)' }}
-            data-testid="heading-loading"
-          >
-            Creating your dream space...
-          </h1>
-          
-          <p className="text-muted-foreground" style={{ fontSize: 'var(--font-size-lg)' }}>
-            Our AI is analyzing your preferences and generating personalized designs
-          </p>
-        </motion.div>
+    <div className="cc-loading flex flex-col items-center text-center px-6 py-20 md:py-28" data-testid="loading-screen">
+      <motion.h1
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={slow}
+        className="text-4xl md:text-6xl"
+        style={{ fontFamily: "var(--font-serif)", fontWeight: 400 }}
+        data-testid="heading-loading"
+      >
+        Synthesizing Your Curation
+      </motion.h1>
+      <motion.p
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...slow, delay: 0.4 }}
+        className="mt-8 max-w-xl text-lg md:text-xl font-light text-white/90"
+      >
+        Synchronizing your spatial data and investment parameters with our design logic to realize your vision.
+      </motion.p>
 
-        {/* Progress Bar */}
-        <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
-          animate={{ opacity: 1, scaleX: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="w-full max-w-md mx-auto"
-        >
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground mt-3">
-            {progressMessage}
-          </p>
-        </motion.div>
-
-        {/* Animated Dots */}
-        <div className="loading-dots justify-center">
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              className="loading-dot"
-              animate={{
-                y: [0, -12, 0],
-                opacity: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 0.8,
-                repeat: Infinity,
-                delay: i * 0.15,
-                ease: "easeInOut",
-              }}
-              data-testid={`loading-dot-${i}`}
-            />
-          ))}
-        </div>
-
-        {/* Design Fact Card */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentFactIndex}
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.98 }}
-            transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
-            className="loading-fact-card mx-auto"
-          >
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <FactIcon className="w-5 h-5 text-primary" />
-              <span className="loading-fact-label">
-                {currentFact.category}
+      <ul className="mt-16 space-y-5 text-left" aria-label="Progress" data-testid="loading-checklist">
+        {CHECKLIST.map((label, i) => {
+          const done = i < doneCount;
+          const active = i === doneCount;
+          return (
+            <li key={label} className="flex items-center gap-5 text-lg md:text-xl" data-done={done}>
+              <span className="cc-check" data-done={done} data-active={active}>
+                {done ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
               </span>
-            </div>
-            <p 
-              className="loading-fact-text"
-              data-testid="text-fact"
-            >
-              {currentFact.fact}
-            </p>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+              <span className="transition-opacity duration-[1600ms]" style={{ opacity: done || active ? 1 : 0.55 }}>{label}</span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <motion.img
+        src={chairImg}
+        alt=""
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2.4, delay: 0.3 }}
+        className="cc-chair mt-14 w-64 md:w-80"
+        style={{ filter: completed ? "drop-shadow(0 0 28px rgba(201,162,39,0.55))" : undefined, transition: "filter 2s ease" }}
+        data-testid="loading-chair"
+      />
     </div>
   );
 }

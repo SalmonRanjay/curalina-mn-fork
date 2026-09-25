@@ -317,6 +317,11 @@ export const quizResponses = pgTable("quiz_responses", {
 
   // Room measurements and spatial validation
   roomDescription: text("room_description"), // User's natural language description of space (dimensions, doorways, preferences)
+  // Consultation-1 quiz fields (additive, nullable).
+  atmosphere: text("atmosphere"), // 'Bright & Airy' | 'Warm & Balanced' | 'Dark & Moody'
+  materiality: text("materiality"), // canonical style string chosen on the materiality step; does not drive filtering yet
+  seatingCapacity: integer("seating_capacity"), // Dining Room: 4/6/8/10/12
+  bedSize: text("bed_size"), // Bedroom: 'Double Size Bed' | 'Queen Size Bed' | 'King Size Bed'
   parsedRoomData: jsonb("parsed_room_data"), // AI-extracted room measurements: { dimensions: { width, depth, height, unit }, doorway: { width, height, unit }, ceilingHeight, confidence, extractedPreferences, rawText }
 
   createdAt: timestamp("created_at").defaultNow(),

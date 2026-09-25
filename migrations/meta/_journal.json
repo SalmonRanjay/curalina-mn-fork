@@ -29,6 +29,13 @@
       "when": 1789654015415,
       "tag": "0003_demonic_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790304685102,
+      "tag": "0004_modern_wither",
+      "breakpoints": true
     }
   ]
 }

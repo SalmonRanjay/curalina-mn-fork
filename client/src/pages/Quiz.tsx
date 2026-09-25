@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -18,16 +17,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import RoomTypeStepV2 from "@/components/quiz/RoomTypeStepV2";
-import StyleSelectionStepV2 from "@/components/quiz/StyleSelectionStepV2";
-import ColorMaterialsStepV2 from "@/components/quiz/ColorMaterialsStepV2";
-import FeaturesStepV2 from "@/components/quiz/FeaturesStepV2";
-import { BudgetStepV2 } from "@/components/quiz/BudgetStepV2";
-import { VibeCheckStepV2 } from "@/components/quiz/VibeCheckStepV2";
-import { FinalStepV2 } from "@/components/quiz/FinalStepV2";
+import {
+  ConsultRoomStep,
+  ConsultAestheticStep,
+  ConsultMaterialityStep,
+  ConsultAtmosphereStep,
+  ConsultPatternStep,
+  ConsultTouchesStep,
+  ConsultInvestmentStep,
+} from "@/components/quiz/ConsultQuestionSteps";
+import ConsultVerifyStep from "@/components/quiz/ConsultVerifyStep";
+import ConsultContextStep from "@/components/quiz/ConsultContextStep";
 import QuizLayout from "@/components/quiz/QuizLayout";
+// The V2 step components (RoomTypeStepV2, StyleSelectionStepV2, ColorMaterialsStepV2,
+// FeaturesStepV2, BudgetStepV2, VibeCheckStepV2, FinalStepV2) remain in the repo but are
+// no longer part of the flow (consultation-1 replaced it).
 
-const TOTAL_STEPS = 7;
+// 7 questions + verify/refine + environmental context
+const TOTAL_STEPS = 9;
 
 const API_BASE_URL = "/api";
 
@@ -47,7 +54,7 @@ export default function Quiz() {
   } = useQuiz();
 
   // UI state (local to this component)
-  const [uploadingVibe, setUploadingVibe] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
   const [showDimensionConfirmation, setShowDimensionConfirmation] =
     useState(false);
@@ -67,6 +74,11 @@ export default function Quiz() {
         textures: data.textures,
         lifestyleCue: data.lifestyleCue || null,
         patternPreference: data.patternPreference || null,
+        atmosphere: data.atmosphere || null,
+        materiality: data.materiality || null,
+        // Room-scoped answers: never send a value for a room it does not apply to.
+        seatingCapacity: data.roomType === "Dining Room" ? data.seatingCapacity : null,
+        bedSize: data.roomType === "Bedroom" ? data.bedSize || null : null,
         keyFeatures: data.keyFeatures,
         budgetRange: data.budgetRange,
         vibeImages: data.vibeImages,
@@ -166,11 +178,11 @@ export default function Quiz() {
 
   const handleFileUpload = async (
     files: File[],
-    type: "vibe" | "floorplan",
+    type: "photo" | "floorplan",
   ) => {
     if (files.length === 0) return;
 
-    if (type === "vibe") setUploadingVibe(true);
+    if (type === "photo") setUploadingPhoto(true);
     else setUploadingFloorplan(true);
 
     try {
@@ -185,8 +197,8 @@ export default function Quiz() {
         throw new Error("No URLs returned from upload");
       }
 
-      if (type === "vibe") {
-        updateQuizData("vibeImages", [...quizData.vibeImages, ...urls]);
+      if (type === "photo") {
+        updateQuizData("roomPhoto", urls[0] || "");
       } else {
         updateQuizData("floorplanUrl", urls[0] || "");
       }
@@ -206,7 +218,7 @@ export default function Quiz() {
         variant: "destructive",
       });
     } finally {
-      if (type === "vibe") setUploadingVibe(false);
+      if (type === "photo") setUploadingPhoto(false);
       else setUploadingFloorplan(false);
     }
   };
@@ -234,111 +246,69 @@ export default function Quiz() {
     }
   };
 
-  const renderStep1 = () => {
-    return (
-      <RoomTypeStepV2
-        value={quizData.roomType}
-        onChange={(value) => updateQuizData("roomType", value)}
-      />
-    );
-  };
-
-  const renderStep2 = () => {
-    return (
-      <StyleSelectionStepV2
-        value={quizData.styles}
-        onChange={(styles) => updateQuizData("styles", styles)}
-        maxSelections={2}
-      />
-    );
-  };
-
-  // Step 3: Combined Color Palette & Materials
-  const renderStep3 = () => {
-    return (
-      <ColorMaterialsStepV2
-        colorPalettes={quizData.colorPalettes}
-        lineStyle={quizData.lineStyle}
-        selectedTextures={quizData.textures}
-        patternPreference={quizData.patternPreference}
-        onColorChange={(palettes) => updateQuizData("colorPalettes", palettes)}
-        onLineStyleChange={(style) => updateQuizData("lineStyle", style)}
-        onTexturesChange={(textures) => updateQuizData("textures", textures)}
-        onPatternChange={(pattern) => updateQuizData("patternPreference", pattern)}
-        maxColorSelections={2}
-        maxTextureSelections={2}
-      />
-    );
-  };
-
-  // Step 4: Functional Features
-  const renderStep4 = () => {
-    return (
-      <FeaturesStepV2
-        roomType={quizData.roomType}
-        value={quizData.keyFeatures}
-        onChange={(features) => updateQuizData("keyFeatures", features)}
-      />
-    );
-  };
-
-  // Step 5: Budget
-  const renderStep5 = () => {
-    return (
-      <BudgetStepV2
-        value={quizData.budgetRange}
-        onChange={(budget) => updateQuizData("budgetRange", budget)}
-      />
-    );
-  };
-
-  // Step 6: Vibe Check
-  const renderStep6 = () => {
-    return (
-      <VibeCheckStepV2
-        vibeImages={quizData.vibeImages}
-        onUpload={(files) => handleFileUpload(files, "vibe")}
-        onRemove={(idx) =>
-          updateQuizData(
-            "vibeImages",
-            quizData.vibeImages.filter((_, i) => i !== idx),
-          )
-        }
-        isUploading={uploadingVibe}
-      />
-    );
-  };
-
-  // Step 7: Final Step
-  const renderStep7 = () => {
-    return (
-      <FinalStepV2
-        floorplanUrl={quizData.floorplanUrl}
-        roomDescription={quizData.roomDescription}
-        onPhotoUpload={(files) => handleFileUpload(files, "floorplan")} // Reusing logic for photo/floorplan
-        onFloorplanUpload={(files) => handleFileUpload(files, "floorplan")}
-        onDescriptionChange={(desc) => updateQuizData("roomDescription", desc)}
-        isUploadingFloorplan={uploadingFloorplan}
-      />
-    );
+  const handleRoomChange = (room: string) => {
+    if (room !== quizData.roomType) {
+      // Touches, seating and bed size are room-scoped; drop answers that no longer apply.
+      updateQuizData("keyFeatures", []);
+      updateQuizData("seatingCapacity", null);
+      updateQuizData("bedSize", "");
+    }
+    updateQuizData("roomType", room);
   };
 
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return renderStep1();
+        return <ConsultRoomStep value={quizData.roomType} onChange={handleRoomChange} />;
       case 2:
-        return renderStep2();
+        return (
+          <ConsultAestheticStep
+            style={quizData.styles[0] ?? ""}
+            onChange={(style, caption) => {
+              updateQuizData("styles", [style]);
+              updateQuizData("aestheticCaption", caption);
+            }}
+          />
+        );
       case 3:
-        return renderStep3();
+        return <ConsultMaterialityStep value={quizData.materiality} onChange={(v) => updateQuizData("materiality", v)} />;
       case 4:
-        return renderStep4();
+        return <ConsultAtmosphereStep value={quizData.atmosphere} onChange={(v) => updateQuizData("atmosphere", v)} />;
       case 5:
-        return renderStep5();
+        return <ConsultPatternStep value={quizData.patternPreference} onChange={(v) => updateQuizData("patternPreference", v)} />;
       case 6:
-        return renderStep6();
+        return (
+          <ConsultTouchesStep
+            roomType={quizData.roomType}
+            touches={quizData.keyFeatures}
+            seatingCapacity={quizData.seatingCapacity}
+            bedSize={quizData.bedSize}
+            onTouchesChange={(v) => updateQuizData("keyFeatures", v)}
+            onSeatingChange={(v) => updateQuizData("seatingCapacity", v)}
+            onBedSizeChange={(v) => updateQuizData("bedSize", v)}
+          />
+        );
       case 7:
-        return renderStep7();
+        return <ConsultInvestmentStep value={quizData.budgetRange} onChange={(v) => updateQuizData("budgetRange", v)} />;
+      case 8:
+        return (
+          <ConsultVerifyStep
+            data={quizData}
+            onUpdate={(patch) => (Object.keys(patch) as Array<keyof typeof quizData>).forEach((k) => updateQuizData(k, patch[k]))}
+            onAuthorize={nextStep}
+          />
+        );
+      case 9:
+        return (
+          <ConsultContextStep
+            roomPhoto={quizData.roomPhoto}
+            floorplanUrl={quizData.floorplanUrl}
+            onPhotoUpload={(files) => handleFileUpload(files, "photo")}
+            onFloorplanUpload={(files) => handleFileUpload(files, "floorplan")}
+            isUploadingPhoto={uploadingPhoto}
+            isUploadingFloorplan={uploadingFloorplan}
+          />
+        );
       default:
         return null;
     }
@@ -352,9 +322,9 @@ export default function Quiz() {
         onPrevious={currentStep > 1 ? handleBack : undefined}
         onNext={handleNext}
         previousLabel={getStepContext(currentStep).previous}
-        nextLabel={currentStep === TOTAL_STEPS ? "Submit" : getStepContext(currentStep).next}
+        nextLabel={currentStep === 1 ? "Initiate the Refinement" : currentStep === TOTAL_STEPS ? "Generate Design" : "Proceed"}
         canProceed={canProceed && !submitQuizMutation.isPending}
-        showExploreLink={currentStep === 2}
+        hideNext={currentStep === 8}
       >
         {renderStep()}
       </QuizLayout>
