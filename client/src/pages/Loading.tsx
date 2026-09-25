@@ -25,6 +25,7 @@ export default function Loading() {
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const [pacedDone, setPacedDone] = useState(0); // 0..3, timer-driven, cosmetic
+  const [slowNotice, setSlowNotice] = useState(false); // true after ~30s of waiting
 
   const { renderId, sessionId } = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -52,6 +53,11 @@ export default function Loading() {
   useEffect(() => {
     const timers = PACING_MS.map((ms, i) => setTimeout(() => setPacedDone((p) => Math.max(p, i + 1)), ms));
     return () => timers.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSlowNotice(true), 30000);
+    return () => clearTimeout(t);
   }, []);
 
   const resolved =
@@ -105,6 +111,12 @@ export default function Loading() {
           );
         })}
       </ul>
+
+      {slowNotice && !resolved && (
+        <p className="mt-8 max-w-md text-sm text-white/70" data-testid="loading-slow-notice">
+          Rendering on CPU can take a few minutes. Thanks for your patience.
+        </p>
+      )}
 
       <motion.img
         src={chairImg}

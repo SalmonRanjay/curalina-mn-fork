@@ -84,6 +84,13 @@ def _content_hash(request: AssetImportRequest) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class LeasedJobContext:
+    job: JobStatusResponse
+    request: RenderJobRequest
+    max_attempts: int
+
+
+@dataclass(frozen=True, slots=True)
 class SQLiteRoomStore:
     db_path: Path
 
@@ -214,25 +221,30 @@ class SQLiteRoomStore:
         max_attempts: int,
         failure_after_insertions: int | None = None,
     ) -> RenderJobResponse:
-        current_revision = self._current_bundle_revision(
-            request.bundle.bundle_id, request_id=request_id
-        )
-        if current_revision != request.bundle.bundle_revision:
-            raise stale_bundle_revision_error(
-                request_id,
-                request.bundle.bundle_id,
-                request.bundle.bundle_revision,
-                current_revision,
+        # Concept renders (`render_brief` without a bundle) skip bundle and
+        # reference checks; anything that does supply them is still checked.
+        if request.bundle is not None:
+            current_revision = self._current_bundle_revision(
+                request.bundle.bundle_id, request_id=request_id
             )
-        for reference in request.reference_images:
+            if current_revision != request.bundle.bundle_revision:
+                raise stale_bundle_revision_error(
+                    request_id,
+                    request.bundle.bundle_id,
+                    request.bundle.bundle_revision,
+                    current_revision,
+                )
+        for reference in request.reference_images or []:
             self._get_asset(reference.asset_id, request_id=request_id)
 
         job_id = self._next_id("jobs", "job_id", "job")
         response = RenderJobResponse(
             job_id=job_id,
             location=f"/v1/jobs/{job_id}",
-            bundle_id=request.bundle.bundle_id,
-            bundle_revision=request.bundle.bundle_revision,
+            bundle_id=request.bundle.bundle_id if request.bundle else None,
+            bundle_revision=(
+                request.bundle.bundle_revision if request.bundle else None
+            ),
             created_at=_utc_now_iso(),
         )
         status = JobStatusResponse(job_id=job_id, status="queued", attempt_count=0)
@@ -426,7 +438,7 @@ class SQLiteRoomStore:
                     None if failure_after is None else int(failure_after)
                 ),
             )
-            if staged < len(request.instances):
+            if staged < len(request.instances or []):
                 failed = self._failed_job(
                     job_id=job_id,
                     attempt_count=attempt_count,
@@ -468,6 +480,117 @@ class SQLiteRoomStore:
             self._save_job_with_connection(connection, succeeded, clear_lease=True)
             return succeeded
 
+    # -- Concept-render (worker) support ---------------------------------
+
+    def get_leased_job_context(
+        self, job_id: str, *, worker_id: str, request_id: str = "worker"
+    ) -> LeasedJobContext:
+        with self._connect() as connection:
+            job, request, max_attempts = self._load_leased(
+                connection, job_id, worker_id=worker_id, request_id=request_id
+            )
+        return LeasedJobContext(
+            job=job, request=request, max_attempts=max_attempts
+        )
+
+    def renew_lease(
+        self, job_id: str, *, worker_id: str, lease_seconds: int
+    ) -> bool:
+        """Extend the lease if `worker_id` still owns a running job."""
+        deadline = (_utc_now() + timedelta(seconds=lease_seconds)).isoformat()
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE jobs SET leased_until = ?
+                WHERE job_id = ? AND lease_owner = ?
+                """,
+                (deadline, job_id, worker_id),
+            )
+            return cursor.rowcount == 1
+
+    def complete_concept_job(
+        self,
+        job_id: str,
+        *,
+        worker_id: str,
+        asset: AssetResponse,
+        result: JobResult,
+        request_id: str = "worker",
+    ) -> JobStatusResponse:
+        """Register the (already written) output asset and mark the job
+        succeeded in one transaction."""
+        with self._connect() as connection:
+            job, _, _ = self._load_leased(
+                connection, job_id, worker_id=worker_id, request_id=request_id
+            )
+            connection.execute(
+                "INSERT OR REPLACE INTO assets (asset_id, record_json) VALUES (?, ?)",
+                (asset.asset_id, _model_json(asset)),
+            )
+            succeeded = JobStatusResponse(
+                job_id=job_id,
+                status="succeeded",
+                attempt_count=job.attempt_count + 1,
+                result=result,
+            )
+            self._save_job_with_connection(connection, succeeded, clear_lease=True)
+            return succeeded
+
+    def fail_leased_job(
+        self,
+        job_id: str,
+        *,
+        worker_id: str,
+        code: str,
+        message: str,
+        retryable: bool,
+        details: dict[str, Any] | None = None,
+        request_id: str = "worker",
+    ) -> JobStatusResponse:
+        with self._connect() as connection:
+            job, _, _ = self._load_leased(
+                connection, job_id, worker_id=worker_id, request_id=request_id
+            )
+            failed = JobStatusResponse(
+                job_id=job_id,
+                status="failed",
+                attempt_count=job.attempt_count + 1,
+                error=ErrorResponse(
+                    code=code,
+                    message=message,
+                    details={"job_id": job_id, **(details or {})},
+                    retryable=retryable,
+                    request_id="worker",
+                ),
+            )
+            self._save_job_with_connection(connection, failed, clear_lease=True)
+            return failed
+
+    def _load_leased(
+        self,
+        connection: sqlite3.Connection,
+        job_id: str,
+        *,
+        worker_id: str,
+        request_id: str,
+    ) -> tuple[JobStatusResponse, RenderJobRequest, int]:
+        row = connection.execute(
+            """
+            SELECT record_json, request_json, max_attempts, lease_owner
+            FROM jobs WHERE job_id = ?
+            """,
+            (job_id,),
+        ).fetchone()
+        if row is None:
+            raise resource_not_found_error(request_id, "job", job_id)
+        if row["lease_owner"] != worker_id:
+            raise LeaseConflictError(job_id)
+        job = JobStatusResponse.model_validate_json(str(row["record_json"]))
+        if job.status != "running":
+            raise invalid_job_state_error(request_id, job_id, job.status, "complete")
+        request = RenderJobRequest.model_validate_json(str(row["request_json"]))
+        return job, request, int(row["max_attempts"])
+
     def staged_insertions_for_job(self, job_id: str) -> tuple[dict[str, Any], ...]:
         with self._connect() as connection:
             rows = connection.execute(
@@ -491,7 +614,7 @@ class SQLiteRoomStore:
         failure_after_insertions: int | None,
     ) -> int:
         staged = 0
-        for index, instance in enumerate(request.instances):
+        for index, instance in enumerate(request.instances or []):
             self._validate_existing_stages(connection, job_id=job_id, upto=index)
             if (
                 failure_after_insertions is not None

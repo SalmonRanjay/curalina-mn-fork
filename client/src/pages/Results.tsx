@@ -107,12 +107,20 @@ export default function Results() {
   });
 
 
+  // Concept renders (rooms sd15/composite) carry an honesty label from the
+  // service; it is shown verbatim next to the image.
+  const conceptRef = (render?.aiServiceRef ?? null) as
+    | { renderer?: string | null; label?: string | null }
+    | null;
+
   // Fetch products for this specific render (Shop the Look)
   const { data: renderProducts, isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/render", render?.id, "products"],
     queryFn: async () => {
       if (!render?.id) throw new Error("No render ID");
       const res = await fetch(`/api/render/${render.id}/products`);
+      // Concept renders have no products endpoint (404): treat as "no products".
+      if (res.status === 404) return [];
       if (!res.ok) throw new Error("Failed to fetch render products");
       return res.json();
     },
@@ -635,6 +643,14 @@ export default function Results() {
                   onClick={() => setShowFullImage(true)}
                   data-testid="img-render"
                 />
+                {conceptRef?.renderer && (
+                  <div className="mt-3 text-sm" data-testid="concept-render-caption">
+                    {conceptRef.label && <p className="text-foreground">{conceptRef.label}</p>}
+                    <p className="text-xs text-muted-foreground" data-testid="concept-render-renderer">
+                      Renderer: {conceptRef.renderer}
+                    </p>
+                  </div>
+                )}
                 <div className="absolute top-6 right-6 flex gap-2">
                   <Button
                     variant="outline"

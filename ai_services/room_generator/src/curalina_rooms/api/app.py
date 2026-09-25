@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import Body, FastAPI, Header, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
+from curalina_rooms.adapters.filesystem_asset_store import FilesystemAssetStore
 from curalina_rooms.api.errors import ContractError
 from curalina_rooms.api.service import ContractResult, RoomsContractService
 from curalina_rooms.api.sqlite_store import SQLiteRoomStore
+from curalina_rooms.ports.asset_store import AssetStore, AssetStoreError
 from curalina_rooms.settings import Settings
 
 JsonBody = Annotated[dict[str, Any], Body()]
@@ -30,9 +32,20 @@ def _error_response(error: ContractError) -> JSONResponse:
     )
 
 
-def create_app(service: RoomsContractService | None = None) -> FastAPI:
+def asset_store_for(settings: Settings) -> FilesystemAssetStore:
+    """Generated-asset bytes live under the service data dir (shared volume)."""
+    return FilesystemAssetStore(settings.curalina_data_dir / "assets")
+
+
+def create_app(
+    service: RoomsContractService | None = None,
+    asset_store: AssetStore | None = None,
+) -> FastAPI:
+    settings = Settings()
+    if asset_store is None:
+        asset_store = asset_store_for(settings)
+    blobs = asset_store
     if service is None:
-        settings = Settings()
         store = SQLiteRoomStore.from_database_url(settings.curalina_database_url)
         store.initialize()
         store.seed_from_fixtures()
@@ -53,7 +66,24 @@ def create_app(service: RoomsContractService | None = None) -> FastAPI:
     def get_asset_content(
         asset_id: str,
         x_request_id: str | None = Header(default=None, alias="X-Request-ID"),
-    ) -> JSONResponse:
+    ) -> Response:
+        # Stored bytes (rendered outputs) win; otherwise fall back to the
+        # metadata-only response, which is a flat 404 for unknown ids.
+        try:
+            stored = blobs.get(asset_id)
+        except AssetStoreError:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "code": "asset_read_failed",
+                    "message": "stored asset could not be read.",
+                    "details": {"asset_id": asset_id},
+                    "retryable": True,
+                    "request_id": x_request_id or "unknown",
+                },
+            )
+        if stored is not None:
+            return Response(content=stored.data, media_type=stored.media_type)
         try:
             return _json_response(service.get_asset_content(asset_id, x_request_id))
         except ContractError as exc:

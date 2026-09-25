@@ -16,6 +16,7 @@
  */
 
 import type { QuizResponse } from "@shared/schema";
+import { getAiServicesSettings } from "../../config/ai-services.js";
 
 /**
  * The exact wire shape recommendation's `/v1` endpoints accept for
@@ -183,18 +184,10 @@ export function toDesignProfile(quizResponse: QuizResponse): DesignProfileMappin
     return needsInput("atmosphere");
   }
 
-  // `currency` defaults to "USD" only if every existing `products.price`
-  // in this app is confirmed USD-only. No comment in `shared/schema.ts`
-  // confirms that (checked: `price`/`tradePrice`/`priceAtRender`/
-  // `priceAtPurchase` are all bare `decimal` columns with no currency
-  // annotation), so per this packet's instruction, `currency` is treated
-  // the same as `atmosphere` — `needsInput`, not a guessed default. This
-  // branch is presently unreachable (atmosphere always fails first), and
-  // is kept so the rule is documented in code, not only in a comment.
-  const currencyConfirmedUsdOnly = false;
-  if (!currencyConfirmedUsdOnly) {
-    return needsInput("currency");
-  }
+  // Currency is the configured default (CURALINA_DEFAULT_CURRENCY, CAD by
+  // default; see services/currency.ts for conversion). The budget bands are
+  // stated in that currency.
+  const currency = getAiServicesSettings().defaultCurrency;
 
   return {
     room_type: roomType,
@@ -202,6 +195,6 @@ export function toDesignProfile(quizResponse: QuizResponse): DesignProfileMappin
     atmosphere,
     categories,
     furniture_budget_minor_units: furnitureBudgetMinorUnits,
-    currency: "USD",
+    currency,
   };
 }

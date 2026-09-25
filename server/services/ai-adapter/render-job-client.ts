@@ -237,3 +237,115 @@ export async function getJobStatus(service: AiJobService, jobId: string): Promis
     candidateId,
   };
 }
+
+// --- Rooms: concept render brief (POST /v1/render-jobs) ---------------------------
+
+export interface RoomRenderBrief {
+  renderer: "sd15" | "composite";
+  room_type: string;
+  style: string;
+  atmosphere: string;
+  pattern: string | null;
+  prompt: string | null;
+  seed: number | null;
+}
+
+/**
+ * Submits a concept render: only `schema_version`, `render_brief` and
+ * `idempotency_key` are sent (bundle/instances/reference images are optional
+ * when a brief is present). No business logic: the brief is passed through.
+ */
+export async function submitRoomConceptJob(params: {
+  brief: RoomRenderBrief;
+  idempotencyKey: string;
+}): Promise<JobRef> {
+  const settings = getAiServicesSettings();
+  const response = await fetch(`${settings.roomsUrl}/v1/render-jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      schema_version: settings.contractVersion,
+      render_brief: params.brief,
+      idempotency_key: params.idempotencyKey,
+    }),
+  });
+  if (!response.ok) {
+    throw new AiAdapterServiceError(
+      "rooms",
+      response.status,
+      await parseAiAdapterErrorBody("rooms", response)
+    );
+  }
+  const body = (await response.json()) as { schema_version: string; job_id: string; status: string };
+  return { schemaVersion: body.schema_version, jobId: body.job_id, status: body.status, candidateId: null };
+}
+
+export interface RoomJobStatus {
+  status: string;
+  attemptCount: number;
+  result: {
+    outputAssetId: string | null;
+    renderer: string | null;
+    modelId: string | null;
+    label: string | null;
+  } | null;
+  error: { code: string; message: string; retryable: boolean } | null;
+}
+
+/** Full rooms job status including result/error (used by the reconciler). */
+export async function getRoomJobStatus(jobId: string): Promise<RoomJobStatus> {
+  const settings = getAiServicesSettings();
+  const response = await fetch(`${settings.roomsUrl}/v1/jobs/${encodeURIComponent(jobId)}`);
+  if (!response.ok) {
+    throw new AiAdapterServiceError(
+      "rooms",
+      response.status,
+      await parseAiAdapterErrorBody("rooms", response)
+    );
+  }
+  const body = (await response.json()) as {
+    status: string;
+    attempt_count?: number;
+    result?: { output_asset_id?: string | null; renderer?: string | null; model_id?: string | null; label?: string | null } | null;
+    error?: { code?: string; message?: string; retryable?: boolean } | null;
+  };
+  return {
+    status: body.status,
+    attemptCount: body.attempt_count ?? 0,
+    result: body.result
+      ? {
+          outputAssetId: body.result.output_asset_id ?? null,
+          renderer: body.result.renderer ?? null,
+          modelId: body.result.model_id ?? null,
+          label: body.result.label ?? null,
+        }
+      : null,
+    error: body.error
+      ? {
+          code: body.error.code ?? "render_failed",
+          message: body.error.message ?? "The render could not be produced.",
+          retryable: body.error.retryable ?? false,
+        }
+      : null,
+  };
+}
+
+export type RoomAssetContent =
+  | { found: true; bytes: Buffer; contentType: string }
+  | { found: false; httpStatus: number };
+
+/** `GET /v1/assets/{id}/content`. 404 (or any non-2xx) -> found:false;
+ * network errors propagate so callers can treat them as unreachable. */
+export async function fetchRoomAssetContent(assetId: string): Promise<RoomAssetContent> {
+  const settings = getAiServicesSettings();
+  const response = await fetch(`${settings.roomsUrl}/v1/assets/${encodeURIComponent(assetId)}/content`);
+  if (!response.ok) return { found: false, httpStatus: response.status };
+  const bytes = Buffer.from(await response.arrayBuffer());
+  return { found: true, bytes, contentType: response.headers.get("content-type") ?? "" };
+}
+
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+/** True when the buffer is non-empty and starts with the PNG signature. */
+export function isPngBytes(bytes: Buffer): boolean {
+  return bytes.length > PNG_MAGIC.length && PNG_MAGIC.every((b, i) => bytes[i] === b);
+}

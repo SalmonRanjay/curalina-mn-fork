@@ -228,20 +228,21 @@ class RoomsContractService:
                 headers={"Location": store_response.location},
             )
 
-        current_revision = self._bundle_current_revision.get(
-            request.bundle.bundle_id
-        )
-        if current_revision is None:
-            raise unknown_bundle_error(request_id, request.bundle.bundle_id)
-        if current_revision != request.bundle.bundle_revision:
-            raise stale_bundle_revision_error(
-                request_id,
-                request.bundle.bundle_id,
-                request.bundle.bundle_revision,
-                current_revision,
+        if request.bundle is not None:
+            current_revision = self._bundle_current_revision.get(
+                request.bundle.bundle_id
             )
+            if current_revision is None:
+                raise unknown_bundle_error(request_id, request.bundle.bundle_id)
+            if current_revision != request.bundle.bundle_revision:
+                raise stale_bundle_revision_error(
+                    request_id,
+                    request.bundle.bundle_id,
+                    request.bundle.bundle_revision,
+                    current_revision,
+                )
 
-        for reference in request.reference_images:
+        for reference in request.reference_images or []:
             if reference.asset_id not in self._assets:
                 raise missing_reference_image_error(request_id, reference.asset_id)
 
@@ -249,8 +250,10 @@ class RoomsContractService:
         response = RenderJobResponse(
             job_id=job_id,
             location=f"/v1/jobs/{job_id}",
-            bundle_id=request.bundle.bundle_id,
-            bundle_revision=request.bundle.bundle_revision,
+            bundle_id=request.bundle.bundle_id if request.bundle else None,
+            bundle_revision=(
+                request.bundle.bundle_revision if request.bundle else None
+            ),
             created_at=_utc_now_iso(),
         )
         self._jobs[job_id] = JobStatusResponse(

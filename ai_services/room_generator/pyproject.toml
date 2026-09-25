@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-settings>=2.4",
     "fastapi>=0.111",
     "uvicorn>=0.30",
+    "httpx>=0.27",
     # `curalina_design_rules` is the one shared package this service is
     # allowed to import (agentic_flow/00_agentic_workflow_overview.md:
     # "The only shared package is `curalina_design_rules`"). No PyPI

@@ -67,6 +67,10 @@ services:
       # "ai_services_misconfigured" per UI-A5-04, it does not guess.
       CURALINA_CATALOGUE_SNAPSHOT_ID: snap_a3fixture0001
       CURALINA_RULES_VERSION: rules_2024_01
+      # Concept render demo: quiz -> rooms render_brief (no recommendation).
+      CURALINA_ROOM_RENDER_MODE: concept
+      CURALINA_ROOM_RENDERER: ${CURALINA_ROOM_RENDERER:-sd15}
+      CURALINA_DEFAULT_CURRENCY: CAD
       PORT: "8080"
     ports:
       - "8080:8080"
@@ -86,6 +90,7 @@ include:
   - ai_services/recommendation/docker-compose.yml
   - ai_services/variant_generator/docker-compose.yml
   - ai_services/room_generator/docker-compose.yml
+  - ai_services/renderers/docker-compose.yml
 
 networks:
   curalina:

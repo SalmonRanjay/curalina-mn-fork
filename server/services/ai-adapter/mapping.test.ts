@@ -312,8 +312,8 @@ async function main() {
     const canonical = ["Bright & Airy", "Warm & Balanced", "Dark & Moody"];
     const okAll = canonical.every((a) => {
       const r = toDesignProfile(baseQuizResponse({ atmosphere: a }));
-      // Passes the atmosphere check, so the next blocker (currency) surfaces.
-      return "needsInput" in r && r.missingField === "currency";
+      // Passes every check; currency is the configured default (CAD).
+      return !("needsInput" in r) && r.currency === "CAD" && r.atmosphere === a;
     });
     const rejected = ["warm & balanced", "Warm and Balanced", "cozy", "", null].every((a) => {
       const r = toDesignProfile(baseQuizResponse({ atmosphere: a as string | null }));

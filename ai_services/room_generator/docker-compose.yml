@@ -12,15 +12,27 @@ services:
       context: ../
       dockerfile: room_generator/Dockerfile
     container_name: curalina_rooms_api
-    command: ["python3", "-m", "curalina_rooms.bootstrap", "api"]
+    command: ["api"]
     ports:
       - "8103:8103"
     environment:
       CURALINA_DATABASE_URL: sqlite:////data/rooms.sqlite3
       SERVICE_PORT: "8103"
       CURALINA_DATA_DIR: /data
+      # Concept-render worker settings. Renderers are reached over HTTP by
+      # service name on the shared compose network; no depends_on, so rooms
+      # never waits on the heavy renderer containers.
+      CURALINA_RENDER_BACKEND: ${CURALINA_RENDER_BACKEND:-http}
+      CURALINA_ROOM_RENDERER: ${CURALINA_ROOM_RENDERER:-sd15}
+      CURALINA_RENDERER_SD15_URL: ${CURALINA_RENDERER_SD15_URL:-http://sd15_renderer:8104}
+      CURALINA_RENDERER_COMPOSITE_URL: ${CURALINA_RENDERER_COMPOSITE_URL:-http://composite_renderer:8105}
+      CURALINA_RENDER_TIMEOUT_SECONDS: ${CURALINA_RENDER_TIMEOUT_SECONDS:-1500}
+      # Lease must outlast the render timeout (validated at startup).
+      CURALINA_JOB_TIMEOUT_SECONDS: ${CURALINA_JOB_TIMEOUT_SECONDS:-1800}
+      CURALINA_RENDER_WIDTH: ${CURALINA_RENDER_WIDTH:-512}
+      CURALINA_RENDER_HEIGHT: ${CURALINA_RENDER_HEIGHT:-512}
     volumes:
-      # Named volume for SQLite database persistence across container restarts
+      # Named volume: SQLite database plus rendered assets (/data/assets)
       - rooms_data:/data
     restart: unless-stopped
     networks:
@@ -31,10 +43,22 @@ services:
       context: ../
       dockerfile: room_generator/Dockerfile
     container_name: curalina_rooms_worker
-    command: ["python3", "-m", "curalina_rooms.bootstrap", "worker"]
+    command: ["worker"]
     environment:
       CURALINA_DATABASE_URL: sqlite:////data/rooms.sqlite3
       CURALINA_DATA_DIR: /data
+      # Concept-render worker settings. Renderers are reached over HTTP by
+      # service name on the shared compose network; no depends_on, so rooms
+      # never waits on the heavy renderer containers.
+      CURALINA_RENDER_BACKEND: ${CURALINA_RENDER_BACKEND:-http}
+      CURALINA_ROOM_RENDERER: ${CURALINA_ROOM_RENDERER:-sd15}
+      CURALINA_RENDERER_SD15_URL: ${CURALINA_RENDERER_SD15_URL:-http://sd15_renderer:8104}
+      CURALINA_RENDERER_COMPOSITE_URL: ${CURALINA_RENDERER_COMPOSITE_URL:-http://composite_renderer:8105}
+      CURALINA_RENDER_TIMEOUT_SECONDS: ${CURALINA_RENDER_TIMEOUT_SECONDS:-1500}
+      # Lease must outlast the render timeout (validated at startup).
+      CURALINA_JOB_TIMEOUT_SECONDS: ${CURALINA_JOB_TIMEOUT_SECONDS:-1800}
+      CURALINA_RENDER_WIDTH: ${CURALINA_RENDER_WIDTH:-512}
+      CURALINA_RENDER_HEIGHT: ${CURALINA_RENDER_HEIGHT:-512}
     volumes:
       # Same volume as API for shared database access
       - rooms_data:/data

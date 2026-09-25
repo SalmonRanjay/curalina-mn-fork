@@ -14,6 +14,7 @@ import mappingAnalysisRoutes from "./routes-mapping-analysis.js";
 import { registerCuralinaRoutes } from "./routes-curalina.js";
 import { getAiServicesSettings } from "./config/ai-services.js";
 import { isAiServicesEnabled, orchestrateAiRender } from "./services/ai-adapter/index.js";
+import { fetchRoomAssetContent, isPngBytes } from "./services/ai-adapter/render-job-client.js";
 
 // Define a custom Request type that includes the user property
 interface RequestWithUser extends Request {
@@ -833,6 +834,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching latest render:", error);
       return res.status(500).json({ message: "Failed to fetch latest render" });
+    }
+  });
+
+  // Stream the concept render PNG from rooms. Defined after `/api/render/latest`
+  // (which must stay before `/api/render/:id`); this path has an extra segment
+  // so it does not collide with either.
+  app.get("/api/render/:id/image", async (req: Request, res: Response): Promise<Response | void> => {
+    try {
+      const render = await curalinaStorage.getRender(req.params.id);
+      const ref = (render?.aiServiceRef ?? null) as { assetId?: string } | null;
+      if (!render || render.status !== "completed" || !ref?.assetId) {
+        const message = "No completed render image found";
+        return res.status(404).json({ message, error: message, code: "render_image_not_found" });
+      }
+      const content = await fetchRoomAssetContent(ref.assetId);
+      if (!content.found || !isPngBytes(content.bytes)) {
+        const message = "Render image is not available";
+        return res.status(404).json({ message, error: message, code: "render_image_not_found" });
+      }
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      return res.status(200).send(content.bytes);
+    } catch (error) {
+      console.error("Error fetching render image:", error);
+      const message = "Render image is temporarily unavailable";
+      return res.status(503).json({ message, error: message, code: "ai_service_unavailable", retryable: true });
     }
   });
 

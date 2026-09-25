@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "idempotency_key": "idem_concept_001",
+  "render_brief": {
+    "renderer": "sd15",
+    "room_type": "living room",
+    "style": "japandi",
+    "atmosphere": "warm",
+    "pattern": "subtle linen texture",
+    "prompt": null,
+    "seed": 7
+  }
+}

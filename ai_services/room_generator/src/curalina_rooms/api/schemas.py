@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 SCHEMA_VERSION = "1.0"
 
@@ -128,15 +128,64 @@ class RenderInstanceRequirement(StrictModel):
     quantity: PositiveInt = 1
 
 
+RendererName = Literal["sd15", "composite"]
+
+# Concept renders are ADR-0020 mode S: a synthetic scene, never measured or
+# certified against a real room.
+CONCEPT_PROVENANCE_MODE = "synthetic_scene"
+
+
+class RenderBrief(StrictModel):
+    """Additive (contract 1.x minor) brief for a text-to-image concept render.
+
+    `renderer` may be omitted; the worker then uses `CURALINA_ROOM_RENDERER`.
+    """
+
+    renderer: RendererName | None = None
+    room_type: str = Field(min_length=1)
+    style: str = Field(min_length=1)
+    atmosphere: str = Field(min_length=1)
+    pattern: str | None = None
+    prompt: str | None = None
+    seed: int | None = None
+
+
 class RenderJobRequest(StrictModel):
+    """A bundle-grounded render request or, when `render_brief` is present,
+    a concept render. Without a brief, every bundle-style field is required.
+    """
+
     schema_version: str
-    bundle: BundleReference
-    room_type: str
-    layout_version: str
-    provenance_mode: str
-    instances: list[RenderInstanceRequirement]
-    reference_images: list[ReferenceImage]
+    bundle: BundleReference | None = None
+    room_type: str | None = None
+    layout_version: str | None = None
+    provenance_mode: str | None = None
+    instances: list[RenderInstanceRequirement] | None = None
+    reference_images: list[ReferenceImage] | None = None
     idempotency_key: str | None = None
+    render_brief: RenderBrief | None = None
+
+    @model_validator(mode="after")
+    def _require_bundle_fields_without_brief(self) -> RenderJobRequest:
+        if self.render_brief is None:
+            missing = [
+                name
+                for name in (
+                    "bundle",
+                    "room_type",
+                    "layout_version",
+                    "provenance_mode",
+                    "instances",
+                    "reference_images",
+                )
+                if getattr(self, name) is None
+            ]
+            if missing:
+                raise ValueError(
+                    "without render_brief these fields are required: "
+                    + ", ".join(missing)
+                )
+        return self
 
 
 class RenderJobResponse(StrictModel):
@@ -144,14 +193,27 @@ class RenderJobResponse(StrictModel):
     job_id: str
     status: Literal["queued"] = "queued"
     location: str
-    bundle_id: str
-    bundle_revision: str
+    bundle_id: str | None = None
+    bundle_revision: str | None = None
     created_at: str
 
 
 class JobResult(StrictModel):
+    """Job outcome. Legacy jobs set `candidate_id`/`outcome_counts` only and
+    have no image. Concept renders set `output_asset_id` and the fields
+    that describe how it was made; `GET /v1/assets/{output_asset_id}/content`
+    serves the PNG.
+    """
+
     candidate_id: str | None = None
     outcome_counts: dict[str, int] | None = None
+    output_asset_id: str | None = None
+    renderer: str | None = None
+    model_id: str | None = None
+    label: str | None = None
+    elapsed_ms: int | None = None
+    provenance_mode: str | None = None
+    measurement_certified: bool | None = None
 
 
 class JobStatusResponse(StrictModel):

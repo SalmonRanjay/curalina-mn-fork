@@ -29,6 +29,12 @@
     "created_at": { "type": "string", "format": "date-time" },
     "updated_at": { "type": "string", "format": "date-time" },
     "candidate_id": { "type": ["string", "null"], "pattern": "^cand_" },
+    "output_asset_id": {"type": ["string", "null"], "pattern": "^asset_", "description": "Concept renders: fetch PNG via GET /v1/assets/{id}/content."},
+    "renderer": {"type": ["string", "null"]},
+    "model_id": {"type": ["string", "null"]},
+    "label": {"type": ["string", "null"]},
+    "provenance_mode": {"type": ["string", "null"], "description": "Concept renders: synthetic_scene (ADR-0020 mode S)."},
+    "measurement_certified": {"type": ["boolean", "null"]},
     "failure": {
       "type": ["object", "null"],
       "additionalProperties": false,

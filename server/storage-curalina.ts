@@ -120,6 +120,7 @@ export interface ICuralinaStorage {
   
   // Render operations
   createRender(render: InsertRender): Promise<Render>;
+  getGeneratingAiRenders(): Promise<Render[]>;
   updateRender(id: string, data: Partial<InsertRender>): Promise<Render>;
   getRender(id: string): Promise<Render | undefined>;
   getLatestRenderBySession(sessionId: string): Promise<Render | undefined>;
@@ -543,6 +544,14 @@ export class CuralinaStorage implements ICuralinaStorage {
       .where(eq(renders.id, id))
       .returning();
     return render;
+  }
+
+  /** Renders awaiting a rooms job result (reconciler input). */
+  async getGeneratingAiRenders(): Promise<Render[]> {
+    return getDb()
+      .select()
+      .from(renders)
+      .where(and(eq(renders.status, "generating"), sql`${renders.aiServiceRef} IS NOT NULL`));
   }
 
   async getRender(id: string): Promise<Render | undefined> {

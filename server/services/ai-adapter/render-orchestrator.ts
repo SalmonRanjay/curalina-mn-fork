@@ -72,6 +72,7 @@ import {
   type ProductImageFetcher,
 } from "./asset-import.js";
 import {
+  submitRoomConceptJob,
   submitRoomRenderJob,
   type RoomRenderInstance,
   type RoomReferenceImage,
@@ -213,6 +214,13 @@ export async function orchestrateAiRender(
   if (!quiz) {
     // Same shape as the existing GET /api/quiz-response/:id 404.
     return { status: 404, body: { message: "Quiz response not found" } };
+  }
+
+  // Concept mode (CURALINA_ROOM_RENDER_MODE=concept): straight to a rooms
+  // render_brief. Recommendation is NOT called and no products are mapped —
+  // the recommender is not wired into the demo chain yet.
+  if (getAiServicesSettings().roomRenderMode === "concept") {
+    return orchestrateConceptRender({ quiz, quizResponseId, sessionId, userId, productSkus, storage });
   }
 
   // Step 2: map to DesignProfileIn, or persist an honest needs_input row.
@@ -446,4 +454,102 @@ export async function orchestrateAiRender(
     status: 201,
     body: { ...(render as unknown as Record<string, unknown>), skippedProducts },
   };
+}
+
+// --- Concept render path ---------------------------------------------------
+
+// Canonical quiz strings (client/src/components/quiz/consultationOptions.ts).
+// Anything else is needs_input: no defaults are invented.
+const CONCEPT_ROOMS = ["Living Room", "Dining Room", "Bedroom"];
+const CONCEPT_STYLES = ["Organic Modern", "Contemporary Luxe", "Mid-Century Scandinavian"];
+const CONCEPT_ATMOSPHERES = ["Bright & Airy", "Warm & Balanced", "Dark & Moody"];
+const CONCEPT_PATTERNS = ["Just Solids", "Patterned Accents", "Pattern Forward"];
+
+async function orchestrateConceptRender(args: {
+  quiz: QuizResponse;
+  quizResponseId: string;
+  sessionId: string;
+  userId?: string;
+  productSkus?: string[];
+  storage: RenderOrchestratorStorage;
+}): Promise<AiRenderOutcome> {
+  const { quiz, quizResponseId, sessionId, userId, productSkus, storage } = args;
+  const settings = getAiServicesSettings();
+
+  const roomType = quiz.roomType?.trim();
+  const style = quiz.styles?.[0]?.trim();
+  const atmosphere = quiz.atmosphere?.trim();
+  let missingField: string | null = null;
+  if (!roomType || !CONCEPT_ROOMS.includes(roomType)) missingField = "roomType";
+  else if (!style || !CONCEPT_STYLES.includes(style)) missingField = "styles";
+  else if (!atmosphere || !CONCEPT_ATMOSPHERES.includes(atmosphere)) missingField = "atmosphere";
+
+  if (missingField) {
+    const render = await storage.createRender({
+      quizResponseId,
+      sessionId,
+      userId: userId ?? undefined,
+      imageUrl: null,
+      prompt: `AI services path (concept) — quiz response is missing required field "${missingField}"`,
+      productSkus: productSkus ?? [],
+      status: "needs_input",
+      errorMessage: `needs_input: ${missingField}`,
+    } as InsertRender);
+    return { status: 201, body: render as unknown as Record<string, unknown> };
+  }
+
+  const pattern =
+    quiz.patternPreference && CONCEPT_PATTERNS.includes(quiz.patternPreference)
+      ? quiz.patternPreference
+      : null;
+
+  let job;
+  try {
+    job = await submitRoomConceptJob({
+      brief: {
+        renderer: settings.roomRenderer,
+        room_type: roomType as string,
+        style: style as string,
+        atmosphere: atmosphere as string,
+        pattern,
+        prompt: null,
+        seed: null,
+      },
+      idempotencyKey: `${quizResponseId}:${sessionId}`,
+    });
+  } catch (err) {
+    if (isServiceUnreachableError(err)) {
+      return { status: 503, body: unavailableErrorBody("rooms") };
+    }
+    if (err instanceof AiAdapterServiceError) {
+      return {
+        status: err.httpStatus,
+        body: servicePassthroughErrorBody("rooms", err.code, err.message, err.requestId, err.retryable),
+      };
+    }
+    throw err;
+  }
+
+  const render = await storage.createRender({
+    quizResponseId,
+    sessionId,
+    userId: userId ?? undefined,
+    imageUrl: null,
+    prompt: `AI services path (concept) — rooms job ${job.jobId}, renderer ${settings.roomRenderer}`,
+    productSkus: productSkus ?? [],
+    status: "generating",
+    aiServiceRef: {
+      schemaVersion: job.schemaVersion,
+      jobId: job.jobId,
+      renderer: settings.roomRenderer,
+      mode: "concept",
+      candidateId: null,
+      bundleId: null,
+      bundleRevision: null,
+      reviewId: null,
+      assetIds: [],
+    },
+  } as InsertRender);
+
+  return { status: 201, body: render as unknown as Record<string, unknown> };
 }

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "curalina-sd15"
+version = "0.0.0"
+description = "Stateless Stable Diffusion 1.5 renderer sidecar for Curalina room-render demos."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+    "pydantic>=2.8",
+    "fastapi>=0.111",
+    "uvicorn>=0.30",
+    "pillow>=10",
+]
+
+[project.optional-dependencies]
+# Heavy inference deps; installed in the Docker image only, never for fast tests.
+inference = [
+    "diffusers",
+    "transformers",
+    "accelerate",
+    "safetensors",
+]
+dev = ["httpx", "mypy>=1.10", "pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --cov=curalina_sd15 --cov-branch --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+mypy_path = "src"

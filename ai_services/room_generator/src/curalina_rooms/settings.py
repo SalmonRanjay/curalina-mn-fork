@@ -1,6 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field, PositiveInt
+from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,9 +27,47 @@ class Settings(BaseSettings):
         default=16_777_216,
         alias="CURALINA_MAX_IMAGE_PIXELS",
     )
+    # Job lease length. Must exceed `curalina_render_timeout_seconds` (CPU
+    # Stable Diffusion renders take many minutes); the worker also renews the
+    # lease with a heartbeat while a render is in flight.
     curalina_job_timeout_seconds: PositiveInt = Field(
-        default=300,
+        default=1800,
         alias="CURALINA_JOB_TIMEOUT_SECONDS",
+    )
+    # Renderer backend: "http" calls the external renderer services; "fake"
+    # is a deterministic in-process backend for CI. It is never chosen
+    # implicitly.
+    curalina_render_backend: Literal["http", "fake"] = Field(
+        default="http", alias="CURALINA_RENDER_BACKEND"
+    )
+    curalina_room_renderer: Literal["sd15", "composite"] = Field(
+        default="sd15", alias="CURALINA_ROOM_RENDERER"
+    )
+    curalina_renderer_sd15_url: str = Field(
+        default="http://sd15_renderer:8104", alias="CURALINA_RENDERER_SD15_URL"
+    )
+    curalina_renderer_composite_url: str = Field(
+        default="http://composite_renderer:8105",
+        alias="CURALINA_RENDERER_COMPOSITE_URL",
+    )
+    curalina_render_timeout_seconds: PositiveInt = Field(
+        default=1500, alias="CURALINA_RENDER_TIMEOUT_SECONDS"
+    )
+    curalina_render_width: PositiveInt = Field(
+        default=512, alias="CURALINA_RENDER_WIDTH"
+    )
+    curalina_render_height: PositiveInt = Field(
+        default=512, alias="CURALINA_RENDER_HEIGHT"
     )
     service_host: str = "127.0.0.1"
     service_port: int = 8103
+
+    @model_validator(mode="after")
+    def _lease_must_outlast_render(self) -> "Settings":
+        if self.curalina_job_timeout_seconds <= self.curalina_render_timeout_seconds:
+            raise ValueError(
+                "CURALINA_JOB_TIMEOUT_SECONDS must exceed "
+                "CURALINA_RENDER_TIMEOUT_SECONDS so a slow render is not "
+                "re-leased and run twice"
+            )
+        return self

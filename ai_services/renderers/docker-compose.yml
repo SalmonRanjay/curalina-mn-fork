@@ -1,0 +1,71 @@
+# Stateless renderer sidecars for room-render demos (ADR-0020 D3/D4).
+# Run independently: cd ai_services/renderers && docker compose up
+# Or include from the root orchestrator via `include:`.
+#
+# - sd15_renderer: Stable Diffusion 1.5 on CPU, port 8104. Loads the model
+#   lazily on the first render; /healthz is HTTP 200 immediately (ready=false
+#   until loaded). Needs >= 10 GB Docker Desktop memory; first render downloads
+#   ~4 GB into the hf_cache volume.
+# - composite_renderer: procedural room + real catalogue cutouts, port 8105.
+#   Mounts the supplier images read-only from the host.
+
+services:
+  sd15_renderer:
+    build:
+      context: ./sd15
+      dockerfile: Dockerfile
+    container_name: curalina_sd15_renderer
+    ports:
+      - "8104:8104"
+    environment:
+      SERVICE_PORT: "8104"
+      SD15_MODEL_ID: ${SD15_MODEL_ID:-stable-diffusion-v1-5/stable-diffusion-v1-5}
+      SD15_STEPS: ${SD15_STEPS:-20}
+      SD15_GUIDANCE: ${SD15_GUIDANCE:-7.5}
+      HF_HOME: /hf_cache
+    volumes:
+      # Hugging Face cache so weights download once.
+      - hf_cache:/hf_cache
+    healthcheck:
+      # Only needs HTTP 200; readiness (model loaded) is not health.
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8104/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - curalina
+
+  composite_renderer:
+    build:
+      context: ./composite
+      dockerfile: Dockerfile
+    container_name: curalina_composite_renderer
+    ports:
+      - "8105:8105"
+    environment:
+      SERVICE_PORT: "8105"
+      SUPPLIER_IMAGES_DIR: /data/supplier_images
+    volumes:
+      - type: bind
+        source: ${SUPPLIER_IMAGES_HOST_DIR:-/Users/rjsalmon/Documents/Humber/misc.curalina/Supplier Images}
+        target: /data/supplier_images
+        read_only: true
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8105/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - curalina
+
+volumes:
+  hf_cache:
+    driver: local
+
+networks:
+  curalina:
+    driver: bridge

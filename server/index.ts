@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 import * as logger from "firebase-functions/logger";
 import cors from "cors";
 import path from "path";
+import { isAiServicesEnabled } from "./services/ai-adapter/index.js";
+import { startRenderReconciler } from "./services/ai-adapter/render-reconciler.js";
+import { curalinaStorage } from "./storage-curalina";
 
 // Export a factory function instead of a running promise
 // This prevents side-effects (like DB connection) from happening at import time
@@ -132,6 +135,11 @@ if (isCloudRun || process.env.NODE_ENV === "production") {
     .then((app) => {
       app.listen(PORT, "0.0.0.0", () => {
         logger.info(`[Server] Listening on port ${PORT}`);
+        // ADR-0018 D6: app-side reconciler, only when AI services are on.
+        if (isAiServicesEnabled()) {
+          startRenderReconciler(curalinaStorage);
+          logger.info("[Server] Render reconciler started");
+        }
       });
     })
     .catch((error) => {

@@ -18,3 +18,9 @@ exposed `storage_key`). A concept used by exactly one service may stay
 local.
 
 Breaking-change disagreements are escalated to `tech-lead` for an ADR.
+
+## Changelog (minor, additive)
+
+- job.schema.json: optional `output_asset_id`, `renderer`, `model_id`,
+  `label`, `provenance_mode`, `measurement_certified` for rooms concept
+  renders (`render_brief`). No existing field changed.

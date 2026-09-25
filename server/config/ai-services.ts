@@ -33,6 +33,16 @@ export interface AiServicesSettings {
    * closed" discipline.
    */
   rulesVersion: string | null;
+  /**
+   * "concept" submits a `render_brief` straight to rooms (no recommendation,
+   * no product mapping); "full" is the original bundle-based path. Default
+   * "full" so existing behaviour is unchanged.
+   */
+  roomRenderMode: "concept" | "full";
+  /** Which rooms renderer a concept brief asks for. Default "sd15". */
+  roomRenderer: "sd15" | "composite";
+  /** ISO 4217 code used as the DesignProfile currency. Default "CAD". */
+  defaultCurrency: string;
 }
 
 const DEFAULT_RECOMMENDATION_URL = "http://127.0.0.1:8101";
@@ -65,6 +75,13 @@ function parseEnabledFlag(rawValue: string | undefined): boolean {
   );
 }
 
+function parseChoice<T extends string>(name: string, raw: string | undefined, allowed: readonly T[], dflt: T): T {
+  if (raw === undefined || raw.trim() === "") return dflt;
+  const v = raw.trim().toLowerCase() as T;
+  if (allowed.includes(v)) return v;
+  throw new Error(`Invalid ${name} value: "${raw}". Allowed: ${allowed.join(", ")}.`);
+}
+
 /**
  * Builds a fresh AiServicesSettings object from the current process.env.
  * Deliberately not memoized at module scope: callers that need to observe
@@ -82,6 +99,9 @@ export function getAiServicesSettings(): AiServicesSettings {
       process.env.CURALINA_AI_CONTRACT_VERSION || DEFAULT_CONTRACT_VERSION,
     catalogueSnapshotId: process.env.CURALINA_CATALOGUE_SNAPSHOT_ID || null,
     rulesVersion: process.env.CURALINA_RULES_VERSION || null,
+    roomRenderMode: parseChoice("CURALINA_ROOM_RENDER_MODE", process.env.CURALINA_ROOM_RENDER_MODE, ["concept", "full"] as const, "full"),
+    roomRenderer: parseChoice("CURALINA_ROOM_RENDERER", process.env.CURALINA_ROOM_RENDERER, ["sd15", "composite"] as const, "sd15"),
+    defaultCurrency: (process.env.CURALINA_DEFAULT_CURRENCY || "CAD").trim().toUpperCase(),
   };
 }
 
