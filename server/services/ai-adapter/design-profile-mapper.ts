@@ -79,10 +79,12 @@ function resolveStyle(styles: string[] | null | undefined): string | null {
  * be a fabricated number, not a mapping. Two closed-bracket formats seen in
  * this codebase are supported: the `$2K-$5K` shorthand
  * (`shared/schema.ts`'s own documented example) and the `$2,000-$5,000`
- * comma-thousands form used by `client/src/components/quiz/BudgetStepV2.tsx`.
- * Anything else (including the older `budget`/`moderate`/`premium`/`luxury`
- * id form from `client/src/components/quiz/BudgetStep.tsx`) is honestly
- * unparseable and returns `null` — the caller must return `needsInput`
+ * comma-thousands form stored by the live quiz (`INVESTMENTS` in
+ * `client/src/components/quiz/consultationOptions.ts`) and by the removed
+ * pre-consultation `BudgetStepV2`, so older `quiz_responses` rows carry it
+ * too. Anything else (including the older `budget`/`moderate`/`premium`/`luxury`
+ * id form from the removed pre-V2 `BudgetStep` component (older rows
+ * only)) is honestly unparseable and returns `null` — the caller must return `needsInput`
  * rather than guess.
  */
 /**
