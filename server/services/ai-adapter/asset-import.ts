@@ -17,8 +17,10 @@
  *   literally commented "Legacy" at the call site) plus one narrow
  *   `/public-objects/` fast-path inside
  *   the legacy `fetchImageAsBase64` helper (formerly in
- *   `server/services/gemini-image-only-render.ts`, removed in the
- *   2026-09-29 dead-code cleanup).
+ *   `server/services/gemini-image-only-render.ts`, moved to
+ *   `archive/dead-code-2026-09-29/server/services/gemini-image-only-render.ts`
+ *   in the 2026-09-29 dead-code cleanup — see that folder's README to
+ *   restore it).
  *   Grepping `server/` for `ObjectStorageService`/`objectStorage` turns up
  *   no other call site, and specifically none in the code that actually
  *   populates `products.images`.
@@ -34,9 +36,9 @@
  *   directly from `product.images`.
  *
  *   The legacy code that read product image *bytes* —
- *   `fetchImageAsBase64` in the since-removed `gemini-image-only-render.ts`
- *   (recoverable at commit `9a05d5c7c0dd1a759a899533c2a0eaae753ee5f9`, see
- *   below) — treated `/public-objects/` as a narrow, optional fast path and
+ *   `fetchImageAsBase64` in the archived `gemini-image-only-render.ts`
+ *   (see `archive/dead-code-2026-09-29/README.md` to restore it) —
+ *   treated `/public-objects/` as a narrow, optional fast path and
  *   fell back to a plain HTTP `fetch` on the stored URL for everything else.
  *   That fallback is the general-case, backend-agnostic precedent this module follows:
  *   read bytes via `fetch(url)` against whatever URL is actually stored on
