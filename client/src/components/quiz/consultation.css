@@ -3,8 +3,8 @@
   --cc-ink: #231f20;
   --cc-khaki: #7f807a;
   --cc-panel: #f4f6f5;
-  --cc-line: rgba(35, 31, 32, 0.55);
-  --cc-line-strong: rgba(35, 31, 32, 0.85);
+  --cc-line: rgba(35, 31, 32, 0.38);
+  --cc-line-strong: rgba(35, 31, 32, 0.65);
   --cc-text-light: #433f3d;
   background: #fff;
   color: var(--cc-ink);
@@ -82,15 +82,15 @@
 
 /* Text option box: thin light line, lighter text; darkens on hover, khaki + white when selected */
 .cc-option {
-  border: 1.5px solid var(--cc-line);
+  border: 1px solid var(--cc-line);
   background: #fff;
   color: var(--cc-text-light);
   font-weight: 400;
-  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, box-shadow 300ms ease;
+  transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease;
   cursor: pointer;
   text-align: center;
 }
-.cc-option:hover { border-color: var(--cc-ink); color: var(--cc-ink); box-shadow: 0 0 0 1px var(--cc-ink) inset; }
+.cc-option:hover { border-color: var(--cc-line-strong); color: var(--cc-ink); }
 .cc-option[aria-checked="true"], .cc-option[aria-pressed="true"] {
   background: var(--cc-khaki);
   border-color: var(--cc-khaki);
