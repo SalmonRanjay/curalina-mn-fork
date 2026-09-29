@@ -20,7 +20,7 @@ function Radio({ checked, label, onSelect, testId }: { checked: boolean; label: 
   );
 }
 
-const card = "max-w-5xl mx-auto my-12 md:my-20 bg-[#f7f9f8] shadow-[3px_4px_6px_rgba(0,0,0,0.18)] px-6 md:px-20 py-14";
+const card = "max-w-3xl mx-auto my-8 md:my-12 bg-[#f7f9f8] border border-[#231f20]/15 shadow-[2px_3px_5px_rgba(0,0,0,0.14)] px-6 md:px-14 py-8 md:py-10";
 
 /** Step 8: Verify System Parameters (p11) with optional Refine Design Parameters (p12). */
 export default function ConsultVerifyStep({ data, onUpdate, onAuthorize }: Props) {
@@ -55,7 +55,7 @@ export default function ConsultVerifyStep({ data, onUpdate, onAuthorize }: Props
               </div>
             ))}
           </div>
-          <div className="flex flex-col items-center gap-8 mt-14">
+          <div className="flex flex-col items-center gap-4 mt-8">
             <button className="cc-btn" onClick={onAuthorize} data-testid="button-authorize">Authorize</button>
             <button
               className="cc-link"
@@ -110,7 +110,7 @@ export default function ConsultVerifyStep({ data, onUpdate, onAuthorize }: Props
             </div>
           ))}
         </div>
-        <div className="flex flex-col items-center gap-8 mt-14">
+        <div className="flex flex-col items-center gap-4 mt-8">
           <button
             className="cc-btn"
             data-testid="button-update"

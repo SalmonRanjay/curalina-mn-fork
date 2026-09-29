@@ -38,7 +38,7 @@ export default function QuizLayout({
         </motion.div>
 
         {(onPrevious || (onNext && !hideNext)) && (
-          <div className="max-w-[1400px] mx-auto px-6 md:px-14 py-14 flex items-center justify-between gap-4">
+          <div className="max-w-[1040px] mx-auto px-6 md:px-10 py-6 flex items-center justify-between gap-4">
             {onPrevious ? (
               <button onClick={onPrevious} className="cc-btn" data-testid="button-previous">Previous</button>
             ) : (

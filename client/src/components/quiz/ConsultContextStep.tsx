@@ -78,10 +78,10 @@ function UploadBox({
 export default function ConsultContextStep(p: Props) {
   const [modal, setModal] = useState<"photo" | "plan" | null>(null);
   return (
-    <div className="max-w-[1100px] mx-auto px-6 pt-12 md:pt-16 text-center">
+    <div className="max-w-[900px] mx-auto px-6 pt-8 md:pt-10 text-center">
       <h2 className="cc-heading" data-testid="heading-context">Environmental Context</h2>
       <p className="mt-6 text-lg font-light">Provide photo(s) and/or floorplan to synchronize our design logic with your physical space.</p>
-      <div className="grid gap-8 md:grid-cols-2 max-w-3xl mx-auto mt-14">
+      <div className="grid gap-5 md:grid-cols-2 max-w-3xl mx-auto mt-8">
         <UploadBox heading="Upload your photo(s)" addLabel="Add Photo" url={p.roomPhoto} uploading={p.isUploadingPhoto} onDrop={p.onPhotoUpload} onExample={() => setModal("photo")} testId="photo" />
         <UploadBox heading="Upload your floorplan" addLabel="Add Plan" url={p.floorplanUrl} uploading={p.isUploadingFloorplan} onDrop={p.onFloorplanUpload} onExample={() => setModal("plan")} testId="floorplan" />
       </div>
