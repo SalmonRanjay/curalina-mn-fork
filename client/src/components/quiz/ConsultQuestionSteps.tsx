@@ -7,7 +7,7 @@ import patternRug from "@/assets/pattern-rug.jpg";
 
 function Heading({ children, testId }: { children: React.ReactNode; testId?: string }) {
   return (
-    <div className="max-w-[1040px] mx-auto px-6 md:px-10 pt-8 pb-5 md:pt-10 md:pb-6">
+    <div className="cc-scroll-reveal max-w-[1040px] mx-auto px-6 md:px-10 pt-8 pb-5 md:pt-10 md:pb-6">
       <h2 className="cc-heading" data-testid={testId}>{children}</h2>
     </div>
   );
@@ -53,7 +53,7 @@ export function ConsultAestheticStep({
       <Heading testId="heading-aesthetic">Identify Your Aesthetic</Heading>
       <div role="radiogroup" aria-label="Aesthetic">
         {AESTHETICS.map((a) => (
-          <div key={a.style} className="mb-1">
+          <div key={a.style} className="cc-scroll-reveal mb-1">
             <button
               type="button"
               role="radio"
@@ -83,7 +83,7 @@ export function ConsultMaterialityStep({ value, onChange }: { value: string; onC
       {MATERIALITY.map((m) => {
         const selected = value === m.style;
         return (
-          <div key={m.style} className="grid md:grid-cols-2 mb-6 md:mb-8">
+          <div key={m.style} className="cc-scroll-reveal grid md:grid-cols-2 mb-6 md:mb-8">
             <div className="relative min-h-[20rem]">
               <img src={m.photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="relative z-10 m-6 md:m-12 bg-[#f4f6f5] border border-[#231f20]/15 max-w-md">
@@ -141,7 +141,7 @@ export function ConsultPatternStep({ value, onChange }: { value: string; onChang
   return (
     <div>
       <Heading testId="heading-pattern">Specify pattern density</Heading>
-      <div className="flex">
+      <div className="cc-scroll-reveal flex">
         <img src={patternRug} alt="" className="hidden md:block w-[18%] object-cover" />
         <div role="radiogroup" aria-label="Pattern density" className="flex-1 flex flex-col">
           {PATTERNS.map((p) => (

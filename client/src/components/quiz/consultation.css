@@ -29,6 +29,42 @@
 }
 .cc-subheading { font-weight: 300; color: var(--cc-text-light); }
 .cc-panel { background: var(--cc-panel); }
+
+/* Scroll-driven reveal for long quiz steps: the current block fades/slides
+   fully into view, holds, then fades/slides out as the next one arrives --
+   continuously linked to scroll position (not a one-shot enter/exit
+   trigger), so scrolling back up reverses it smoothly. Applied per-element
+   via .cc-scroll-reveal, not globally, so short single-screen steps and any
+   block wrapping interactive controls can opt out or be exempted.
+
+   Base state is fully visible/static; the animation only takes over where
+   supported. That keeps two guardrails true without extra rules:
+   - browsers without `animation-timeline: view()` support (the @supports
+     block below) never get stuck invisible;
+   - a block that currently holds keyboard focus (.cc-scroll-reveal:has
+     (:focus-visible)) is forced fully visible so Tab never lands on an
+     invisible or mid-transform control. */
+.cc-scroll-reveal {
+  opacity: 1;
+  transform: none;
+  animation: cc-scroll-reveal linear both;
+  animation-timeline: view();
+  animation-range: entry 0% exit 100%;
+}
+@keyframes cc-scroll-reveal {
+  0%   { opacity: 0; transform: translateY(1.5rem); }
+  22%  { opacity: 1; transform: translateY(0); }
+  78%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-1.5rem); }
+}
+.cc-scroll-reveal:has(:focus-visible) {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+@supports not (animation-timeline: view()) {
+  .cc-scroll-reveal { animation: none; opacity: 1; transform: none; }
+}
 .cc-btn {
   background: var(--cc-ink);
   color: #fff;
@@ -104,4 +140,7 @@
 @keyframes cc-pulse { 0%, 100% { box-shadow: 0 0 4px rgba(201,162,39,.2); } 50% { box-shadow: 0 0 16px rgba(201,162,39,.5); } }
 .cc-chair { animation: cc-chair 5s ease-in-out infinite; }
 @keyframes cc-chair { 0%, 100% { opacity: 0.78; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .cc-chair, .cc-check[data-active="true"], .cc-reveal { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cc-chair, .cc-check[data-active="true"], .cc-reveal, .cc-scroll-reveal { animation: none; }
+  .cc-scroll-reveal { opacity: 1; transform: none; }
+}

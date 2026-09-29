@@ -20,7 +20,7 @@ function Radio({ checked, label, onSelect, testId }: { checked: boolean; label: 
   );
 }
 
-const card = "max-w-3xl mx-auto my-8 md:my-12 bg-[#f7f9f8] border border-[#231f20]/15 shadow-[2px_3px_5px_rgba(0,0,0,0.14)] px-6 md:px-14 py-8 md:py-10";
+const card = "cc-scroll-reveal max-w-3xl mx-auto my-8 md:my-12 bg-[#f7f9f8] border border-[#231f20]/15 shadow-[2px_3px_5px_rgba(0,0,0,0.14)] px-6 md:px-14 py-8 md:py-10";
 
 /** Step 8: Verify System Parameters (p11) with optional Refine Design Parameters (p12). */
 export default function ConsultVerifyStep({ data, onUpdate, onAuthorize }: Props) {
