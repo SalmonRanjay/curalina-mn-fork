@@ -22,6 +22,11 @@ from typing import Any
 from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 
+from curalina_recommendation.api.consultation_routes import (
+    RecommenderProvider,
+    register_consultation_routes,
+    settings_provider,
+)
 from curalina_recommendation.api.errors import validation_exception_handler
 from curalina_recommendation.api.schemas import (
     BundleRequest,
@@ -33,6 +38,7 @@ from curalina_recommendation.api.schemas import (
     SubstitutionRequest,
     SubstitutionResponse,
 )
+from curalina_recommendation.settings import Settings
 
 # Below this budget, no known fixture product set can satisfy the
 # requested categories. This is a fixed constant used only to pick which
@@ -48,9 +54,19 @@ def _load_fixture(name: str) -> dict[str, Any]:
     return result
 
 
-def create_app() -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    consultation_provider: RecommenderProvider | None = None,
+) -> FastAPI:
+    settings = settings or Settings()
     app = FastAPI(title="curalina_recommendation", version="0.0.0")
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    register_consultation_routes(
+        app,
+        consultation_provider or settings_provider(settings),
+        currency=settings.curalina_catalogue_currency,
+        min_match_score=settings.curalina_min_match_score,
+    )
 
     @app.post(
         "/v1/catalogue/imports",

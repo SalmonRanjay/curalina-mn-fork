@@ -10,8 +10,23 @@ LABEL = (
     "Concept preview - illustrative room with real catalogue pieces. "
     "Not your room; pieces are not a recommendation."
 )
+# Used instead of LABEL when the request names the pieces to show (ADR-0025).
+LABEL_RECOMMENDED = (
+    "Concept preview - illustrative room showing your recommended catalogue "
+    "pieces. Not your room and not to scale."
+)
 RENDERER_NAME = "composite"
 MODEL_ID = "composite-pillow-v1"
+
+
+class RequestedProduct(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    product_id: str
+    name: str
+    supplier: str
+    category: str
+    sku: str | None = None
 
 
 class Brief(BaseModel):
@@ -21,6 +36,8 @@ class Brief(BaseModel):
     style: str
     atmosphere: str
     pattern: str | None = None
+    # When present, only these pieces are placed; no random catalogue picks.
+    products: list[RequestedProduct] | None = None
 
 
 class RenderRequest(BaseModel):

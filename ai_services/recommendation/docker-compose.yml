@@ -19,6 +19,15 @@ services:
     environment:
       CURALINA_DATABASE_URL: postgresql://curalina:curalina_dev_password@postgres:5432/curalina_recommendation
       SERVICE_PORT: "8101"
+      # Consultation recommender (ADR-0025): the supplier handoff workbooks are
+      # read in place, never baked into the image (STATUS item 35).
+      CURALINA_SUPPLIER_DATA_DIR: /data/supplier_csv
+      CURALINA_CATALOGUE_CURRENCY: CAD
+    volumes:
+      - type: bind
+        source: ${SUPPLIER_CSV_HOST_DIR:-/Users/rjsalmon/Documents/Humber/misc.curalina/Supplier CSV Files}
+        target: /data/supplier_csv
+        read_only: true
     depends_on:
       postgres:
         condition: service_healthy

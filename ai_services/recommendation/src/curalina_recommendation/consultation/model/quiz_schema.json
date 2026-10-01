@@ -1,0 +1,63 @@
+{
+  "rooms": [
+    "Living Room",
+    "Dining Room",
+    "Bedroom"
+  ],
+  "styles": [
+    "Organic Modern",
+    "Contemporary Luxe",
+    "Mid-Century Scandinavian"
+  ],
+  "atmospheres": [
+    "Bright & Airy",
+    "Warm & Balanced",
+    "Dark & Moody"
+  ],
+  "patterns": [
+    "Just Solids",
+    "Patterned Accents",
+    "Pattern Forward"
+  ],
+  "touches_by_room": {
+    "Living Room": [
+      "Cozy, relaxing space for everyday comfort",
+      "Pet friendly and durable fabrics",
+      "Refined space for hosting and socializing",
+      "Dedicated media area for television",
+      "Storage to keep everything tidy",
+      "An architectural fireplace to anchor the room"
+    ],
+    "Dining Room": [
+      "Cozy, relaxing space for everyday comfort",
+      "Pet friendly and durable fabrics",
+      "Refined space for hosting and socializing",
+      "Storage to keep everything tidy"
+    ],
+    "Bedroom": [
+      "Cozy, relaxing space for everyday comfort",
+      "Pet friendly and durable fabrics",
+      "Refined space for hosting guests",
+      "Storage to keep everything tidy"
+    ]
+  },
+  "seating_options": [
+    4,
+    6,
+    8,
+    10,
+    12
+  ],
+  "bed_sizes": [
+    "Double Size Bed",
+    "Queen Size Bed",
+    "King Size Bed"
+  ],
+  "investments": [
+    "$20,000-$30,000",
+    "$31,000-$40,000",
+    "$41,000-$50,000",
+    "$51,000-$65,000",
+    "$66,000+"
+  ]
+}

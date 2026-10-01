@@ -557,21 +557,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/cart", isAuthenticated, async (req: Request, res: Response): Promise<Response> => {
-    try {
-      const userId = (req as RequestWithUser).user!.id;
-      const { productId, quantity = 1 } = req.body as { productId: string; quantity?: number };
+  // Session-based cart (ADR-0025). The cart is keyed by the browser session
+  // that took the quiz, so a customer can cart recommended products before
+  // signing in; a signed-in user is also recorded on the line. Every
+  // item-level change must name the owning session, so knowing an item id is
+  // not enough to edit someone else's cart.
+  const cartAddSchema = z.object({
+    sessionId: z.string().min(1),
+    productId: z.string().min(1),
+    quantity: z.number().int().min(1).max(100).default(1),
+  });
+  const cartUpdateSchema = z.object({
+    sessionId: z.string().min(1),
+    quantity: z.number().int().min(1).max(100),
+  });
 
+  async function findSessionCartItem(sessionId: string, itemId: string) {
+    const items = await curalinaStorage.getCartBySession(sessionId);
+    return items.find((item) => item.id === itemId);
+  }
+
+  app.post("/api/cart", async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const parsed = cartAddSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const message = parsed.error.errors[0]?.message || "Invalid cart payload";
+        return res.status(400).json({ message, error: message });
+      }
+      const { sessionId, productId, quantity } = parsed.data;
+      const product = await curalinaStorage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found", error: "Product not found" });
+      }
       const cartItem = await curalinaStorage.addToCart({
-        userId,
+        sessionId,
+        userId: (req as RequestWithUser).user?.id ?? undefined,
         productId,
         quantity,
-      } as any);
-
+      });
       return res.status(201).json(cartItem);
     } catch (error) {
       console.error("Error adding to cart (API route):", error);
       return res.status(500).json({ message: "Failed to add to cart" });
+    }
+  });
+
+  app.get("/api/cart/:sessionId", async (req: Request, res: Response): Promise<Response> => {
+    try {
+      return res.json(await curalinaStorage.getCartBySession(req.params.sessionId));
+    } catch (error) {
+      console.error("Error fetching session cart:", error);
+      return res.status(500).json({ message: "Failed to fetch cart" });
+    }
+  });
+
+  app.patch("/api/cart/:itemId", async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const parsed = cartUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const message = parsed.error.errors[0]?.message || "Invalid cart update";
+        return res.status(400).json({ message, error: message });
+      }
+      if (!(await findSessionCartItem(parsed.data.sessionId, req.params.itemId))) {
+        return res.status(404).json({ message: "Cart item not found" });
+      }
+      return res.json(await curalinaStorage.updateCartItem(req.params.itemId, parsed.data.quantity));
+    } catch (error) {
+      console.error("Error updating cart item:", error);
+      return res.status(500).json({ message: "Failed to update cart item" });
+    }
+  });
+
+  app.delete("/api/cart/:itemId", async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId : "";
+      if (!sessionId || !(await findSessionCartItem(sessionId, req.params.itemId))) {
+        return res.status(404).json({ message: "Cart item not found" });
+      }
+      await curalinaStorage.removeFromCart(req.params.itemId);
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Error removing cart item:", error);
+      return res.status(500).json({ message: "Failed to remove cart item" });
     }
   });
 
@@ -834,6 +901,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching latest render:", error);
       return res.status(500).json({ message: "Failed to fetch latest render" });
+    }
+  });
+
+  // Products placed in a render (ADR-0025): the app `products` rows behind
+  // `renders.productSkus`, in placement order. Feeds "Shop the Look" and the
+  // Results page's placed-products table; an empty list for renders without
+  // recommended products.
+  app.get("/api/render/:id/products", async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const render = await curalinaStorage.getRender(req.params.id);
+      if (!render) {
+        return res.status(404).json({ message: "Render not found" });
+      }
+      const found = await Promise.all(
+        (render.productSkus ?? []).map((sku) => curalinaStorage.getProductBySku(sku))
+      );
+      return res.json(found.filter((p) => p !== undefined));
+    } catch (error) {
+      console.error("Error fetching render products:", error);
+      return res.status(500).json({ message: "Failed to fetch render products" });
     }
   });
 

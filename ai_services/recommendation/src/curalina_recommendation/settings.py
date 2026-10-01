@@ -23,5 +23,32 @@ class Settings(BaseSettings):
         default="public",
         alias="CURALINA_DATABASE_SCHEMA",
     )
+    # Consultation recommender (ADR-0025). The supplier "Programmer Handoff"
+    # workbooks are read in place from this folder, never copied into the
+    # repository or the image (STATUS item 35). Unset: the consultation
+    # endpoint answers 503 `catalogue_not_configured` instead of guessing.
+    curalina_supplier_data_dir: Path | None = Field(
+        default=None,
+        alias="CURALINA_SUPPLIER_DATA_DIR",
+    )
+    # Unset: the model artifact packaged with the service
+    # (`consultation/model/`). Set: a notebook run folder with the same files.
+    curalina_recommender_model_dir: Path | None = Field(
+        default=None,
+        alias="CURALINA_RECOMMENDER_MODEL_DIR",
+    )
+    # The workbooks carry no currency column. CAD is the owner's default
+    # (STATUS item 20); configurable rather than assumed.
+    curalina_catalogue_currency: str = Field(
+        default="CAD",
+        alias="CURALINA_CATALOGUE_CURRENCY",
+        pattern=r"^[A-Z]{3}$",
+    )
+    curalina_min_match_score: float = Field(
+        default=0.5,
+        alias="CURALINA_MIN_MATCH_SCORE",
+        ge=0.0,
+        le=1.0,
+    )
     service_host: str = "127.0.0.1"
     service_port: int = 8101

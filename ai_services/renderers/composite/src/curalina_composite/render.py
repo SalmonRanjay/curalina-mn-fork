@@ -5,12 +5,12 @@ from __future__ import annotations
 import hashlib
 import io
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from PIL import Image
 
-from .catalogue import ART, Product, scan
+from .catalogue import ART, Product, Requested, resolve_requested, scan
 from .matting import matte_white_background
 from .palette import UnsupportedBrief, palette_for
 from .scene import BACK_LEFT, BACK_RIGHT, Geometry, draw_shell, soft_shadow
@@ -45,6 +45,7 @@ class Slot:
     categories: tuple[str, ...]  # first non-empty category wins
     x: float  # horizontal centre, fraction of canvas width
     depth: float  # 0 = against the back wall, 1 = nearest the viewer
+    requested_only: bool = False  # only used when the request names the pieces
 
 
 _LAYOUTS: dict[str, tuple[Slot, ...]] = {
@@ -53,6 +54,7 @@ _LAYOUTS: dict[str, tuple[Slot, ...]] = {
         Slot(("accent_chair",), 0.20, 0.55),
         Slot(("coffee_table",), 0.50, 0.50),
         Slot(("side_table",), 0.82, 0.14),
+        Slot(("ottoman",), 0.74, 0.62, requested_only=True),
         Slot((ART,), 0.50, -1.0),
     ),
     "bedroom": (
@@ -89,6 +91,7 @@ class Placement:
 class RenderResult:
     png: bytes
     pieces: list[str]
+    missing: list[str] = field(default_factory=list)  # requested ids with no image
 
 
 class NoCatalogueImages(Exception):
@@ -163,7 +166,11 @@ def _choose(
 
 
 def build_placements(
-    catalogue: dict[str, list[Product]], room_type: str, geo: Geometry, seed: int
+    catalogue: dict[str, list[Product]],
+    room_type: str,
+    geo: Geometry,
+    seed: int,
+    requested: bool = False,
 ) -> list[Placement]:
     layout = _LAYOUTS.get(" ".join(room_type.lower().split()))
     if layout is None:
@@ -176,6 +183,8 @@ def build_placements(
     used: set[str] = set()
     placements: list[Placement] = []
     for index, slot in enumerate(layout):
+        if slot.requested_only and not requested:
+            continue
         picked = _choose(catalogue, slot, index, seed, used)
         if picked is None:
             continue
@@ -225,13 +234,29 @@ def render_room(
     height: int,
     seed: int | None,
     prompt: str,
+    products: list[Requested] | None = None,
 ) -> RenderResult:
+    """With `products`, place exactly those pieces (pairs and chair sets reuse
+    the same cutout) and report the ones without an image; never fill a slot
+    with an unrequested piece. Without, pick from the whole catalogue."""
     pal = palette_for(atmosphere, style)
     geo = Geometry(width, height)
+    missing: list[str] = []
+    if products is not None:
+        found, missing = resolve_requested(images_dir, products)
+        catalogue: dict[str, list[Product]] = {}
+        for product in found:
+            catalogue.setdefault(product.category, []).append(product)
+    else:
+        catalogue = scan(images_dir)
     placements = build_placements(
-        scan(images_dir), room_type, geo, resolve_seed(seed, prompt)
+        catalogue,
+        room_type,
+        geo,
+        resolve_seed(seed, prompt),
+        requested=products is not None,
     )
-    if not placements:
+    if not placements and products is None:
         raise NoCatalogueImages(f"no usable catalogue images under {images_dir}")
     canvas = draw_shell(geo, pal)
     for p in placements:
@@ -240,4 +265,4 @@ def render_room(
         canvas.paste(p.image, (p.left, p.top), p.image)
     buf = io.BytesIO()
     canvas.save(buf, format="PNG")
-    return RenderResult(buf.getvalue(), [p.product.name for p in placements])
+    return RenderResult(buf.getvalue(), [p.product.name for p in placements], missing)

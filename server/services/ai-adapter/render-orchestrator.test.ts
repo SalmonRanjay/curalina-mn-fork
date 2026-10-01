@@ -180,8 +180,24 @@ function createMockStorage(state: MockStorageState): RenderOrchestratorStorage {
       state.createdLedgers.push(input);
       return { id: "ledger-1", createdAt: new Date(), ...input } as unknown as SelectionLedger;
     },
+    // Product-sync methods (ADR-0025) are only used by the concept path with
+    // CURALINA_RECOMMENDATION_IN_RENDER on; none of these tests reach them.
+    ...unusedProductSync,
   };
 }
+
+const notInThisSuite = async (): Promise<never> => {
+  throw new Error("product sync is not exercised by the bundle-path tests");
+};
+const unusedProductSync = {
+  getProductBySku: notInThisSuite,
+  createProduct: notInThisSuite,
+  updateProduct: notInThisSuite,
+  getSupplierByName: notInThisSuite,
+  createSupplier: notInThisSuite,
+  getCategoryByName: notInThisSuite,
+  createCategory: notInThisSuite,
+};
 
 function newState(): MockStorageState {
   return {

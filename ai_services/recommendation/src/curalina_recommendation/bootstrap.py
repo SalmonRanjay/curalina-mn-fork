@@ -15,7 +15,7 @@ def main() -> int:
     run_migrations(
         settings.curalina_database_url, schema=settings.curalina_database_schema
     )
-    uvicorn.run(create_app(), host=settings.service_host, port=settings.service_port)
+    uvicorn.run(create_app(settings), host=settings.service_host, port=settings.service_port)
     return 0
 
 

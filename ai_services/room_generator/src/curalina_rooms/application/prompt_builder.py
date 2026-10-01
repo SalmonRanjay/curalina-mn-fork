@@ -18,6 +18,9 @@ def build_prompt(brief: RenderBrief) -> str:
     ]
     if brief.pattern:
         parts.append(brief.pattern)
+    if brief.products:
+        names = ", ".join(" ".join(p.name.split()) for p in brief.products)
+        parts.append(f"featuring {names}")
     parts.append(
         "editorial interior design photography, natural light, high detail"
     )

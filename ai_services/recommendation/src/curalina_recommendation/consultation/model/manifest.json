@@ -1,0 +1,9 @@
+{
+  "family": "consultation-two-tower",
+  "run_id": "run_20260930T233410",
+  "source_notebook": "ai_services/recommendation/notebooks/learning/pytorch_recommendation_matching_demo.ipynb",
+  "weights_file": "model_weights.npz",
+  "weights_sha256": "1305a804e1906bbfc9cf9602b220d33e4c80fea60c4931b7c34fedfc1159b3d2",
+  "labels": "rule-derived (is_match over supplier tags); no behavioural data",
+  "activation": "owner decision 2026-09-30, ADR-0025 (overrides ADR-0024 D6); no ai-ml-lead sign-off"
+}

@@ -46,6 +46,9 @@ class RenderRequest:
     style: str
     atmosphere: str
     pattern: str | None
+    # Recommended pieces to show (ADR-0025), as wire dicts:
+    # product_id, name, supplier, category, sku, quantity. Empty = renderer's choice.
+    products: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

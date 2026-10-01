@@ -71,6 +71,10 @@ services:
       CURALINA_ROOM_RENDER_MODE: concept
       CURALINA_ROOM_RENDERER: ${CURALINA_ROOM_RENDERER:-sd15}
       CURALINA_DEFAULT_CURRENCY: CAD
+      # ADR-0025: concept renders ask the consultation recommender first, show
+      # its products (composite renderer places them; sd15 names them in the
+      # prompt) and make them cartable.
+      CURALINA_RECOMMENDATION_IN_RENDER: "true"
       PORT: "8080"
     ports:
       - "8080:8080"

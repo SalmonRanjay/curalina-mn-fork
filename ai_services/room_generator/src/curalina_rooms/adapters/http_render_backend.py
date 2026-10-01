@@ -57,6 +57,14 @@ class HttpRenderBackend:
                 CODE_REJECTED, f"no URL configured for renderer {request.renderer!r}"
             )
         url = f"{base}/v1/render"
+        brief: dict[str, object] = {
+            "room_type": request.room_type,
+            "style": request.style,
+            "atmosphere": request.atmosphere,
+            "pattern": request.pattern,
+        }
+        if request.products:  # additive (ADR-0025); omitted keeps the old wire shape
+            brief["products"] = list(request.products)
         payload = {
             "schema_version": SCHEMA_VERSION,
             "prompt": request.prompt,
@@ -64,12 +72,7 @@ class HttpRenderBackend:
             "width": request.width,
             "height": request.height,
             "seed": request.seed,
-            "brief": {
-                "room_type": request.room_type,
-                "style": request.style,
-                "atmosphere": request.atmosphere,
-                "pattern": request.pattern,
-            },
+            "brief": brief,
         }
         try:
             response = self._client.post(url, json=payload, timeout=self._timeout)

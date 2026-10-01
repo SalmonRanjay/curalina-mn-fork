@@ -14,7 +14,74 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-09-30 (session 22)
+# OPERATIONAL REFERENCE — current as of 2026-10-01 (session 23)
+
+## Session 23 (2026-10-01) — consultation recommender wired into the app (`ADR-0025`), branch `feature/consultation-recommender`
+
+**Owner decision: the trained model now ranks products in the live path,**
+overriding `ADR-0024` D6. The owner chose "Trained model now" when shown the
+rule-only default. There is no `ai-ml-lead` sign-off; `ADR-0025` records the
+decision and the assumptions the client should confirm.
+
+**Built (all on the branch, worktree `../curalina-recommender`; not merged):**
+- **Recommendation:** `POST /v1/consultation/recommendations`
+  (`consultation/` package).
+  - Reads the three handoff workbooks in place from
+    `CURALINA_SUPPLIER_DATA_DIR`, mounted read-only in compose.
+  - Runs the model as numpy (no torch), from the SHA-pinned artifact in
+    `consultation/model/`.
+  - Fills Design Manual §4.2 slots (p.96-97) within the investment band.
+  - Returns `rule_match` beside every score.
+  - Fails closed with 503 `catalogue_not_configured` without the workbooks.
+- **Rooms + composite:** `render_brief.products` (additive). The composite
+  renderer places only those pieces and reports missing cutouts in
+  `X-Missing-Pieces`. SD 1.5 names them in the prompt.
+- **App:**
+  - `CURALINA_RECOMMENDATION_IN_RENDER` (on in compose, off by default)
+    makes concept renders recommend first. The placed products are upserted
+    into `products` so they can be carted, then stored in
+    `renders.productPlacements` and `aiServiceRef.recommendation`.
+  - New `GET /api/render/:id/products`.
+  - The Results page gets a "Products placed in this room" table with
+    add-to-cart.
+  - **The cart was broken end to end and is fixed:** `POST /api/cart` never
+    set `session_id`, and the cart page's `GET /api/cart/:sessionId` and
+    `PATCH`/`DELETE /api/cart/:id` didn't exist. It is now session-based,
+    with an ownership check on item changes.
+
+**Verified:**
+- Recommendation: 35 consultation tests, including **real-catalogue parity**
+  (all 910 products × 2 demo answer sets match the notebook within 1e-4), plus
+  276 existing tests. Ruff and mypy strict are clean.
+- Rooms: 166 unit + contract tests. Composite: 19 tests.
+- App: 10 new `consultation-render.test.ts` checks. `tsc` stays at the
+  171-error baseline.
+- Live run (isolated ports 18101/18105, real data), all within budget and
+  every placed piece rule-consistent:
+  - Bedroom: Pomme King bed, 2 Stone nightstands, Pedra bench, Birch Symmetry
+    art; $14,685 of $30,000.
+  - Dining: Raya table + 8 ENA chairs; $25,002 of $50,000.
+  - Living: Adana sofa, Baru chair, Adana pouf; $23,435 of $65,000.
+  - Composite renders show the placed Luxus and Celadon pieces; Lazzoni
+    pieces are reported missing.
+
+**Not yet done / needs the owner:**
+1. **Full-stack docker run not performed.** It would rebuild the shared
+   containers the parallel session uses and write product rows into the Neon
+   dev database. Do it after merging, on a quiet stack.
+2. **Merge** `feature/consultation-recommender` into `RJ-001`. Expect a
+   `STATUS.md` conflict at this section if the parallel session also edited
+   the top of the file.
+3. **Pre-existing failures, not caused here:**
+   - `concept-render.test.ts` asserts the old `/v1/jobs` rooms URL.
+   - `render-orchestrator.test.ts` test 1 is a git-diff proof that no longer
+     finds its hunk.
+   - Recommendation's `tests/unit/test_scaffold.py::test_main_reports_scaffold_status`
+     starts uvicorn on 8101.
+4. **Data gaps surfaced by the room plan:**
+   - Lazzoni ships no product photos.
+   - Some answer sets have no matching coffee or side table (touch tags).
+   - Rugs, lamps and decor are not in the catalogue.
 
 ## Session 22 (2026-09-30) — quiz → product recommender model built (Colab + local)
 
