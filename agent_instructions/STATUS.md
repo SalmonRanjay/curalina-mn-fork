@@ -105,10 +105,19 @@ clean against the merged tree; a live browser run of `/quiz` confirmed the
 reset-on-mount behavior, room-type selection, and `window.scrollY === 0`
 immediately after advancing a step.
 
-**Next up (not started this session):** a GCP/Terraform deployment plan
-(tech-lead), for an owner who has never used GCP, framed as a comparison
-against their own AWS mental model (ECR/containers/RDS/ECS), plus a
-separate short GCP-console orientation doc.
+**GCP/Terraform deployment plan — written 2026-09-30 (`ADR-0022`,
+dispatch item 37), not yet started as engineering.** v1 runs `app` and
+`composite_renderer` on Cloud Run and puts the SQLite-bound
+recommendation/variants/rooms (+ workers) on one Compute Engine VM with a
+persistent data disk. The reason is that each API and its worker share one
+SQLite file, which Cloud Run cannot host durably. SD 1.5 is out of v1
+(`ADR-0020` §D3). Region `us-east4`, because both Neon endpoints are AWS
+`us-east-1` (read from `.env` host suffixes only). P1 is blocked on owner inputs
+B1 (which GCP project — `cloudbuild.yaml` already deploys a Cloud Run
+service `curalina-git-2` to an unknown project) and B2 (budget). Found
+while tracing, and to be fixed before go-live: the quiz upload writes to local disk at a URL
+nothing serves (P0a), and `SESSION_SECRET` silently defaults to a known
+string (P0b). Separate beginner doc: `docs/GCP_ORIENTATION.md`.
 
 ## Session 20 (2026-09-24) — client "Consultation 1" design document analysed (`ADR-0021`)
 
@@ -482,6 +491,7 @@ that the room picture stays unbuilt until `OQ-010` is answered.
 | 34 | **Fabric samples ($35) and concierge / design-support add-ons (p19-p21) — future** | `typescript-app-engineer` | `ADR-0021` FW-6/FW-7 | Fabric samples: a monolith add-on product plus a fulfilment process. Concierge: email capture sent to the client's inbox (p21 annotation), "follow up within two business days", no scheduling integration | Client item 23 (sample fulfilment, destination inbox, consent wording) | **Future.** The concierge half is cheap and needs only the inbox and consent answer |
 | 35 | **Admit the Celadon / Lazzoni / Luxus "Programmer Handoff" workbooks as a catalogue source (provenance ADR)** | `tech-lead` | `ADR-0005`, `ADR-0007`, `ADR-0009` (read-in-place / by-hash pattern); `ADR-0021` §C1-§C2 | Read in place at `/Users/rjsalmon/Documents/Humber/misc.curalina/Supplier CSV Files/`, pinned by sha256 (`ADR-0021` §C1), **never copied into the repo**. Record the measured defects: `Birght & Airy` x3; 97/689 Luxus rows with `Retail Price` 0; `Return Policy` / `Delivery Options` = `None` everywhere; `Lead Time` `None` for Lazzoni/Luxus; no currency column; multi-valued `Room Type` split on `; `; noisy `Seating:`/bed-size tags. State how item 24 changes (which workbook set the runtime imports) | nothing | **Ready.** Gates item 29's importer work and any item 24 run against these workbooks |
 | 36 | **Dead-code cleanup, pass 1 (session 2026-09-29): delete 19 zero-importer files, 9,996 lines** | `typescript-app-engineer`; review `code-reviewer` | `docs/dead-code-audit/CLEANUP-PACKET.md` **in full** (this packet is authoritative); `docs/dead-code-audit/AUDIT.md` (findings; its two line subtotals are wrong, corrected in the packet) | On branch `chore/dead-code-audit-cleanup` only. `git rm` the 3 legacy render files (`gemini-ai.ts`, `openai-render.ts`, `gemini-image-only-render.ts`) and 16 pre-V2/V2 quiz step files. Make comment-only rewords in `asset-import.ts`, `design-profile-mapper.ts`, `consultationOptions.ts` and `Quiz.tsx`, and add dated notes here and in `ADR-0018`/`ADR-0021`. `npm run check` must go 206 → **exactly 171**. **Out of scope:** `server/functions/` (owner decision pending on whether it is a live Firebase target), both `sd15_lora_products_in_rooms_colab.ipynb` copies, orphaned assets, and the rest of the `ADR-0018` §C2 stack | nothing | **Done (2026-09-29).** `<PIN>` = `9a05d5c7c0dd1a759a899533c2a0eaae753ee5f9`. `npm run check`: 206 before → 171 after (per-file breakdown matches baseline minus the 3 deleted server files). `npm run build`: exit 0 before and after. 19 files deleted, 4 files comment-reworded, this table and `ADR-0018`/`ADR-0021` annotated |
+| 37 | **GCP deployment via Terraform (`ADR-0022`)** — v1 hybrid: Cloud Run for `app` + `composite_renderer`; one Compute Engine VM (Docker Compose, persistent data disk) for the SQLite-bound recommendation/variants/rooms + workers; SD 1.5 GPU module specified but disabled | P0a/P0b/P4 `typescript-app-engineer`; P0c/P6a `python-services-engineer`; P1-P3/P5/P6b **unowned `infra/**` — owner must amend `AGENTS.md` first** (recommended: `python-services-engineer`, review `code-reviewer`) | `ADR-0022` in full (§Terraform layout and §Phased build plan are the packet specs; §R1 lists cloud facts each packet must re-verify) | Planning only so far: no `.tf` written, nothing provisioned. Dispatch strictly in order P0a-c → P1 → P2 → P3 → P4 → P5; P6a/b optional. `cloudbuild.yaml` superseded but **not** to be deleted until B1 answered | Owner inputs **B1** (which GCP project; ownership of the existing `curalina-git-2`/Firebase footprint; billing account) and **B2** (monthly budget) block P1; **B3** (supplier-image rights, client) and **B6** (data residency) block P5; **B5** (GPU funding + L4 quota) blocks P6b | **Ready for owner inputs (2026-09-30).** Beginner orientation: `docs/GCP_ORIENTATION.md` |
 
 **Suggested order:** 25 → 18 → 19 → 20 → 21 → 24 → 22 → 23. 25 first so
 every later packet is type-checked. 18/19 are contract changes and should
