@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChromeHeader, ChromeFooter } from "./QuizChrome";
 
@@ -24,6 +25,17 @@ export default function QuizLayout({
   canProceed = true,
   hideNext = false,
 }: QuizLayoutProps) {
+  // Land on the top of the new step, not wherever the user had scrolled to on
+  // the last one -- the alternative is either a jarring scroll-jump the user
+  // sees happen, or (worse, with the scroll-linked reveal blocks) opening a
+  // new step already scrolled past its own content. Instant, not animated:
+  // this is a step change, not a scroll gesture, so it should read the same
+  // as a normal page navigation resetting scroll -- the animated reveal is
+  // reserved for actually scrolling within a step.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentStep]);
+
   return (
     <div className="cc-root min-h-screen flex flex-col" data-testid="quiz-layout">
       <ChromeHeader />
@@ -38,7 +50,7 @@ export default function QuizLayout({
         </motion.div>
 
         {(onPrevious || (onNext && !hideNext)) && (
-          <div className="max-w-[1400px] mx-auto px-6 md:px-14 py-14 flex items-center justify-between gap-4">
+          <div className="max-w-[1040px] mx-auto px-6 md:px-10 py-6 flex items-center justify-between gap-4">
             {onPrevious ? (
               <button onClick={onPrevious} className="cc-btn" data-testid="button-previous">Previous</button>
             ) : (
