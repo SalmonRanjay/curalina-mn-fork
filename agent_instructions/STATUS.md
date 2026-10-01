@@ -14,7 +14,101 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-09-24 (session 20)
+# OPERATIONAL REFERENCE — current as of 2026-09-30 (session 21)
+
+## Session 21 (2026-09-30) — concept-render pipeline shipped, dead-code cleanup, quiz UI polish; both merged to `RJ-001`
+
+**Concept-render pipeline is now end-to-end working**, gated by
+`CURALINA_ROOM_RENDER_MODE=concept`. Two renderer backends exist behind
+`ai_services/renderers/`:
+- **`sd15_renderer` (:8104, primary)** — real `diffusers.StableDiffusionPipeline`
+  inference, lazy-loaded behind a lock so the service reports healthy
+  immediately. Optional LoRA fine-tune loading via `SD15_LORA_PATH` /
+  `SD15_LORA_SCALE` / `SD15_LORA_TRIGGER` (`peft`, `fuse_lora()`). ~6.7 min
+  per render on CPU.
+- **`composite_renderer` (:8105, cheap alternative)** — no model; procedural
+  room scenes built from real supplier product cutouts (Luxus/Celadon),
+  with border-seeded flood-fill matting (`matting.py`) to strip white
+  studio backgrounds regardless of original alpha. ~1.5s per render.
+
+Two bugs found and fixed while wiring this up:
+1. `room_generator` and `variant_generator` Docker Compose `command:`
+   overrides passed only the worker-mode argument (`["worker"]`) against an
+   image `ENTRYPOINT` of `python3 -m <pkg>.bootstrap` — correct. An earlier
+   attempt that repeated the full invocation under `command:` silently ran
+   the worker container as an API server instead, so jobs stayed `queued`
+   forever. Verify any future compose edit to these services keeps
+   `command:` as *arguments only*.
+2. `server/services/ai-adapter/render-job-client.ts` posted to `/v1/jobs`;
+   the real rooms route is `/v1/render-jobs`. Fixed.
+
+New app-side pieces: `render-reconciler.ts` (background poller per
+`ADR-0018` §D6 — a render is only marked `completed` after its asset bytes
+are fetched and PNG-validated, never on job-status alone),
+`currency.ts` (`CurrencyConverter`, CAD default, `CURALINA_FX_RATES_JSON`),
+`GET /api/render/:id/image`.
+
+A Colab notebook
+(`ai_services/room_generator/notebooks/learning/sd15_lora_products_in_rooms_colab.ipynb`)
+trains a LoRA on the client's own supplier images from Google Drive —
+auto-discovers the image folder (`find_images_root()`) rather than
+requiring an exact path, skips PDFs/non-images without crashing, and
+writes the trained LoRA back to Drive. **Note:** a second, user-maintained
+copy lives at `ai_services/room_generator/notebooks/sd15_lora_products_in_rooms_colab.ipynb`
+(not under `notebooks/learning/`) — that one is the owner's own edited
+copy, out of scope for any cleanup or dedup pass.
+
+**Two bugs fixed in the existing quiz flow:** quiz state wasn't resetting
+between attempts (now reset on mount unless arriving via `/quiz?edit=1`);
+the hamburger menu's text/icon were invisible against the dark header
+(wrong text color, not a missing-element bug).
+
+**Dead-code audit completed and merged.** `docs/dead-code-audit/AUDIT.md`
+(findings) and `CLEANUP-PACKET.md` (tech-lead-corrected, scoped deletion
+list: 19 files, exact acceptance criteria 206→171 TS errors) drove the
+removal of the pre-V2 and V2 quiz step components and three unused
+`server/services/*render*.ts` files. **Per owner instruction, nothing was
+deleted outright** — all 19 files were moved verbatim into
+`archive/dead-code-2026-09-29/<original-relative-path>/`, excluded from
+the TS build via `tsconfig.json`'s `exclude`, with a README giving exact
+restore steps. This was explicitly for stakeholder reassurance over relying
+on git history alone.
+
+**Quiz UI polish completed and merged**, per a pre-existing stakeholder
+request (tightened/crisper layout) plus two live owner review rounds:
+- Spacing tightened across the Consultation-1 quiz (max-width 1400px→1040px,
+  verify card 5xl→3xl, roughly halved vertical padding/gaps).
+- Scroll-snap was tried first, **explicitly rejected by the owner**
+  ("i don't like the updates... look at apple's implementation"), and
+  replaced with a scroll-linked reveal (`animation-timeline: view()` +
+  `animation-range`, with a `@supports not (...)` and
+  `prefers-reduced-motion` fallback, and a `:has(:focus-visible)` override
+  so keyboard focus is never caught mid-transform) — see
+  `client/src/components/quiz/consultation.css` for the implementation and
+  exemption list (room/atmosphere grids, context/upload step, and the
+  nav row are deliberately excluded).
+- Option borders were tightened for contrast, then **softened back down**
+  one round after owner feedback that the first pass was too harsh
+  (`--cc-line`/`--cc-line-strong` settled at 0.38/0.65, 1px width, no
+  inset-ring hover — a middle ground, not a full revert).
+- Every quiz step now resets scroll to the top instantly on step change
+  (`QuizLayout.tsx`, keyed on `currentStep`) so steps never open
+  mid-scrolled from wherever the previous step was left.
+
+**Both branches merged into `RJ-001` this session**
+(`polish/quiz-ui-tightening`: `b6219f9`, `0e2dc01`, `f4fdfaa`;
+`chore/dead-code-audit-cleanup`: `9a6a676`, `1803f2e`) — no conflicts in
+either merge. Verified after merge: `npx tsc --noEmit` still reports
+exactly 171 errors (matches the cleanup packet's acceptance number, so the
+merge introduced nothing new); `docker compose up -d --build app` rebuilt
+clean against the merged tree; a live browser run of `/quiz` confirmed the
+reset-on-mount behavior, room-type selection, and `window.scrollY === 0`
+immediately after advancing a step.
+
+**Next up (not started this session):** a GCP/Terraform deployment plan
+(tech-lead), for an owner who has never used GCP, framed as a comparison
+against their own AWS mental model (ECR/containers/RDS/ECS), plus a
+separate short GCP-console orientation doc.
 
 ## Session 20 (2026-09-24) — client "Consultation 1" design document analysed (`ADR-0021`)
 
