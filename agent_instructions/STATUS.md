@@ -14,7 +14,77 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-10-01 (session 23)
+# OPERATIONAL REFERENCE — current as of 2026-10-01 (session 24)
+
+## Session 24 (2026-10-01) — room_generator moved to Postgres, `feature/consultation-recommender` merged and verified live on `RJ-001`
+
+**All three AI services are now Postgres-only.** `576334f` had already moved
+recommendation and variants off SQLite; this session finished the set by
+moving `room_generator` the same way (`dd1138b`): its own `curalina_rooms`
+database, Alembic migrations, `postgres_store.py` replacing
+`sqlite_store.py`. Verified against the real `sd15_renderer` container, with
+a concept-render job surviving a `rooms_api` restart. Confirmed in the live
+Postgres instance: `curalina`, `curalina_recommendation`, `curalina_variants`,
+`curalina_rooms`, plus `_test` siblings for each — never a shared database,
+per CLAUDE.md's "separate databases" rule.
+
+**`feature/consultation-recommender` (`ADR-0025`) merged into `RJ-001`.**
+Before merging, `tech-lead` ran a trial merge (`git merge-tree`) to confirm
+the two branches' overlapping edits to `workers/concept_render.py` and its
+test file were genuinely disjoint (~45 lines apart, no logic overlap) and
+that `render_brief.products` round-trips through Postgres's `request_json`
+column unchanged — no new migration needed. The actual merge was conflict-
+free, including `STATUS.md`.
+
+**The owner raised a concern that something might still be "using the Neon
+file database."** Checked directly: unfounded. Neon is the app's existing
+managed Postgres (`@neondatabase/serverless`), not SQLite, and the
+consultation recommender's upsert into the app's `products` table was
+already correct. What was actually stale: `ai_services/suite_client.py`
+still builds `sqlite:///...` URLs (the Postgres stores now reject those —
+the local suite runner is currently broken end-to-end), two old
+`.sqlite3` files are still tracked in git
+(`ai_services/{recommendation,room_generator}/data/*.sqlite3`, already
+flagged by `ADR-0023` C6), and `ai_services/DOCKER.md` /
+`RUNNING_AND_TESTING.md` still describe SQLite. **None of this blocks
+anything — it's a documentation/cleanup packet for `contracts-qa-steward`,
+not a live bug.**
+
+**Verified live, end to end, on the merged + fully-Postgres stack** (full
+`docker compose up -d --build`, all 9 containers healthy, all three AI
+services' startup logs show real `alembic.runtime.migration` upgrades, not
+ad hoc DDL):
+- Ran a real bedroom quiz through the actual browser UI (not an API
+  shortcut) start to finish: room → aesthetic → materiality → atmosphere →
+  pattern → touches → investment ($31k–$40k band) → verify → upload
+  (skipped) → Generate Design.
+- Confirmed `POST /v1/consultation/recommendations` fired and returned
+  `200 OK` against the real catalogue.
+- The resulting render's `productPlacements` held three real pieces (a
+  Lazzoni bed, Luxus bench, Celadon art), each with real match scores,
+  `ruleMatch: true`, and real CAD prices — exactly per `ADR-0025`'s Design
+  Manual §4.2 slot filling.
+- The actual `sd15_renderer` ran genuine Stable Diffusion inference
+  (~4 minutes) and produced a valid 512×512 PNG, served correctly via
+  `GET /api/render/:id/image`.
+- The session-based cart fix works for real: `POST /api/cart` with a
+  `sessionId` (no login) succeeded, and `GET /api/cart/:sessionId` returned
+  the joined product row correctly.
+- The Results page's new "Products placed in this room" table rendered
+  live with the real pieces, scores, prices, and a correct room total
+  ($13,494 of the $40,000 budget).
+
+**Still true from session 23, now actually exercised (was previously
+marked "not yet done"):** the full-stack docker run and the merge into
+`RJ-001` session 23 flagged as outstanding are both done.
+
+**Not done this session:** the loose SQLite references above (cleanup
+packet, not blocking); re-running the full recommendation/room_generator
+Python test suites against Postgres inside their containers (production
+images have no test deps — would need a dev-dependency image or local venv,
+same as the prior session's approach). The GCP/Terraform work
+(`ADR-0022`/`0023`/`0024`) is unaffected by this session and still pending
+the owner's answers to B1–B8.
 
 ## Session 23 (2026-10-01) — consultation recommender wired into the app (`ADR-0025`), branch `feature/consultation-recommender`
 
