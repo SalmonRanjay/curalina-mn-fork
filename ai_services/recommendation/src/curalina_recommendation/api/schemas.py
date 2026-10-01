@@ -14,6 +14,8 @@ ID prefixes (`snap_`, `rev_`) follow `ai_services/contracts/v1/id_versioning.md`
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SUPPORTED_SCHEMA_VERSION = "1.0"
@@ -165,3 +167,111 @@ class SubstitutionResponse(SchemaVersionedResponse):
     feasible: bool
     line_items: list[BundleLineItem] = Field(default_factory=list)
     violations: list[BundleViolation] = Field(default_factory=list)
+
+
+# --- POST /v1/consultation/recommendations --------------------------------
+#
+# Consultation-1 quiz -> scored catalogue -> placed room (`ADR-0025`).
+# Enum values are the app's stored quiz strings
+# (`client/src/components/quiz/consultationOptions.ts`); an unknown value is a
+# contract error (422, `ADR-0021` §D4), a missing answer is `needs_input`.
+# `tests/unit/consultation/test_quiz.py` asserts these Literals equal
+# `consultation/quiz.py`'s tuples.
+
+ConsultationRoom = Literal["Living Room", "Dining Room", "Bedroom"]
+ConsultationStyle = Literal[
+    "Organic Modern", "Contemporary Luxe", "Mid-Century Scandinavian"
+]
+ConsultationAtmosphere = Literal["Bright & Airy", "Warm & Balanced", "Dark & Moody"]
+ConsultationPattern = Literal["Just Solids", "Patterned Accents", "Pattern Forward"]
+ConsultationTouch = Literal[
+    "Cozy, relaxing space for everyday comfort",
+    "Pet friendly and durable fabrics",
+    "Refined space for hosting and socializing",
+    "Refined space for hosting guests",
+    "Dedicated media area for television",
+    "Storage to keep everything tidy",
+    "An architectural fireplace to anchor the room",
+]
+ConsultationSeating = Literal[4, 6, 8, 10, 12]
+ConsultationBedSize = Literal["Double Size Bed", "Queen Size Bed", "King Size Bed"]
+ConsultationInvestment = Literal[
+    "$20,000-$30,000",
+    "$31,000-$40,000",
+    "$41,000-$50,000",
+    "$51,000-$65,000",
+    "$66,000+",
+]
+
+
+class ConsultationAnswersIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room_type: ConsultationRoom | None = None
+    aesthetic: ConsultationStyle | None = None
+    materiality: ConsultationStyle | None = None
+    atmosphere: ConsultationAtmosphere | None = None
+    pattern_preference: ConsultationPattern | None = None
+    practical_touches: list[ConsultationTouch] = Field(default_factory=list)
+    seating_capacity: ConsultationSeating | None = None
+    bed_size: ConsultationBedSize | None = None
+    investment: ConsultationInvestment | None = None
+
+
+class ConsultationRecommendationRequest(SchemaVersionedRequest):
+    answers: ConsultationAnswersIn
+
+
+class ConsultationProductOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    product_id: str
+    supplier: str
+    sku: str | None
+    name: str
+    category: str
+    unit_price_minor_units: int | None
+    match_score: float = Field(ge=0.0, le=1.0)
+    rule_match: bool
+    rooms: list[str]
+    styles: list[str]
+    atmospheres: list[str]
+
+
+class ConsultationPlacementOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slot_id: str
+    tier: Literal["foundation", "bridge", "accent"]
+    label: str
+    quantity: int = Field(ge=1)
+    quantity_source: str
+    line_total_minor_units: int = Field(ge=0)
+    product: ConsultationProductOut
+
+
+class ConsultationModelOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    family: str
+    weights_sha256: str
+    trained_run: str | None
+    min_match_score: float
+
+
+class ConsultationRecommendationResponse(SchemaVersionedResponse):
+    status: Literal["ok", "needs_input"]
+    problems: list[str] = Field(default_factory=list)
+    room_type: str | None = None
+    currency: str
+    placements: list[ConsultationPlacementOut] = Field(default_factory=list)
+    alternatives: dict[str, list[ConsultationProductOut]] = Field(default_factory=dict)
+    total_minor_units: int = Field(ge=0, default=0)
+    budget_ceiling_minor_units: int | None = None
+    notes: list[str] = Field(default_factory=list)
+    not_in_catalogue: list[str] = Field(default_factory=list)
+    plan_source: str | None = None
+    model: ConsultationModelOut
+    catalogue_fingerprint: str
+    products_scored: int = Field(ge=0, default=0)
+    model_rule_disagreements: int = Field(ge=0, default=0)
