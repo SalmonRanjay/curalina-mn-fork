@@ -787,3 +787,8 @@ Consequential work authorized by this ADR is carried by
 (quiz/UI, dispatched this session), 29 (recommendation profile contract),
 30 (contracts suite + amendments), 31-34 (deferred features) and 35
 (handoff workbook admission). No production code is changed by this ADR.
+
+Post-decision note (2026-09-29): `FeaturesStepV2.tsx` (line 146) cited
+above was deleted in the dead-code cleanup
+(`docs/dead-code-audit/CLEANUP-PACKET.md`). The citation remains valid at
+commit `9a05d5c7c0dd1a759a899533c2a0eaae753ee5f9`.

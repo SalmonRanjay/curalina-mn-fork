@@ -91,7 +91,8 @@ export const TOUCHES_BY_ROOM: Record<string, string[]> = {
 export const SEATING_OPTIONS = [4, 6, 8, 10, 12];
 export const BED_SIZES = ["Double Size Bed", "Queen Size Bed", "King Size Bed"];
 
-// id = stored value (BudgetStepV2 style), label = display text from p10.
+// id = stored value (comma-thousands `$X,XXX-$Y,YYY` form, parsed by
+// `server/services/ai-adapter/design-profile-mapper.ts`), label = display text from p10.
 export const INVESTMENTS = [
   { id: "$20,000-$30,000", label: "$20,000 - $30,000" },
   { id: "$31,000-$40,000", label: "$31,000 - $40,000" },

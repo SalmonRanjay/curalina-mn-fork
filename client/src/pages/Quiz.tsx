@@ -29,9 +29,6 @@ import {
 import ConsultVerifyStep from "@/components/quiz/ConsultVerifyStep";
 import ConsultContextStep from "@/components/quiz/ConsultContextStep";
 import QuizLayout from "@/components/quiz/QuizLayout";
-// The V2 step components (RoomTypeStepV2, StyleSelectionStepV2, ColorMaterialsStepV2,
-// FeaturesStepV2, BudgetStepV2, VibeCheckStepV2, FinalStepV2) remain in the repo but are
-// no longer part of the flow (consultation-1 replaced it).
 
 // 7 questions + verify/refine + environmental context
 const TOTAL_STEPS = 9;

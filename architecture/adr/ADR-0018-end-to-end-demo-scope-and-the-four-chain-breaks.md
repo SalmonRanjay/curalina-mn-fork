@@ -426,3 +426,9 @@ of any image-producing path, not only the absence of client imagery.
 Three defects were found that no prior session had recorded: the four
 missing Results-page endpoints (C3), the shadowed `/api/render/latest`
 route (C3), and the product-identity contract gap (C1 break 2).
+
+Post-decision note (2026-09-29): `ColorMaterialsStepV2.tsx`,
+`ColorPaletteStepV2.tsx`, `openai-render.ts` and
+`gemini-image-only-render.ts` cited above were deleted in the dead-code
+cleanup (`docs/dead-code-audit/CLEANUP-PACKET.md`). Citations remain valid
+at commit `9a05d5c7c0dd1a759a899533c2a0eaae753ee5f9`.
