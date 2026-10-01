@@ -14,7 +14,113 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-09-30 (session 21)
+# OPERATIONAL REFERENCE — current as of 2026-09-30 (session 22)
+
+## Session 22 (2026-09-30) — quiz → product recommender model built (Colab + local)
+
+**What exists now.**
+`ai_services/recommendation/notebooks/learning/pytorch_recommendation_matching_demo.ipynb`
+was rebuilt from scratch. It trains a PyTorch model that takes the **live
+Consultation-1 quiz answers** and scores every product in the three supplier
+workbooks (Celadon, Lazzoni, Luxus; 910 products). It then builds a room
+(one product per category) within the investment band and saves the trained
+model to disk. It runs **both in Google Colab (free tier, CPU is enough) and
+locally**. It was executed end to end locally (torch 2.2.2, Python 3.12) and
+saved with its outputs.
+
+- **Colab:** it mounts Drive and auto-discovers the `Supplier CSV Files`
+  folder (by folder name, or by a folder holding ≥2 supplier workbooks). The
+  search covers My Drive and shared drives, mirroring `find_images_root()` in
+  the SD 1.5 LoRA notebook, and it does not pick up `Supplier Images`. It
+  accepts `.xlsx` or `.csv` exports and ignores `~$` lock files. Results are
+  written to `/content/drive/MyDrive/curalina_recommender_output/run_<ts>/`.
+  The Colab paths were tested against a mock Drive tree with CSV exports
+  (identical 910/695 counts). **Not yet run in a real Colab session.**
+- **Local:** `LOCAL_CSV_DIR` or env `CURALINA_SUPPLIER_DATA_DIR`. Outputs go
+  to `notebooks/learning/recommender_runs/`, which is gitignored. Install from
+  `requirements-notebook.txt`. **This Mac is Intel (i9-9980HK)**, so torch
+  2.2.2 is the last available build. It needs Python ≤3.12 and `numpy<2`.
+  The old `Machine.Learning.Artifical.Intelligence/.312venv` has numpy 2.5,
+  which is why the previous notebook crashed with `Numpy is not available`.
+- **Quiz source:** the quiz is copied from
+  `client/src/components/quiz/consultationOptions.ts`, and a drift check
+  stops the run if the two differ (skipped in Colab, where the repo isn't
+  visible). The old `attached_assets/Quiz and Product Mapper file
+  instruction_*.csv` is superseded and not used.
+
+**Model.** Two towers (quiz side and product side → 32-d embeddings) plus a
+"wide" head of 12 explicit overlap features (room/style/atmosphere/touch
+overlap, seating/bed-size agreement). The overlaps were added because the
+towers alone ignored seating and bed size and recommended a Queen bed for a
+King answer. Tag dropout (0.2) trains the model to infer room/style/atmosphere
+from category, price, size and supplier. About 16k parameters; training takes
+about 3 s on CPU.
+
+**Labels are rule-derived, not behavioural.** There is no click, save or
+purchase data. `is_match()` in the notebook is the label, and it is **this
+notebook's assumption, not a ratified rule**:
+1. room ∈ the product's rooms;
+2. atmosphere ∈ the product's atmospheres;
+3. the aesthetic **or** the materiality style ∈ the product's styles;
+4. if the product lists touches, it shares ≥1 with the answers;
+5. seating and bed size must be equal when both sides state one.
+
+Splits are by **supplier + product name** (324 groups), so fabric/finish
+variants never leak across the train/test split.
+
+**Held-out test results (109 products, 1,444 pairs; run 2026-09-30):**
+
+| | pair acc | AUC | P@10 | NDCG@10 |
+|---|---|---|---|---|
+| tags visible | 0.935 | 0.987 | 0.580 | 0.970 |
+| tags hidden | 0.741 | 0.827 | 0.224 | 0.297 |
+| perfect ranking (ceiling) | 1.0 | 1.0 | 0.590 | 1.0 |
+| random / majority baseline | 0.573 | 0.5 | 0.070 | 0.089 |
+
+Read these honestly. With tags visible the model mostly reproduces the rule,
+so the high numbers are expected and prove little. The tags-hidden row is the
+learned part. In the demo rooms, every bedroom and dining pick agrees with the
+rule; per query the model and the rule disagree on about 2–17 of 910 products.
+**No gate or acceptance claim is made.** If this becomes the service's ranking
+model, the decision belongs to `ai-ml-lead` (`ADR-0006` still applies).
+
+**Data findings (surfaced by the notebook, not acted on):**
+- **Pattern density has no catalogue field.** The question is validated but
+  can't influence scores.
+- **"Dedicated media area for television" and "An architectural fireplace
+  to anchor the room" have 0 products.**
+- **215 / 910 products have no usable price:** 155 Luxus, 60 Lazzoni,
+  including three Lazzoni `"$1,895 / $1,963"` strings. They're kept for
+  training and excluded from room building.
+- **Lazzoni and Luxus have no SKUs filled in.** Product IDs are
+  `supplier:row<n>`.
+- **Typo:** `Birght & Airy` ×3 (Luxus), fixed in the notebook.
+
+**Assumptions needing client/owner confirmation:**
+- Bedroom "Refined space for hosting guests" = catalogue "…hosting and
+  socializing".
+- The aesthetic-OR-materiality rule.
+- The budget ceiling is the top of the band. `$66,000+` means no ceiling.
+  The live mapper uses the band midpoint instead.
+- Catalogue prices share one currency; the USD/CAD question is still open.
+
+**Next, per owner: the production pipeline.** It isn't started. The saved
+`model.pt`, `feature_space.json` and `quiz_schema.json` are designed to be
+loadable by a service: product embeddings can be precomputed per catalogue
+version. Wiring this into `ai_services/recommendation/` needs a work packet
+and an `ai-ml-lead` evaluation decision first. The live `DesignProfileIn`
+wire shape carries only room/style/atmosphere/categories/budget, so it would
+need extending to pass touches, materiality, seating and bed size.
+
+**`tech-lead` ruling on that "production pipeline", the same day
+(`ADR-0024` D6): none is built for recommendation.** This model's labels
+*are* `is_match()`, so where the rule defines the target, the rule ships.
+The one learned behaviour with a claim (the tags-hidden row, inferring
+missing tags) should, if `ai-ml-lead` judges it worth using, take the form
+of an **offline batch producing reviewed catalogue tags**, not an online
+model in the ranking path. If a trained recommendation artifact is ever
+accepted, it reuses `ADR-0024`'s bucket, pin and bake mechanism unchanged.
+Recommendation's real production gap is catalogue data (item 24).
 
 ## Session 21 (2026-09-30) — concept-render pipeline shipped, dead-code cleanup, quiz UI polish; both merged to `RJ-001`
 
@@ -105,19 +211,52 @@ clean against the merged tree; a live browser run of `/quiz` confirmed the
 reset-on-mount behavior, room-type selection, and `window.scrollY === 0`
 immediately after advancing a step.
 
-**GCP/Terraform deployment plan — written 2026-09-30 (`ADR-0022`,
-dispatch item 37), not yet started as engineering.** v1 runs `app` and
-`composite_renderer` on Cloud Run and puts the SQLite-bound
-recommendation/variants/rooms (+ workers) on one Compute Engine VM with a
-persistent data disk. The reason is that each API and its worker share one
-SQLite file, which Cloud Run cannot host durably. SD 1.5 is out of v1
-(`ADR-0020` §D3). Region `us-east4`, because both Neon endpoints are AWS
-`us-east-1` (read from `.env` host suffixes only). P1 is blocked on owner inputs
-B1 (which GCP project — `cloudbuild.yaml` already deploys a Cloud Run
-service `curalina-git-2` to an unknown project) and B2 (budget). Found
-while tracing, and to be fixed before go-live: the quiz upload writes to local disk at a URL
-nothing serves (P0a), and `SESSION_SECRET` silently defaults to a known
-string (P0b). Separate beginner doc: `docs/GCP_ORIENTATION.md`.
+**GCP deployment plan: `ADR-0022`, then revised the same day by `ADR-0023`
+and `ADR-0024` (dispatch items 37 and 38). Planning only; nothing is
+provisioned.** The first plan (`ADR-0022`) put the SQLite-bound
+recommendation, variants and rooms (with their workers) on one Compute
+Engine VM, because each API shared a SQLite file with its worker. The owner
+then started an SQLite → Postgres migration (in flight,
+`python-services-engineer`; uncommitted at the time of writing:
+recommendation done with psycopg/SQLAlchemy/Alembic, variants under way,
+rooms not started) and asked for
+everything on Cloud Run, minimal custom infrastructure, deploys from
+GitHub, and a model pipeline. The current plan:
+
+- **Topology (`ADR-0023`).** All Cloud Run. **No VM, no VPC, no NAT.** The
+  three AI APIs are IAM-gated Cloud Run services. Their databases are one
+  Cloud SQL Postgres 16 instance per environment, holding three databases
+  with three roles. Isolation is enforced by role ownership, `REVOKE
+  CONNECT`, and per-service secrets.
+- **Workers.** Both workers run on **Cloud Run worker pools, fixed at
+  exactly 1 instance**. This needs no code change. Jobs (scheduled or
+  triggered at enqueue) were rejected for v1.
+- **CI/CD.** Cloud Build's native GitHub connection, so **no runner and no
+  VM**. Merge to `main` tests, builds and deploys only the changed images
+  to dev. A `release-*` tag, after approval, promotes the same digests to
+  prod. Terraform owns every setting except the image, which CI owns. This
+  reverses `ADR-0022` D8.
+- **Models (`ADR-0024`).** Only the room renderer's SD 1.5 LoRA is a real
+  trained artifact. It goes Colab → GCS `candidates/` → verified, immutable
+  `releases/` → a one-line pin file in git → baked into the GPU image by
+  CI. **Recommendation needs no model pipeline**: it ships a fake encoder
+  over 4 fixtures, MiniLM is frozen, and the session-22 model's labels are
+  a rule. Its real production gap is the catalogue data (item 24).
+
+Found while re-tracing:
+
+- **Rooms writes PNGs to local disk** in both the API and the worker, so
+  Postgres alone does not make it Cloud-Run-safe (P0d).
+- **Both workers share `worker_id="worker_local"`**, so two instances would
+  break lease ownership (P0e).
+- **The app's ~10 raw `fetch` calls send no credentials** (P0f).
+- **The root `cloudbuild.yaml` was created by GitHub user `Design44inc`**
+  on 2026-02-28. A trigger nobody here controls may be deploying this repo
+  to `curalina-git-2`. Leave the file untouched until B1 is answered.
+
+Still open from `ADR-0022`: the quiz upload writes to local disk at a URL
+nothing serves (P0a), and `SESSION_SECRET` defaults to a known string
+(P0b). Beginner doc: `docs/GCP_ORIENTATION.md`, updated.
 
 ## Session 20 (2026-09-24) — client "Consultation 1" design document analysed (`ADR-0021`)
 
@@ -491,7 +630,8 @@ that the room picture stays unbuilt until `OQ-010` is answered.
 | 34 | **Fabric samples ($35) and concierge / design-support add-ons (p19-p21) — future** | `typescript-app-engineer` | `ADR-0021` FW-6/FW-7 | Fabric samples: a monolith add-on product plus a fulfilment process. Concierge: email capture sent to the client's inbox (p21 annotation), "follow up within two business days", no scheduling integration | Client item 23 (sample fulfilment, destination inbox, consent wording) | **Future.** The concierge half is cheap and needs only the inbox and consent answer |
 | 35 | **Admit the Celadon / Lazzoni / Luxus "Programmer Handoff" workbooks as a catalogue source (provenance ADR)** | `tech-lead` | `ADR-0005`, `ADR-0007`, `ADR-0009` (read-in-place / by-hash pattern); `ADR-0021` §C1-§C2 | Read in place at `/Users/rjsalmon/Documents/Humber/misc.curalina/Supplier CSV Files/`, pinned by sha256 (`ADR-0021` §C1), **never copied into the repo**. Record the measured defects: `Birght & Airy` x3; 97/689 Luxus rows with `Retail Price` 0; `Return Policy` / `Delivery Options` = `None` everywhere; `Lead Time` `None` for Lazzoni/Luxus; no currency column; multi-valued `Room Type` split on `; `; noisy `Seating:`/bed-size tags. State how item 24 changes (which workbook set the runtime imports) | nothing | **Ready.** Gates item 29's importer work and any item 24 run against these workbooks |
 | 36 | **Dead-code cleanup, pass 1 (session 2026-09-29): delete 19 zero-importer files, 9,996 lines** | `typescript-app-engineer`; review `code-reviewer` | `docs/dead-code-audit/CLEANUP-PACKET.md` **in full** (this packet is authoritative); `docs/dead-code-audit/AUDIT.md` (findings; its two line subtotals are wrong, corrected in the packet) | On branch `chore/dead-code-audit-cleanup` only. `git rm` the 3 legacy render files (`gemini-ai.ts`, `openai-render.ts`, `gemini-image-only-render.ts`) and 16 pre-V2/V2 quiz step files. Make comment-only rewords in `asset-import.ts`, `design-profile-mapper.ts`, `consultationOptions.ts` and `Quiz.tsx`, and add dated notes here and in `ADR-0018`/`ADR-0021`. `npm run check` must go 206 → **exactly 171**. **Out of scope:** `server/functions/` (owner decision pending on whether it is a live Firebase target), both `sd15_lora_products_in_rooms_colab.ipynb` copies, orphaned assets, and the rest of the `ADR-0018` §C2 stack | nothing | **Done (2026-09-29).** `<PIN>` = `9a05d5c7c0dd1a759a899533c2a0eaae753ee5f9`. `npm run check`: 206 before → 171 after (per-file breakdown matches baseline minus the 3 deleted server files). `npm run build`: exit 0 before and after. 19 files deleted, 4 files comment-reworded, this table and `ADR-0018`/`ADR-0021` annotated |
-| 37 | **GCP deployment via Terraform (`ADR-0022`)** — v1 hybrid: Cloud Run for `app` + `composite_renderer`; one Compute Engine VM (Docker Compose, persistent data disk) for the SQLite-bound recommendation/variants/rooms + workers; SD 1.5 GPU module specified but disabled | P0a/P0b/P4 `typescript-app-engineer`; P0c/P6a `python-services-engineer`; P1-P3/P5/P6b **unowned `infra/**` — owner must amend `AGENTS.md` first** (recommended: `python-services-engineer`, review `code-reviewer`) | `ADR-0022` in full (§Terraform layout and §Phased build plan are the packet specs; §R1 lists cloud facts each packet must re-verify) | Planning only so far: no `.tf` written, nothing provisioned. Dispatch strictly in order P0a-c → P1 → P2 → P3 → P4 → P5; P6a/b optional. `cloudbuild.yaml` superseded but **not** to be deleted until B1 answered | Owner inputs **B1** (which GCP project; ownership of the existing `curalina-git-2`/Firebase footprint; billing account) and **B2** (monthly budget) block P1; **B3** (supplier-image rights, client) and **B6** (data residency) block P5; **B5** (GPU funding + L4 quota) blocks P6b | **Ready for owner inputs (2026-09-30).** Beginner orientation: `docs/GCP_ORIENTATION.md` |
+| 37 | **GCP deployment, all Cloud Run, with GitHub → Cloud Build CI/CD (`ADR-0023`, superseding parts of `ADR-0022`).** App, three AI APIs and composite renderer on Cloud Run services; `variants_worker`/`rooms_worker` on Cloud Run worker pools (exactly 1 instance each); AI databases on one Cloud SQL PG16 instance per environment (three databases, three roles); no VM, no VPC; SD 1.5 GPU module specified but disabled | P0a/P0b/P0f/P4 `typescript-app-engineer`; P0c/P0d/P0e/P8/P6a `python-services-engineer`; P1/C1/P3/P5/P6b **unowned `infra/**` — the owner must amend `AGENTS.md` first** (recommended: `python-services-engineer`, review `code-reviewer`) | `ADR-0023` in full (it opens with a table of what still stands from `ADR-0022`; §Terraform layout delta, §D6 pipeline table and §Phased build plan are the packet specs; §R1 lists cloud facts each packet must re-verify). For kept packets (P0a-c, P4, P6a/b) also read `ADR-0022` | Planning only: no `.tf` or pipeline file written, nothing provisioned. Order: M0 (Postgres migration, in flight) → P0a-f (parallel) → P1 → C1 → P3 → P4 → P5; P6a/b and P8 optional. **Root `cloudbuild.yaml` must not be edited or deleted until B1** (`ADR-0023` D9); new pipeline files go under `infra/cloudbuild/` | **B1** (GCP project; who `Design44inc` is and the live `curalina-git-2` trigger; billing account) and **B2** (budget) block P1. **B8** (deploy-source repo/branch; a GitHub org admin to install the Cloud Build app) blocks C1. **B3**, **B6** and **B7** block P5. **B5** blocks P6b. M0 must land before P0d/P0e/P3 | **Ready for owner inputs; replanned 2026-09-30.** Beginner orientation: `docs/GCP_ORIENTATION.md` |
+| 38 | **Model artifact pipeline, Colab → GCS → pinned → baked into the GPU image (`ADR-0024`).** Room generator's SD 1.5 LoRA only. **Recommendation and variants have no trained artifact and get no model pipeline** (`ADR-0024` D6/D7) | M1/M5 infra owner (as item 37); M2 `ml-notebook-engineer`; M3 infra owner or `python-services-engineer`; M4 `python-services-engineer`. Any LoRA's **quality sign-off is `ai-ml-lead`'s** | `ADR-0024` in full (D2: notebook cells; D3: promote checks and `manifest.json` schema; D4: pin file, bake step, sidecar `/readyz`); `ADR-0020` §D3 (SD 1.5 is demo-only) | M1 → M2/M3/M4 (parallel) → M5. M1-M4 are useful **without a GPU**: they end hand-carrying LoRA zips for local compose (`fetch_model_release.sh`). M5 rides `ADR-0022` P6a | M1 needs item 37's P1 (dev project). M5 needs P6a and item 37's C1. Prod activation of any LoRA needs an `ai-ml-lead` sign-off **and** B3 (now covering training on supplier images) | **Ready to dispatch once the dev project exists (M3/M4 can start now).** |
 
 **Suggested order:** 25 → 18 → 19 → 20 → 21 → 24 → 22 → 23. 25 first so
 every later packet is type-checked. 18/19 are contract changes and should
@@ -1259,6 +1399,59 @@ already in `ADR-0021` §C1-§C2 and the hashes are pinned. What remains is
 the admissibility ruling in `ADR-0005`'s shape, plus a decision on how item
 24 changes. Item 24 currently names the Four Hands / Moe's importer; the
 consultation's vocabulary lines up with these workbooks instead.
+
+### Items 37-38 — GCP deployment and model artifacts (`ADR-0023`, `ADR-0024`)
+
+**Read the supersession table first.** `ADR-0023` opens with a table
+saying, section by section, what still stands in `ADR-0022`. A packet that
+implements the VM, the `network` module, the push script or
+`images.auto.tfvars.json` is implementing a superseded design.
+
+**M0 (Postgres migration) must deliver five facts that `ADR-0023` relies
+on.** Check them before dispatching P0d, P0e or P3:
+
+1. It accepts a libpq URL with a socket host:
+   `postgresql://rooms:…@/curalina_rooms?host=/cloudsql/<conn>`.
+2. Connections are bounded. Recommendation opens one connection per
+   operation, so Cloud Run concurrency (≤ 4 to start) is what bounds them.
+   Any pool added later needs an env-var maximum.
+3. Store construction, setup and migrations happen **once per worker
+   process, not once per loop iteration**. Today `run_worker_once` builds
+   the store and initializes it about once a second.
+4. `alembic upgrade head` at startup holds a **Postgres advisory lock**, so
+   concurrent instance starts do not race on one migration.
+5. Schema changes are expand-then-contract.
+
+Generated database passwords are hex (`openssl rand -hex 32`): the
+migrator passes URLs through `configparser`, where `%` breaks.
+
+**P0d is decided, not open.** Rooms' asset bytes go into **rooms' own
+database**, behind the existing `AssetStore` port, following the variants
+`BLOB` precedent. GCS is not used. The done-evidence that matters is an API
+process serving bytes written by a separate worker process with no shared
+volume.
+
+**P0e is a correctness fix, not hygiene.** Lease ownership compares
+`lease_owner` to `worker_id`, and both services hardcode `"worker_local"`.
+The Terraform validation pinning each worker pool to 1 instance is removed
+**in the same PR** as P0e, and not before.
+
+**P0f's security rule:** the ID token is attached only when the request's
+origin **exactly** matches one of the three configured AI service origins.
+`asset-import.ts:125` fetches arbitrary stored URLs, and sending a Google
+token to S3 is a credential leak. Test that case explicitly.
+
+**C1 reviewer check:** every trigger's `included_files` must list every
+directory its Dockerfile copies (`design_rules/` for all three Python
+services). A missing path means a change ships without its image being
+rebuilt.
+
+**Item 38: no LoRA is "good" because it was promoted.** `promote` freezes
+and fingerprints a release; it does not judge quality. The pin file's
+`signoff` field is `ai-ml-lead`'s, and prod promotion refuses a baked LoRA
+without one. **Do not build a recommendation model pipeline.** `ADR-0024`
+D6 records why. If `ai-ml-lead` later accepts a trained recommendation
+artifact, it reuses D1-D4 unchanged.
 
 ## What needs the client — escalate as concrete asks, not open questions
 

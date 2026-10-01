@@ -1,0 +1,10 @@
+# Local requirements for pytorch_recommendation_matching_demo.ipynb (Google Colab already has all of these).
+#   python3.12 -m venv .venv && .venv/bin/pip install -r requirements-notebook.txt
+# Intel Macs: torch 2.2.2 is PyTorch's last Intel-Mac release; it needs Python <= 3.12 and numpy 1.x.
+# Apple Silicon / Linux / Windows: the pins below also work; newer torch + numpy 2 is fine there too.
+torch==2.2.2
+numpy<2
+pandas
+openpyxl
+matplotlib
+ipykernel
