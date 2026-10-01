@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import sqlite3
+import os
+import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -16,16 +18,26 @@ from curalina_recommendation.api.application_services import (
     RecommendationApplicationServices,
     build_application_services,
 )
-from curalina_recommendation.api.repository import RecommendationRepository
 from curalina_recommendation.application.catalogue_service import CatalogueService
 from curalina_recommendation.domain.bundle import Bundle, BundleLineItem
 from curalina_recommendation.domain.money import Money
 from curalina_recommendation.settings import Settings
 
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/"
+    "curalina_recommendation_test",
+)
 
-def _settings(tmp_path: Path) -> Settings:
+
+def _unique_test_schema() -> str:
+    return f"test_{uuid.uuid4().hex[:16]}"
+
+
+def _settings(schema: str | None = None) -> Settings:
     return Settings(
-        CURALINA_DATABASE_URL=f"sqlite:///{tmp_path / 'recommendation.sqlite3'}"
+        CURALINA_DATABASE_URL=_TEST_DATABASE_URL,
+        CURALINA_DATABASE_SCHEMA=schema or _unique_test_schema(),
     )
 
 
@@ -60,27 +72,36 @@ def _bundle(*, bundle_id: str, rules_version: str) -> Bundle:
     )
 
 
-def test_repository_rolls_back_all_statements_when_bundle_write_fails(
-    tmp_path: Path,
-) -> None:
-    settings = _settings(tmp_path)
-    repository = RecommendationRepository.from_database_url(
-        settings.curalina_database_url
-    )
-    repository.initialize()
-    with sqlite3.connect(repository.db_path) as connection:
+def test_repository_rolls_back_all_statements_when_bundle_write_fails() -> None:
+    settings = _settings()
+    services = build_application_services(settings)
+    repository = services.repository
+
+    with psycopg.connect(_TEST_DATABASE_URL, autocommit=True) as connection:
+        connection.execute(f'SET search_path TO "{repository.schema}"')
         connection.execute(
             """
-            CREATE TRIGGER fail_selected_bundle
-            BEFORE INSERT ON bundles
-            WHEN NEW.bundle_id = 'bundle_forced_failure'
+            CREATE OR REPLACE FUNCTION fail_selected_bundle() RETURNS trigger AS $$
             BEGIN
-                SELECT RAISE(ABORT, 'deterministic integration failure');
-            END
+                IF NEW.bundle_id = 'bundle_forced_failure' THEN
+                    RAISE EXCEPTION 'deterministic integration failure';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+        connection.execute(
+            """
+            CREATE TRIGGER fail_selected_bundle_trigger
+            BEFORE INSERT ON bundles
+            FOR EACH ROW EXECUTE FUNCTION fail_selected_bundle()
             """
         )
 
-    with pytest.raises(sqlite3.IntegrityError, match="deterministic integration"):
+    with pytest.raises(
+        psycopg.errors.RaiseException, match="deterministic integration"
+    ):
         repository.save_bundle(
             _bundle(
                 bundle_id="bundle_forced_failure",
@@ -88,23 +109,19 @@ def test_repository_rolls_back_all_statements_when_bundle_write_fails(
             )
         )
 
-    reopened = RecommendationRepository.from_database_url(
-        settings.curalina_database_url
-    )
-    reopened.initialize()
+    reopened = build_application_services(settings).repository
     assert "rules_must_roll_back" not in reopened.list_rule_versions()
-    with sqlite3.connect(reopened.db_path) as connection:
+    with psycopg.connect(_TEST_DATABASE_URL, autocommit=True) as connection:
+        connection.execute(f'SET search_path TO "{reopened.schema}"')
         row = connection.execute(
-            "SELECT bundle_id FROM bundles WHERE bundle_id = ?",
+            "SELECT bundle_id FROM bundles WHERE bundle_id = %s",
             ("bundle_forced_failure",),
         ).fetchone()
     assert row is None
 
 
-def test_snapshot_bundle_rule_version_and_public_operation_survive_restart(
-    tmp_path: Path,
-) -> None:
-    settings = _settings(tmp_path)
+def test_snapshot_bundle_rule_version_and_public_operation_survive_restart() -> None:
+    settings = _settings()
     first_services = build_application_services(settings)
     first_client = TestClient(create_app(first_services))
     created = first_client.post(
@@ -162,12 +179,13 @@ def test_malformed_workbook_import_returns_structured_invalid_request(
 ) -> None:
     malformed_workbook = tmp_path / "malformed.xlsx"
     malformed_workbook.write_bytes(b"this is not an xlsx archive")
+    settings = _settings()
     client = TestClient(
-        create_app(_services_with_real_importer(_settings(tmp_path))),
+        create_app(_services_with_real_importer(settings)),
         raise_server_exceptions=False,
     )
-    database_path = tmp_path / "recommendation.sqlite3"
-    with sqlite3.connect(database_path) as connection:
+    with psycopg.connect(_TEST_DATABASE_URL, autocommit=True) as connection:
+        connection.execute(f'SET search_path TO "{settings.curalina_database_schema}"')
         snapshots_before = connection.execute(
             "SELECT COUNT(*) FROM catalogue_snapshots"
         ).fetchone()
@@ -190,18 +208,19 @@ def test_malformed_workbook_import_returns_structured_invalid_request(
         "request_id": response.json()["request_id"],
     }
     assert response.json()["request_id"]
-    with sqlite3.connect(database_path) as connection:
+    with psycopg.connect(_TEST_DATABASE_URL, autocommit=True) as connection:
+        connection.execute(f'SET search_path TO "{settings.curalina_database_schema}"')
         snapshots_after = connection.execute(
             "SELECT COUNT(*) FROM catalogue_snapshots"
         ).fetchone()
     assert snapshots_after == snapshots_before
 
 
-def test_repository_failure_is_not_mapped_as_malformed_workbook(
-    tmp_path: Path,
-) -> None:
-    services = build_application_services(_settings(tmp_path))
-    with sqlite3.connect(services.repository.db_path) as connection:
+def test_repository_failure_is_not_mapped_as_malformed_workbook() -> None:
+    settings = _settings()
+    services = build_application_services(settings)
+    with psycopg.connect(_TEST_DATABASE_URL, autocommit=True) as connection:
+        connection.execute(f'SET search_path TO "{services.repository.schema}"')
         connection.execute("DROP TABLE catalogue_snapshots")
     client = TestClient(create_app(services), raise_server_exceptions=False)
 

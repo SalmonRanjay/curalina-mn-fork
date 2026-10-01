@@ -1,9 +1,15 @@
 # Architecture decision record
 
 ID: ADR-0022
-Status: accepted for topology and Terraform layout. Applying anything is
-blocked on owner inputs B1 and B2, and production exposure also on B3
-(see "Blocking inputs").
+Status: **partly superseded the same day by `ADR-0023`** (all-Cloud-Run
+topology, Cloud Build CI/CD). The VM (D1, D2's trio rows), the VPC, NAT and
+firewall (D5), "Terraform owns deploys" (D8), the VM exit (D9), the
+`network`/`ai_host_vm` modules, the push script, the operator flow, the
+phase table, the cost table and the B-input table are replaced there. D3
+(region), D4 (projects), D6 (secrets), D7 (GPU disabled), C1–C6 (as
+pre-migration evidence) and packets P0a–P0c, P4 and P6a/b **still stand**.
+`ADR-0023` opens with the full section-by-section table. Read it before
+implementing anything below.
 Owner and reviewer: `tech-lead` (decision). Raised by the project owner
 directly: deploy the stack to Google Cloud with Terraform "for
 reproducibility". The owner has never used GCP or Terraform and thinks in

@@ -3,19 +3,34 @@
 from __future__ import annotations
 
 import base64
-from pathlib import Path
+import os
+import uuid
 
 import pytest
 
+from curalina_variants.api.postgres_store import PostgresJobStore
 from curalina_variants.api.schemas import CreateMaskRequest
-from curalina_variants.api.sqlite_store import SQLiteJobStore
 from curalina_variants.api.store import FakeJobStore
 
+TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_variants_test",
+)
 
-def _create_default_mask_in_store(store: FakeJobStore | SQLiteJobStore) -> None:
+
+def unique_test_schema() -> str:
+    """A fresh, valid Postgres schema identifier, unique per call.
+
+    Gives each test SQLite-tmp-file-equivalent isolation inside one shared
+    Postgres test database.
+    """
+    return f"test_{uuid.uuid4().hex[:16]}"
+
+
+def _create_default_mask_in_store(store: FakeJobStore | PostgresJobStore) -> None:
     """Helper to ingest the default mask used by all test fixtures.
 
-    Works with both FakeJobStore and SQLiteJobStore."""
+    Works with both FakeJobStore and PostgresJobStore."""
     mask_request = CreateMaskRequest(
         mask_id="mask_000001",
         source_asset_id="asset_000001",
@@ -53,12 +68,14 @@ def store_empty() -> FakeJobStore:
 
 
 @pytest.fixture
-def sqlite_store(tmp_path: Path) -> SQLiteJobStore:
-    """Provides an SQLiteJobStore with the default mask pre-ingested.
+def postgres_store() -> PostgresJobStore:
+    """Provides a PostgresJobStore with the default mask pre-ingested.
 
-    This is useful for tests that need to verify SQLite-specific behavior
-    (durability, persistence, etc.) while also being able to create jobs."""
-    store_obj = SQLiteJobStore(tmp_path / "variants.sqlite3")
+    This is useful for tests that need to verify Postgres-specific behavior
+    (durability, persistence, etc.) while also being able to create jobs.
+    Each test gets its own Postgres schema for SQLite-tmp-file-equivalent
+    isolation."""
+    store_obj = PostgresJobStore(TEST_DATABASE_URL, schema=unique_test_schema())
     store_obj.initialize()
     _create_default_mask_in_store(store_obj)
     return store_obj

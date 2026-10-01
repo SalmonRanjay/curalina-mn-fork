@@ -21,7 +21,7 @@ from curalina_variants.api.handlers import (
     get_job,
     get_mask,
 )
-from curalina_variants.api.sqlite_store import SQLiteJobStore
+from curalina_variants.api.postgres_store import PostgresJobStore
 from curalina_variants.settings import Settings
 
 JsonBody = Annotated[dict[str, Any], Body()]
@@ -54,9 +54,11 @@ def _error_response(error: ApiError) -> JSONResponse:
 def create_app(store: VariantJobStore | None = None) -> FastAPI:
     if store is None:
         settings = Settings()
-        sqlite_store = SQLiteJobStore.from_database_url(settings.curalina_database_url)
-        sqlite_store.initialize()
-        store = sqlite_store
+        postgres_store = PostgresJobStore.from_database_url(
+            settings.curalina_database_url, schema=settings.curalina_database_schema
+        )
+        postgres_store.initialize()
+        store = postgres_store
     app = FastAPI(title="curalina_variants", version="0.0.0")
 
     @app.post("/v1/assets", status_code=status.HTTP_201_CREATED)

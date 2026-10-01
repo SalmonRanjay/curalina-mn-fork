@@ -45,9 +45,6 @@ ENV PYTHONUNBUFFERED=1 \
     CURALINA_ENV=docker \
     SERVICE_HOST=0.0.0.0
 
-# Create directory for SQLite database persistence
-RUN mkdir -p /data && chmod 755 /data
-
 # Health check: curl the OpenAPI endpoint
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
     CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${SERVICE_PORT:-8101}/openapi.json', timeout=2)" || exit 1

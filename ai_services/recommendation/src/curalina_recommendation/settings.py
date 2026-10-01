@@ -13,8 +13,15 @@ class Settings(BaseSettings):
         alias="CURALINA_DATA_DIR",
     )
     curalina_database_url: str = Field(
-        default="sqlite:///data/curalina_recommendation.sqlite3",
+        default="postgresql://curalina:curalina_dev_password@localhost:5432/curalina_recommendation",
         alias="CURALINA_DATABASE_URL",
+    )
+    # Postgres schema within curalina_database_url's database. Defaults to
+    # "public" in production; tests override this per-test-function to get
+    # SQLite-tmp-file-equivalent isolation inside one shared test database.
+    curalina_database_schema: str = Field(
+        default="public",
+        alias="CURALINA_DATABASE_SCHEMA",
     )
     service_host: str = "127.0.0.1"
     service_port: int = 8101

@@ -1,11 +1,15 @@
 # Shared infrastructure services for Curalina AI services
-# This file defines infrastructure that is provisioned for future use but NOT
-# currently wired to any service.
 #
-# STATUS: Postgres is available here for a future migration from SQLite.
-# TODAY: All three services (recommendation, variants, rooms) persist via SQLite
-# in their own named Docker volumes. SQLite persistence is durable and survives
-# container restarts via volume mounts.
+# STATUS: All three AI services (recommendation, variants, rooms) persist to
+# Postgres, each in its OWN database inside this one Postgres instance
+# (curalina_recommendation, curalina_variants, curalina_rooms — never a
+# shared database, so the services stay logically and operationally
+# independent the same way they were as separate SQLite files). This
+# replaces the old per-service SQLite-in-a-named-volume setup: Cloud Run's
+# filesystem is ephemeral per-instance and wiped on redeploy/scale, so SQLite
+# would silently lose data there. Each service's own docker-compose.yml
+# depends on `postgres` with a healthcheck-gated condition and runs its own
+# checked-in Alembic migrations at container startup.
 
 services:
   postgres:

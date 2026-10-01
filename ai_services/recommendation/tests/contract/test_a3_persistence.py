@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
+import os
+import uuid
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -9,10 +10,17 @@ from curalina_recommendation.api import create_app
 from curalina_recommendation.api.application_services import build_application_services
 from curalina_recommendation.settings import Settings
 
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/"
+    "curalina_recommendation_test",
+)
 
-def _settings(tmp_path: Path) -> Settings:
+
+def _settings() -> Settings:
     return Settings(
-        CURALINA_DATABASE_URL=f"sqlite:///{tmp_path / 'recommendation.sqlite3'}"
+        CURALINA_DATABASE_URL=_TEST_DATABASE_URL,
+        CURALINA_DATABASE_SCHEMA=f"test_{uuid.uuid4().hex[:16]}",
     )
 
 
@@ -27,8 +35,8 @@ def _profile() -> dict[str, Any]:
     }
 
 
-def test_bundle_and_substitution_survive_new_app_instance(tmp_path: Path) -> None:
-    settings = _settings(tmp_path)
+def test_bundle_and_substitution_survive_new_app_instance() -> None:
+    settings = _settings()
     first_client = TestClient(create_app(build_application_services(settings)))
     created = first_client.post(
         "/v1/bundles",

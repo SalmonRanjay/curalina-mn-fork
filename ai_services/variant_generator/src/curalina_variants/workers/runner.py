@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from curalina_variants.adapters.lab_colour_transfer import LabColourTransferAdapter
 from curalina_variants.api.errors import ApiError
 from curalina_variants.api.schemas import ErrorSummary, JobRecord
-from curalina_variants.api.sqlite_store import SQLiteJobStore
+from curalina_variants.api.postgres_store import PostgresJobStore
 from curalina_variants.domain.colour_spec import RgbColour
 from curalina_variants.domain.mask_spec import Mask, Region
 from curalina_variants.settings import Settings
@@ -55,7 +55,7 @@ def _mask_record_to_domain_mask(
 
 
 def process_one_job(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
     *,
     worker_id: str,
     lease_seconds: int,
@@ -181,7 +181,9 @@ def process_one_job(
 
 
 def run_worker_once(settings: Settings, *, worker_id: str = "worker_local") -> int:
-    store = SQLiteJobStore.from_database_url(settings.curalina_database_url)
+    store = PostgresJobStore.from_database_url(
+        settings.curalina_database_url, schema=settings.curalina_database_schema
+    )
     store.initialize()
     result = process_one_job(
         store,

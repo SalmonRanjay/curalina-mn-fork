@@ -38,6 +38,15 @@ declaring it out of scope, and (b) missed an AI-generated image sitting
 among the real assets. Cheap population-level scripts catch all three; more
 sampling does not.
 
+**Also check the brief's causal premise, not just its facts.** In
+`ADR-0023` the brief said "SQLite is gone, so the services can move to
+Cloud Run". Reading the stores showed that was true for variants (asset
+`BLOB`s in its database) but **false for rooms**: its PNGs live on a
+filesystem `AssetStore` shared by the API and the worker. It also showed a
+shared hardcoded `worker_id` that breaks leases with more than one worker.
+Ask "what else is on local disk or process-local?", not only "is the DB
+migrated?".
+
 **How to apply:** budget one or two short scripts against the real source
 data before writing the Decision section. If a check can't settle something
 (e.g. I could test *verbatim* label-echo but not *semantic* auto-tagging),

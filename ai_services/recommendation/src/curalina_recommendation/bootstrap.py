@@ -9,8 +9,12 @@ def main() -> int:
     import uvicorn
 
     from curalina_recommendation.api.routes import create_app
+    from curalina_recommendation.db.migrator import run_migrations
 
     settings = build_settings()
+    run_migrations(
+        settings.curalina_database_url, schema=settings.curalina_database_schema
+    )
     uvicorn.run(create_app(), host=settings.service_host, port=settings.service_port)
     return 0
 

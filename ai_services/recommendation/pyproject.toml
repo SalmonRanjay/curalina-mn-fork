@@ -17,6 +17,9 @@ dependencies = [
     "uvicorn>=0.30",
     "openpyxl>=3.1",
     "pyyaml>=6.0",
+    "psycopg[binary]>=3.1",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]
@@ -49,6 +52,9 @@ curalina_recommendation = [
     "evaluation/*.yaml",
     "evaluation/*.json",
     "evaluation/*.csv",
+    "migrations/alembic.ini",
+    "migrations/env.py",
+    "migrations/versions/*.py",
 ]
 
 [tool.pytest.ini_options]

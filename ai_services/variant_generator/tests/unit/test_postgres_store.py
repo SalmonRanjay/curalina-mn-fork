@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import base64
-from pathlib import Path
+import os
+import uuid
 
 import pytest
 
 from curalina_variants.api.errors import ApiError
 from curalina_variants.api.fixtures import load_fixture
+from curalina_variants.api.postgres_store import LeaseConflictError, PostgresJobStore
 from curalina_variants.api.schemas import (
     CreateAssetRequest,
     CreateMaskRequest,
@@ -15,11 +17,19 @@ from curalina_variants.api.schemas import (
     JobStatus,
     ReviewStatus,
 )
-from curalina_variants.api.sqlite_store import LeaseConflictError, SQLiteJobStore
+
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_variants_test",
+)
 
 
-def _store(tmp_path: Path) -> SQLiteJobStore:
-    store = SQLiteJobStore(tmp_path / "variants.sqlite3")
+def _unique_schema() -> str:
+    return f"test_{uuid.uuid4().hex[:16]}"
+
+
+def _store(schema: str) -> PostgresJobStore:
+    store = PostgresJobStore(_TEST_DATABASE_URL, schema=schema)
     store.initialize()
     # Seed the default mask that test fixtures expect (only if not already present)
     try:
@@ -42,18 +52,19 @@ def _store(tmp_path: Path) -> SQLiteJobStore:
     return store
 
 
-def test_sqlite_store_persists_jobs_and_idempotency(tmp_path: Path) -> None:
-    first = _store(tmp_path)
+def test_postgres_store_persists_jobs_and_idempotency() -> None:
+    schema = _unique_schema()
+    first = _store(schema)
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
     created, was_created = first.create_variant_job(
-        request, idempotency_key="idem-sqlite", request_id="req-1"
+        request, idempotency_key="idem-postgres", request_id="req-1"
     )
 
-    second = _store(tmp_path)
+    second = _store(schema)
     replayed, replay_created = second.create_variant_job(
-        request, idempotency_key="idem-sqlite", request_id="req-2"
+        request, idempotency_key="idem-postgres", request_id="req-2"
     )
 
     assert was_created is True
@@ -62,8 +73,9 @@ def test_sqlite_store_persists_jobs_and_idempotency(tmp_path: Path) -> None:
     assert second.get_job(created.job_id, request_id="req-3").status == JobStatus.QUEUED
 
 
-def test_sqlite_store_persists_asset_content(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_persists_asset_content() -> None:
+    schema = _unique_schema()
+    store = _store(schema)
     request = CreateAssetRequest.model_validate(
         {
             "schema_version": "1.0",
@@ -75,7 +87,7 @@ def test_sqlite_store_persists_asset_content(tmp_path: Path) -> None:
     )
 
     created = store.create_asset(request, request_id="req-asset")
-    restored = _store(tmp_path).get_asset_content(
+    restored = _store(schema).get_asset_content(
         created.asset_id, request_id="req-read"
     )
 
@@ -84,8 +96,8 @@ def test_sqlite_store_persists_asset_content(tmp_path: Path) -> None:
     assert restored.content_bytes == b"asset-bytes"
 
 
-def test_sqlite_store_rejects_changed_idempotency_payload(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_rejects_changed_idempotency_payload() -> None:
+    store = _store(_unique_schema())
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
@@ -96,8 +108,8 @@ def test_sqlite_store_rejects_changed_idempotency_payload(tmp_path: Path) -> Non
         store.create_variant_job(changed, idempotency_key="idem", request_id="req-2")
 
 
-def test_sqlite_store_lease_and_complete_creates_candidate(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_lease_and_complete_creates_candidate() -> None:
+    store = _store(_unique_schema())
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
@@ -119,8 +131,8 @@ def test_sqlite_store_lease_and_complete_creates_candidate(tmp_path: Path) -> No
     )
 
 
-def test_sqlite_store_cancel_queued_job(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_cancel_queued_job() -> None:
+    store = _store(_unique_schema())
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
@@ -133,8 +145,8 @@ def test_sqlite_store_cancel_queued_job(tmp_path: Path) -> None:
     assert cancelled.status == JobStatus.CANCELLED
 
 
-def test_sqlite_store_failed_completion_records_error(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_failed_completion_records_error() -> None:
+    store = _store(_unique_schema())
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
@@ -153,8 +165,8 @@ def test_sqlite_store_failed_completion_records_error(tmp_path: Path) -> None:
     assert failed.failure.code == "fake_adapter_failure"
 
 
-def test_sqlite_store_rejects_wrong_worker_completion(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_rejects_wrong_worker_completion() -> None:
+    store = _store(_unique_schema())
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
@@ -168,8 +180,8 @@ def test_sqlite_store_rejects_wrong_worker_completion(tmp_path: Path) -> None:
         store.complete_leased_job(created.job_id, worker_id="worker-2")
 
 
-def test_sqlite_store_review_updates_candidate_revision(tmp_path: Path) -> None:
-    store = _store(tmp_path)
+def test_postgres_store_review_updates_candidate_revision() -> None:
+    store = _store(_unique_schema())
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )

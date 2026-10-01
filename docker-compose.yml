@@ -18,13 +18,13 @@
 # root (predates this compose setup) rather than living in a per-service
 # subdirectory the way the three Python services do.
 #
-# All three AI services persist data via SQLite in named Docker volumes, not
-# the container's ephemeral layer, so data survives restarts.
+# All three AI services persist data to Postgres (see
+# docker-compose.common.yml's `postgres` service), each in its own database
+# inside that one instance, so data survives restarts and container
+# recreation — not the SQLite-in-a-named-volume setup this replaced.
 #
-# Postgres is available (see docker-compose.common.yml) as infrastructure for
-# a future AI-service SQLite→Postgres migration — the three AI services do
-# not use it today. It is ALSO NOT what `app` uses: the existing monolith's
-# database is Neon serverless Postgres (`server/db.ts` uses
+# This shared `postgres` container is NOT what `app` uses: the existing
+# monolith's database is Neon serverless Postgres (`server/db.ts` uses
 # `@neondatabase/serverless`, which speaks Neon's own WebSocket/HTTP
 # protocol, not plain Postgres wire protocol — a stock `postgres:16-alpine`
 # container cannot serve it directly without a Neon-compatible local proxy,

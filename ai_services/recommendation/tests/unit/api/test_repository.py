@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
+import os
+import uuid
 
 from curalina_recommendation.adapters.fake_bundle_composer import FakeBundleComposer
 from curalina_recommendation.api.application_services import build_fixture_products
@@ -9,11 +10,21 @@ from curalina_recommendation.application.bundle_service import BundleService
 from curalina_recommendation.domain.money import Money
 from curalina_recommendation.domain.profile import Profile
 
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/"
+    "curalina_recommendation_test",
+)
 
-def test_repository_round_trips_snapshot_bundle_and_rule_version(
-    tmp_path: Path,
-) -> None:
-    repository = RecommendationRepository(tmp_path / "recommendation.sqlite3")
+
+def _unique_test_schema() -> str:
+    return f"test_{uuid.uuid4().hex[:16]}"
+
+
+def test_repository_round_trips_snapshot_bundle_and_rule_version() -> None:
+    repository = RecommendationRepository(
+        _TEST_DATABASE_URL, schema=_unique_test_schema()
+    )
     repository.initialize()
     products = build_fixture_products()
     repository.seed_fixture_snapshot(

@@ -106,7 +106,7 @@ def build_application_services(
     settings = settings or Settings()
     products = build_fixture_products()
     repository = RecommendationRepository.from_database_url(
-        settings.curalina_database_url
+        settings.curalina_database_url, schema=settings.curalina_database_schema
     )
     repository.initialize()
     repository.seed_fixture_snapshot(

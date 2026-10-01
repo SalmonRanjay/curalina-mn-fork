@@ -1,6 +1,12 @@
 # Docker Compose for recommendation service
 # Run independently with: cd ai_services/recommendation && docker compose up
 # Or include in root orchestrator via `include:` directive
+#
+# Persistence is Postgres (ai_services/docker-compose.common.yml's `postgres`
+# service), in this service's own database (`curalina_recommendation`) —
+# never shared with variants' or rooms' databases. Postgres schema is owned
+# by the checked-in Alembic migrations under `migrations/versions/`, run at
+# container startup (see curalina_recommendation.bootstrap).
 
 services:
   recommendation_api:
@@ -11,20 +17,22 @@ services:
     ports:
       - "8101:8101"
     environment:
-      CURALINA_DATABASE_URL: sqlite:////data/recommendation.sqlite3
+      CURALINA_DATABASE_URL: postgresql://curalina:curalina_dev_password@postgres:5432/curalina_recommendation
       SERVICE_PORT: "8101"
-      CURALINA_DATA_DIR: /data
-    volumes:
-      # Named volume for SQLite database persistence across container restarts
-      - recommendation_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - curalina
 
-volumes:
-  recommendation_data:
-    driver: local
-
 networks:
   curalina:
     driver: bridge
+
+# Brings in the shared `postgres` service so `depends_on: postgres` above
+# resolves when this file is run standalone (not only via the root
+# orchestrator's `include:`, which already pulls in docker-compose.common.yml
+# once for the whole stack).
+include:
+  - ../docker-compose.common.yml
