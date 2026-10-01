@@ -130,6 +130,7 @@ def run_concept_render(
         style=brief.style,
         atmosphere=brief.atmosphere,
         pattern=brief.pattern,
+        products=tuple(p.model_dump() for p in brief.products or ()),
     )
 
     try:

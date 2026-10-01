@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 ART = "art"
 
@@ -37,6 +38,15 @@ class Product:
     name: str  # stable display id, e.g. "LUXUS/001 - Sofa"
     category: str
     image_path: Path
+    product_id: str | None = None  # set when a request named this piece
+
+
+class Requested(Protocol):
+    product_id: str
+    name: str
+    supplier: str
+    category: str
+    sku: str | None
 
 
 def classify(product_name: str) -> str | None:
@@ -73,3 +83,83 @@ def scan(images_dir: Path) -> dict[str, list[Product]]:
         if png:
             found.setdefault(ART, []).append(Product(f"CELADON/{d.name}", ART, png))
     return found
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def _title(folder_name: str) -> str:
+    """'012 - Raya Dining Table' -> 'Raya Dining Table'."""
+    return re.sub(r"^\d+\s*-\s*", "", folder_name)
+
+
+def _requested_category(category: str) -> str | None:
+    return ART if _norm(category) == "wall art" else classify(category)
+
+
+def _luxus_folder(name: str, category: str, folders: list[Path]) -> Path | None:
+    """Exact (normalised) title, else the longest title the product name starts
+    with ('Adana Sofa - 1A2 (R/L)' -> 'Adana Sofa'), but never a folder whose
+    own name classifies as a different kind of furniture."""
+    wanted = _norm(name)
+    by_title = {_norm(_title(d.name)): d for d in folders}
+    if wanted in by_title:
+        return by_title[wanted]
+    prefixes = sorted(
+        (t for t in by_title if t and wanted.startswith(t + " ")), key=len, reverse=True
+    )
+    for title in prefixes:
+        folder_kind = classify(title)
+        if folder_kind is None or _same_kind(folder_kind, category):
+            return by_title[title]
+    return None
+
+
+# Kinds the suppliers use interchangeably for one piece (Luxus types its
+# Adana range "Sectional / Modular Sofa" while the image folder says "Sofa").
+_INTERCHANGEABLE: tuple[frozenset[str], ...] = (frozenset({"sofa", "sectional"}),)
+
+
+def _same_kind(a: str, b: str) -> bool:
+    return a == b or any(a in group and b in group for group in _INTERCHANGEABLE)
+
+
+def _celadon_folder(sku: str | None, name: str, folders: list[Path]) -> Path | None:
+    for d in folders:
+        if sku and d.name.rstrip().endswith(f"- {sku}"):
+            return d
+    wanted = _norm(name)
+    return next(
+        (d for d in folders if wanted and _norm(d.name).find(wanted) >= 0), None
+    )
+
+
+def resolve_requested(
+    images_dir: Path, requested: list[Requested]
+) -> tuple[list[Product], list[str]]:
+    """Find the cutout for each requested product. Returns (found, missing ids).
+
+    Only LUXUS cutouts and CELADON artwork exist; anything else (e.g. Lazzoni,
+    which ships PDF spec sheets only) is reported missing, never substituted.
+    """
+    luxus = _subdirs(images_dir / "LUXUS" / "Product Images")
+    celadon = _subdirs(images_dir / "CELADON")
+    found: list[Product] = []
+    missing: list[str] = []
+    for item in requested:
+        category = _requested_category(item.category)
+        supplier = item.supplier.strip().upper()
+        folder: Path | None = None
+        if category is not None and supplier == "LUXUS":
+            folder = _luxus_folder(item.name, category, luxus)
+        elif category == ART and supplier == "CELADON":
+            folder = _celadon_folder(item.sku, item.name, celadon)
+        png = _first_png(folder) if folder is not None else None
+        if category is None or folder is None or png is None:
+            missing.append(item.product_id)
+            continue
+        found.append(
+            Product(f"{supplier}/{folder.name}", category, png, item.product_id)
+        )
+    return found, missing

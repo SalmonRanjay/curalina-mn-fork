@@ -13,7 +13,14 @@ from fastapi.responses import JSONResponse, Response
 
 from .palette import UnsupportedBrief
 from .render import NoCatalogueImages, render_room
-from .schemas import LABEL, MODEL_ID, RENDERER_NAME, ErrorBody, RenderRequest
+from .schemas import (
+    LABEL,
+    LABEL_RECOMMENDED,
+    MODEL_ID,
+    RENDERER_NAME,
+    ErrorBody,
+    RenderRequest,
+)
 
 
 def _error(status: int, code: str, message: str, retryable: bool) -> JSONResponse:
@@ -51,6 +58,7 @@ def create_app(images_dir: Path | None = None) -> FastAPI:
                 req.height,
                 req.seed,
                 req.prompt,
+                list(req.brief.products) if req.brief.products is not None else None,
             )
         except UnsupportedBrief as exc:
             return _error(422, exc.code, str(exc), False)
@@ -65,8 +73,9 @@ def create_app(images_dir: Path | None = None) -> FastAPI:
                 "X-Renderer": RENDERER_NAME,
                 "X-Model-Id": MODEL_ID,
                 "X-Elapsed-Ms": str(int((time.monotonic() - start) * 1000)),
-                "X-Label": LABEL,
+                "X-Label": LABEL if req.brief.products is None else LABEL_RECOMMENDED,
                 "X-Pieces": json.dumps(result.pieces, ensure_ascii=True),
+                "X-Missing-Pieces": json.dumps(result.missing, ensure_ascii=True),
             },
         )
 

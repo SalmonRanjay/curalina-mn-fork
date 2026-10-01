@@ -239,3 +239,88 @@ def test_matte_removes_white_background_but_keeps_interior_white() -> None:
     assert out.getpixel((0, 0))[3] == 0
     assert out.getpixel((20, 20))[3] == 255
     assert out.getpixel((12, 12)) == (30, 60, 90, 255)
+
+
+# --- requested pieces (ADR-0025) ------------------------------------------
+
+
+def _requested(
+    product_id: str, name: str, supplier: str, category: str, sku: str | None = None
+) -> dict[str, Any]:
+    return {
+        "product_id": product_id,
+        "name": name,
+        "supplier": supplier,
+        "category": category,
+        "sku": sku,
+    }
+
+
+def _body_with(
+    products: list[dict[str, Any]], room: str = "Living Room"
+) -> dict[str, Any]:
+    return {**BODY, "brief": {**BODY["brief"], "room_type": room, "products": products}}
+
+
+def test_requested_pieces_replace_random_picks(tmp_path: Path) -> None:
+    _catalogue(tmp_path)
+    _cutout(
+        tmp_path / "LUXUS" / "Product Images" / "006 - Aclive Ottoman" / "a.png",
+        (5, 5, 5),
+    )
+    products = [
+        _requested("Luxus:row1", "Cloud Sofa", "Luxus", "Sectional / Modular Sofa"),
+        # variant name resolves to its base folder by prefix
+        _requested("Luxus:row2", "Accent Chair - Bouclé", "Luxus", "Accent Chair"),
+        _requested("Luxus:row3", "Aclive Ottoman", "Luxus", "Ottoman"),
+        _requested("Celadon:SKU1", "Sunrise", "Celadon", "Wall Art", "SKU1"),
+        _requested("Lazzoni:row9", "STONE COFFEE TABLE", "Lazzoni", "Coffee Table"),
+    ]
+    r = TestClient(create_app(tmp_path)).post("/v1/render", json=_body_with(products))
+    assert r.status_code == 200
+    pieces = json.loads(r.headers["x-pieces"])
+    assert sorted(pieces) == sorted(
+        [
+            "LUXUS/002 - Cloud Sofa",
+            "LUXUS/003 - Accent Chair",
+            "LUXUS/006 - Aclive Ottoman",
+            "CELADON/001 - Sunrise - SKU1",
+        ]
+    )
+    # Lazzoni has no cutouts: reported, and no other coffee table substituted.
+    assert json.loads(r.headers["x-missing-pieces"]) == ["Lazzoni:row9"]
+    assert "recommended" in r.headers["x-label"]
+
+
+def test_prefix_match_never_crosses_furniture_kinds(tmp_path: Path) -> None:
+    _catalogue(tmp_path)
+    # "Grand Sofa - Pouf" is an ottoman: it must not borrow the sofa's image.
+    products = [_requested("Luxus:row7", "Grand Sofa - Pouf", "Luxus", "Ottoman")]
+    r = TestClient(create_app(tmp_path)).post("/v1/render", json=_body_with(products))
+    assert r.status_code == 200
+    assert json.loads(r.headers["x-pieces"]) == []
+    assert json.loads(r.headers["x-missing-pieces"]) == ["Luxus:row7"]
+
+
+def test_without_products_the_default_layout_is_unchanged(tmp_path: Path) -> None:
+    _catalogue(tmp_path)
+    _cutout(
+        tmp_path / "LUXUS" / "Product Images" / "006 - Aclive Ottoman" / "a.png",
+        (5, 5, 5),
+    )
+    r = TestClient(create_app(tmp_path)).post("/v1/render", json=BODY)
+    pieces = json.loads(r.headers["x-pieces"])
+    assert not any("Ottoman" in p for p in pieces)
+    assert json.loads(r.headers["x-missing-pieces"]) == []
+    assert r.headers["x-label"] == LABEL
+
+
+def test_sofa_and_sectional_share_an_image(tmp_path: Path) -> None:
+    _catalogue(tmp_path)
+    products = [
+        _requested(
+            "Luxus:row5", "Grand Sofa - 1A N/BACK", "Luxus", "Sectional / Modular Sofa"
+        )
+    ]
+    r = TestClient(create_app(tmp_path)).post("/v1/render", json=_body_with(products))
+    assert json.loads(r.headers["x-pieces"]) == ["LUXUS/001 - Grand Sofa"]

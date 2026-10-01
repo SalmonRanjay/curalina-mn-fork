@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -571,3 +572,73 @@ def test_heartbeat_renews_lease_and_survives_store_errors(tmp_path: Path) -> Non
     bad._interval = 0.02
     with bad:
         time.sleep(0.1)
+
+
+# --- recommended products in the brief (ADR-0025) -------------------------
+
+_PRODUCTS = [
+    {
+        "product_id": "Luxus:row622",
+        "name": "Raya Dining Table",
+        "supplier": "Luxus",
+        "category": "Dining Table",
+        "sku": None,
+        "quantity": 1,
+    },
+    {
+        "product_id": "Lazzoni:row98",
+        "name": "ENA  CHAIR",
+        "supplier": "Lazzoni",
+        "category": "Dining Chair",
+        "sku": None,
+        "quantity": 8,
+    },
+]
+
+
+def test_brief_products_are_optional_and_validated() -> None:
+    brief = RenderBrief.model_validate(
+        {
+            "room_type": "Dining Room",
+            "style": "s",
+            "atmosphere": "a",
+            "products": _PRODUCTS,
+        }
+    )
+    assert brief.products is not None and brief.products[1].quantity == 8
+    with pytest.raises(ValueError):
+        RenderBrief.model_validate(
+            {
+                "room_type": "r",
+                "style": "s",
+                "atmosphere": "a",
+                "products": [{"product_id": "x"}],
+            }
+        )
+
+
+def test_prompt_names_the_recommended_pieces() -> None:
+    brief = RenderBrief.model_validate(
+        {
+            "room_type": "Dining Room",
+            "style": "s",
+            "atmosphere": "a",
+            "products": _PRODUCTS,
+        }
+    )
+    assert "featuring Raya Dining Table, ENA CHAIR" in build_prompt(brief)
+
+
+def test_http_backend_forwards_products_only_when_present() -> None:
+    bodies: list[dict[str, Any]] = []
+    png = make_png(8, 8, (1, 1, 1))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, content=png)
+
+    backend = _http(handler)
+    backend.render(_request("composite"))
+    backend.render(replace(_request("composite"), products=tuple(_PRODUCTS)))
+    assert "products" not in bodies[0]["brief"]
+    assert bodies[1]["brief"]["products"] == _PRODUCTS

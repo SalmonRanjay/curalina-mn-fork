@@ -135,10 +135,25 @@ RendererName = Literal["sd15", "composite"]
 CONCEPT_PROVENANCE_MODE = "synthetic_scene"
 
 
+class BriefProduct(StrictModel):
+    """A recommended catalogue product the concept render should show
+    (`ADR-0025`). Identifies the piece; the renderer finds its own image."""
+
+    product_id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    supplier: str = Field(min_length=1)
+    category: str = Field(min_length=1)
+    sku: str | None = None
+    quantity: int = Field(default=1, ge=1)
+
+
 class RenderBrief(StrictModel):
     """Additive (contract 1.x minor) brief for a text-to-image concept render.
 
     `renderer` may be omitted; the worker then uses `CURALINA_ROOM_RENDERER`.
+    `products` (additive, `ADR-0025`): when present, the composite renderer
+    places exactly these pieces and the prompt names them; absent keeps the
+    previous behaviour.
     """
 
     renderer: RendererName | None = None
@@ -148,6 +163,7 @@ class RenderBrief(StrictModel):
     pattern: str | None = None
     prompt: str | None = None
     seed: int | None = None
+    products: list[BriefProduct] | None = None
 
 
 class RenderJobRequest(StrictModel):
