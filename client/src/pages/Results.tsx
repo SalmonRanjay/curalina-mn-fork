@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSessionId } from "@/lib/session";
+import { PlacedProductsTable } from "@/components/results/PlacedProductsTable";
+import type { RenderProductPlacement, RenderRecommendationSummary } from "@shared/render-placements";
 import { useLocation, useSearch } from "wouter";
 import GlobalLayout from "@/components/GlobalLayout";
 import { Card } from "@/components/ui/card";
@@ -112,6 +114,14 @@ export default function Results() {
   const conceptRef = (render?.aiServiceRef ?? null) as
     | { renderer?: string | null; label?: string | null }
     | null;
+
+  // Recommendation-backed renders (ADR-0025) carry their placed products.
+  const placements = Array.isArray(render?.productPlacements)
+    ? (render?.productPlacements as RenderProductPlacement[])
+    : null;
+  const recommendationSummary =
+    ((render?.aiServiceRef ?? null) as { recommendation?: RenderRecommendationSummary } | null)
+      ?.recommendation ?? null;
 
   // Fetch products for this specific render (Shop the Look)
   const { data: renderProducts, isLoading: productsLoading } = useQuery<Product[]>({
@@ -691,6 +701,13 @@ export default function Results() {
                   </Button>
                 </div>
               </Card>
+              {placements && (
+                <PlacedProductsTable
+                  placements={placements}
+                  summary={recommendationSummary}
+                  sessionId={sessionId}
+                />
+              )}
             </motion.div>
 
           {/* Shop the Look Sidebar */}

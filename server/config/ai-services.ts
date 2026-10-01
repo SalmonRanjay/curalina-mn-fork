@@ -43,6 +43,14 @@ export interface AiServicesSettings {
   roomRenderer: "sd15" | "composite";
   /** ISO 4217 code used as the DesignProfile currency. Default "CAD". */
   defaultCurrency: string;
+  /**
+   * ADR-0025: in concept mode, call recommendation's consultation endpoint
+   * first and put the recommended products into the render brief, the
+   * render row, and the app's products table (so they can be carted).
+   * Off by default so environments without the supplier workbooks keep the
+   * previous concept-only behaviour.
+   */
+  recommendationInRender: boolean;
 }
 
 const DEFAULT_RECOMMENDATION_URL = "http://127.0.0.1:8101";
@@ -102,6 +110,8 @@ export function getAiServicesSettings(): AiServicesSettings {
     roomRenderMode: parseChoice("CURALINA_ROOM_RENDER_MODE", process.env.CURALINA_ROOM_RENDER_MODE, ["concept", "full"] as const, "full"),
     roomRenderer: parseChoice("CURALINA_ROOM_RENDERER", process.env.CURALINA_ROOM_RENDERER, ["sd15", "composite"] as const, "sd15"),
     defaultCurrency: (process.env.CURALINA_DEFAULT_CURRENCY || "CAD").trim().toUpperCase(),
+    recommendationInRender:
+      parseChoice("CURALINA_RECOMMENDATION_IN_RENDER", process.env.CURALINA_RECOMMENDATION_IN_RENDER, ["true", "false"] as const, "false") === "true",
   };
 }
 

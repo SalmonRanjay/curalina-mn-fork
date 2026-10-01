@@ -248,6 +248,18 @@ export interface RoomRenderBrief {
   pattern: string | null;
   prompt: string | null;
   seed: number | null;
+  /** Recommended pieces to show (ADR-0025). Omitted = the renderer picks. */
+  products?: RoomBriefProduct[];
+}
+
+/** Mirrors rooms' `BriefProduct` (`curalina_rooms/api/schemas.py`). */
+export interface RoomBriefProduct {
+  product_id: string;
+  name: string;
+  supplier: string;
+  category: string;
+  sku: string | null;
+  quantity: number;
 }
 
 /**

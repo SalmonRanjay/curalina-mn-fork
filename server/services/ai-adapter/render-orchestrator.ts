@@ -60,10 +60,15 @@ import { getAiServicesSettings } from "../../config/ai-services.js";
 import { toDesignProfile, type DesignProfileMappingResult } from "./design-profile-mapper.js";
 import {
   postBundle,
+  postConsultationRecommendations,
   RecommendationServiceError,
   type BundleLineItemShape,
   type BundleResponseShape,
+  type ConsultationRecommendationShape,
 } from "./recommendation-client.js";
+import { toConsultationAnswers } from "./consultation-answers-mapper.js";
+import { syncRecommendedProducts, type ProductSyncStorage } from "./recommended-product-sync.js";
+import type { RenderProductPlacement, RenderRecommendationSummary } from "@shared/render-placements";
 import { toAppProductRef, ProductMappingMismatchError } from "./product-response-mapper.js";
 import {
   importAssetToRooms,
@@ -94,7 +99,7 @@ import { isServiceUnreachableError } from "./service-availability.js";
  * just these four methods, following `UI-A5-01`/`02`/`03`'s mocking
  * approach for this adapter layer.
  */
-export interface RenderOrchestratorStorage {
+export interface RenderOrchestratorStorage extends ProductSyncStorage {
   getQuizResponse(id: string): Promise<QuizResponse | undefined>;
   getProduct(id: string): Promise<Product | undefined>;
   createRender(input: InsertRender): Promise<Render>;
@@ -503,6 +508,28 @@ async function orchestrateConceptRender(args: {
       ? quiz.patternPreference
       : null;
 
+  // ADR-0025: recommend first, so the render shows (and the cart can take)
+  // the recommended products.
+  let recommended: RecommendedRoom | null = null;
+  if (settings.recommendationInRender) {
+    const step = await recommendRoom(quiz, storage);
+    if (step.kind === "outcome") return step.outcome;
+    if (step.kind === "needs_input") {
+      const render = await storage.createRender({
+        quizResponseId,
+        sessionId,
+        userId: userId ?? undefined,
+        imageUrl: null,
+        prompt: `AI services path (concept) — recommendation needs input: ${step.problems.join("; ")}`,
+        productSkus: productSkus ?? [],
+        status: "needs_input",
+        errorMessage: `needs_input: ${step.problems.join("; ")}`,
+      } as InsertRender);
+      return { status: 201, body: render as unknown as Record<string, unknown> };
+    }
+    recommended = step.room;
+  }
+
   let job;
   try {
     job = await submitRoomConceptJob({
@@ -514,6 +541,18 @@ async function orchestrateConceptRender(args: {
         pattern,
         prompt: null,
         seed: null,
+        ...(recommended && recommended.placements.length > 0
+          ? {
+              products: recommended.placements.map((p) => ({
+                product_id: p.recommendationProductId,
+                name: p.name,
+                supplier: p.supplier,
+                category: p.category,
+                sku: recommended!.skus.get(p.recommendationProductId) ?? null,
+                quantity: p.quantity,
+              })),
+            }
+          : {}),
       },
       idempotencyKey: `${quizResponseId}:${sessionId}`,
     });
@@ -536,9 +575,13 @@ async function orchestrateConceptRender(args: {
     userId: userId ?? undefined,
     imageUrl: null,
     prompt: `AI services path (concept) — rooms job ${job.jobId}, renderer ${settings.roomRenderer}`,
-    productSkus: productSkus ?? [],
+    productSkus: recommended
+      ? recommended.placements.map((p) => p.recommendationProductId)
+      : productSkus ?? [],
+    productPlacements: recommended ? recommended.placements : null,
     status: "generating",
     aiServiceRef: {
+      ...(recommended ? { recommendation: recommended.summary } : {}),
       schemaVersion: job.schemaVersion,
       jobId: job.jobId,
       renderer: settings.roomRenderer,
@@ -552,4 +595,98 @@ async function orchestrateConceptRender(args: {
   } as InsertRender);
 
   return { status: 201, body: render as unknown as Record<string, unknown> };
+}
+
+// --- Recommendation step for the concept path (ADR-0025) -------------------
+
+interface RecommendedRoom {
+  placements: RenderProductPlacement[];
+  summary: RenderRecommendationSummary;
+  /** recommendation product_id -> supplier SKU (null for row-keyed products). */
+  skus: Map<string, string | null>;
+}
+
+type RecommendStep =
+  | { kind: "ok"; room: RecommendedRoom }
+  | { kind: "needs_input"; problems: string[] }
+  | { kind: "outcome"; outcome: AiRenderOutcome };
+
+async function recommendRoom(
+  quiz: QuizResponse,
+  storage: RenderOrchestratorStorage
+): Promise<RecommendStep> {
+  const mapped = toConsultationAnswers(quiz);
+  if ("needsInput" in mapped) return { kind: "needs_input", problems: [`${mapped.missingField}: not a Consultation-1 answer`] };
+
+  let rec: ConsultationRecommendationShape;
+  try {
+    rec = await postConsultationRecommendations(mapped.answers);
+  } catch (err) {
+    if (isServiceUnreachableError(err)) {
+      return { kind: "outcome", outcome: { status: 503, body: unavailableErrorBody("recommendation") } };
+    }
+    if (err instanceof RecommendationServiceError) {
+      return {
+        kind: "outcome",
+        outcome: {
+          status: err.httpStatus,
+          body: servicePassthroughErrorBody("recommendation", err.code, err.message, err.requestId, err.retryable),
+        },
+      };
+    }
+    throw err;
+  }
+  if (rec.status === "needs_input") return { kind: "needs_input", problems: rec.problems };
+
+  const appProducts = await syncRecommendedProducts(
+    storage,
+    rec.placements.map((p) => p.product),
+    `supplier-handoff:${rec.catalogue_fingerprint.slice(0, 16)}`
+  );
+  const placements: RenderProductPlacement[] = [];
+  const skus = new Map<string, string | null>();
+  for (const p of rec.placements) {
+    const app = appProducts.get(p.product.product_id);
+    if (!app || p.product.unit_price_minor_units === null) continue;
+    skus.set(p.product.product_id, p.product.sku);
+    placements.push({
+      slotId: p.slot_id,
+      tier: p.tier,
+      label: p.label,
+      quantity: p.quantity,
+      quantitySource: p.quantity_source,
+      recommendationProductId: p.product.product_id,
+      appProductId: app.id,
+      name: p.product.name,
+      supplier: p.product.supplier,
+      category: p.product.category,
+      unitPriceMinorUnits: p.product.unit_price_minor_units,
+      lineTotalMinorUnits: p.line_total_minor_units,
+      currency: rec.currency,
+      matchScore: p.product.match_score,
+      ruleMatch: p.product.rule_match,
+    });
+  }
+  return {
+    kind: "ok",
+    room: {
+      placements,
+      skus,
+      summary: {
+        modelFamily: rec.model.family,
+        modelRun: rec.model.trained_run,
+        weightsSha256: rec.model.weights_sha256,
+        minMatchScore: rec.model.min_match_score,
+        catalogueFingerprint: rec.catalogue_fingerprint,
+        currency: rec.currency,
+        totalMinorUnits: rec.total_minor_units,
+        budgetCeilingMinorUnits: rec.budget_ceiling_minor_units,
+        notes: rec.notes,
+        notInCatalogue: rec.not_in_catalogue,
+        planSource: rec.plan_source,
+        productsScored: rec.products_scored,
+        modelRuleDisagreements: rec.model_rule_disagreements,
+      },
+    },
+  };
 }

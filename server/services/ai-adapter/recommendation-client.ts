@@ -175,3 +175,74 @@ export function postBundle(
     profile,
   });
 }
+
+// --- POST /v1/consultation/recommendations (ADR-0025) ----------------------
+//
+// Mirrors `ConsultationRecommendationRequest`/`Response` in
+// `ai_services/recommendation/src/curalina_recommendation/api/schemas.py`.
+
+export interface ConsultationAnswersIn {
+  room_type: string | null;
+  aesthetic: string | null;
+  materiality: string | null;
+  atmosphere: string | null;
+  pattern_preference: string | null;
+  practical_touches: string[];
+  seating_capacity: number | null;
+  bed_size: string | null;
+  investment: string | null;
+}
+
+export interface ConsultationProduct {
+  product_id: string;
+  supplier: string;
+  sku: string | null;
+  name: string;
+  category: string;
+  unit_price_minor_units: number | null;
+  match_score: number;
+  rule_match: boolean;
+  rooms: string[];
+  styles: string[];
+  atmospheres: string[];
+}
+
+export interface ConsultationPlacement {
+  slot_id: string;
+  tier: "foundation" | "bridge" | "accent";
+  label: string;
+  quantity: number;
+  quantity_source: string;
+  line_total_minor_units: number;
+  product: ConsultationProduct;
+}
+
+export interface ConsultationRecommendationShape {
+  schema_version: string;
+  status: "ok" | "needs_input";
+  problems: string[];
+  room_type: string | null;
+  currency: string;
+  placements: ConsultationPlacement[];
+  alternatives: Record<string, ConsultationProduct[]>;
+  total_minor_units: number;
+  budget_ceiling_minor_units: number | null;
+  notes: string[];
+  not_in_catalogue: string[];
+  plan_source: string | null;
+  model: { family: string; weights_sha256: string; trained_run: string | null; min_match_score: number };
+  catalogue_fingerprint: string;
+  products_scored: number;
+  model_rule_disagreements: number;
+}
+
+/** Calls `POST /v1/consultation/recommendations`; non-2xx throws `RecommendationServiceError`. */
+export function postConsultationRecommendations(
+  answers: ConsultationAnswersIn
+): Promise<ConsultationRecommendationShape> {
+  const settings = getAiServicesSettings();
+  return postJson<ConsultationRecommendationShape>(
+    `${settings.recommendationUrl}/v1/consultation/recommendations`,
+    { schema_version: settings.contractVersion, answers }
+  );
+}
