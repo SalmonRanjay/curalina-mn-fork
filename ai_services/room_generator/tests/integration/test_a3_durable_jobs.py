@@ -1,27 +1,41 @@
 from __future__ import annotations
 
+import hashlib
+import os
 from pathlib import Path
 
 import pytest
 
 from curalina_rooms.api.errors import ContractError
 from curalina_rooms.api.fixtures import load_fixture
+from curalina_rooms.api.postgres_store import LeaseConflictError, PostgresRoomStore
 from curalina_rooms.api.schemas import AssetImportRequest, RenderJobRequest
 from curalina_rooms.api.service import RoomsContractService
-from curalina_rooms.api.sqlite_store import LeaseConflictError, SQLiteRoomStore
 from curalina_rooms.settings import Settings
 from curalina_rooms.workers import process_one_job, run_worker_once
 
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_rooms_test",
+)
 
-def _store(tmp_path: Path) -> SQLiteRoomStore:
-    store = SQLiteRoomStore(tmp_path / "rooms.sqlite3")
+
+def _schema_for(tmp_path: Path) -> str:
+    """See the identical helper in tests/unit/test_concept_render.py for why
+    this hashes the full path rather than using `tmp_path.name` alone."""
+    digest = hashlib.sha256(str(tmp_path).encode("utf-8")).hexdigest()[:16]
+    return f"test_{digest}"
+
+
+def _store(tmp_path: Path) -> PostgresRoomStore:
+    store = PostgresRoomStore(_TEST_DATABASE_URL, schema=_schema_for(tmp_path))
     store.initialize()
     store.seed_from_fixtures()
     return store
 
 
 def _service(
-    store: SQLiteRoomStore, *, failure_after: int | None = None
+    store: PostgresRoomStore, *, failure_after: int | None = None
 ) -> RoomsContractService:
     return RoomsContractService(store, failure_after_insertions=failure_after)
 
@@ -31,11 +45,13 @@ def _create_job(service: RoomsContractService) -> str:
     return created.body.job_id
 
 
-def test_sqlite_job_survives_restart_and_worker_completion(tmp_path: Path) -> None:
+def test_postgres_job_survives_restart_and_worker_completion(tmp_path: Path) -> None:
     store = _store(tmp_path)
     job_id = _create_job(_service(store))
 
-    restarted_store = SQLiteRoomStore(tmp_path / "rooms.sqlite3")
+    restarted_store = PostgresRoomStore(
+        _TEST_DATABASE_URL, schema=_schema_for(tmp_path)
+    )
     restarted_store.initialize()
     result = process_one_job(
         restarted_store, worker_id="worker-restart", lease_seconds=60
@@ -141,14 +157,17 @@ def test_partial_artifacts_remain_after_fake_generation_failure(tmp_path: Path) 
 
 
 def test_run_worker_once_returns_one_when_no_job_is_available(tmp_path: Path) -> None:
-    settings = Settings(CURALINA_DATABASE_URL=f"sqlite:///{tmp_path / 'rooms.sqlite3'}")
+    settings = Settings(
+        CURALINA_DATABASE_URL=_TEST_DATABASE_URL,
+        CURALINA_DATABASE_SCHEMA=_schema_for(tmp_path),
+    )
 
     assert run_worker_once(settings, worker_id="worker-empty") == 1
 
 
 def test_store_rejects_unsupported_database_url() -> None:
-    with pytest.raises(ValueError, match="sqlite"):
-        SQLiteRoomStore.from_database_url("postgresql://rooms")
+    with pytest.raises(ValueError, match="postgresql"):
+        PostgresRoomStore.from_database_url("sqlite:///rooms.db")
 
 
 def test_raw_store_contract_can_create_asset_and_job(tmp_path: Path) -> None:

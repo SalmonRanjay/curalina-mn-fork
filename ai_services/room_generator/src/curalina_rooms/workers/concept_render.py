@@ -13,6 +13,7 @@ import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from curalina_rooms.api.postgres_store import LeasedJobContext, PostgresRoomStore
 from curalina_rooms.api.schemas import (
     CONCEPT_PROVENANCE_MODE,
     AssetResponse,
@@ -20,7 +21,6 @@ from curalina_rooms.api.schemas import (
     JobStatusResponse,
     RenderBrief,
 )
-from curalina_rooms.api.sqlite_store import LeasedJobContext, SQLiteRoomStore
 from curalina_rooms.application.prompt_builder import NEGATIVE_PROMPT, build_prompt
 from curalina_rooms.domain.png_validation import InvalidPngError, validate_png
 from curalina_rooms.ports.asset_store import AssetStore, AssetStoreError
@@ -54,7 +54,7 @@ class _Heartbeat:
     so a long CPU render is not re-leased and run twice."""
 
     def __init__(
-        self, store: SQLiteRoomStore, job_id: str, worker_id: str, lease_seconds: int
+        self, store: PostgresRoomStore, job_id: str, worker_id: str, lease_seconds: int
     ) -> None:
         self._args = (store, job_id, worker_id, lease_seconds)
         self._stop = threading.Event()
@@ -82,7 +82,7 @@ class _Heartbeat:
 
 
 def run_concept_render(
-    store: SQLiteRoomStore,
+    store: PostgresRoomStore,
     context: LeasedJobContext,
     brief: RenderBrief,
     *,

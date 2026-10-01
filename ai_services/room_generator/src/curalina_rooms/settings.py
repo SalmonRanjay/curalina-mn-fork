@@ -11,8 +11,15 @@ class Settings(BaseSettings):
     curalina_env: str = Field(default="local", alias="CURALINA_ENV")
     curalina_data_dir: Path = Field(default=Path("data"), alias="CURALINA_DATA_DIR")
     curalina_database_url: str = Field(
-        default="sqlite:///data/curalina_rooms.sqlite3",
+        default="postgresql://curalina:curalina_dev_password@localhost:5432/curalina_rooms",
         alias="CURALINA_DATABASE_URL",
+    )
+    # Postgres schema within curalina_database_url's database. Defaults to
+    # "public" in production; tests override this per-test-function to get
+    # SQLite-tmp-file-equivalent isolation inside one shared test database.
+    curalina_database_schema: str = Field(
+        default="public",
+        alias="CURALINA_DATABASE_SCHEMA",
     )
     curalina_model_cache: Path = Field(
         default=Path("data/model_cache"),

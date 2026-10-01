@@ -1,16 +1,24 @@
-"""SQLite-backed durable store for room-generator A3 jobs."""
+"""Postgres-backed durable store for room-generator A3 jobs.
+
+Schema is owned by the checked-in Alembic migrations under
+`migrations/versions/` (see `curalina_rooms.db.migrator`), not by this
+module — `initialize()` runs those migrations rather than issuing ad hoc
+`CREATE TABLE IF NOT EXISTS` statements.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+import psycopg
+from psycopg.rows import dict_row
 
 from curalina_rooms.api.errors import (
     invalid_job_state_error,
@@ -33,20 +41,26 @@ from curalina_rooms.api.schemas import (
     RenderJobRequest,
     RenderJobResponse,
 )
+from curalina_rooms.db.migrator import run_migrations
 
 
 class LeaseConflictError(RuntimeError):
     """Raised when a worker tries to complete a job leased by another worker."""
 
 
-def sqlite_path_from_url(database_url: str) -> Path:
-    prefix = "sqlite:///"
-    if not database_url.startswith(prefix):
+def _dsn_with_schema(database_url: str, schema: str) -> str:
+    if not database_url.startswith(("postgresql://", "postgresql+psycopg://")):
         raise ValueError(
-            "room A3 only supports sqlite:/// database URLs, got "
+            "room A3 only supports postgresql:// database URLs, got "
             f"{database_url!r}"
         )
-    return Path(database_url.removeprefix(prefix))
+    bare = "postgresql://" + database_url.split("://", 1)[1]
+    if schema == "public":
+        return bare
+    parsed = urlparse(bare)
+    query = dict(parse_qsl(parsed.query))
+    query["options"] = f"-csearch_path={schema}"
+    return urlunparse(parsed._replace(query=urlencode(query)))
 
 
 def _utc_now() -> datetime:
@@ -91,62 +105,28 @@ class LeasedJobContext:
 
 
 @dataclass(frozen=True, slots=True)
-class SQLiteRoomStore:
-    db_path: Path
+class PostgresRoomStore:
+    database_url: str
+    schema: str = "public"
 
     @classmethod
-    def from_database_url(cls, database_url: str) -> SQLiteRoomStore:
-        return cls(db_path=sqlite_path_from_url(database_url))
+    def from_database_url(
+        cls, database_url: str, *, schema: str = "public"
+    ) -> PostgresRoomStore:
+        _dsn_with_schema(database_url, schema)  # eager validation
+        return cls(database_url=database_url, schema=schema)
 
     def initialize(self) -> None:
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS bundles (
-                    bundle_id TEXT PRIMARY KEY,
-                    current_revision TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS assets (
-                    asset_id TEXT PRIMARY KEY,
-                    record_json TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS jobs (
-                    job_id TEXT PRIMARY KEY,
-                    record_json TEXT NOT NULL,
-                    request_json TEXT NOT NULL,
-                    max_attempts INTEGER NOT NULL,
-                    failure_after_insertions INTEGER,
-                    lease_owner TEXT,
-                    leased_until TEXT
-                );
-                CREATE TABLE IF NOT EXISTS candidates (
-                    candidate_id TEXT PRIMARY KEY,
-                    revision INTEGER NOT NULL,
-                    record_json TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS reviews (
-                    review_id TEXT PRIMARY KEY,
-                    candidate_id TEXT NOT NULL,
-                    record_json TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS staged_insertions (
-                    job_id TEXT NOT NULL,
-                    stage_index INTEGER NOT NULL,
-                    instance_id TEXT NOT NULL,
-                    artifact_asset_id TEXT NOT NULL,
-                    PRIMARY KEY (job_id, stage_index)
-                );
-                """
-            )
+        run_migrations(self.database_url, schema=self.schema)
 
     def seed_from_fixtures(self) -> None:
         with self._connect() as connection:
             for bundle in load_fixture("bundle_snapshots.json")["bundles"]:
                 connection.execute(
                     """
-                    INSERT OR IGNORE INTO bundles (bundle_id, current_revision)
-                    VALUES (?, ?)
+                    INSERT INTO bundles (bundle_id, current_revision)
+                    VALUES (%s, %s)
+                    ON CONFLICT (bundle_id) DO NOTHING
                     """,
                     (bundle["bundle_id"], bundle["current_revision"]),
                 )
@@ -154,8 +134,9 @@ class SQLiteRoomStore:
                 response = AssetResponse.model_validate(asset)
                 connection.execute(
                     """
-                    INSERT OR IGNORE INTO assets (asset_id, record_json)
-                    VALUES (?, ?)
+                    INSERT INTO assets (asset_id, record_json)
+                    VALUES (%s, %s)
+                    ON CONFLICT (asset_id) DO NOTHING
                     """,
                     (response.asset_id, _model_json(response)),
                 )
@@ -164,9 +145,10 @@ class SQLiteRoomStore:
                 revision = int(candidate["revision"])
                 connection.execute(
                     """
-                    INSERT OR IGNORE INTO candidates
+                    INSERT INTO candidates
                         (candidate_id, revision, record_json)
-                    VALUES (?, ?, ?)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (candidate_id) DO NOTHING
                     """,
                     (
                         candidate_id,
@@ -194,7 +176,7 @@ class SQLiteRoomStore:
         )
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO assets (asset_id, record_json) VALUES (?, ?)",
+                "INSERT INTO assets (asset_id, record_json) VALUES (%s, %s)",
                 (asset_id, _model_json(response)),
             )
         return response
@@ -255,7 +237,7 @@ class SQLiteRoomStore:
                     job_id, record_json, request_json, max_attempts,
                     failure_after_insertions, lease_owner, leased_until
                 )
-                VALUES (?, ?, ?, ?, ?, NULL, NULL)
+                VALUES (%s, %s, %s, %s, %s, NULL, NULL)
                 """,
                 (
                     job_id,
@@ -270,7 +252,7 @@ class SQLiteRoomStore:
     def get_job(self, job_id: str, *, request_id: str) -> JobStatusResponse:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT record_json FROM jobs WHERE job_id = ?", (job_id,)
+                "SELECT record_json FROM jobs WHERE job_id = %s", (job_id,)
             ).fetchone()
         if row is None:
             raise resource_not_found_error(request_id, "job", job_id)
@@ -298,7 +280,7 @@ class SQLiteRoomStore:
     ) -> CandidateReviewResponse:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT revision FROM candidates WHERE candidate_id = ?",
+                "SELECT revision FROM candidates WHERE candidate_id = %s",
                 (candidate_id,),
             ).fetchone()
             if row is None:
@@ -326,8 +308,8 @@ class SQLiteRoomStore:
             connection.execute(
                 """
                 UPDATE candidates
-                SET revision = ?, record_json = ?
-                WHERE candidate_id = ?
+                SET revision = %s, record_json = %s
+                WHERE candidate_id = %s
                 """,
                 (
                     next_revision,
@@ -340,7 +322,7 @@ class SQLiteRoomStore:
             connection.execute(
                 """
                 INSERT INTO reviews (review_id, candidate_id, record_json)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 """,
                 (review_id, candidate_id, _model_json(response)),
             )
@@ -374,8 +356,8 @@ class SQLiteRoomStore:
                 connection.execute(
                     """
                     UPDATE jobs
-                    SET record_json = ?, lease_owner = ?, leased_until = ?
-                    WHERE job_id = ?
+                    SET record_json = %s, lease_owner = %s, leased_until = %s
+                    WHERE job_id = %s
                     """,
                     (
                         _model_json(job),
@@ -400,7 +382,7 @@ class SQLiteRoomStore:
                 SELECT record_json, request_json, max_attempts,
                        failure_after_insertions, lease_owner
                 FROM jobs
-                WHERE job_id = ?
+                WHERE job_id = %s
                 """,
                 (job_id,),
             ).fetchone()
@@ -452,7 +434,7 @@ class SQLiteRoomStore:
             connection.execute(
                 """
                 INSERT INTO candidates (candidate_id, revision, record_json)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 """,
                 (
                     candidate_id,
@@ -501,8 +483,8 @@ class SQLiteRoomStore:
         with self._connect() as connection:
             cursor = connection.execute(
                 """
-                UPDATE jobs SET leased_until = ?
-                WHERE job_id = ? AND lease_owner = ?
+                UPDATE jobs SET leased_until = %s
+                WHERE job_id = %s AND lease_owner = %s
                 """,
                 (deadline, job_id, worker_id),
             )
@@ -524,7 +506,10 @@ class SQLiteRoomStore:
                 connection, job_id, worker_id=worker_id, request_id=request_id
             )
             connection.execute(
-                "INSERT OR REPLACE INTO assets (asset_id, record_json) VALUES (?, ?)",
+                """
+                INSERT INTO assets (asset_id, record_json) VALUES (%s, %s)
+                ON CONFLICT (asset_id) DO UPDATE SET record_json = EXCLUDED.record_json
+                """,
                 (asset.asset_id, _model_json(asset)),
             )
             succeeded = JobStatusResponse(
@@ -568,7 +553,7 @@ class SQLiteRoomStore:
 
     def _load_leased(
         self,
-        connection: sqlite3.Connection,
+        connection: psycopg.Connection[Any],
         job_id: str,
         *,
         worker_id: str,
@@ -577,7 +562,7 @@ class SQLiteRoomStore:
         row = connection.execute(
             """
             SELECT record_json, request_json, max_attempts, lease_owner
-            FROM jobs WHERE job_id = ?
+            FROM jobs WHERE job_id = %s
             """,
             (job_id,),
         ).fetchone()
@@ -597,7 +582,7 @@ class SQLiteRoomStore:
                 """
                 SELECT stage_index, instance_id, artifact_asset_id
                 FROM staged_insertions
-                WHERE job_id = ?
+                WHERE job_id = %s
                 ORDER BY stage_index
                 """,
                 (job_id,),
@@ -606,7 +591,7 @@ class SQLiteRoomStore:
 
     def _stage_insertions(
         self,
-        connection: sqlite3.Connection,
+        connection: psycopg.Connection[Any],
         *,
         job_id: str,
         request: RenderJobRequest,
@@ -625,7 +610,7 @@ class SQLiteRoomStore:
                 """
                 INSERT INTO staged_insertions
                     (job_id, stage_index, instance_id, artifact_asset_id)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
                 """,
                 (
                     job_id,
@@ -638,15 +623,16 @@ class SQLiteRoomStore:
         return staged
 
     def _validate_existing_stages(
-        self, connection: sqlite3.Connection, *, job_id: str, upto: int
+        self, connection: psycopg.Connection[Any], *, job_id: str, upto: int
     ) -> None:
         count = connection.execute(
             """
             SELECT COUNT(*) AS count FROM staged_insertions
-            WHERE job_id = ? AND stage_index < ?
+            WHERE job_id = %s AND stage_index < %s
             """,
             (job_id, upto),
         ).fetchone()
+        assert count is not None
         if int(count["count"]) != upto:
             raise RuntimeError(f"render job {job_id!r} has missing staged insertions")
 
@@ -669,7 +655,7 @@ class SQLiteRoomStore:
     def _current_bundle_revision(self, bundle_id: str, *, request_id: str) -> str:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT current_revision FROM bundles WHERE bundle_id = ?",
+                "SELECT current_revision FROM bundles WHERE bundle_id = %s",
                 (bundle_id,),
             ).fetchone()
         if row is None:
@@ -681,7 +667,7 @@ class SQLiteRoomStore:
     ) -> AssetResponse:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT record_json FROM assets WHERE asset_id = ?", (asset_id,)
+                "SELECT record_json FROM assets WHERE asset_id = %s", (asset_id,)
             ).fetchone()
         if row is None:
             if missing_reference:
@@ -695,7 +681,7 @@ class SQLiteRoomStore:
 
     def _save_job_with_connection(
         self,
-        connection: sqlite3.Connection,
+        connection: psycopg.Connection[Any],
         job: JobStatusResponse,
         *,
         clear_lease: bool,
@@ -704,14 +690,14 @@ class SQLiteRoomStore:
             connection.execute(
                 """
                 UPDATE jobs
-                SET record_json = ?, lease_owner = NULL, leased_until = NULL
-                WHERE job_id = ?
+                SET record_json = %s, lease_owner = NULL, leased_until = NULL
+                WHERE job_id = %s
                 """,
                 (_model_json(job), job.job_id),
             )
         else:
             connection.execute(
-                "UPDATE jobs SET record_json = ? WHERE job_id = ?",
+                "UPDATE jobs SET record_json = %s WHERE job_id = %s",
                 (_model_json(job), job.job_id),
             )
 
@@ -720,7 +706,7 @@ class SQLiteRoomStore:
             return self._next_id_with_connection(connection, table, column, prefix)
 
     def _next_id_with_connection(
-        self, connection: sqlite3.Connection, table: str, column: str, prefix: str
+        self, connection: psycopg.Connection[Any], table: str, column: str, prefix: str
     ) -> str:
         rows = connection.execute(f"SELECT {column} FROM {table}").fetchall()
         max_seen = 0
@@ -734,9 +720,10 @@ class SQLiteRoomStore:
         return f"{prefix}_{max_seen + 1:06d}"
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        connection = sqlite3.connect(self.db_path)
-        connection.row_factory = sqlite3.Row
+    def _connect(self) -> Iterator[psycopg.Connection[Any]]:
+        connection = psycopg.connect(
+            _dsn_with_schema(self.database_url, self.schema), row_factory=dict_row
+        )
         try:
             with connection:
                 yield connection

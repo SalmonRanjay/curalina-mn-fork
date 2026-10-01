@@ -1,21 +1,24 @@
 from __future__ import annotations
 
 import base64
-import sqlite3
+import os
 import subprocess
 import sys
+import uuid
 from contextlib import closing
 from io import BytesIO
-from pathlib import Path
 
 import numpy as np
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
+from psycopg.rows import dict_row
 
 from curalina_variants.api import create_app
 from curalina_variants.api.errors import ApiError
 from curalina_variants.api.fixtures import load_fixture
+from curalina_variants.api.postgres_store import LeaseConflictError, PostgresJobStore
 from curalina_variants.api.schemas import (
     AssetContent,
     CreateAssetRequest,
@@ -23,8 +26,24 @@ from curalina_variants.api.schemas import (
     CreateVariantJobRequest,
     JobStatus,
 )
-from curalina_variants.api.sqlite_store import LeaseConflictError, SQLiteJobStore
 from curalina_variants.workers import process_one_job
+
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_variants_test",
+)
+
+
+def _unique_schema() -> str:
+    return f"test_{uuid.uuid4().hex[:16]}"
+
+
+def _raw_connect(store: PostgresJobStore) -> psycopg.Connection[dict]:
+    return psycopg.connect(
+        _TEST_DATABASE_URL,
+        options=f"-csearch_path={store.schema}",
+        row_factory=dict_row,
+    )
 
 
 def _png_bytes(rgb: np.ndarray) -> bytes:
@@ -35,8 +54,8 @@ def _png_bytes(rgb: np.ndarray) -> bytes:
 
 
 @pytest.fixture
-def store(tmp_path: Path) -> SQLiteJobStore:
-    result = SQLiteJobStore(tmp_path / "variants.sqlite3")
+def store() -> PostgresJobStore:
+    result = PostgresJobStore(_TEST_DATABASE_URL, schema=_unique_schema())
     result.initialize()
     # Seed the default asset and mask that test fixtures expect
     try:
@@ -79,7 +98,7 @@ def store(tmp_path: Path) -> SQLiteJobStore:
     return result
 
 
-def _create(store: SQLiteJobStore) -> str:
+def _create(store: PostgresJobStore) -> str:
     request = CreateVariantJobRequest.model_validate(
         load_fixture("create_variant_job_request")
     )
@@ -89,23 +108,27 @@ def _create(store: SQLiteJobStore) -> str:
     return job.job_id
 
 
-def _expire(store: SQLiteJobStore, job_id: str) -> None:
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
+def _expire(store: PostgresJobStore, job_id: str) -> None:
+    with closing(_raw_connect(store)) as connection, connection:
         connection.execute(
-            "UPDATE jobs SET leased_until = ? WHERE job_id = ?",
+            "UPDATE jobs SET leased_until = %s WHERE job_id = %s",
             ("2000-01-01T00:00:00+00:00", job_id),
         )
 
 
-def _candidate_count(store: SQLiteJobStore) -> int:
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
-        return int(connection.execute("SELECT count(*) FROM candidates").fetchone()[0])
+def _candidate_count(store: PostgresJobStore) -> int:
+    with closing(_raw_connect(store)) as connection, connection:
+        row = connection.execute("SELECT count(*) AS n FROM candidates").fetchone()
+        assert row is not None
+        return int(row["n"])
 
 
-def test_expired_lease_recovers_and_fences_stale_worker(store: SQLiteJobStore) -> None:
+def test_expired_lease_recovers_and_fences_stale_worker(
+    store: PostgresJobStore,
+) -> None:
     job_id = _create(store)
     assert store.lease_next_job(worker_id="old", lease_seconds=3600) is not None
-    restarted = SQLiteJobStore(store.db_path)
+    restarted = PostgresJobStore(store.database_url, schema=store.schema)
     assert restarted.lease_next_job(worker_id="new", lease_seconds=60) is None
     _expire(store, job_id)
     recovered = restarted.lease_next_job(worker_id="new", lease_seconds=60)
@@ -115,24 +138,27 @@ def test_expired_lease_recovers_and_fences_stale_worker(store: SQLiteJobStore) -
     assert _candidate_count(store) == 0
     completed = restarted.complete_leased_job(job_id, worker_id="new")
     assert completed.status == JobStatus.SUCCEEDED
-    assert SQLiteJobStore(store.db_path).get_job(job_id, request_id="read") == completed
+    assert PostgresJobStore(
+        store.database_url, schema=store.schema
+    ).get_job(job_id, request_id="read") == completed
     assert _candidate_count(store) == 1
 
 
 def test_worker_process_dies_after_claim_and_restart_recovers(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     job_id = _create(store)
     child = subprocess.run(
         [
             sys.executable,
             "-c",
-            "import os, sys; from pathlib import Path; "
-            "from curalina_variants.api.sqlite_store import SQLiteJobStore; "
-            "s = SQLiteJobStore(Path(sys.argv[1])); "
+            "import os, sys; "
+            "from curalina_variants.api.postgres_store import PostgresJobStore; "
+            "s = PostgresJobStore(sys.argv[1], schema=sys.argv[2]); "
             "assert s.lease_next_job(worker_id='dead', lease_seconds=3600); "
             "os._exit(23)",
-            str(store.db_path),
+            store.database_url,
+            store.schema,
         ],
         capture_output=True,
         text=True,
@@ -140,7 +166,7 @@ def test_worker_process_dies_after_claim_and_restart_recovers(
         check=False,
     )
     assert child.returncode == 23, child.stderr
-    restarted = SQLiteJobStore(store.db_path)
+    restarted = PostgresJobStore(store.database_url, schema=store.schema)
     assert restarted.get_job(job_id, request_id="read").status == JobStatus.RUNNING
     assert not process_one_job(restarted, worker_id="new", lease_seconds=60).processed
     _expire(store, job_id)
@@ -152,14 +178,16 @@ def test_worker_process_dies_after_claim_and_restart_recovers(
 
 
 def test_changed_idempotency_payload_after_restart_returns_409(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     payload = load_fixture("create_variant_job_request")
     headers = {"Idempotency-Key": "synthetic-a3"}
     with TestClient(create_app(store)) as client:
         created = client.post("/v1/jobs", json=payload, headers=headers)
     assert created.status_code == 202
-    with TestClient(create_app(SQLiteJobStore(store.db_path))) as client:
+    with TestClient(
+        create_app(PostgresJobStore(store.database_url, schema=store.schema))
+    ) as client:
         replay = client.post("/v1/jobs", json=payload, headers=headers)
         changed = client.post(
             "/v1/jobs", json={**payload, "target_colour": "#FFFFFF"}, headers=headers
@@ -169,10 +197,14 @@ def test_changed_idempotency_payload_after_restart_returns_409(
     assert changed.json()["code"] == "idempotency_conflict"
 
 
-def test_cancellation_before_completion_rejects_worker(store: SQLiteJobStore) -> None:
+def test_cancellation_before_completion_rejects_worker(
+    store: PostgresJobStore,
+) -> None:
     job_id = _create(store)
     assert store.lease_next_job(worker_id="worker", lease_seconds=60) is not None
-    SQLiteJobStore(store.db_path).cancel_job(job_id, request_id="cancel")
+    PostgresJobStore(store.database_url, schema=store.schema).cancel_job(
+        job_id, request_id="cancel"
+    )
     with pytest.raises(LeaseConflictError):
         store.complete_leased_job(job_id, worker_id="worker")
     assert store.get_job(job_id, request_id="read").status == JobStatus.CANCELLED
@@ -180,64 +212,90 @@ def test_cancellation_before_completion_rejects_worker(store: SQLiteJobStore) ->
 
 
 def test_completion_before_cancellation_preserves_success(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     job_id = _create(store)
     process_one_job(store, worker_id="worker", lease_seconds=60)
     with pytest.raises(ApiError) as error:
-        SQLiteJobStore(store.db_path).cancel_job(job_id, request_id="cancel")
+        PostgresJobStore(store.database_url, schema=store.schema).cancel_job(
+            job_id, request_id="cancel"
+        )
     assert error.value.status_code == 409
     assert store.get_job(job_id, request_id="read").status == JobStatus.SUCCEEDED
     assert _candidate_count(store) == 1
 
 
 def test_cancellation_after_completion_read_cannot_resurrect_job(
-    store: SQLiteJobStore, monkeypatch: pytest.MonkeyPatch,
+    store: PostgresJobStore,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     job_id = _create(store)
     assert store.lease_next_job(worker_id="worker", lease_seconds=60) is not None
-    original = SQLiteJobStore._next_id
+    original = PostgresJobStore._next_id
     cancel_called = False
 
     def cancel_once_then_allocate(
-        self: SQLiteJobStore, table: str, column: str, prefix: str,
+        self: PostgresJobStore,
+        table: str,
+        column: str,
+        prefix: str,
     ) -> str:
         nonlocal cancel_called
         # Trigger cancellation once, between the ownership read and the
         # re-check inside the transaction.
         if not cancel_called:
             cancel_called = True
-            SQLiteJobStore(self.db_path).cancel_job(job_id, request_id="racing-cancel")
+            PostgresJobStore(self.database_url, schema=self.schema).cancel_job(
+                job_id, request_id="racing-cancel"
+            )
         return original(self, table, column, prefix)
 
-    monkeypatch.setattr(SQLiteJobStore, "_next_id", cancel_once_then_allocate)
+    monkeypatch.setattr(PostgresJobStore, "_next_id", cancel_once_then_allocate)
     with pytest.raises(LeaseConflictError):
         store.complete_leased_job(job_id, worker_id="worker")
-    assert SQLiteJobStore(store.db_path).get_job(
-        job_id, request_id="read"
-    ).status == JobStatus.CANCELLED
+    assert (
+        PostgresJobStore(store.database_url, schema=store.schema)
+        .get_job(job_id, request_id="read")
+        .status
+        == JobStatus.CANCELLED
+    )
     assert _candidate_count(store) == 0
 
 
 def test_candidate_insert_rolls_back_when_final_job_update_fails(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     job_id = _create(store)
     assert store.lease_next_job(worker_id="worker", lease_seconds=60) is not None
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
+    with closing(_raw_connect(store)) as connection, connection:
         connection.execute(
-            "CREATE TRIGGER fail_completion BEFORE UPDATE ON jobs "
-            "WHEN json_extract(NEW.record_json, '$.status') = 'succeeded' "
-            "BEGIN SELECT RAISE(ABORT, 'injected final job update failure'); END"
+            """
+            CREATE OR REPLACE FUNCTION fail_completion() RETURNS trigger AS $$
+            BEGIN
+                IF (NEW.record_json::json ->> 'status') = 'succeeded' THEN
+                    RAISE EXCEPTION 'injected final job update failure';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
         )
-    with pytest.raises(sqlite3.IntegrityError, match="injected final job update"):
+        connection.execute(
+            """
+            CREATE TRIGGER fail_completion_trigger BEFORE UPDATE ON jobs
+            FOR EACH ROW EXECUTE FUNCTION fail_completion()
+            """
+        )
+    with pytest.raises(
+        psycopg.errors.RaiseException, match="injected final job update"
+    ):
         store.complete_leased_job(job_id, worker_id="worker")
-    restarted = SQLiteJobStore(store.db_path)
+    restarted = PostgresJobStore(store.database_url, schema=store.schema)
     job = restarted.get_job(job_id, request_id="read")
     assert job.status == JobStatus.RUNNING and job.candidate_id is None
     assert _candidate_count(restarted) == 0
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
-        connection.execute("DROP TRIGGER fail_completion")
+    with closing(_raw_connect(store)) as connection, connection:
+        connection.execute("DROP TRIGGER fail_completion_trigger ON jobs")
     _expire(restarted, job_id)
     result = process_one_job(restarted, worker_id="recovery", lease_seconds=60)
     assert result.job is not None and result.job.status == JobStatus.SUCCEEDED
@@ -245,47 +303,60 @@ def test_candidate_insert_rolls_back_when_final_job_update_fails(
 
 
 def test_asset_write_succeeds_and_db_commit_fails_rolls_back(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     """Asset write + final commit failure rolls back all insertions."""
     job_id = _create(store)
     assert store.lease_next_job(worker_id="worker", lease_seconds=60) is not None
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
+    with closing(_raw_connect(store)) as connection, connection:
         connection.execute(
-            "CREATE TRIGGER fail_final_write BEFORE UPDATE ON jobs "
-            "WHEN json_extract(NEW.record_json, '$.status') = 'succeeded' "
-            "BEGIN SELECT RAISE(ABORT, 'injected asset-write-then-commit-fail'); END"
+            """
+            CREATE OR REPLACE FUNCTION fail_final_write() RETURNS trigger AS $$
+            BEGIN
+                IF (NEW.record_json::json ->> 'status') = 'succeeded' THEN
+                    RAISE EXCEPTION 'injected asset-write-then-commit-fail';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+        connection.execute(
+            """
+            CREATE TRIGGER fail_final_write_trigger BEFORE UPDATE ON jobs
+            FOR EACH ROW EXECUTE FUNCTION fail_final_write()
+            """
         )
     with pytest.raises(
-        sqlite3.IntegrityError, match="injected asset-write-then-commit-fail"
+        psycopg.errors.RaiseException, match="injected asset-write-then-commit-fail"
     ):
         store.complete_leased_job(job_id, worker_id="worker")
-    restarted = SQLiteJobStore(store.db_path)
+    restarted = PostgresJobStore(store.database_url, schema=store.schema)
     job = restarted.get_job(job_id, request_id="read")
     assert job.status == JobStatus.RUNNING and job.candidate_id is None
     # Verify no job output asset was persisted (but fixture asset may exist).
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
+    with closing(_raw_connect(store)) as connection, connection:
         asset_count_before = int(
-            connection.execute("SELECT count(*) FROM assets").fetchone()[0]
+            connection.execute("SELECT count(*) AS n FROM assets").fetchone()["n"]
         )
     # Asset count should still be just the fixture asset (1 from the fixture setup)
     assert asset_count_before == 1
     assert _candidate_count(restarted) == 0
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
-        connection.execute("DROP TRIGGER fail_final_write")
+    with closing(_raw_connect(store)) as connection, connection:
+        connection.execute("DROP TRIGGER fail_final_write_trigger ON jobs")
     _expire(restarted, job_id)
     result = process_one_job(restarted, worker_id="recovery", lease_seconds=60)
     assert result.job is not None and result.job.status == JobStatus.SUCCEEDED
     assert _candidate_count(restarted) == 1
     # Verify job output asset was successfully written on recovery (fixture + 1 new).
-    with closing(sqlite3.connect(store.db_path)) as connection, connection:
+    with closing(_raw_connect(store)) as connection, connection:
         asset_count_after = int(
-            connection.execute("SELECT count(*) FROM assets").fetchone()[0]
+            connection.execute("SELECT count(*) AS n FROM assets").fetchone()["n"]
         )
     assert asset_count_after == 2
 
 
-def test_lease_expired_permits_recovery(store: SQLiteJobStore) -> None:
+def test_lease_expired_permits_recovery(store: PostgresJobStore) -> None:
     """A job with expired lease can be recovered by a new worker."""
     job_id = _create(store)
     store.lease_next_job(worker_id="first", lease_seconds=1)
@@ -301,7 +372,7 @@ def test_lease_expired_permits_recovery(store: SQLiteJobStore) -> None:
 
 
 def test_stale_claim_rejection_on_expired_lease(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     """A worker holding an expired lease cannot complete a job another worker
     has recovered."""
@@ -326,7 +397,7 @@ def _read_png(image_bytes: bytes) -> np.ndarray:
 
 
 def test_worker_applies_real_lab_colour_transfer_with_hard_composite_guarantee(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     """Verify that the worker applies the real LabColourTransferAdapter
     and produces output where pixels are byte-identical outside the mask's
@@ -425,7 +496,8 @@ def test_worker_applies_real_lab_colour_transfer_with_hard_composite_guarantee(
 
 
 def test_worker_fails_job_when_source_asset_not_found(
-    store: SQLiteJobStore, monkeypatch: pytest.MonkeyPatch,
+    store: PostgresJobStore,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify that when a source asset is not found during transformation,
     the job is marked as failed with a specific error code, not silently
@@ -476,10 +548,10 @@ def test_worker_fails_job_when_source_asset_not_found(
     )
 
     # Monkey-patch get_asset_content to simulate asset lookup failure
-    original_get_asset_content = SQLiteJobStore.get_asset_content
+    original_get_asset_content = PostgresJobStore.get_asset_content
 
     def mock_get_asset_content(
-        self: SQLiteJobStore, asset_id: str, *, request_id: str
+        self: PostgresJobStore, asset_id: str, *, request_id: str
     ) -> AssetContent:
         if asset_id == source_asset_id:
             # Simulate asset not found by raising an exception
@@ -488,7 +560,7 @@ def test_worker_fails_job_when_source_asset_not_found(
             raise not_found_error(request_id, resource="asset", resource_id=asset_id)
         return original_get_asset_content(self, asset_id, request_id=request_id)
 
-    monkeypatch.setattr(SQLiteJobStore, "get_asset_content", mock_get_asset_content)
+    monkeypatch.setattr(PostgresJobStore, "get_asset_content", mock_get_asset_content)
 
     # Process the job - should fail because asset cannot be found
     result = process_one_job(store, worker_id="test_worker", lease_seconds=60)
@@ -503,7 +575,7 @@ def test_worker_fails_job_when_source_asset_not_found(
 
 
 def test_worker_fails_job_when_asset_not_found(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     """Verify that when a source asset is not found, the job is marked as
     failed with a specific error code, not silently completed as succeeded."""
@@ -547,7 +619,7 @@ def test_worker_fails_job_when_asset_not_found(
 
 
 def test_worker_fails_job_when_invalid_colour(
-    store: SQLiteJobStore,
+    store: PostgresJobStore,
 ) -> None:
     """Verify that when an invalid target colour is provided, the job is
     marked as failed with a specific error code."""

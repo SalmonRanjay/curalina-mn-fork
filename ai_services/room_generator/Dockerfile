@@ -44,7 +44,9 @@ ENV PYTHONUNBUFFERED=1 \
     CURALINA_ENV=docker \
     SERVICE_HOST=0.0.0.0
 
-# Create directory for SQLite database persistence
+# Create directory for rendered asset bytes (FilesystemAssetStore). Job/job
+# metadata now persists to Postgres (see docker-compose.yml), not here —
+# this volume is strictly for image blobs.
 RUN mkdir -p /data && chmod 755 /data
 
 # Health check: curl the OpenAPI endpoint (only for API mode)

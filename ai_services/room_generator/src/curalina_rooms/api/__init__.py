@@ -2,8 +2,8 @@
 
 Typed `/v1` DTOs (`schemas.py`), the shared error vocabulary (`errors.py`),
 JSON fixtures (`fixtures/`), the contract service (`service.py`, with both
-an in-memory A1 fake and an A3 `SQLiteRoomStore`-backed durable path), the
-durable store itself (`sqlite_store.py`), and the FastAPI ASGI app
+an in-memory A1 fake and an A3 `PostgresRoomStore`-backed durable path), the
+durable store itself (`postgres_store.py`), and the FastAPI ASGI app
 (`app.py`). Worker leasing/completion lives in `curalina_rooms.workers`.
 """
 

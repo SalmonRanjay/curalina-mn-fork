@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -15,9 +17,9 @@ from curalina_rooms.adapters.http_render_backend import HttpRenderBackend
 from curalina_rooms.api.app import create_app
 from curalina_rooms.api.errors import ContractError
 from curalina_rooms.api.fixtures import load_fixture
+from curalina_rooms.api.postgres_store import PostgresRoomStore
 from curalina_rooms.api.schemas import RenderBrief
 from curalina_rooms.api.service import RoomsContractService
-from curalina_rooms.api.sqlite_store import SQLiteRoomStore
 from curalina_rooms.application.prompt_builder import NEGATIVE_PROMPT, build_prompt
 from curalina_rooms.domain.png_validation import InvalidPngError, validate_png
 from curalina_rooms.ports.asset_store import AssetStoreError
@@ -31,9 +33,26 @@ from curalina_rooms.settings import Settings
 from curalina_rooms.workers import process_one_job
 from curalina_rooms.workers.runner import build_render_backend, run_worker_once
 
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_rooms_test",
+)
 
-def _setup(tmp_path: Path) -> tuple[SQLiteRoomStore, RoomsContractService, Path]:
-    store = SQLiteRoomStore(tmp_path / "rooms.sqlite3")
+
+def _schema_for(tmp_path: Path) -> str:
+    """A valid Postgres schema name, stable for repeated calls within one
+    test (same `tmp_path`) but unique across separate test runs — pytest's
+    `tmp_path.name` alone (e.g. "test_lease_renewal0") is NOT run-unique, it
+    repeats verbatim across invocations, so hash the full path (which does
+    vary per run, via pytest's rotating `pytest-NN` session directory)
+    instead. Gives SQLite-tmp-file-equivalent isolation inside one shared
+    Postgres test database."""
+    digest = hashlib.sha256(str(tmp_path).encode("utf-8")).hexdigest()[:16]
+    return f"test_{digest}"
+
+
+def _setup(tmp_path: Path) -> tuple[PostgresRoomStore, RoomsContractService, Path]:
+    store = PostgresRoomStore(_TEST_DATABASE_URL, schema=_schema_for(tmp_path))
     store.initialize()
     store.seed_from_fixtures()
     return store, RoomsContractService(store), tmp_path / "assets"
@@ -318,7 +337,7 @@ def test_asset_write_failure_fails_the_job(tmp_path: Path) -> None:
 
 
 def test_max_attempts_exceeded_fails_without_rendering(tmp_path: Path) -> None:
-    store = SQLiteRoomStore(tmp_path / "r.sqlite3")
+    store = PostgresRoomStore(_TEST_DATABASE_URL, schema=_schema_for(tmp_path))
     store.initialize()
     store.seed_from_fixtures()
     service = RoomsContractService(store, max_attempts=1)
@@ -383,11 +402,14 @@ def test_lease_renewal(tmp_path: Path) -> None:
 
 def test_run_worker_once_with_fake_backend_env(tmp_path: Path) -> None:
     settings = Settings(
-        CURALINA_DATABASE_URL=f"sqlite:///{tmp_path / 'r.sqlite3'}",
+        CURALINA_DATABASE_URL=_TEST_DATABASE_URL,
+        CURALINA_DATABASE_SCHEMA=_schema_for(tmp_path),
         CURALINA_DATA_DIR=str(tmp_path),
         CURALINA_RENDER_BACKEND="fake",
     )
-    store = SQLiteRoomStore.from_database_url(settings.curalina_database_url)
+    store = PostgresRoomStore.from_database_url(
+        settings.curalina_database_url, schema=settings.curalina_database_schema
+    )
     store.initialize()
     store.seed_from_fixtures()
     job_id = _concept_job(RoomsContractService(store))
@@ -561,13 +583,15 @@ def test_heartbeat_renews_lease_and_survives_store_errors(tmp_path: Path) -> Non
     # Lease was extended far past the original 1s, so nobody else can lease it.
     assert store.lease_next_job(worker_id="other", lease_seconds=60) is None
 
-    class Broken(SQLiteRoomStore):
+    class Broken(PostgresRoomStore):
         def renew_lease(
             self, job_id: str, *, worker_id: str, lease_seconds: int
         ) -> bool:
             raise RuntimeError("db locked")
 
-    bad = _Heartbeat(Broken(store.db_path), job_id, "w", 60)
+    bad = _Heartbeat(
+        Broken(store.database_url, schema=store.schema), job_id, "w", 60
+    )
     bad._interval = 0.02
     with bad:
         time.sleep(0.1)

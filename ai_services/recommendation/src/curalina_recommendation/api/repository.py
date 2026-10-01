@@ -175,6 +175,7 @@ class RecommendationRepository:
     def from_database_url(
         cls, database_url: str, *, schema: str = "public"
     ) -> RecommendationRepository:
+        _dsn_with_schema(database_url, schema)  # eager validation
         return cls(database_url=database_url, schema=schema)
 
     def initialize(self) -> None:

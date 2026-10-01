@@ -8,8 +8,8 @@ from curalina_rooms.adapters.fake_render_backend import FakeRenderBackend
 from curalina_rooms.adapters.filesystem_asset_store import FilesystemAssetStore
 from curalina_rooms.adapters.http_render_backend import HttpRenderBackend
 from curalina_rooms.api.errors import ContractError
+from curalina_rooms.api.postgres_store import LeaseConflictError, PostgresRoomStore
 from curalina_rooms.api.schemas import JobStatusResponse
-from curalina_rooms.api.sqlite_store import LeaseConflictError, SQLiteRoomStore
 from curalina_rooms.ports.asset_store import AssetStore
 from curalina_rooms.ports.render_backend import RenderBackend
 from curalina_rooms.settings import Settings
@@ -26,7 +26,7 @@ class WorkerResult:
 
 
 def process_one_job(
-    store: SQLiteRoomStore,
+    store: PostgresRoomStore,
     *,
     worker_id: str,
     lease_seconds: int,
@@ -78,7 +78,9 @@ def build_render_backend(settings: Settings) -> RenderBackend:
 
 
 def run_worker_once(settings: Settings, *, worker_id: str = "worker_local") -> int:
-    store = SQLiteRoomStore.from_database_url(settings.curalina_database_url)
+    store = PostgresRoomStore.from_database_url(
+        settings.curalina_database_url, schema=settings.curalina_database_schema
+    )
     store.initialize()
     store.seed_from_fixtures()
     result = process_one_job(

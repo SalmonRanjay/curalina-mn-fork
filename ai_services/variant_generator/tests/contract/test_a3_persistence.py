@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import base64
+import os
+import uuid
 from io import BytesIO
-from pathlib import Path
 
 import numpy as np
 from fastapi.testclient import TestClient
@@ -10,9 +11,14 @@ from PIL import Image
 
 from curalina_variants.api import create_app
 from curalina_variants.api.fixtures import load_fixture
+from curalina_variants.api.postgres_store import PostgresJobStore
 from curalina_variants.api.schemas import CreateAssetRequest, CreateMaskRequest
-from curalina_variants.api.sqlite_store import SQLiteJobStore
 from curalina_variants.workers import process_one_job
+
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_variants_test",
+)
 
 
 def _png_bytes(rgb: np.ndarray) -> bytes:
@@ -22,8 +28,8 @@ def _png_bytes(rgb: np.ndarray) -> bytes:
     return output.getvalue()
 
 
-def _store(tmp_path: Path) -> SQLiteJobStore:
-    store = SQLiteJobStore(tmp_path / "variants.sqlite3")
+def _store(schema: str) -> PostgresJobStore:
+    store = PostgresJobStore(_TEST_DATABASE_URL, schema=schema)
     store.initialize()
     # Seed the default asset and mask that test fixtures expect
     try:
@@ -68,10 +74,9 @@ def _store(tmp_path: Path) -> SQLiteJobStore:
     return store
 
 
-def test_sqlite_job_survives_app_restart_and_worker_completion(
-    tmp_path: Path,
-) -> None:
-    first_store = _store(tmp_path)
+def test_postgres_job_survives_app_restart_and_worker_completion() -> None:
+    schema = f"test_{uuid.uuid4().hex[:16]}"
+    first_store = _store(schema)
     first_client = TestClient(create_app(first_store))
     created = first_client.post(
         "/v1/jobs",
@@ -81,11 +86,11 @@ def test_sqlite_job_survives_app_restart_and_worker_completion(
     assert created.status_code == 202
     job_id = created.json()["job_id"]
 
-    worker_store = _store(tmp_path)
+    worker_store = _store(schema)
     result = process_one_job(worker_store, worker_id="worker-a3", lease_seconds=60)
     assert result.processed is True
 
-    second_store = _store(tmp_path)
+    second_store = _store(schema)
     second_client = TestClient(create_app(second_store))
     fetched = second_client.get(f"/v1/jobs/{job_id}")
 

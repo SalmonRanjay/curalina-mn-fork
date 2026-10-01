@@ -23,6 +23,9 @@ dependencies = [
     # `../design_rules` before installing this package, so pip resolves
     # this unpinned dependency against the already-installed local copy.
     "curalina-design-rules",
+    "psycopg[binary]>=3.1",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +41,12 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-curalina_rooms = ["api/fixtures/*.json"]
+curalina_rooms = [
+    "api/fixtures/*.json",
+    "migrations/alembic.ini",
+    "migrations/env.py",
+    "migrations/versions/*.py",
+]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --cov=curalina_rooms --cov-branch --cov-report=term-missing"

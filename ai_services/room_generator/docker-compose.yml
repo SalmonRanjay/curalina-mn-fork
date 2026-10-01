@@ -5,6 +5,16 @@
 # This compose defines two services from the same Dockerfile:
 # - api: FastAPI server on port 8103
 # - worker: Background job processor (runs once and exits)
+#
+# Job/candidate/review state persists to Postgres (ai_services/docker-compose
+# .common.yml's `postgres` service), in this service's own database
+# (`curalina_rooms`) — never shared with recommendation's or variants'
+# databases. Postgres schema is owned by the checked-in Alembic migrations
+# under `migrations/versions/`, run at startup by both `api` and `worker`
+# (see curalina_rooms.api.app / curalina_rooms.workers.runner). The
+# `rooms_data` volume remains: it holds rendered image bytes
+# (FilesystemAssetStore), which is unrelated to job/state persistence and is
+# not part of this migration.
 
 services:
   rooms_api:
@@ -16,7 +26,7 @@ services:
     ports:
       - "8103:8103"
     environment:
-      CURALINA_DATABASE_URL: sqlite:////data/rooms.sqlite3
+      CURALINA_DATABASE_URL: postgresql://curalina:curalina_dev_password@postgres:5432/curalina_rooms
       SERVICE_PORT: "8103"
       CURALINA_DATA_DIR: /data
       # Concept-render worker settings. Renderers are reached over HTTP by
@@ -32,8 +42,12 @@ services:
       CURALINA_RENDER_WIDTH: ${CURALINA_RENDER_WIDTH:-512}
       CURALINA_RENDER_HEIGHT: ${CURALINA_RENDER_HEIGHT:-512}
     volumes:
-      # Named volume: SQLite database plus rendered assets (/data/assets)
+      # Named volume for rendered asset bytes only (/data/assets); job state
+      # lives in Postgres now, not here.
       - rooms_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - curalina
@@ -45,7 +59,7 @@ services:
     container_name: curalina_rooms_worker
     command: ["worker"]
     environment:
-      CURALINA_DATABASE_URL: sqlite:////data/rooms.sqlite3
+      CURALINA_DATABASE_URL: postgresql://curalina:curalina_dev_password@postgres:5432/curalina_rooms
       CURALINA_DATA_DIR: /data
       # Concept-render worker settings. Renderers are reached over HTTP by
       # service name on the shared compose network; no depends_on, so rooms
@@ -60,12 +74,14 @@ services:
       CURALINA_RENDER_WIDTH: ${CURALINA_RENDER_WIDTH:-512}
       CURALINA_RENDER_HEIGHT: ${CURALINA_RENDER_HEIGHT:-512}
     volumes:
-      # Same volume as API for shared database access
+      # Same volume as API for shared rendered-asset access
       - rooms_data:/data
     restart: "no"
     networks:
       - curalina
     depends_on:
+      postgres:
+        condition: service_healthy
       rooms_api:
         condition: service_started  # Ensure api starts first (worker will read from shared database)
 
@@ -76,3 +92,10 @@ volumes:
 networks:
   curalina:
     driver: bridge
+
+# Brings in the shared `postgres` service so `depends_on: postgres` above
+# resolves when this file is run standalone (not only via the root
+# orchestrator's `include:`, which already pulls in docker-compose.common.yml
+# once for the whole stack).
+include:
+  - ../docker-compose.common.yml

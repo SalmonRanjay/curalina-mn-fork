@@ -53,7 +53,8 @@ class LeaseConflictError(RuntimeError):
 def _dsn_with_schema(database_url: str, schema: str) -> str:
     if not database_url.startswith(("postgresql://", "postgresql+psycopg://")):
         raise ValueError(
-            f"variants A3 only supports postgresql:// database URLs, got {database_url!r}"
+            "variants A3 only supports postgresql:// database URLs, got "
+            f"{database_url!r}"
         )
     bare = "postgresql://" + database_url.split("://", 1)[1]
     if schema == "public":
@@ -108,6 +109,7 @@ class PostgresJobStore:
     def from_database_url(
         cls, database_url: str, *, schema: str = "public"
     ) -> PostgresJobStore:
+        _dsn_with_schema(database_url, schema)  # eager validation
         return cls(database_url=database_url, schema=schema)
 
     def initialize(self) -> None:

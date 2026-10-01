@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import uuid
 from pathlib import Path
 
 import pytest
@@ -8,6 +10,11 @@ from fastapi.testclient import TestClient
 from curalina_rooms.api import create_app
 from curalina_rooms.api.fixtures import load_fixture
 from curalina_rooms.api.service import RoomsContractService
+
+_TEST_DATABASE_URL = os.environ.get(
+    "CURALINA_TEST_DATABASE_URL",
+    "postgresql://curalina:curalina_dev_password@localhost:5432/curalina_rooms_test",
+)
 
 
 def test_http_asset_routes() -> None:
@@ -63,11 +70,14 @@ def test_http_candidate_review_and_error_routes() -> None:
     assert missing.json()["request_id"] == "req-room-unit-missing"
 
 
-def test_http_default_app_uses_sqlite_store(
+def test_http_default_app_uses_postgres_store(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    db_path = tmp_path / "rooms.sqlite3"
-    monkeypatch.setenv("CURALINA_DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("CURALINA_DATABASE_URL", _TEST_DATABASE_URL)
+    monkeypatch.setenv(
+        "CURALINA_DATABASE_SCHEMA", f"test_{uuid.uuid4().hex[:16]}"
+    )
+    monkeypatch.setenv("CURALINA_DATA_DIR", str(tmp_path))
     client = TestClient(create_app())
 
     created = client.post(

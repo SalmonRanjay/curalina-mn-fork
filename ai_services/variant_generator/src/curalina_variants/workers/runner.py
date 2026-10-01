@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from curalina_variants.adapters.lab_colour_transfer import LabColourTransferAdapter
 from curalina_variants.api.errors import ApiError
-from curalina_variants.api.schemas import ErrorSummary, JobRecord
 from curalina_variants.api.postgres_store import PostgresJobStore
+from curalina_variants.api.schemas import ErrorSummary, JobRecord
 from curalina_variants.domain.colour_spec import RgbColour
 from curalina_variants.domain.mask_spec import Mask, Region
 from curalina_variants.settings import Settings

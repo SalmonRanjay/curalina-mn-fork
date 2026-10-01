@@ -3,13 +3,13 @@
 `RoomsContractService` validates requests against the shapes in
 `curalina_rooms.api.schemas` and enforces the shared error vocabulary from
 `curalina_rooms.api.errors`. It has two backends, selected by whether a
-`SQLiteRoomStore` is supplied at construction time:
+`PostgresRoomStore` is supplied at construction time:
 
 * **No store (the A1 fake):** an in-memory, fixture-seeded fake with no
   durable persistence and no worker split. This is what the contract-level
   tests (`tests/contract/`) exercise directly, since they test the contract
   shape, not durability.
-* **A `SQLiteRoomStore` (the A3 durable path):** every method delegates to
+* **A `PostgresRoomStore` (the A3 durable path):** every method delegates to
   the store after validating and schema-version-checking the payload, so
   jobs survive process restarts and are completed by a separate worker
   (`curalina_rooms.workers`) via lease/complete rather than inline.
@@ -50,7 +50,7 @@ from curalina_rooms.api.schemas import (
     RenderJobRequest,
     RenderJobResponse,
 )
-from curalina_rooms.api.sqlite_store import SQLiteRoomStore
+from curalina_rooms.api.postgres_store import PostgresRoomStore
 
 _SUPPORTED_SCHEMA_MAJOR = "1"
 _DEFAULT_MAX_ATTEMPTS = 3
@@ -104,12 +104,12 @@ class RoomsContractService:
     """Contract service behind the room-generator `/v1` API.
 
     Backed by an in-memory fixture-seeded fake when `store` is `None`, or by
-    a durable `SQLiteRoomStore` otherwise. See the module docstring.
+    a durable `PostgresRoomStore` otherwise. See the module docstring.
     """
 
     def __init__(
         self,
-        store: SQLiteRoomStore | None = None,
+        store: PostgresRoomStore | None = None,
         *,
         max_attempts: int = _DEFAULT_MAX_ATTEMPTS,
         failure_after_insertions: int | None = None,

@@ -9,8 +9,8 @@ from fastapi.responses import JSONResponse, Response
 
 from curalina_rooms.adapters.filesystem_asset_store import FilesystemAssetStore
 from curalina_rooms.api.errors import ContractError
+from curalina_rooms.api.postgres_store import PostgresRoomStore
 from curalina_rooms.api.service import ContractResult, RoomsContractService
-from curalina_rooms.api.sqlite_store import SQLiteRoomStore
 from curalina_rooms.ports.asset_store import AssetStore, AssetStoreError
 from curalina_rooms.settings import Settings
 
@@ -46,7 +46,9 @@ def create_app(
         asset_store = asset_store_for(settings)
     blobs = asset_store
     if service is None:
-        store = SQLiteRoomStore.from_database_url(settings.curalina_database_url)
+        store = PostgresRoomStore.from_database_url(
+            settings.curalina_database_url, schema=settings.curalina_database_schema
+        )
         store.initialize()
         store.seed_from_fixtures()
         service = RoomsContractService(store)
