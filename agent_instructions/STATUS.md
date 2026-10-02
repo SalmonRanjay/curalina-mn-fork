@@ -14,7 +14,114 @@ operational reference wins.
 
 ---
 
-# OPERATIONAL REFERENCE — current as of 2026-10-01 (session 24)
+# OPERATIONAL REFERENCE — current as of 2026-10-02 (session 25)
+
+## Session 25 (2026-10-02) — stuck-render incident fixed, product images fixed, GCP/dead-code questions sized (not executed)
+
+**Live incident, investigated and fixed.** Owner reported a render taking
+longer than usual. Root cause: `rooms_worker` and `variants_worker` had
+both crashed 12 hours earlier on a transient Postgres connection drop
+(`psycopg.OperationalError: server closed the connection unexpectedly`)
+and never restarted — `restart: "no"` in both compose files, and no retry
+around transient errors in the poll loop. Nothing surfaced this because the
+worker loop had **zero logging** the whole time; the API containers stayed
+healthy and kept accepting new renders, which just piled up in the queue
+forever (`job_000003`/`000004`/`000005` all sat `queued`, no lease owner).
+
+Fixed, layered: retry-with-backoff on any exception in the poll loop (so a
+transient error no longer kills the process at all), `restart:
+unless-stopped` on both workers as a second line of defense, and real
+job-level logging (pickup/completion/failure, with elapsed time) where
+there was previously none. **Found while verifying the logging fix: a
+second, unrelated bug** — Alembic's `env.py` (in all three Python
+services, identical copy-pasted template) calls `fileConfig()` with its
+default `disable_existing_loggers=True`, and `alembic.ini`'s own
+`[logger_root] level=WARN` gets reapplied to the root logger on *every*
+call regardless of that flag. Since `store.initialize()` runs migrations
+on every single worker poll, this silently downgraded the worker's own
+logger from INFO to WARN after its first poll, with no error — the new
+logging appeared to simply not work until this was found. Fixed with
+`disable_existing_loggers=False` plus an explicit `logger.setLevel(INFO)`
+that doesn't depend on root's level. New doc:
+`docs/runbooks/render-troubleshooting.md` — the exact commands used to
+diagnose this, written up as a practice runbook for the owner.
+
+**Mid-fix, the owner's own in-flight render was killed deliberately** (at
+their explicit request, after asking why CPU rendering is slow — answer:
+it genuinely is just the nature of 20 UNet denoising steps through an
+860M-parameter network on CPU with no GPU parallelism, not a bug). Restarting
+`sd15_renderer` aborted the in-flight HTTP call; the job failed cleanly
+(`renderer_unreachable`, `retryable: true`) per `ADR-0016`'s fail-closed
+design — no stuck lease, no silent corruption. Worth noting as a real,
+unplanned validation that the fail-closed design works under an actual
+abrupt failure, not just in tests.
+
+**Product images fixed ("No image" on `/results?renderId=...`).** Root
+cause: recommended products are upserted into the app's `products` table
+with `images: []` hardcoded (`recommended-product-sync.ts`), because
+recommendation's catalogue only ever carried text/price/tags from the
+supplier workbooks — never image data. The real photos exist, but only
+inside the composite renderer, which already resolves a product's cutout
+from the mounted Supplier Images folder by matching supplier+name (the
+same logic that makes composite room renders show real products). Fixed
+in two parts: `composite_renderer` gained `GET /v1/product-image?supplier=
+&name=&sku=` (reuses the existing `resolve_requested`/`_luxus_folder`/
+`_celadon_folder` matching, 404s cleanly for suppliers with no photos on
+file — e.g. Lazzoni, a known gap per `ADR-0025`, not a bug); the app
+gained `GET /api/products/image`, a new **deliberate exception** to the
+app otherwise only ever talking to `rooms_api` for anything
+renderer-related (a proxy hop through rooms_api for a read-only,
+non-render asset lookup wasn't judged worth the extra service boundary —
+revisit if that stops being true). `recommended-product-sync.ts` now
+points `images` at this proxy on both create *and* update, so products
+synced before this fix also get backfilled rather than staying stuck at
+`[]` forever. Verified live end-to-end through the app's own proxy, both
+the found-image and clean-404 paths.
+
+**Dead-code follow-up (second pass, beyond session 21's cleanup): sized,
+blocked on permission, not executed.** Re-traced actual reachability from
+`index.ts` → `routes.ts` (not just "zero importers" like the first pass)
+and found **8,305 more dead lines across 19 files** — the old
+pre-AI-services image pipeline (`stability-ai-render.ts`,
+`hybrid-compositing.ts`, `room-composite-service.ts`, `render-qa.ts`,
+`enhanced-product-analysis.ts`, and 14 others) that forms its own
+disconnected island nothing live imports, surviving session 21's cleanup
+because that pass looked for zero-importer files individually rather than
+tracing the whole live import graph. The `git mv` to archive these (same
+archive-not-delete pattern as session 21) was **denied by the Claude Code
+permission classifier** ("Modify Shared Resources") mid-session, and a
+follow-up read-only `git status` on the same paths was denied too. Not
+retried. **Still needs the owner to either approve a Bash permission rule
+for this, or run it themselves** — exact commands are in the session
+transcript / can be regenerated on request.
+
+**Unrelated discovery while sizing the dead code:** a second, separate
+~46MB Firebase Cloud Functions build at `server/functions/` (own compiled
+`routes.js`/`storage.js`/`index.js`, wired via a real `firebase.json`).
+It's stale (still contains `gemini-ai.js`, deleted from the live app in
+session 21) and nothing in this repo's history confirms it's actually
+deployed or who owns it. Very likely the same thing `tech-lead` flagged
+during GCP planning (`ADR-0022`'s R1 note on the orphaned `cloudbuild.yaml`
+tied to a Cloud Run service called `curalina-git-2`) — **the owner needs
+to confirm who owns this before anyone touches it or the GCP plan
+proceeds.**
+
+**Auth-to-Python-microservice: sized, not started, needs an explicit
+go-ahead.** Current auth (`localAuth.ts` + `replitAuth.ts`, 327 lines,
+`express-session`/`passport`/`connect-pg-simple`) gates 36 route handlers
+across `routes.ts`/`routes-curalina.ts`, with 17 client files depending on
+`useAuth`. The 36 gated routes (cart, quiz, dashboard, renders) would stay
+in Express regardless — this is an extraction of login/register/logout/
+session-validation into a new `auth_service`, not a full backend rewrite,
+but it's still real: new FastAPI service, its own Postgres database (per
+the separate-database rule), password-hashing parity, Replit OIDC
+federation if still needed, a new Express middleware that calls out
+per-request (with caching/JWT to avoid a network hop on every authenticated
+request), updating all 36 call sites, and a migration path so existing
+logged-in users don't get silently logged out. **Estimated 3-5 focused
+engineering days, plus a dedicated security review before production** —
+this is the authentication system. Recommended starting with a `tech-lead`
+design doc before any implementation, given the stakes. Not started.
 
 ## Session 24 (2026-10-01) — room_generator moved to Postgres, `feature/consultation-recommender` merged and verified live on `RJ-001`
 
