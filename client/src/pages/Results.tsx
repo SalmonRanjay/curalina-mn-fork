@@ -390,7 +390,15 @@ export default function Results() {
     );
   }
 
-  if (render.status === 'generating') {
+  // Products are placed into the render brief before image generation starts
+  // (ADR-0025 D4), so `productPlacements` is populated while status is still
+  // `generating`. Only show the blocking "Creating Your Design" screen when
+  // we don't yet have placements to show; once placements exist, fall through
+  // to the full results view so the products table is visible immediately,
+  // with just the image itself showing its own in-progress state.
+  const hasPlacements = Array.isArray(placements) && placements.length > 0;
+
+  if (render.status === 'generating' && !hasPlacements) {
     // Extract progress data from render metadata if available
     const progressData = render.productMetadata as { 
       progressStage?: string;
@@ -646,13 +654,30 @@ export default function Results() {
               className="flex-1 lg:flex-[2]"
             >
               <Card className="p-4 relative">
-                <img
-                  src={render.imageUrl ?? ''}
-                  alt="AI Generated Interior Design"
-                  className="w-full h-auto rounded-lg cursor-pointer"
-                  onClick={() => setShowFullImage(true)}
-                  data-testid="img-render"
-                />
+                {render.imageUrl ? (
+                  <img
+                    src={render.imageUrl}
+                    alt="AI Generated Interior Design"
+                    className="w-full h-auto rounded-lg cursor-pointer"
+                    onClick={() => setShowFullImage(true)}
+                    data-testid="img-render"
+                  />
+                ) : (
+                  <div
+                    className="w-full aspect-[4/3] rounded-lg bg-muted flex flex-col items-center justify-center gap-3"
+                    data-testid="img-render-generating"
+                  >
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Sparkles className="w-10 h-10 text-accent" />
+                    </motion.div>
+                    <p className="text-muted-foreground font-inter" style={{ fontSize: 'var(--font-size-sm)' }}>
+                      Your render is still generating — the products below are already locked in.
+                    </p>
+                  </div>
+                )}
                 {conceptRef?.renderer && (
                   <div className="mt-3 text-sm" data-testid="concept-render-caption">
                     {conceptRef.label && <p className="text-foreground">{conceptRef.label}</p>}

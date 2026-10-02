@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, LayoutDashboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getSessionId } from "@/lib/session";
 import type { Render } from "@shared/schema";
 import "@/components/quiz/consultation.css";
@@ -21,11 +22,18 @@ const CHECKLIST = [
 // render status resolves to "completed".
 const PACING_MS = [5000, 12000, 21000];
 
+// How long after the last paced checklist item (21s) to let its fade-in
+// settle before we consider the scripted animation "finished". SD1.5 renders
+// on CPU take 5-8 minutes, so we never hold the user here waiting for the
+// real render — once the animation has played out, we hand off to the
+// dashboard instead of continuing to poll in the foreground.
+const ANIMATION_END_MS = PACING_MS[PACING_MS.length - 1] + 3000;
+
 export default function Loading() {
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const [pacedDone, setPacedDone] = useState(0); // 0..3, timer-driven, cosmetic
-  const [slowNotice, setSlowNotice] = useState(false); // true after ~30s of waiting
+  const [animationFinished, setAnimationFinished] = useState(false); // true once the scripted checklist has played out
 
   const { renderId, sessionId } = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -56,7 +64,7 @@ export default function Loading() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setSlowNotice(true), 30000);
+    const t = setTimeout(() => setAnimationFinished(true), ANIMATION_END_MS);
     return () => clearTimeout(t);
   }, []);
 
@@ -112,10 +120,26 @@ export default function Loading() {
         })}
       </ul>
 
-      {slowNotice && !resolved && (
-        <p className="mt-8 max-w-md text-sm text-white/70" data-testid="loading-slow-notice">
-          Rendering on CPU can take a few minutes. Thanks for your patience.
-        </p>
+      {animationFinished && !resolved && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
+          className="mt-10 flex flex-col items-center gap-4"
+          data-testid="loading-still-processing"
+        >
+          <p className="max-w-md text-sm text-white/70">
+            Your curation is still being rendered — this can take a few minutes. We'll keep working on it,
+            and it'll be waiting for you on your dashboard as soon as it's ready.
+          </p>
+          <Button
+            variant="outline"
+            className="border-white/40 text-white hover:bg-white/10"
+            onClick={() => setLocation("/my-dashboard")}
+            data-testid="button-loading-back-to-dashboard"
+          >
+            <LayoutDashboard className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </motion.div>
       )}
 
       <motion.img

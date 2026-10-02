@@ -72,11 +72,11 @@ export default function Header() {
   }, [location]);
 
   const navLinks = [
-    { label: "How It Works", href: "#how-it-works", isAnchor: true },
-    { label: "Style Quiz", href: "/quiz", isAnchor: false },
-    { label: "Pricing", href: "/pricing", isAnchor: false },
-    { label: "The Edit", href: "/blog", isAnchor: false },
-  ];
+    { label: "How It Works", href: "#how-it-works", isAnchor: true, showWhenAuthenticated: false },
+    { label: "Style Quiz", href: "/quiz", isAnchor: false, showWhenAuthenticated: false },
+    { label: "Pricing", href: "/pricing", isAnchor: false, showWhenAuthenticated: false },
+    { label: "The Edit", href: "/blog", isAnchor: false, showWhenAuthenticated: true },
+  ].filter((link) => link.showWhenAuthenticated || !isAuthenticated);
 
   const isActiveLink = (href: string) => {
     if (href.startsWith('#')) return false;
@@ -93,8 +93,8 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
         <div className="flex items-center justify-between h-16 md:h-[72px]">
           {/* Logo */}
-          <Link href="/">
-            <span 
+          <Link href={isAuthenticated ? "/my-dashboard" : "/"}>
+            <span
               className="header-logo cursor-pointer"
               data-testid="link-logo"
             >

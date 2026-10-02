@@ -57,7 +57,7 @@ function Router() {
         >
           <Switch location={location}>
             <Route path="/admin/:rest*" component={AdminRoutes} />
-            <Route path="/" component={Home} />
+            <Route path="/" component={isAuthenticated ? MyDashboard : Home} />
             <Route path="/login" component={Login} />
             <Route path="/register" component={Register} />
             <Route path="/styles" component={Styles} />
@@ -98,7 +98,7 @@ function Router() {
         className="min-h-screen"
       >
         <Switch location={location}>
-          <Route path="/" component={Home} />
+          <Route path="/" component={isAuthenticated ? MyDashboard : Home} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
           <Route path="/styles" component={Styles} />

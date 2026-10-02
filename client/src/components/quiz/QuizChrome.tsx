@@ -45,7 +45,7 @@ export function ChromeHeader() {
           </SheetContent>
         </Sheet>
 
-        <Link href="/">
+        <Link href={user ? "/my-dashboard" : "/"}>
           <span className="cc-wordmark absolute left-1/2 -translate-x-1/2 cursor-pointer whitespace-nowrap" data-testid="link-logo-quiz">
             Curalina &amp; Co.
           </span>
