@@ -135,6 +135,33 @@ def _celadon_folder(sku: str | None, name: str, folders: list[Path]) -> Path | N
     )
 
 
+def resolve_single(
+    images_dir: Path, supplier: str, name: str, sku: str | None = None
+) -> Product | None:
+    """Resolve one product's cutout by supplier + name, reusing the same
+    folder-matching rules as `resolve_requested` (no category is known here,
+    so it is inferred from the name itself via `classify`).
+
+    Suppliers other than LUXUS/CELADON (e.g. Lazzoni, which ships no product
+    photos) always resolve to None.
+    """
+    supplier_norm = supplier.strip().upper()
+    folder: Path | None = None
+    if supplier_norm == "LUXUS":
+        category = classify(name)
+        if category is not None:
+            luxus = _subdirs(images_dir / "LUXUS" / "Product Images")
+            folder = _luxus_folder(name, category, luxus)
+    elif supplier_norm == "CELADON":
+        celadon = _subdirs(images_dir / "CELADON")
+        folder = _celadon_folder(sku, name, celadon)
+    png = _first_png(folder) if folder is not None else None
+    if folder is None or png is None:
+        return None
+    category = ART if supplier_norm == "CELADON" else classify(folder.name) or ""
+    return Product(f"{supplier_norm}/{folder.name}", category, png)
+
+
 def resolve_requested(
     images_dir: Path, requested: list[Requested]
 ) -> tuple[list[Product], list[str]]:

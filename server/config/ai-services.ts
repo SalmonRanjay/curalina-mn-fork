@@ -14,6 +14,17 @@ export interface AiServicesSettings {
   recommendationUrl: string;
   variantsUrl: string;
   roomsUrl: string;
+  /**
+   * Direct connection to the composite renderer, for one thing only: a
+   * product's real cutout photo (`GET /v1/product-image`), used to back
+   * `products.images` for recommended products (recommendation's catalogue
+   * never carried image data -- see recommended-product-sync.ts). This is
+   * a deliberate exception to the app otherwise only ever talking to
+   * rooms_api for anything renderer-related; adding a proxy hop through
+   * rooms_api for a read-only, non-render asset lookup wasn't worth the
+   * extra service boundary for this. Revisit if that stops being true.
+   */
+  compositeRendererUrl: string;
   contractVersion: string;
   /**
    * Phase A5, packet 4 of 4 (UI-A5-04). Recommendation exposes no "latest
@@ -56,6 +67,7 @@ export interface AiServicesSettings {
 const DEFAULT_RECOMMENDATION_URL = "http://127.0.0.1:8101";
 const DEFAULT_VARIANTS_URL = "http://127.0.0.1:8102";
 const DEFAULT_ROOMS_URL = "http://127.0.0.1:8103";
+const DEFAULT_COMPOSITE_RENDERER_URL = "http://127.0.0.1:8105";
 const DEFAULT_CONTRACT_VERSION = "1.0";
 
 /**
@@ -103,6 +115,7 @@ export function getAiServicesSettings(): AiServicesSettings {
       process.env.CURALINA_RECOMMENDATION_URL || DEFAULT_RECOMMENDATION_URL,
     variantsUrl: process.env.CURALINA_VARIANTS_URL || DEFAULT_VARIANTS_URL,
     roomsUrl: process.env.CURALINA_ROOMS_URL || DEFAULT_ROOMS_URL,
+    compositeRendererUrl: process.env.CURALINA_COMPOSITE_RENDERER_URL || DEFAULT_COMPOSITE_RENDERER_URL,
     contractVersion:
       process.env.CURALINA_AI_CONTRACT_VERSION || DEFAULT_CONTRACT_VERSION,
     catalogueSnapshotId: process.env.CURALINA_CATALOGUE_SNAPSHOT_ID || null,

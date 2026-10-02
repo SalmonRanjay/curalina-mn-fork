@@ -950,6 +950,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // A recommended product's real cutout photo (ADR-0025). Recommendation's
+  // catalogue carries no image data (text/price/tags only from the supplier
+  // workbooks) -- the composite renderer is the only service that resolves
+  // an actual product photo, by matching supplier+name against the mounted
+  // Supplier Images folder. This proxies that lookup so `products.images`
+  // (populated in recommended-product-sync.ts) can point somewhere the
+  // browser can actually load. 404s cleanly for suppliers with no photos
+  // on file (e.g. Lazzoni ships no product images at all -- a known,
+  // documented gap, not a bug) rather than a broken image.
+  app.get("/api/products/image", async (req: Request, res: Response): Promise<Response | void> => {
+    const supplier = typeof req.query.supplier === "string" ? req.query.supplier : "";
+    const name = typeof req.query.name === "string" ? req.query.name : "";
+    if (!supplier || !name) {
+      return res.status(400).json({ message: "supplier and name are required", code: "invalid_request" });
+    }
+    try {
+      const { compositeRendererUrl } = getAiServicesSettings();
+      const upstream = new URL("/v1/product-image", compositeRendererUrl);
+      upstream.searchParams.set("supplier", supplier);
+      upstream.searchParams.set("name", name);
+      const sku = typeof req.query.sku === "string" ? req.query.sku : "";
+      if (sku) upstream.searchParams.set("sku", sku);
+
+      const response = await fetch(upstream.toString());
+      if (response.status === 404) {
+        const message = "No product photo on file for this item";
+        return res.status(404).json({ message, error: message, code: "product_image_not_found" });
+      }
+      if (!response.ok) {
+        const message = "Product image is temporarily unavailable";
+        return res.status(503).json({ message, error: message, code: "ai_service_unavailable", retryable: true });
+      }
+      const bytes = Buffer.from(await response.arrayBuffer());
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      return res.status(200).send(bytes);
+    } catch (error) {
+      console.error("Error fetching product image:", error);
+      const message = "Product image is temporarily unavailable";
+      return res.status(503).json({ message, error: message, code: "ai_service_unavailable", retryable: true });
+    }
+  });
+
   // ===== ADMIN ROUTES =====
   app.use("/admin", isAuthenticated, isAdmin, mappingAnalysisRoutes);
 

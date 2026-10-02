@@ -48,6 +48,19 @@ function priceString(minorUnits: number): string {
 }
 
 /**
+ * Not every recommended product has a real photo on file (Lazzoni ships
+ * none at all -- a known, documented catalogue gap). Pointing `images` at
+ * the proxy unconditionally is fine: `/api/products/image` 404s cleanly for
+ * a supplier/name with no cutout, and the client already handles a broken
+ * image URL as "no image" rather than crashing, so there's no need to
+ * pre-check existence here and duplicate that resolution logic.
+ */
+function productImageUrl(supplier: string, name: string): string {
+  const params = new URLSearchParams({ supplier, name });
+  return `/api/products/image?${params.toString()}`;
+}
+
+/**
  * Upserts each product (in order, de-duplicated) and returns the app rows
  * keyed by recommendation `product_id`. Products without a price are skipped:
  * the recommender never places one, and a cart line needs a price.
@@ -87,6 +100,9 @@ export async function syncRecommendedProducts(
       supplierId: supplier.id,
       categoryId: category.id,
       sourceFile,
+      // Included on update too, not just create: products synced before
+      // this field existed were stuck with images: [] forever otherwise.
+      images: [productImageUrl(item.supplier, item.name)],
     };
     const existing = await storage.getProductBySku(item.product_id);
     const product = existing
@@ -96,7 +112,6 @@ export async function syncRecommendedProducts(
           sku: item.product_id,
           slug: `${slugify(item.supplier)}-${slugify(item.name)}-${slugify(item.product_id)}`,
           tags: [RECOMMENDATION_SOURCE_TAG],
-          images: [],
         } as InsertProduct);
     synced.set(item.product_id, product);
   }

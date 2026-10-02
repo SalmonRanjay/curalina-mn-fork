@@ -58,6 +58,7 @@ services:
       CURALINA_RECOMMENDATION_URL: http://recommendation_api:8101
       CURALINA_VARIANTS_URL: http://variants_api:8102
       CURALINA_ROOMS_URL: http://rooms_api:8103
+      CURALINA_COMPOSITE_RENDERER_URL: http://composite_renderer:8105
       CURALINA_AI_CONTRACT_VERSION: "1.0"
       # Matches recommendation's own auto-seeded A3 fixture snapshot
       # (application_services.py: _SNAPSHOT_ID / rules_version) — real

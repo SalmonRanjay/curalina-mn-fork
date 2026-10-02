@@ -7,10 +7,11 @@ import os
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
+from .catalogue import resolve_single
 from .palette import UnsupportedBrief
 from .render import NoCatalogueImages, render_room
 from .schemas import (
@@ -44,6 +45,29 @@ def create_app(images_dir: Path | None = None) -> FastAPI:
     def healthz() -> dict[str, object]:
         # Always HTTP 200; `ready` reports whether the catalogue mount exists.
         return {"status": "ok", "renderer": RENDERER_NAME, "ready": root.is_dir()}
+
+    @app.get("/v1/product-image")
+    def product_image(
+        supplier: str = Query(..., min_length=1),
+        name: str = Query(..., min_length=1),
+        sku: str | None = Query(default=None),
+    ) -> Response:
+        product = resolve_single(root, supplier, name, sku)
+        if product is None:
+            return _error(
+                404,
+                "product_image_not_found",
+                f"no cutout found for supplier={supplier!r} name={name!r}",
+                False,
+            )
+        return Response(
+            content=product.image_path.read_bytes(),
+            media_type="image/png",
+            headers={
+                "X-Renderer": RENDERER_NAME,
+                "X-Product": product.name,
+            },
+        )
 
     @app.post("/v1/render")
     def render(req: RenderRequest) -> Response:

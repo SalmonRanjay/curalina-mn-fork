@@ -315,6 +315,35 @@ def test_without_products_the_default_layout_is_unchanged(tmp_path: Path) -> Non
     assert r.headers["x-label"] == LABEL
 
 
+# --- single product image lookup -------------------------------------------
+
+
+def test_product_image_found(tmp_path: Path) -> None:
+    _catalogue(tmp_path)
+    c = TestClient(create_app(tmp_path))
+    r = c.get("/v1/product-image", params={"supplier": "Luxus", "name": "Cloud Sofa"})
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    assert r.headers["x-renderer"] == "composite"
+    assert r.headers["x-product"] == "LUXUS/002 - Cloud Sofa"
+    img = Image.open(io.BytesIO(r.content))
+    assert img.size == (60, 40)
+    path = tmp_path / "LUXUS" / "Product Images" / "002 - Cloud Sofa" / "a.png"
+    expected = path.read_bytes()
+    assert r.content == expected
+
+
+def test_product_image_404_for_lazzoni(tmp_path: Path) -> None:
+    _catalogue(tmp_path)
+    c = TestClient(create_app(tmp_path))
+    r = c.get(
+        "/v1/product-image",
+        params={"supplier": "Lazzoni", "name": "STONE COFFEE TABLE"},
+    )
+    assert r.status_code == 404
+    assert r.json()["code"] == "product_image_not_found"
+
+
 def test_sofa_and_sectional_share_an_image(tmp_path: Path) -> None:
     _catalogue(tmp_path)
     products = [
