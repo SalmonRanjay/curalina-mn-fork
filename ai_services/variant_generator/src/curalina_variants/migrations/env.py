@@ -16,7 +16,11 @@ from sqlalchemy import engine_from_config, pool
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: see the identical comment in
+    # curalina_rooms/migrations/env.py -- same bug, same fix, found the
+    # same way (the worker's own "curalina_variants" logger went silent
+    # after the first migration run on every poll).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = None
 

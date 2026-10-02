@@ -76,7 +76,13 @@ services:
     volumes:
       # Same volume as API for shared rendered-asset access
       - rooms_data:/data
-    restart: "no"
+    # `unless-stopped`, not `no`: the worker's own Postgres connection has no
+    # retry/backoff around a transient connection drop (e.g. a brief network
+    # blip during a sibling container rebuild) -- a single failed lease
+    # attempt is fatal to the process. Without this, that one transient
+    # error permanently stops job processing until someone notices queued
+    # jobs piling up and manually restarts the container. See STATUS.md.
+    restart: unless-stopped
     networks:
       - curalina
     depends_on:

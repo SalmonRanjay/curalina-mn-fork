@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import logging
+import time
 from dataclasses import dataclass
 
 from curalina_variants.adapters.lab_colour_transfer import LabColourTransferAdapter
@@ -12,6 +14,8 @@ from curalina_variants.api.schemas import ErrorSummary, JobRecord
 from curalina_variants.domain.colour_spec import RgbColour
 from curalina_variants.domain.mask_spec import Mask, Region
 from curalina_variants.settings import Settings
+
+logger = logging.getLogger("curalina_variants")
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +66,10 @@ def process_one_job(
 ) -> WorkerResult:
     job = store.lease_next_job(worker_id=worker_id, lease_seconds=lease_seconds)
     if job is None:
+        logger.debug("variants worker %s: no queued job, idling", worker_id)
         return WorkerResult(processed=False)
+    logger.info("variants worker %s: leased job %s", worker_id, job.job_id)
+    t0 = time.monotonic()
 
     # Try to perform real transformation
     output_asset_bytes = None
@@ -170,12 +177,20 @@ def process_one_job(
             output_asset_bytes=None,
             failure_summary=error_summary,
         )
+        logger.warning(
+            "variants worker %s: job %s failed in %.1fs (%s: %s)",
+            worker_id, job.job_id, time.monotonic() - t0, error_summary.code, error_summary.message,
+        )
     else:
         # Complete successfully with real output
         completed = store.complete_leased_job(
             job.job_id,
             worker_id=worker_id,
             output_asset_bytes=output_asset_bytes,
+        )
+        logger.info(
+            "variants worker %s: job %s -> %s in %.1fs",
+            worker_id, job.job_id, completed.status, time.monotonic() - t0,
         )
     return WorkerResult(processed=True, job=completed)
 

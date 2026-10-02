@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 
 from curalina_rooms.adapters.fake_render_backend import FakeRenderBackend
@@ -17,6 +19,8 @@ from curalina_rooms.workers.concept_render import (
     ConceptRenderConfig,
     run_concept_render,
 )
+
+logger = logging.getLogger("curalina_rooms")
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,15 +40,23 @@ def process_one_job(
 ) -> WorkerResult:
     job = store.lease_next_job(worker_id=worker_id, lease_seconds=lease_seconds)
     if job is None:
+        logger.debug("rooms worker %s: no queued job, idling", worker_id)
         return WorkerResult(processed=False)
     context = store.get_leased_job_context(job.job_id, worker_id=worker_id)
     brief = context.request.render_brief
+    t0 = time.monotonic()
     if brief is None:
         # Legacy bundle-style job: fake staging only; it carries no image.
+        logger.info("rooms worker %s: leased job %s (legacy bundle, no render)", worker_id, job.job_id)
         completed = store.complete_leased_job(job.job_id, worker_id=worker_id)
+        logger.info("rooms worker %s: job %s -> %s", worker_id, job.job_id, completed.status)
         return WorkerResult(processed=True, job=completed)
     if asset_store is None:
         raise ValueError("asset_store is required to process a concept render")
+    logger.info(
+        "rooms worker %s: leased job %s (renderer=%s)",
+        worker_id, job.job_id, brief.renderer or "default",
+    )
     try:
         completed = run_concept_render(
             store,
@@ -56,12 +68,20 @@ def process_one_job(
             asset_store=asset_store,
             config=config or ConceptRenderConfig(),
         )
-    except (LeaseConflictError, ContractError):
+    except (LeaseConflictError, ContractError) as exc:
         # The job was cancelled or re-leased while rendering. Report the
         # job's real stored state; never overwrite it or claim success.
+        logger.warning(
+            "rooms worker %s: job %s lost its lease or hit a contract error after %.1fs (%s) - reporting stored state",
+            worker_id, job.job_id, time.monotonic() - t0, exc,
+        )
         return WorkerResult(
             processed=True, job=store.get_job(job.job_id, request_id="worker")
         )
+    logger.info(
+        "rooms worker %s: job %s -> %s in %.1fs",
+        worker_id, job.job_id, completed.status, time.monotonic() - t0,
+    )
     return WorkerResult(processed=True, job=completed)
 
 

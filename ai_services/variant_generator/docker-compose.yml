@@ -40,7 +40,11 @@ services:
     command: ["worker"]
     environment:
       CURALINA_DATABASE_URL: postgresql://curalina:curalina_dev_password@postgres:5432/curalina_variants
-    restart: "no"
+    # `unless-stopped`, not `no` -- see the identical comment on rooms_worker
+    # in ai_services/room_generator/docker-compose.yml. Same failure mode,
+    # found the same way: both workers died together on a transient Postgres
+    # connection drop and neither came back.
+    restart: unless-stopped
     networks:
       - curalina
     depends_on:

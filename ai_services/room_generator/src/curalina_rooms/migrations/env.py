@@ -16,7 +16,15 @@ from sqlalchemy import engine_from_config, pool
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: the default (True) silently disables
+    # every logger that existed before this call, including the
+    # application's own "curalina_rooms" logger -- since store.initialize()
+    # runs these migrations on every worker poll, that disabled the
+    # worker's own job-processing log lines after the very first poll, with
+    # no error or warning (found while debugging why rooms_worker's new
+    # logging only ever showed its startup line). See docs/runbooks/
+    # render-troubleshooting.md and STATUS.md.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = None
 
